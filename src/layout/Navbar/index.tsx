@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FaSearch, FaUserCircle } from "react-icons/fa";
 import { HiMenu, HiX } from "react-icons/hi";
 import { Link } from "react-router-dom";
+import { PiShoppingCartBold } from "react-icons/pi";
 
 const menuItems = [
   { name: "스튜디오", path: "/studio" },
@@ -37,7 +38,7 @@ const Navbar = () => {
         ))}
       </div>
 
-      {/* Icons */}
+      {/* Icons + Login Buttons */}
       <div className="flex space-x-4 items-center">
         {/* Search Icon */}
         <Link to="/search" className="hover:text-pink-600">
@@ -47,10 +48,12 @@ const Navbar = () => {
         {/* MyPage Icon */}
         <button
           onClick={() => setShowMyPage(!showMyPage)}
-          className=" hover:text-pink-600"
+          className="hover:text-pink-600"
         >
           <FaUserCircle size={24} />
         </button>
+
+        <PiShoppingCartBold size={24} />
 
         {/* mobile menu */}
         <button
