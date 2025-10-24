@@ -26,7 +26,7 @@ interface KakaoSDK {
 declare global {
   // ⭐️ any 대신 정의한 타입 사용
   interface Window {
-    Kakao: KakaoSDK;
+    Kakao: any;
   }
 }
 
