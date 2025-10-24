@@ -22,14 +22,14 @@ const LoginPage = () => {
         <div className="w-full max-w-xs space-y-4">
           <Link
             to="/log-in/client"
-            className="w-full flex items-center justify-center space-x-3 py-3 rounded-[50px] bg-[#FF2233] text-white font-semibold"
+            className="w-full flex items-center justify-center space-x-3 py-3.5 rounded-[50px] bg-[#FF2233] text-white font-semibold"
           >
             고객 로그인
           </Link>
 
           <Link
             to="/log-in/owner"
-            className="w-full flex items-center justify-center space-x-3 py-3 rounded-[50px] border border-[#FF2233] text-[#FF2233] font-semibold bg-white"
+            className="w-full flex items-center justify-center space-x-3 py-3.5 rounded-[50px] border border-[#FF2233] text-[#FF2233] font-semibold bg-white"
           >
             사장님 로그인
           </Link>
