@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import KakaoLoginButton from "../../components/social/kakaoLoginButton";
 
 const LoginClientPage = () => {
   return (
@@ -25,18 +26,13 @@ const LoginClientPage = () => {
         {/* 하단 그라데이션 */}
         <div className="absolute left-0 top-[461px] w-[390px] h-[173px] [background:linear-gradient(180deg,rgba(255,70,70,0)_0%,#FF4646_37.5%,#FF4646_50%,rgba(255,70,70,0.1)_100%)]" />
 
-        {/* 카카오 버튼 */}
-        <Link
-          to="/log-in/client"
-          className="absolute left-[20px] top-[646px] w-[350px] h-[56px] rounded-[50px] bg-[#FEE500] flex items-center justify-center gap-2 px-0 text-[#33363D]"
-        >
-          <img src="/images/kakao.png" alt="kakao" className="w-6 h-6" />
-          <span className="font-semibold text-[16px] leading-[150%] tracking-[-0.2px]">
-            카카오톡으로 시작하기
-          </span>
-        </Link>
+        {/* 카카오 시작 버튼 (소셜 로그인) */}
+        <div className="absolute left-[20px] top-[646px] w-[350px] h-[56px]">
+          {/* 컴포넌트 내부에서 window.location으로 카카오 인증 URL로 이동합니다. */}
+          <KakaoLoginButton role="CUSTOMER" />
+        </div>
 
-        {/* 네이버 버튼 */}
+        {/* 네이버 버튼 (기존 링크 유지) */}
         <Link
           to="/log-in/owner"
           className="absolute left-[20px] top-[714px] w-[350px] h-[56px] rounded-[50px] bg-[#03C75A] flex items-center justify-center gap-2 px-0 text-white"
