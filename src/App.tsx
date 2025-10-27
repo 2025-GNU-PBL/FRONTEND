@@ -14,6 +14,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import LoginClientPage from "./pages/LoginClientPage";
 import LoginOwnerPage from "./pages/LoginOwnerPage";
+import KakaoCallback from "./pages/KakaoCallback";
 
 function Layout() {
   const location = useLocation();
@@ -51,6 +52,7 @@ const App = () => {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<MainPage />} />
+        <Route path="/main" element={<MainPage />} />
         <Route path="/studio" element={<StudioPage />} />
         <Route path="/dress" element={<DressPage />} />
         <Route path="/makeup" element={<MakeupPage />} />
@@ -61,6 +63,7 @@ const App = () => {
         <Route path="/log-in" element={<LoginPage />} />
         <Route path="/log-in/client" element={<LoginClientPage />} />
         <Route path="/log-in/owner" element={<LoginOwnerPage />} />
+        <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
         <Route path="/sign-up" element={<SignupPage />} />
         <Route path="/users/:id/home" element={<SignupPage />} />
       </Route>

@@ -14,7 +14,7 @@
     "@iconify/tailwind4": "^1.0.6",
     "@reduxjs/toolkit": "^2.9.0",
     "@tailwindcss/vite": "^4.1.13",
-    "axios": "^1.11.0",
+    "axios": "^1.12.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-hook-form": "^7.62.0",
