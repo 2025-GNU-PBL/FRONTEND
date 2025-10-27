@@ -17,7 +17,7 @@ const Navbar = () => {
   return (
     <nav className="hidden md:flex fixed top-0 left-0 w-full h-16 bg-white border-b border-gray-200 items-center justify-between px-8 z-50 drop-shadow-sm">
       {/* Logo */}
-      <div className="font-allimjang font-bold text-xl text-pink-600 tracking-widest cursor-pointer">
+      <div className="font-allimjang font-bold text-xl text-[#FF2233] tracking-widest cursor-pointer">
         <Link to="/">웨딩PICK</Link>
       </div>
 
