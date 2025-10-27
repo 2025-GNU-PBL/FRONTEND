@@ -1,11 +1,9 @@
-import { Link } from "react-router-dom";
 import KakaoLoginButton from "../../components/social/kakaoLoginButton";
+import NaverLoginButton from "../../components/social/NaverLoginButton";
 
 const LoginClientPage = () => {
   return (
-    // 화면 크기와 무관하게 중앙에 390x844 프레임을 보여줌
     <div className="min-h-screen w-full flex items-center justify-center overflow-auto">
-      {/* 모바일 프레임 390x844 */}
       <div className="relative w-[390px] h-[844px] bg-[#FF4646] overflow-hidden">
         {/* Ellipse 10 */}
         <div className="absolute w-[665px] h-[665px] left-[-138px] top-[-131px] bg-[#FFE3E7]/20 rounded-full" />
@@ -26,26 +24,14 @@ const LoginClientPage = () => {
         {/* 하단 그라데이션 */}
         <div className="absolute left-0 top-[461px] w-[390px] h-[173px] [background:linear-gradient(180deg,rgba(255,70,70,0)_0%,#FF4646_37.5%,#FF4646_50%,rgba(255,70,70,0.1)_100%)]" />
 
-        {/* 카카오 시작 버튼 (소셜 로그인) */}
-        <div className="absolute left-[20px] top-[646px] w-[350px] h-[56px]">
-          {/* 컴포넌트 내부에서 window.location으로 카카오 인증 URL로 이동합니다. */}
-          <KakaoLoginButton role="CUSTOMER" />
-        </div>
-
-        {/* 네이버 버튼 (기존 링크 유지) */}
-        <Link
-          to="/log-in/owner"
-          className="absolute left-[20px] top-[714px] w-[350px] h-[56px] rounded-[50px] bg-[#03C75A] flex items-center justify-center gap-2 px-0 text-white"
-        >
-          <img src="/images/naver.png" alt="naver" className="w-6 h-6" />
-          <span className="font-semibold text-[16px] leading-[150%] tracking-[-0.2px]">
-            네이버로 시작하기
-          </span>
-        </Link>
-
-        {/* Home Indicator */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[390px] h-[34px]">
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-[8px] w-[134px] h-[5px] bg-black rounded-[100px]" />
+        {/* 하단 버튼 스택*/}
+        <div className="absolute left-[20px] right-[20px] bottom-[60px] flex flex-col gap-4">
+          <div className="w-full h-[56px]">
+            <KakaoLoginButton role="CUSTOMER" />
+          </div>
+          <div className="w-full h-[56px]">
+            <NaverLoginButton role="CUSTOMER" />
+          </div>
         </div>
       </div>
     </div>

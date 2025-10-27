@@ -1,11 +1,11 @@
-// src/pages/KakaoCallback/index.tsx
+// src/pages/NaverCallback/index.tsx
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../lib/api/axios";
 
 type UserRole = "CUSTOMER" | "OWNER";
 
-export default function KakaoCallback() {
+export default function NaverCallback() {
   const once = useRef(false);
   const nav = useNavigate();
 
@@ -16,35 +16,32 @@ export default function KakaoCallback() {
     (async () => {
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
-      const rawState = url.searchParams.get("state");
+      const state = url.searchParams.get("state");
 
-      if (!code) {
-        nav("/login");
-        return;
-      }
+      if (!code) return;
 
       let role: UserRole = "CUSTOMER";
       try {
-        if (rawState) {
-          const parsed = JSON.parse(decodeURIComponent(rawState));
-          if (parsed?.role === "OWNER" || parsed?.role === "CUSTOMER") {
+        if (state) {
+          const parsed = JSON.parse(decodeURIComponent(state));
+          if (parsed?.role === "OWNER" || parsed?.role === "CUSTOMER")
             role = parsed.role;
-          }
         }
       } catch {}
 
       try {
         await api.post("/api/v1/auth/login", {
           code,
-          socialProvider: "KAKAO",
-          userRole: role, // ← state에서 읽은 값으로 전달
-          state: rawState,
+          socialProvider: "NAVER",
+          userRole: role,
+          state,
         });
+
         window.history.replaceState({}, "", "/");
         nav("/");
       } catch (e) {
         console.error(e);
-        nav("/login?error=auth");
+        nav("/login?error=naver");
       }
     })();
   }, [nav]);
