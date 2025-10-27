@@ -8,6 +8,9 @@ const LoginPage = () => {
         className="min-h-screen flex flex-col items-center bg-gray-50 px-4 md:hidden"
         style={{
           backgroundImage: "url(/images/login-bg.png)",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "cover", // 화면 전체 덮기
+          backgroundPosition: "center", // 중앙 정렬
         }}
       >
         {/* 로고 */}

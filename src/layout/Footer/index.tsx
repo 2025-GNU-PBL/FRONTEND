@@ -1,32 +1,48 @@
 import { Icon } from "@iconify/react";
 import { FaInstagram, FaFacebook, FaYoutube } from "react-icons/fa";
+import { useEffect, useState } from "react";
 
 const Footer = () => {
-  return (
-    <footer className="bg-white text-gray-700 border-t border-gray-300 py-12 font-sans">
-      {/* Mobile */}
-      <div className="block lg:hidden fixed bottom-0 left-0 w-full h-[56px] bg-white border-t border-gray-300 shadow-inner z-50">
-        <nav className="flex justify-between max-w-md mx-auto py-2 px-6 h-full">
-          <button className="flex flex-col items-center justify-center text-gray-700 hover:text-blue-500">
-            <Icon icon="solar:home-2-linear" className="w-6 h-6 mb-1" />
-          </button>
-          <button className="flex flex-col items-center justify-center text-gray-700 hover:text-blue-500">
-            <Icon icon="solar:heart-linear" className="w-6 h-6 mb-1" />
-          </button>
-          <button className="flex flex-col items-center justify-center text-gray-700 hover:text-blue-500">
-            <Icon icon="iconamoon:search-light" className="w-6 h-6 mb-1" />
-          </button>
-          <button className="flex flex-col items-center justify-center text-gray-700 hover:text-blue-500">
-            <Icon icon="solar:chat-square-outline" className="w-6 h-6 mb-1" />
-          </button>
-          <button className="flex flex-col items-center justify-center text-gray-700 hover:text-blue-500">
-            <Icon icon="solar:user-rounded-linear" className="w-6 h-6 mb-1" />
-          </button>
-        </nav>
-      </div>
+  // 드로어 열렸는지 여부 (모바일 푸터 숨김 제어)
+  const [hideMobileFooter, setHideMobileFooter] = useState(false);
 
+  useEffect(() => {
+    const onToggle = (e: Event) => {
+      // CustomEvent로 detail 받아오기
+      const open = (e as CustomEvent).detail as boolean;
+      setHideMobileFooter(!!open);
+    };
+    window.addEventListener("drawer-toggle", onToggle as EventListener);
+    return () =>
+      window.removeEventListener("drawer-toggle", onToggle as EventListener);
+  }, []);
+
+  return (
+    <footer className="bg-white text-gray-700 border-t border-gray-300 font-sans">
+      {/* Mobile */}
+      {!hideMobileFooter && (
+        <div className="block lg:hidden fixed bottom-0 left-0 w-full h-[56px] bg-white border-t border-gray-300 shadow-inner z-50">
+          <nav className="flex justify-between max-w-md mx-auto py-2 px-6 h-full">
+            <button className="flex flex-col items-center justify-center text-gray-700 hover:text-blue-500">
+              <Icon icon="solar:home-2-linear" className="w-6 h-6 mb-1" />
+            </button>
+            <button className="flex flex-col items-center justify-center text-gray-700 hover:text-blue-500">
+              <Icon icon="solar:heart-linear" className="w-6 h-6 mb-1" />
+            </button>
+            <button className="flex flex-col items-center justify-center text-gray-700 hover:text-blue-500">
+              <Icon icon="iconamoon:search-light" className="w-6 h-6 mb-1" />
+            </button>
+            <button className="flex flex-col items-center justify-center text-gray-700 hover:text-blue-500">
+              <Icon icon="solar:chat-square-outline" className="w-6 h-6 mb-1" />
+            </button>
+            <button className="flex flex-col items-center justify-center text-gray-700 hover:text-blue-500">
+              <Icon icon="solar:user-rounded-linear" className="w-6 h-6 mb-1" />
+            </button>
+          </nav>
+        </div>
+      )}
       {/* Web */}
-      <div className="hidden lg:flex flex-col">
+      <div className="hidden lg:flex flex-col p-12">
         <div className="max-w-7xl mx-auto px-6 sm:px-12 lg:px-16 grid grid-cols-1 md:grid-cols-4 gap-10 text-center md:text-left">
           {/* 회사 정보 */}
           <div className="space-y-3">
