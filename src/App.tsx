@@ -6,16 +6,16 @@ import StudioPage from "./pages/StudioPage";
 import DressPage from "./pages/DressPage";
 import MakeupPage from "./pages/MakeupPage";
 import SearchPage from "./pages/SearchPage";
-import LoginPage from "./pages/LoginPage";
+import LoginPage from "./pages/LoginPage/SelectRolePage";
 import SignupPage from "./pages/SignupPage";
 import QuotationPage from "./pages/QuotationPage";
 import SchedulingPage from "./pages/SchedulingPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import LoginClientPage from "./pages/LoginClientPage";
-import LoginOwnerPage from "./pages/LoginOwnerPage";
-import KakaoCallback from "./pages/KakaoCallback";
-import NaverCallback from "./pages/NaverCallback";
+import LoginClientPage from "./pages/LoginPage/ClientLoginPage";
+import LoginOwnerPage from "./pages/LoginPage/OwnerLoginPage";
+import KakaoCallback from "./pages/LoginPage/callbacks/KakaoCallback";
+import NaverCallback from "./pages/LoginPage/callbacks/NaverCallback";
 
 function Layout() {
   const location = useLocation();

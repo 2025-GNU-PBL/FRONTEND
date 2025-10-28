@@ -1,11 +1,29 @@
+// src/lib/api/axios.ts
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL as string; // ✅ 하나로 통일
+const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 if (!API_BASE) {
+  // eslint-disable-next-line no-console
   console.error(
     "VITE_API_BASE_URL is not defined. Check your .env and restart dev server."
   );
 }
+
+// ✅ 로그인/토큰 관련 엔드포인트들 (상단에서 먼저 선언)
+const AUTH_PATHS = [
+  // 상대경로/절대경로 모두 매칭될 수 있게 넉넉하게 넣어둠
+  "/api/v1/auth/login",
+  "/auth/login",
+  "/auth/kakao",
+  "/auth/naver",
+  "/auth/refresh",
+];
+
+// ✅ 해당 요청이 인증(로그인/리프레시) 관련인지 판별
+const isAuthPath = (url?: string | null) => {
+  if (!url) return false;
+  return AUTH_PATHS.some((p) => url.includes(p));
+};
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -14,15 +32,15 @@ const api = axios.create({
 
 // ===== 요청 인터셉터 =====
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  //  로그인/토큰 관련 요청에는 Authorization 헤더 절대 붙이지 않기
-  const url = config.url || "";
-  if (LOGIN_PATHS.some((p) => url.includes(p))) {
+  // 로그인/리프레시 관련 요청에는 Authorization 절대 첨부 X
+  if (isAuthPath(config.url)) {
     return config;
   }
 
   const token = localStorage.getItem("accessToken");
   if (token) {
     config.headers = config.headers ?? {};
+
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -31,14 +49,6 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 // ===== 응답 인터셉터 =====
 let isRefreshing = false;
 let waiters: Array<(t: string) => void> = [];
-
-// 로그인 관련 요청(리프레시 대상 제외)
-const LOGIN_PATHS = [
-  "/auth/login",
-  "/auth/kakao",
-  "/auth/naver",
-  "/auth/refresh",
-];
 
 const setTokens = (at: string, rt?: string) => {
   localStorage.setItem("accessToken", at);
@@ -56,7 +66,7 @@ api.interceptors.response.use(
     const { response, config } = error;
     const original = config as any;
 
-    // ===== 기본 에러 메시지 정규화 =====
+    // 공통 에러 정규화
     const normReject = (e: AxiosError<any>) => {
       let message = e.message;
       const data = (e.response?.data ?? {}) as any;
@@ -64,19 +74,19 @@ api.interceptors.response.use(
       return Promise.reject(new Error(message));
     };
 
-    // ===== 가드: 로그인/리프레시 관련 요청은 무시 =====
-    if (original?.url && LOGIN_PATHS.some((p) => original.url.includes(p))) {
+    // ✅ 로그인/리프레시 요청 자체의 실패는 그대로 내보냄 (리프레시 재시도 금지)
+    if (isAuthPath(original?.url)) {
       return normReject(error);
     }
 
-    // ===== 만료 토큰 처리 =====
+    // ✅ 액세스 토큰 만료 처리
     if (
       response?.status === 401 &&
       response.data?.code === "AUTH4001" &&
       !original?._retry
     ) {
+      // 이미 다른 요청이 리프레시 중이면 큐에 대기
       if (isRefreshing) {
-        // 이미 갱신 중이면 큐에 쌓기
         return new Promise((resolve) => {
           waiters.push((newAT) => {
             original.headers = original.headers ?? {};
@@ -93,7 +103,7 @@ api.interceptors.response.use(
         const rt = localStorage.getItem("refreshToken");
         if (!rt) throw new Error("No refresh token found.");
 
-        // refresh 요청은 plain axios로 (api 인스턴스 사용 X)
+        // ⚠️ 순환참조 방지: refresh는 plain axios 사용
         const { data } = await axios.post(
           `${API_BASE}/auth/refresh`,
           { refreshToken: rt },
@@ -102,6 +112,8 @@ api.interceptors.response.use(
 
         const newAT = data?.data?.accessToken;
         const newRT = data?.data?.refreshToken;
+        if (!newAT) throw new Error("No access token from refresh response.");
+
         setTokens(newAT, newRT);
 
         // 대기 중이던 요청들 재시도
@@ -113,7 +125,6 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${newAT}`;
         return api(original);
       } catch (e) {
-        // refresh 실패 → 토큰 제거 + 재로그인 유도
         clearTokens();
         return normReject(e as AxiosError<any>);
       } finally {
@@ -121,7 +132,7 @@ api.interceptors.response.use(
       }
     }
 
-    // ===== 나머지 에러 =====
+    // 그 외 에러
     return normReject(error);
   }
 );

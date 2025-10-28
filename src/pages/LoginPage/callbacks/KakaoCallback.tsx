@@ -1,9 +1,7 @@
-// src/pages/KakaoCallback/index.tsx
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../lib/api/axios";
-
-type UserRole = "CUSTOMER" | "OWNER";
+import api from "../../../lib/api/axios";
+import { readRoleFromState, type UserRole } from "../../../lib/auth/state";
 
 export default function KakaoCallback() {
   const once = useRef(false);
@@ -18,33 +16,29 @@ export default function KakaoCallback() {
       const code = url.searchParams.get("code");
       const rawState = url.searchParams.get("state");
 
+      // code 누락 시 로그인 페이지로
       if (!code) {
-        nav("/login");
+        nav("/log-in/client?error=missing_code");
         return;
       }
 
-      let role: UserRole = "CUSTOMER";
-      try {
-        if (rawState) {
-          const parsed = JSON.parse(decodeURIComponent(rawState));
-          if (parsed?.role === "OWNER" || parsed?.role === "CUSTOMER") {
-            role = parsed.role;
-          }
-        }
-      } catch {}
+      // 안전 파서 사용
+      const role: UserRole = readRoleFromState(rawState);
 
       try {
         await api.post("/api/v1/auth/login", {
           code,
           socialProvider: "KAKAO",
-          userRole: role, // ← state에서 읽은 값으로 전달
+          userRole: role,
           state: rawState,
         });
+
+        // URL 정리 후 홈으로 이동
         window.history.replaceState({}, "", "/");
         nav("/");
       } catch (e) {
-        console.error(e);
-        nav("/login?error=auth");
+        console.error("카카오 로그인 중 오류 발생:", e);
+        nav("/log-in/client?error=auth");
       }
     })();
   }, [nav]);
