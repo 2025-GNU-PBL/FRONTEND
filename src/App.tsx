@@ -9,12 +9,19 @@ import SearchPage from "./pages/SearchPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import QuotationPage from "./pages/QuotationPage";
-import SchedulingPage from "./pages/SchedulingPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import LoginClientPage from "./pages/LoginClientPage";
 import LoginOwnerPage from "./pages/LoginOwnerPage";
 import KakaoCallback from "./pages/KakaoCallback";
+import WeddingPage from "./pages/WeddingPage";
+import CalendarPage from "./pages/CalendarPage";
+import FaqPage from "./pages/FaqPage";
+import EventPage from "./pages/EventPage";
+import CartPage from "./pages/CartPage";
+import ChatPage from "./pages/ChatPage";
+import MyPage from "./pages/MyPage";
+import ScrollToTop from "./components/ScrollToTop";
 
 function Layout() {
   const location = useLocation();
@@ -37,7 +44,7 @@ function Layout() {
         pauseOnHover
         autoClose={1500}
       />
-
+      <ScrollToTop />
       {showNavbar && <Navbar />}
       <main>
         <Outlet />
@@ -52,14 +59,20 @@ const App = () => {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<MainPage />} />
+        <Route path="/faq" element={<FaqPage />} />
+        <Route path="/event" element={<EventPage />} />
         <Route path="/main" element={<MainPage />} />
+        <Route path="/wedding" element={<WeddingPage />} />
         <Route path="/studio" element={<StudioPage />} />
         <Route path="/dress" element={<DressPage />} />
         <Route path="/makeup" element={<MakeupPage />} />
         <Route path="/quotation" element={<QuotationPage />} />
-        <Route path="/scheduling" element={<SchedulingPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/studio" element={<StudioPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/my-page" element={<MyPage />} />
         <Route path="/log-in" element={<LoginPage />} />
         <Route path="/log-in/client" element={<LoginClientPage />} />
         <Route path="/log-in/owner" element={<LoginOwnerPage />} />
