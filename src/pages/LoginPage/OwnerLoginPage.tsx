@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import KakaoLoginButton from "../../components/social/kakaoLoginButton";
+import NaverLoginButton from "../../components/social/NaverLoginButton";
 
 const LoginOwnerPage = () => {
   return (
@@ -27,31 +28,13 @@ const LoginOwnerPage = () => {
           </p>
         </div>
 
-        {/* 카카오 버튼 (Frame 2085665020) */}
-        <Link
-          to="/auth/kakao"
-          className="absolute left-[20px] top-[646px] w-[350px] h-[56px] rounded-[50px] bg-[#FEE500] flex items-center justify-center gap-2 px-0"
-        >
-          <img src="/images/kakao.png" alt="kakao" className="w-6 h-6" />
-          <span className="font-pretendard font-semibold text-[14px] leading-[150%] tracking-[-0.2px] text-[#33363D]">
-            카카오톡으로 시작하기
-          </span>
-        </Link>
-
-        {/* 네이버 버튼 (Frame 2085665021) */}
-        <Link
-          to="/auth/naver"
-          className="absolute left-[20px] top-[714px] w-[350px] h-[56px] rounded-[50px] bg-[#03C75A] flex items-center justify-center gap-2 px-0"
-        >
-          <img src="/images/naver.png" alt="naver" className="w-6 h-6" />
-          <span className="font-pretendard font-semibold text-[14px] leading-[150%] tracking-[-0.2px] text-white">
-            네이버로 시작하기
-          </span>
-        </Link>
-
-        {/* 하단 홈 인디케이터 */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[390px] h-[34px]">
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-[8px] w-[134px] h-[5px] bg-black rounded-[100px]" />
+        <div className="absolute left-[20px] right-[20px] bottom-[60px] flex flex-col gap-4">
+          <div className="w-full h-[56px]">
+            <KakaoLoginButton role="OWNER" />
+          </div>
+          <div className="w-full h-[56px]">
+            <NaverLoginButton role="OWNER" />
+          </div>
         </div>
       </div>
     </div>
