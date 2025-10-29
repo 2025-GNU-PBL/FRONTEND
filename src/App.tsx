@@ -5,7 +5,7 @@ import MainPage from "./pages/MainPage";
 import StudioPage from "./pages/StudioPage";
 import DressPage from "./pages/DressPage";
 import MakeupPage from "./pages/MakeupPage";
-import SearchPage from "./pages/SearchPage";
+import SearchPage from "./pages/SearchPage/SearchPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import QuotationPage from "./pages/QuotationPage";
