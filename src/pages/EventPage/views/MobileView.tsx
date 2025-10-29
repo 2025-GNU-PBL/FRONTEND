@@ -66,7 +66,6 @@ const MobileView: React.FC = () => {
         <h1 className="font-allimjang text-[#FF2233] text-2xl font-bold">
           웨딩PICK
         </h1>
-        <h2 className="text-lg font-semibold text-black/70">이벤트</h2>
       </header>
 
       {/* 바디 */}
