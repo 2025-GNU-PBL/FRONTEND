@@ -110,16 +110,18 @@ export default function MobileView({
       {/* 바디 */}
       <div className="mx-5.5">
         {/* 검색창 */}
+        {/* 검색창 */}
         <motion.div
           variants={fadeUp}
-          className="flex items-center mb-7.5 rounded-[8px] px-4 h-11 bg-[#F3F4F5] hover:outline focus-within:outline hover:outline-blue-500 focus-within:outline-gray-600"
-          whileHover={{ scale: 1.01 }}
+          onClick={() => navigate("/search")}
+          className="flex items-center mb-7.5 rounded-[8px] px-4 h-11 bg-[#F3F4F5] hover:outline focus-within:outline hover:outline-blue-500 focus-within:outline-gray-600 active:scale-[0.99] transition"
         >
           <Icon icon="tabler:search" className="w-5 h-5 text-[#D9D9D9] mr-2" />
           <input
             type="text"
             placeholder="검색어를 입력해주세요"
-            className="flex-1 text-gray-700 placeholder-[#D9D9D9] text-sm bg-transparent h-full focus:outline-none"
+            className="flex-1 text-gray-700 placeholder-[#D9D9D9] text-sm bg-transparent h-full focus:outline-none pointer-events-none"
+            readOnly
           />
         </motion.div>
 
