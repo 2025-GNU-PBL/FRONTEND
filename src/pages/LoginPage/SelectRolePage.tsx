@@ -47,11 +47,6 @@ const LoginPage = () => {
             사장님 로그인
           </span>
         </Link>
-
-        {/* 홈 인디케이터 (하단 바) */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[390px] h-[34px]">
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-[8px] w-[134px] h-[5px] bg-black rounded-[100px]" />
-        </div>
       </div>
     </div>
   );

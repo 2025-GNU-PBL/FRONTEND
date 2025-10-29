@@ -1,5 +1,5 @@
-// src/components/social/kakaoLoginButton.tsx
-import { buildKakaoAuthUrl } from "../../lib/auth/kakao";
+// src/components/social/NaverLoginButton.tsx
+import { buildNaverAuthUrl } from "../../lib/auth/naver";
 import type { UserRole } from "../../lib/auth/types";
 
 type Props = {
@@ -8,25 +8,26 @@ type Props = {
   className?: string;
 };
 
-export default function KakaoLoginButton({ role, className = "" }: Props) {
+export default function NaverLoginButton({ role, className = "" }: Props) {
   const onClick = () => {
-    const url = buildKakaoAuthUrl(role);
+    const url = buildNaverAuthUrl(role);
     window.location.href = url;
   };
 
   return (
     <button
       onClick={onClick}
-      aria-label="카카오톡으로 시작하기"
+      aria-label="네이버로 시작하기"
       className={[
-        // Frame 2085665020
+        // Frame 2085665021
         "flex items-center justify-center",
         "rounded-[50px]",
-        "bg-[#FEE500]",
-        "h-[56px]", // 고정 높이 (피그마 56px)
-        "w-full", // 너비는 부모에서 w-[350px] 주는 걸 권장, 없으면 가득
-        "px-0 py-4", // padding: 16px 0
+        "bg-[#03C75A]", // ✅ 네이버 공식 색상
+        "h-[56px]",
+        "w-full",
+        "px-0 py-4",
         "shadow-none border-0",
+        "transition-all duration-200 hover:brightness-95",
         className,
       ].join(" ")}
     >
@@ -34,17 +35,18 @@ export default function KakaoLoginButton({ role, className = "" }: Props) {
       <span className="flex items-center justify-center gap-2 h-[24px]">
         {/* icon 24px */}
         <img
-          src="/images/kakao.png"
-          alt="kakao"
+          src="/images/naver.png"
+          alt="naver"
           className="h-[24px] w-[24px] select-none"
           draggable={false}
         />
-        {/* 텍스트: Pretendard 16 / 600 / Gray80(#33363D) */}
+
+        {/* 텍스트: Pretendard 16 / 600 / White */}
         <span
-          className="text-[16px] font-semibold leading-[150%] tracking-[-0.2px] text-[#33363D]"
+          className="text-[16px] font-semibold leading-[150%] tracking-[-0.2px] text-white"
           style={{ fontFamily: "Pretendard, sans-serif" }}
         >
-          카카오톡으로 시작하기
+          네이버로 시작하기
         </span>
       </span>
     </button>

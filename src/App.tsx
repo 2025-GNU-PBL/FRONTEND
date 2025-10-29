@@ -9,18 +9,27 @@ import SearchPage from "./pages/SearchPage/SearchPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import QuotationPage from "./pages/QuotationPage";
+import MainPage from "./pages/MainPage/MainPage";
+import StudioPage from "./pages/StudioPage/StudioPage";
+import DressPage from "./pages/DressPage/DressPage";
+import MakeupPage from "./pages/MakeupPage/MakeupPage";
+import SearchPage from "./pages/SearchPage/SearchPage";
+import LoginPage from "./pages/LoginPage/SelectRolePage";
+import SignupPage from "./pages/SignupPage/SignupPage";
+import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import LoginClientPage from "./pages/LoginClientPage";
-import LoginOwnerPage from "./pages/LoginOwnerPage";
-import KakaoCallback from "./pages/KakaoCallback";
-import WeddingPage from "./pages/WeddingPage";
-import CalendarPage from "./pages/CalendarPage";
-import FaqPage from "./pages/FaqPage";
-import EventPage from "./pages/EventPage";
-import CartPage from "./pages/CartPage";
-import ChatPage from "./pages/ChatPage";
-import MyPage from "./pages/MyPage";
+import ClientLoginPage from "./pages/LoginPage/ClientLoginPage";
+import OwnerLoginPage from "./pages/LoginPage/OwnerLoginPage";
+import KakaoCallback from "./pages/LoginPage/callbacks/KakaoCallback";
+import NaverCallback from "./pages/LoginPage/callbacks/NaverCallback";
+import WeddingPage from "./pages/WeddingPage/WeddingPage";
+import CalendarPage from "./pages/CalendarPage/CalendarPage";
+import FaqPage from "./pages/FaqPage/FaqPage";
+import EventPage from "./pages/EventPage/EventPage";
+import CartPage from "./pages/CartPage/CartPage";
+import ChatPage from "./pages/ChatPage/ChatPage";
+import MyPage from "./pages/MyPage/MyPage";
 import ScrollToTop from "./components/ScrollToTop";
 
 function Layout() {
@@ -61,7 +70,6 @@ const App = () => {
         <Route index element={<MainPage />} />
         <Route path="/faq" element={<FaqPage />} />
         <Route path="/event" element={<EventPage />} />
-        <Route path="/main" element={<MainPage />} />
         <Route path="/wedding" element={<WeddingPage />} />
         <Route path="/studio" element={<StudioPage />} />
         <Route path="/dress" element={<DressPage />} />
@@ -74,9 +82,10 @@ const App = () => {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/my-page" element={<MyPage />} />
         <Route path="/log-in" element={<LoginPage />} />
-        <Route path="/log-in/client" element={<LoginClientPage />} />
-        <Route path="/log-in/owner" element={<LoginOwnerPage />} />
+        <Route path="/log-in/client" element={<ClientLoginPage />} />
+        <Route path="/log-in/owner" element={<OwnerLoginPage />} />
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
+        <Route path="/auth/naver/callback" element={<NaverCallback />} />
         <Route path="/sign-up" element={<SignupPage />} />
         <Route path="/users/:id/home" element={<SignupPage />} />
       </Route>
