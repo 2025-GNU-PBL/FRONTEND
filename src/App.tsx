@@ -1,22 +1,6 @@
 import { Outlet, Route, Routes, useLocation } from "react-router-dom";
 import Navbar from "./layout/Navbar";
 import Footer from "./layout/Footer";
-import MainPage from "./pages/MainPage";
-import StudioPage from "./pages/StudioPage";
-import DressPage from "./pages/DressPage";
-import MakeupPage from "./pages/MakeupPage";
-import SearchPage from "./pages/SearchPage/SearchPage";
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
-import QuotationPage from "./pages/QuotationPage";
-import MainPage from "./pages/MainPage/MainPage";
-import StudioPage from "./pages/StudioPage/StudioPage";
-import DressPage from "./pages/DressPage/DressPage";
-import MakeupPage from "./pages/MakeupPage/MakeupPage";
-import SearchPage from "./pages/SearchPage/SearchPage";
-import LoginPage from "./pages/LoginPage/SelectRolePage";
-import SignupPage from "./pages/SignupPage/SignupPage";
-import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ClientLoginPage from "./pages/LoginPage/ClientLoginPage";
@@ -31,6 +15,14 @@ import CartPage from "./pages/CartPage/CartPage";
 import ChatPage from "./pages/ChatPage/ChatPage";
 import MyPage from "./pages/MyPage/MyPage";
 import ScrollToTop from "./components/ScrollToTop";
+import MainPage from "./pages/MainPage/MainPage";
+import StudioPage from "./pages/StudioPage/StudioPage";
+import DressPage from "./pages/DressPage/DressPage";
+import MakeupPage from "./pages/MakeupPage/MakeupPage";
+import QuotationPage from "./pages/QuotationPage/QuotationPage";
+import SearchPage from "./pages/SearchPage/SearchPage";
+import LoginPage from "./pages/LoginPage/SelectRolePage";
+import SignUpPage from "./pages/SignupPage/SignupPage";
 
 function Layout() {
   const location = useLocation();
@@ -86,8 +78,8 @@ const App = () => {
         <Route path="/log-in/owner" element={<OwnerLoginPage />} />
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
         <Route path="/auth/naver/callback" element={<NaverCallback />} />
-        <Route path="/sign-up" element={<SignupPage />} />
-        <Route path="/users/:id/home" element={<SignupPage />} />
+        <Route path="/sign-up" element={<SignUpPage />} />
+        <Route path="/users/:id/home" element={<SignUpPage />} />
       </Route>
     </Routes>
   );
