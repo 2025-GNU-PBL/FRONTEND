@@ -22,7 +22,7 @@ import EventPage from "./pages/EventPage/EventPage";
 import CartPage from "./pages/CartPage/CartPage";
 import ChatPage from "./pages/ChatPage/ChatPage";
 import MyPage from "./pages/MyPage/MyPage";
-import ScrollToTop from "./components/ScrollToTop";
+import ScrollToTop from "./components/ScrollToTop";;
 
 function Layout() {
   const location = useLocation();
@@ -78,8 +78,8 @@ const App = () => {
         <Route path="/log-in/owner" element={<OwnerLoginPage />} />
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
         <Route path="/auth/naver/callback" element={<NaverCallback />} />
-        <Route path="/sign-up" element={<SignupPage />} />
-        <Route path="/users/:id/home" element={<SignupPage />} />
+        <Route path="/sign-up" element={<SignUpPage />} />
+        <Route path="/users/:id/home" element={<SignUpPage />} />
       </Route>
     </Routes>
   );
