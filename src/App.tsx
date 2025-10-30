@@ -80,8 +80,8 @@ const App = () => {
         <Route path="/log-in/owner" element={<OwnerLoginPage />} />
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
         <Route path="/auth/naver/callback" element={<NaverCallback />} />
-        <Route path="/sign-up" element={<SignupPage />} />
-        <Route path="/users/:id/home" element={<SignupPage />} />
+        <Route path="/sign-up" element={<SignUpPage />} />
+        <Route path="/users/:id/home" element={<SignUpPage />} />
       </Route>
     </Routes>
   );
