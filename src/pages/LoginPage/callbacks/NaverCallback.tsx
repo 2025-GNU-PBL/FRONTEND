@@ -1,11 +1,13 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../../lib/api/axios";
-import { readRoleFromState, type UserRole } from "../../../lib/auth/state";
+import { useAppDispatch } from "../../../store/hooks";
+import { naverLoginUser } from "../../../store/thunkFunctions";
+import { readRoleFromState } from "../../../lib/auth/state";
 
 export default function NaverCallback() {
   const once = useRef(false);
   const nav = useNavigate();
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     if (once.current) return;
@@ -22,16 +24,14 @@ export default function NaverCallback() {
         return;
       }
 
-      // 안전 파서 사용
-      const role: UserRole = readRoleFromState(rawState);
+      // state → role 변환
+      const role = readRoleFromState(rawState);
 
       try {
-        await api.post("/api/v1/auth/login", {
-          code,
-          socialProvider: "NAVER",
-          userRole: role,
-          state: rawState,
-        });
+        // ✅ Redux 비동기 thunk 호출
+        await dispatch(
+          naverLoginUser({ code, state: rawState, role })
+        ).unwrap();
 
         // URL 정리 후 홈으로 이동
         window.history.replaceState({}, "", "/");
@@ -41,7 +41,7 @@ export default function NaverCallback() {
         nav("/log-in/client?error=naver");
       }
     })();
-  }, [nav]);
+  }, [dispatch, nav]);
 
   return <div>로그인 처리 중…</div>;
 }

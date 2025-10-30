@@ -23,6 +23,11 @@ import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
 import LoginPage from "./pages/LoginPage/SelectRolePage";
 import SignUpPage from "./pages/SignupPage/SignupPage";
+import { useEffect } from "react";
+import { authUser } from "./store/thunkFunctions";
+import ProtectedRoutes from "./components/ProtectedRoutes";
+import NotAuthRoutes from "./components/NotAuthRoutes.";
+import { useAppDispatch, useAppSelector } from "./store/hooks";
 
 function Layout() {
   const location = useLocation();
@@ -56,6 +61,20 @@ function Layout() {
 }
 
 const App = () => {
+  const dispatch = useAppDispatch();
+  const { pathname } = useLocation();
+
+  // ✅ persist rehydration 여부와 isAuth
+  const isAuth = useAppSelector((s) => s.user.isAuth);
+  const rehydrated = useAppSelector((s: any) => s._persist?.rehydrated);
+
+  useEffect(() => {
+    // ✅ 앱(또는 라우트) 진입 시: 토큰이 있고 아직 isAuth가 아니면 서버와 동기화
+    const token = localStorage.getItem("accessToken");
+    if (rehydrated && token && !isAuth) {
+      dispatch(authUser());
+    }
+  }, [rehydrated, pathname, isAuth, dispatch]);
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
@@ -66,20 +85,26 @@ const App = () => {
         <Route path="/studio" element={<StudioPage />} />
         <Route path="/dress" element={<DressPage />} />
         <Route path="/makeup" element={<MakeupPage />} />
-        <Route path="/quotation" element={<QuotationPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/search" element={<SearchPage />} />
-        <Route path="/studio" element={<StudioPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/chat" element={<ChatPage />} />
-        <Route path="/my-page" element={<MyPage />} />
-        <Route path="/log-in" element={<LoginPage />} />
-        <Route path="/log-in/client" element={<ClientLoginPage />} />
-        <Route path="/log-in/owner" element={<OwnerLoginPage />} />
-        <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
-        <Route path="/auth/naver/callback" element={<NaverCallback />} />
-        <Route path="/sign-up" element={<SignUpPage />} />
-        <Route path="/users/:id/home" element={<SignUpPage />} />
+        <Route path="/quotation" element={<QuotationPage />} />
+
+        {/* 로그인한 사람만 갈 수 있는 경로 */}
+        <Route element={<ProtectedRoutes isAuth={isAuth} />}>
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/my-page" element={<MyPage />} />
+        </Route>
+        {/* 로그인한 사람은 갈 수 없는 경로 */}
+        <Route element={<NotAuthRoutes isAuth={isAuth} />}>
+          <Route path="/log-in" element={<LoginPage />} />
+          <Route path="/log-in/client" element={<ClientLoginPage />} />
+          <Route path="/log-in/owner" element={<OwnerLoginPage />} />
+          <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
+          <Route path="/auth/naver/callback" element={<NaverCallback />} />
+          <Route path="/sign-up" element={<SignUpPage />} />
+          <Route path="/users/:id/home" element={<SignUpPage />} />
+        </Route>
       </Route>
     </Routes>
   );

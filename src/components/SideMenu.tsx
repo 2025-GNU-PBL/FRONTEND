@@ -1,5 +1,9 @@
+// SideMenu.tsx
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { logoutUser } from "../store/thunkFunctions";
+// ✅ 형님 프로젝트의 커스텀 훅/Thunk 기준으로 import
 
 type Props = {
   isOpen: boolean;
@@ -9,6 +13,11 @@ type Props = {
 const SideMenu = ({ isOpen, onClose }: Props) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+
+  // ✅ 형님 store 기준: state.user.isAuth / state.user.userData?.name
+  const isAuthenticated = useAppSelector((s) => s.user.isAuth);
+  const userName = useAppSelector((s) => s.user.userData?.name ?? "");
 
   // 상단 메뉴(웨딩/스튜디오/메이크업/드레스)
   const menuItems = useMemo(
@@ -35,13 +44,26 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
   const listBase =
     "flex flex-row items-center w-[217px] h-10 px-6 py-3 gap-[10px] rounded-[12px] text-[14px] font-medium leading-[140%] transition select-none";
   const activeCls = "bg-[#FAF8FB] text-black";
-  // 비활성: hover/active/pressed 시에도 FAF8FB 로 변경되도록 설정
   const inactiveCls =
     "bg-white text-[#595F63] hover:bg-[#FAF8FB] hover:text-black active:bg-[#FAF8FB] active:text-black";
 
   // 하단 메뉴는 패딩/라운드 값만 다름 (디자인 동일)
   const bottomListBase =
     "flex flex-row items-center w-[217px] h-10 px-0 py-3 gap-[10px] rounded-[10px] text-[14px] font-medium leading-[140%] transition select-none";
+
+  // ✅ 로그인 상태에 따라 레이아웃 위치 변경 (형님이 준 CSS 반영)
+  const sectionTitleTop = isAuthenticated ? "top-[162px]" : "top-[225px]";
+  const menuListTop = isAuthenticated ? "top-[198px]" : "top-[261px]";
+
+  // ✅ 로그아웃 thunk 사용
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutUser()).unwrap();
+    } finally {
+      onClose();
+      navigate("/");
+    }
+  };
 
   return (
     <>
@@ -68,56 +90,73 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
         aria-modal="true"
         aria-hidden={!isOpen}
       >
-        {/* 카피 */}
-        <div
-          className="absolute left-6 top-20 w-[157px] h-14 font-semibold text-[20px] leading-[138%] text-[#202325]"
-          style={{ fontFamily: "Pretendard" }}
-        >
-          1만 신부님들의 선택
-          <br />
-          웨딩PICK
-        </div>
+        {/* ✅ 로그인 상태: 인사 / 미로그인 상태: 기존 버튼들 */}
+        {isAuthenticated ? (
+          // --- 로그인 UI ---
+          <div
+            className="absolute left-6 top-20 w-[157px] h-14 font-semibold text-[18px] leading-[138%] text-[#202325]"
+            style={{ fontFamily: "Pretendard" }}
+            aria-live="polite"
+          >
+            {userName ? `${userName}님 안녕하세요!` : `안녕하세요!`}
+          </div>
+        ) : (
+          // --- 미로그인 UI ---
+          <>
+            {/* 카피 */}
+            <div
+              className="absolute left-6 top-20 w-[157px] h-14 font-semibold text-[20px] leading-[138%] text-[#202325]"
+              style={{ fontFamily: "Pretendard" }}
+            >
+              1만 신부님들의 선택
+              <br />
+              웨딩PICK
+            </div>
 
-        {/* 버튼: 로그인 (레드) */}
-        <button
-          aria-label="로그인"
-          className="absolute left-6 top-[156px] w-[105px] h-[37px] flex items-center justify-center 
-             px-6 py-2.5 rounded-[20px] bg-[#FF2233] text-white text-[12px] font-medium
-             leading-[150%] tracking-[-0.1px]
-             transition active:scale-95 hover:bg-[#e61e2d] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF2233]/40"
-          style={{
-            fontFamily: "Pretendard",
-            WebkitTapHighlightColor: "transparent",
-          }}
-          onClick={() => {
-            onClose();
-            navigate("/log-in");
-          }}
-        >
-          로그인
-        </button>
+            {/* 버튼: 로그인 (레드) */}
+            <button
+              aria-label="로그인"
+              className="absolute left-6 top-[156px] w-[105px] h-[37px] flex items-center justify-center 
+                px-6 py-2.5 rounded-[20px] bg-[#FF2233] text-white text-[12px] font-medium
+                leading-[150%] tracking-[-0.1px]
+                transition active:scale-95 hover:bg-[#e61e2d] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF2233]/40"
+              style={{
+                fontFamily: "Pretendard",
+                WebkitTapHighlightColor: "transparent",
+              }}
+              onClick={() => {
+                onClose();
+                navigate("/log-in");
+              }}
+            >
+              로그인
+            </button>
 
-        {/* 버튼: 회원가입 (아웃라인) */}
-        <button
-          aria-label="회원가입"
-          className="absolute left-[136px] top-[156px] w-[105px] h-[37px] box-border flex items-center justify-center 
-             px-6 py-2.5 rounded-[20px] border border-[rgba(0,0,0,0.2)] bg-white
-             text-[12px] font-medium text-[rgba(0,0,0,0.8)] leading-[150%] tracking-[-0.1px]
-             transition active:scale-95 hover:border-black/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
-          style={{
-            fontFamily: "Pretendard",
-            WebkitTapHighlightColor: "transparent",
-          }}
-          onClick={() => {
-            onClose();
-            navigate("/sign-up"); // ✅ 회원가입은 /sign-up
-          }}
-        >
-          회원가입
-        </button>
+            {/* 버튼: 회원가입 (아웃라인) */}
+            <button
+              aria-label="회원가입"
+              className="absolute left-[136px] top-[156px] w-[105px] h-[37px] box-border flex items-center justify-center 
+                px-6 py-2.5 rounded-[20px] border border-[rgba(0,0,0,0.2)] bg-white
+                text-[12px] font-medium text-[rgba(0,0,0,0.8)] leading-[150%] tracking-[-0.1px]
+                transition active:scale-95 hover:border-black/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
+              style={{
+                fontFamily: "Pretendard",
+                WebkitTapHighlightColor: "transparent",
+              }}
+              onClick={() => {
+                onClose();
+                navigate("/sign-up"); // ✅ 회원가입은 /sign-up
+              }}
+            >
+              회원가입
+            </button>
+          </>
+        )}
 
         {/* 섹션 타이틀 */}
-        <div className="absolute left-6 top-[225px] w-[217px] h-5 flex flex-row items-center justify-between gap-[152px] p-0">
+        <div
+          className={`absolute left-6 ${sectionTitleTop} w-[217px] h-5 flex flex-row items-center justify-between gap-[152px] p-0`}
+        >
           <span
             className="font-semibold text-[14px] leading-[140%] text-[#202325]"
             style={{ fontFamily: "Pretendard" }}
@@ -127,7 +166,9 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
         </div>
 
         {/* 메뉴 리스트 영역 */}
-        <div className="absolute left-6 top-[261px] w-[217px] flex flex-col items-start p-0 space-y-1.5">
+        <div
+          className={`absolute left-6 ${menuListTop} w-[217px] flex flex-col items-start p-0 space-y-1.5`}
+        >
           {menuItems.map(({ label, paths }) => {
             const isActive = paths.some(
               (p) => pathname === p || pathname.startsWith(p + "/")
@@ -175,6 +216,25 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
             );
           })}
         </div>
+
+        {/* ✅ 로그인 상태에서만 하단 로그아웃 버튼 표시 */}
+        {isAuthenticated && (
+          <button
+            aria-label="로그아웃"
+            onClick={handleLogout}
+            className="absolute left-6 top-[775px] w-[217px] h-[37px] box-border 
+              flex flex-row justify-center items-center
+              px-6 py-[10px] border border-[rgba(0,0,0,0.2)] rounded-[20px]
+              text-[12px] font-medium leading-[150%] tracking-[-0.1px] text-[rgba(0,0,0,0.8)]
+              transition active:scale-95 hover:border-black/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
+            style={{
+              fontFamily: "Pretendard",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            로그아웃
+          </button>
+        )}
       </aside>
     </>
   );
