@@ -21,8 +21,9 @@ import FaqPage from "./pages/FaqPage/FaqPage";
 import EventPage from "./pages/EventPage/EventPage";
 import CartPage from "./pages/CartPage/CartPage";
 import ChatPage from "./pages/ChatPage/ChatPage";
-import MyPage from "./pages/MyPage/MyPage";
 import ScrollToTop from "./components/ScrollToTop";
+import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain";
+import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
 
 function Layout() {
   const location = useLocation();
@@ -72,7 +73,8 @@ const App = () => {
         <Route path="/studio" element={<StudioPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/chat" element={<ChatPage />} />
-        <Route path="/my-page" element={<MyPage />} />
+        <Route path="/my-page/client" element={<ClientMyPageMain />} />
+        <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
         <Route path="/log-in" element={<SelectRolePage />} />
         <Route path="/log-in/client" element={<ClientLoginPage />} />
         <Route path="/log-in/owner" element={<OwnerLoginPage />} />
