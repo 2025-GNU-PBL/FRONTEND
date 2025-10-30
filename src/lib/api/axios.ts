@@ -9,7 +9,7 @@ if (!API_BASE) {
   );
 }
 
-// ✅ 로그인/토큰 관련 엔드포인트들 (상단에서 먼저 선언)
+// 로그인/토큰 관련 엔드포인트들 (상단에서 먼저 선언)
 const AUTH_PATHS = [
   // 상대경로/절대경로 모두 매칭될 수 있게 넉넉하게 넣어둠
   "/api/v1/auth/login",
@@ -19,7 +19,7 @@ const AUTH_PATHS = [
   "/auth/refresh",
 ];
 
-// ✅ 해당 요청이 인증(로그인/리프레시) 관련인지 판별
+// 해당 요청이 인증(로그인/리프레시) 관련인지 판별
 const isAuthPath = (url?: string | null) => {
   if (!url) return false;
   return AUTH_PATHS.some((p) => url.includes(p));
@@ -74,12 +74,12 @@ api.interceptors.response.use(
       return Promise.reject(new Error(message));
     };
 
-    // ✅ 로그인/리프레시 요청 자체의 실패는 그대로 내보냄 (리프레시 재시도 금지)
+    // 로그인/리프레시 요청 자체의 실패는 그대로 내보냄 (리프레시 재시도 금지)
     if (isAuthPath(original?.url)) {
       return normReject(error);
     }
 
-    // ✅ 액세스 토큰 만료 처리
+    // 액세스 토큰 만료 처리
     if (
       response?.status === 401 &&
       response.data?.code === "AUTH4001" &&
