@@ -1,3 +1,4 @@
+// src/lib/auth/kakao.ts
 export type UserRole = "CUSTOMER" | "OWNER";
 
 export const buildKakaoAuthUrl = (role: UserRole) => {

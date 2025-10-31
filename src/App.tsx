@@ -1,17 +1,8 @@
 import { Outlet, Route, Routes, useLocation } from "react-router-dom";
-import Navbar from "./layout/Navbar";
-import Footer from "./layout/Footer";
-import MainPage from "./pages/MainPage/MainPage";
-import StudioPage from "./pages/StudioPage/StudioPage";
-import DressPage from "./pages/DressPage/DressPage";
-import MakeupPage from "./pages/MakeupPage/MakeupPage";
-import SearchPage from "./pages/SearchPage/SearchPage";
-import SelectRolePage from "./pages/LoginPage/SelectRolePage";
-import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import ClientLoginPage from "./pages/LoginPage/ClientLoginPage";
-import OwnerLoginPage from "./pages/LoginPage/OwnerLoginPage";
+import ClientLoginPage from "./pages/LoginPage/client/ClientLoginPage";
+import OwnerLoginPage from "./pages/LoginPage/owner/OwnerLoginPage";
 import KakaoCallback from "./pages/LoginPage/callbacks/KakaoCallback";
 import NaverCallback from "./pages/LoginPage/callbacks/NaverCallback";
 import WeddingPage from "./pages/WeddingPage/WeddingPage";
@@ -33,7 +24,7 @@ function Layout() {
     "/sign-up",
     "/log-in/client",
     "/log-in/owner",
-  ]; // 네비 숨길 페이지 경로 리스트
+  ];
   const hideFooterOnPaths = ["/log-in", "/log-in/client", "/log-in/owner"];
 
   const showNavbar = !hideNavOnPaths.includes(location.pathname);
@@ -58,6 +49,20 @@ function Layout() {
 }
 
 const App = () => {
+  const dispatch = useAppDispatch();
+  const { pathname } = useLocation();
+
+  // ✅ persist rehydration 여부와 isAuth
+  const isAuth = useAppSelector((s) => s.user.isAuth);
+  const rehydrated = useAppSelector((s: any) => s._persist?.rehydrated);
+
+  useEffect(() => {
+    // 앱(또는 라우트) 진입 시: 토큰이 있고 아직 isAuth가 아니면 서버와 동기화
+    const token = localStorage.getItem("accessToken");
+    if (rehydrated && token && !isAuth) {
+      dispatch(authUser());
+    }
+  }, [rehydrated, pathname, isAuth, dispatch]);
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
@@ -68,8 +73,6 @@ const App = () => {
         <Route path="/studio" element={<StudioPage />} />
         <Route path="/dress" element={<DressPage />} />
         <Route path="/makeup" element={<MakeupPage />} />
-        <Route path="/quotation" element={<QuotationPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/studio" element={<StudioPage />} />
         <Route path="/cart" element={<CartPage />} />
