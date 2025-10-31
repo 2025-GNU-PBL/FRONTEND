@@ -1,10 +1,8 @@
 import { Outlet, Route, Routes, useLocation } from "react-router-dom";
-import Navbar from "./layout/Navbar";
-import Footer from "./layout/Footer";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import ClientLoginPage from "./pages/LoginPage/ClientLoginPage";
-import OwnerLoginPage from "./pages/LoginPage/OwnerLoginPage";
+import ClientLoginPage from "./pages/LoginPage/client/ClientLoginPage";
+import OwnerLoginPage from "./pages/LoginPage/owner/OwnerLoginPage";
 import KakaoCallback from "./pages/LoginPage/callbacks/KakaoCallback";
 import NaverCallback from "./pages/LoginPage/callbacks/NaverCallback";
 import WeddingPage from "./pages/WeddingPage/WeddingPage";
@@ -21,13 +19,15 @@ import DressPage from "./pages/DressPage/DressPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
 import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
-import LoginPage from "./pages/LoginPage/SelectRolePage";
 import SignUpPage from "./pages/SignupPage/SignupPage";
 import { useEffect } from "react";
 import { authUser } from "./store/thunkFunctions";
 import ProtectedRoutes from "./components/ProtectedRoutes";
-import NotAuthRoutes from "./components/NotAuthRoutes.";
+import NotAuthRoutes from "./components/NotAuthRoutes";
 import { useAppDispatch, useAppSelector } from "./store/hooks";
+import LoginPage from "./pages/LoginPage/RoleSelection/SelectRolePage";
+import Navbar from "./layout/Navbar/Navbar";
+import Footer from "./layout/Footer/Footer";
 
 function Layout() {
   const location = useLocation();
@@ -36,7 +36,7 @@ function Layout() {
     "/sign-up",
     "/log-in/client",
     "/log-in/owner",
-  ]; // 네비 숨길 페이지 경로 리스트
+  ];
   const hideFooterOnPaths = ["/log-in", "/log-in/client", "/log-in/owner"];
 
   const showNavbar = !hideNavOnPaths.includes(location.pathname);

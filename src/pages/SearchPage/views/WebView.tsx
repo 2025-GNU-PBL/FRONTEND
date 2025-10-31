@@ -1,5 +1,5 @@
 // /pages/WebView.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,8 +20,6 @@ const stagger = (delay = 0): Variants => ({
   },
 });
 
-type QuickLink = { label: string; path: string };
-
 export default function WebView() {
   const navigate = useNavigate();
   const [sp, setSp] = useSearchParams();
@@ -30,18 +28,6 @@ export default function WebView() {
   const initialQ = sp.get("q")?.trim() ?? "";
   const [value, setValue] = useState(initialQ);
   const inputRef = useRef<HTMLInputElement | null>(null);
-
-  // 모바일 아이콘 섹션과 결을 맞춘 빠른 이동 텍스트 링크
-  const quickLinks: QuickLink[] = useMemo(
-    () => [
-      { label: "웨딩홀", path: "/wedding" },
-      { label: "스튜디오", path: "/studio" },
-      { label: "메이크업", path: "/makeup" },
-      { label: "드레스", path: "/dress" },
-      { label: "캘린더", path: "/calendar" },
-    ],
-    []
-  );
 
   // 입력 즉시 값 반영 + URL 동기화
   const onChangeImmediate = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,22 +122,6 @@ export default function WebView() {
             animate="show"
             className="space-y-10"
           >
-            {/* 빠른 이동 링크 (모바일 아이콘 섹션 대응) */}
-            <motion.div variants={fadeUp} className="space-y-3">
-              <h3 className="text-[16px] font-semibold text-black">바로가기</h3>
-              <div className="flex flex-wrap gap-2">
-                {quickLinks.map((item) => (
-                  <button
-                    key={item.path}
-                    onClick={() => navigate(item.path)}
-                    className="px-3 py-1.5 rounded-full bg-[#F3F4F5] text-[13px] text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-
             {/* 최근 검색어 (모바일 문구와 동일한 톤) */}
             <motion.div variants={fadeUp} className="space-y-1">
               <h3 className="text-[16px] font-semibold text-black">

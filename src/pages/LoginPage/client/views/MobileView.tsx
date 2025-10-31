@@ -1,7 +1,7 @@
-import KakaoLoginButton from "../../components/social/kakaoLoginButton";
-import NaverLoginButton from "../../components/social/NaverLoginButton";
+import KakaoLoginButton from "../../../../components/social/kakaoLoginButton";
+import NaverLoginButton from "../../../../components/social/NaverLoginButton";
 
-const LoginClientPage = () => {
+const MobileView = () => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center overflow-auto">
       <div className="relative w-[390px] h-[844px] bg-[#FF4646] overflow-hidden">
@@ -38,4 +38,4 @@ const LoginClientPage = () => {
   );
 };
 
-export default LoginClientPage;
+export default MobileView;

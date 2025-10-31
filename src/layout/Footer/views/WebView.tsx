@@ -4,7 +4,7 @@ import { FaInstagram, FaFacebook, FaYoutube } from "react-icons/fa";
 const WebView = () => {
   return (
     <div className="hidden md:flex flex-col py-12">
-      <div className="max-w-7xl mx-auto px-6 sm:px-12 lg:px-16 grid grid-cols-1 md:grid-cols-4 gap-10 text-center md:text-left">
+      <div className="max-w-7xl mx-auto px-6 sm:px-12 lg:px-16 grid grid-cols-1 md:grid-cols-4 gap-15 text-center md:text-left">
         {/* 회사 정보 */}
         <div className="space-y-3">
           <h4 className="text-base font-semibold text-gray-900 tracking-wide">
@@ -142,7 +142,7 @@ const WebView = () => {
       </div>
 
       <div className="max-w-7xl mx-auto text-center text-gray-500 text-xs mt-10 select-none font-light tracking-wider">
-        © {new Date().getFullYear()} (주)고스페이스. All rights reserved.
+        © {new Date().getFullYear()} WeddingPICK. All rights reserved.
       </div>
     </div>
   );

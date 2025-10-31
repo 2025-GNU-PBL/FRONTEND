@@ -29,8 +29,13 @@ type Props = {
 };
 
 // 🎨 색상 변수
-const PRIMARY_COLOR = "bg-[#7E57C2]"; // 메인 퍼플 계열
+const PRIMARY_COLOR = "bg-[#9370DB]"; // 메인 배경색 (신용카드 배너, 활성 탭)
+// [수정] CTA 그라데이션 변수 제거
+const CTA_DARK_BG = "bg-slate-800"; // 프리미엄 다크 CTA 배경
+const ACCENT_COLOR_TEXT = "text-[#9370DB]"; // 메인 텍스트 색상
+const PRIMARY_COLOR_HEX = "#9370DB"; // 포커스 링 등에 사용할 HEX 값
 const HOVER_SHADOW = "hover:shadow-lg";
+const ACCENT_COLOR_HOVER = "hover:bg-[#EBE7F7]"; // 라이트 퍼플 호버 배경
 
 export default function WebView({
   active,
@@ -47,19 +52,19 @@ export default function WebView({
   const safeCategories = Array.isArray(categories) ? categories : [];
   const safeProducts = Array.isArray(products) ? products : [];
 
-  // 🚫 바로가기 (Shortcuts) 데이터 제거: Navbar와 중복되어 제거함
-
   const shouldScroll = safeProducts.length > 9;
 
   return (
     <div className="relative flex min-h-screen flex-col bg-white text-[15px] text-black/80">
-      {/* 1. 데스크톱(Navbar) 높이 확보: Navbar와 겹치지 않도록 h-16 여백 추가 */}
+      {/* 1. 데스크톱(Navbar) 높이 확보 */}
       <div className="hidden h-16 md:block"></div>
 
-      {/* 2. 상단 행: 검색 + 메뉴 버튼 (모바일/태블릿에서만 보이도록) */}
+      {/* 2. 상단 행: 검색 + 메뉴 버튼 (모바일/태블릿) */}
       <div className="sticky top-0 z-10 w-full border-b border-black/5 bg-white/70 backdrop-blur-sm md:hidden">
         <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center justify-between px-6">
-          <div className="flex h-11 w-[calc(100%-60px)] items-center rounded-[10px] bg-[#F3F4F5] px-4 focus-within:ring-2 focus-within:ring-purple-400">
+          <div
+            className={`flex h-11 w-[calc(100%-60px)] items-center rounded-[10px] bg-[#F3F4F5] px-4 focus-within:ring-2 focus-within:ring-[${PRIMARY_COLOR_HEX}]`}
+          >
             <Icon icon="tabler:search" className="mr-2 h-5 w-5 text-gray-500" />
             <input
               type="text"
@@ -71,7 +76,7 @@ export default function WebView({
           <button
             aria-label="사이드메뉴 열기"
             onClick={openMenu}
-            className="ml-2 shrink-0 rounded-md p-2 transition hover:bg-purple-50 active:scale-95"
+            className={`ml-2 shrink-0 rounded-md p-2 transition ${ACCENT_COLOR_HOVER} active:scale-95`}
           >
             <Icon icon="mynaui:menu" className="h-6 w-6 text-black/80" />
           </button>
@@ -80,15 +85,15 @@ export default function WebView({
 
       {/* 본문 */}
       <main className="mx-auto w-full max-w-[1120px] flex-1 px-6 py-8">
-        {/* ⭐️ 견적 CTA 카드: 메인 배너 스타일로 확장 (밋밋함 해소) */}
+        {/* ⭐️ 견적 CTA 카드: [수정 적용] '프리미엄 다크' 테마로 변경 */}
         <section className="mb-10">
           <button
             onClick={() => navigate("/quotation")}
-            className={`group relative flex w-full justify-between overflow-hidden rounded-[24px] p-8 text-left text-white shadow-xl transition duration-300 ${PRIMARY_COLOR} hover:scale-[1.005] hover:shadow-2xl active:scale-[0.995] md:p-10`}
+            className={`group relative flex w-full justify-between overflow-hidden rounded-[24px] p-8 text-left text-white shadow-xl transition duration-300 ${CTA_DARK_BG} hover:scale-[1.005] hover:shadow-2xl active:scale-[0.995] md:p-10`}
           >
-            {/* 배경 패턴 (선택 사항: 시각적 효과 추가) */}
+            {/* 배경 패턴 (어두운 배경에 맞게 opacity 조절) */}
             <div
-              className="absolute inset-0 opacity-10"
+              className="absolute inset-0 opacity-10" // 15 -> 10으로 (패턴이 밝은색 SVG라고 가정)
               style={{
                 backgroundImage: 'url("/images/pattern.svg")',
                 backgroundSize: "cover",
@@ -98,6 +103,7 @@ export default function WebView({
             {/* 텍스트 컨텐츠 */}
             <div className="relative z-10 flex flex-col items-start justify-center">
               <div className="flex items-center text-xl font-extrabold md:text-2xl">
+                {/* 노란색 별 아이콘이 다크 배경에서 돋보임 */}
                 <Icon
                   icon="solar:star-fall-bold"
                   className="h-7 w-7 mr-3 text-yellow-300 md:h-8 md:w-8"
@@ -124,8 +130,8 @@ export default function WebView({
         {/* 섹션 타이틀 */}
         <section className="mb-4">
           <div className="text-2xl font-bold">
-            <span className="mr-1 text-[#FF2233]">2030</span>
-            <span className="text-[#FF2233]">신부님</span>
+            <span className={`mr-1 ${ACCENT_COLOR_TEXT}`}>2030</span>
+            <span className={ACCENT_COLOR_TEXT}>신부님</span>
             <span className="mr-1 text-black/80">들의</span>
             <span className="text-black/80">PICK</span>
           </div>
@@ -145,8 +151,8 @@ export default function WebView({
                   className={[
                     "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 shadow-sm",
                     isActive
-                      ? `bg-black text-white ${HOVER_SHADOW}`
-                      : "border border-[#D9D9D9] text-black hover:bg-purple-50",
+                      ? `${PRIMARY_COLOR} text-white ${HOVER_SHADOW}`
+                      : `border border-[#D9D9D9] text-black ${ACCENT_COLOR_HOVER}`,
                   ].join(" ")}
                 >
                   {c.label}
@@ -248,8 +254,9 @@ export default function WebView({
 
           {/* 사이드: 할인 배너 + 오늘의 소식 */}
           <aside className="col-span-12 lg:col-span-4">
+            {/* 카드 할인 배너 (보라색 단색 유지) */}
             <button
-              className="w-full rounded-[16px] bg-[#A06CFF] p-5 text-white shadow-md transition duration-300 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]"
+              className={`w-full rounded-[16px] ${PRIMARY_COLOR} p-5 text-white shadow-md transition duration-300 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]`}
               onClick={() => navigate("/card-discount")}
             >
               <div className="flex items-center justify-between text-left">
@@ -271,7 +278,7 @@ export default function WebView({
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-xl font-bold">오늘의 소식</h2>
                 <button
-                  className="text-[14px] text-purple-600 font-medium hover:underline"
+                  className={`text-[14px] ${ACCENT_COLOR_TEXT} font-medium hover:underline`}
                   onClick={() => navigate("/news")}
                 >
                   더보기{" "}
@@ -302,7 +309,7 @@ export default function WebView({
                 ].map((t, index) => (
                   <button
                     key={index}
-                    className="flex w-full items-center rounded-[12px] p-2 text-left transition hover:bg-purple-50 active:scale-[0.99]"
+                    className={`flex w-full items-center rounded-[12px] p-2 text-left transition ${ACCENT_COLOR_HOVER} active:scale-[0.99]`}
                     onClick={() => navigate("/news/detail/" + index)}
                   >
                     <img
@@ -311,7 +318,9 @@ export default function WebView({
                       className="h-[72px] w-[72px] shrink-0 rounded-[12px] object-cover shadow-sm"
                     />
                     <div className="ml-4">
-                      <h3 className="text-sm font-medium text-purple-500">
+                      <h3
+                        className={`text-sm font-medium ${ACCENT_COLOR_TEXT}`}
+                      >
                         {t.cat}
                       </h3>
                       <p className="line-clamp-2 text-[15px] font-medium text-black/80">

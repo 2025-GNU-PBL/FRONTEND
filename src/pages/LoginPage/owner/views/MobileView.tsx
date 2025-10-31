@@ -1,7 +1,7 @@
-import KakaoLoginButton from "../../components/social/kakaoLoginButton";
-import NaverLoginButton from "../../components/social/NaverLoginButton";
+import KakaoLoginButton from "../../../../components/social/kakaoLoginButton";
+import NaverLoginButton from "../../../../components/social/NaverLoginButton";
 
-const LoginOwnerPage = () => {
+const MobileView = () => {
   return (
     // 어떤 화면에서도 390x844 프레임을 가운데 고정
     <div className="min-h-screen w-full flex items-center justify-center overflow-auto bg-white">
@@ -41,4 +41,4 @@ const LoginOwnerPage = () => {
   );
 };
 
-export default LoginOwnerPage;
+export default MobileView;
