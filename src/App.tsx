@@ -6,7 +6,6 @@ import OwnerLoginPage from "./pages/LoginPage/owner/OwnerLoginPage";
 import KakaoCallback from "./pages/LoginPage/callbacks/KakaoCallback";
 import NaverCallback from "./pages/LoginPage/callbacks/NaverCallback";
 import WeddingPage from "./pages/WeddingPage/WeddingPage";
-import CalendarPage from "./pages/CalendarPage/CalendarPage";
 import FaqPage from "./pages/FaqPage/FaqPage";
 import EventPage from "./pages/EventPage/EventPage";
 import CartPage from "./pages/CartPage/CartPage";
@@ -16,6 +15,17 @@ import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain"
 import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
 import SignUpPage from "./pages/SignupPage/SignupPage";
 import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPage";
+import Navbar from "./layout/Navbar/Navbar";
+import Footer from "./layout/Footer/Footer";
+import { useAppDispatch, useAppSelector } from "./store/hooks";
+import { useEffect } from "react";
+import { authUser } from "./store/thunkFunctions";
+import MainPage from "./pages/MainPage/MainPage";
+import StudioPage from "./pages/StudioPage/StudioPage";
+import MakeupPage from "./pages/MakeupPage/MakeupPage";
+import SearchPage from "./pages/SearchPage/SearchPage";
+import DressPage from "./pages/DressPage/DressPage";
+import SelectRolePage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 
 function Layout() {
   const location = useLocation();
