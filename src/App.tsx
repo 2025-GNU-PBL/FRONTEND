@@ -7,7 +7,6 @@ import DressPage from "./pages/DressPage/DressPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
 import SelectRolePage from "./pages/LoginPage/SelectRolePage";
-import SignupPage from "./pages/SignupPage/SignupPage";
 import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -24,6 +23,8 @@ import ChatPage from "./pages/ChatPage/ChatPage";
 import ScrollToTop from "./components/ScrollToTop";
 import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain";
 import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
+import SignUpPage from "./pages/SignupPage/SignupPage";
+import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPage";
 
 function Layout() {
   const location = useLocation();
@@ -73,8 +74,9 @@ const App = () => {
         <Route path="/studio" element={<StudioPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/chat" element={<ChatPage />} />
-        <Route path="/my-page/client" element={<ClientMyPageMain />} />
+        <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
         <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
+        <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
         <Route path="/log-in" element={<SelectRolePage />} />
         <Route path="/log-in/client" element={<ClientLoginPage />} />
         <Route path="/log-in/owner" element={<OwnerLoginPage />} />

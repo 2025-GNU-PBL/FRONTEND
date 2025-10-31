@@ -17,6 +17,9 @@ export default function MobileView() {
 
   const go = useCallback((to: string) => nav(to), [nav]);
 
+  const onBack = useCallback(() => nav(-1), [nav]);
+  const onMenu = useCallback(() => go("/settings"), [go]);
+
   const onLogout = useCallback(async () => {
     try {
       if (API_BASE) {
@@ -39,13 +42,7 @@ export default function MobileView() {
       <div className="mx-auto w-[390px] min-h-[844px] bg-white flex flex-col">
         {/* 최상단 헤더 */}
         <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
-          <div className="px-5">
-            <MyPageHeader
-              title="마이페이지"
-              onBack={() => nav(-1)}
-              onMenu={() => go("/settings")}
-            />
-          </div>
+          <MyPageHeader title="마이페이지" onBack={onBack} onMenu={onMenu} />
         </div>
 
         {/* 메인 콘텐츠 */}
@@ -119,7 +116,8 @@ export default function MobileView() {
         </main>
 
         {/* 고객센터 | 로그아웃 */}
-        <section className="px-5 py-4 mb-18">
+        <section className="px-5 py-4 mb-20">
+          {/* Tailwind 기본 스케일에 없는 mb-18 → mb-20로 보정 */}
           <div className="flex items-center justify-center gap-10">
             <button
               onClick={() => go("/support")}

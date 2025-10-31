@@ -1,10 +1,14 @@
-import React from "react";
+import React, { useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import MyPageHeader from "../../../../components/clientMypage/MyPageHeader";
 
 type Profile = {
   name: string;
   phone: string;
   email: string;
-  address?: string;
+  address: string;
+  weddingDate: Date;
+  weddingVenue: string;
 };
 
 const getProfile = (): Profile => ({
@@ -12,6 +16,11 @@ const getProfile = (): Profile => ({
   phone: localStorage.getItem("userPhone") || "010-1234-5678",
   email: localStorage.getItem("userEmail") || "email@example.com",
   address: localStorage.getItem("userAddress") || "서울특별시 어딘가",
+  weddingDate: localStorage.getItem("userWeddingDate")
+    ? new Date(localStorage.getItem("userWeddingDate") as string)
+    : new Date("2025-11-01"),
+  weddingVenue:
+    localStorage.getItem("userWeddingVenue") || "서울 더클래스청담 그랜드홀",
 });
 
 function SectionCard({
@@ -22,7 +31,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="w-full rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
+    <section className="w-full rounded-2xl bg-white border border-gray-200 shadow-sm p-5 mb-6 last:mb-0">
       <h3 className="text-[16px] font-semibold text-gray-900 tracking-[-0.2px]">
         {title}
       </h3>
@@ -43,16 +52,27 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
   );
 }
 
-/** 아이폰 12 Pro 고정 레이아웃(390×844), 스크롤 없이 푸터까지 노출 */
+/** 고정 레이아웃(390×844)*/
 export default function MobileView() {
   const p = getProfile();
+  const nav = useNavigate();
 
   return (
-    <main className="w-full pt-40">
-      {/* === 뷰포트 고정: 390 x 844 === */}
+    <div className="w-full bg-white">
+      {/* 프레임 하나로 통일 (헤더 + 본문) */}
       <div className="mx-auto w-[390px] h-[844px] bg-[#F6F7FB] flex flex-col">
-        {/* 상단 프로필 카드 (고정 높이 아님, 내용만큼) */}
-        <div className="px-5 pt-6">
+        {/* 헤더: '내 정보 조회'에서는 메뉴 숨김 */}
+        <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
+          <MyPageHeader
+            title="내 정보 조회"
+            onBack={() => nav(-1)}
+            showMenu={false}
+          />
+        </div>
+
+        {/* 본문 */}
+        <div className="flex-1 px-5 pt-6 pb-0 overflow-auto space-y-6">
+          {/* 상단 프로필 카드 */}
           <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-full bg-[#D9D9D9]" />
@@ -66,10 +86,8 @@ export default function MobileView() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* 본문(남는 높이 채우기) */}
-        <div className="flex-1 px-5 pt-5 pb-0 overflow-hidden">
+          {/* 회원정보 */}
           <SectionCard title="회원정보">
             <div className="space-y-2">
               <InfoRow label="고객명" value={p.name} />
@@ -79,7 +97,18 @@ export default function MobileView() {
             </div>
           </SectionCard>
 
-          {/* 우측 하단 ‘회원 탈퇴’ 위치 맞춤 */}
+          {/* 예식정보*/}
+          <SectionCard title="예식정보">
+            <div className="space-y-2">
+              <InfoRow
+                label="예식일"
+                value={p.weddingDate.toLocaleDateString("ko-KR")}
+              />
+              <InfoRow label="예식장소" value={p.weddingVenue} />
+            </div>
+          </SectionCard>
+
+          {/* 회원 탈퇴 */}
           <div className="mt-4 flex">
             <button
               className="ml-auto text-[14px] text-[#999] hover:text-[#666]"
@@ -90,6 +119,6 @@ export default function MobileView() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

@@ -33,21 +33,8 @@ export default function WebView() {
 
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 상단 헤더 */}
-      <div className="sticky top-0 z-20 border-b border-gray-200 bg-[#F6F7FB]/80 backdrop-blur">
-        <div className="max-w-[1200px] mx-auto px-6">
-          <div className="py-3">
-            <MyPageHeader
-              title="마이페이지"
-              onBack={() => nav(-1)}
-              onMenu={() => go("/settings")}
-            />
-          </div>
-        </div>
-      </div>
-
       {/* 본문 */}
-      <main className="max-w-[1200px] mx-auto px-6 py-10">
+      <main className="max-w-[1200px] mx-auto px-6 py-10 mt-15">
         <div className="grid grid-cols-[1fr_2fr] gap-8 items-start">
           {/* 왼쪽: 프로필 + (아래로) 내 정보 / 쿠폰함 */}
           <section className="space-y-6">
