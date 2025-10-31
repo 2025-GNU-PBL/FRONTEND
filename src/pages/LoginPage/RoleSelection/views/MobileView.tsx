@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
-const LoginPage = () => {
+// ✅ Mobile 전용 뷰
+const MobileView = () => {
   return (
     // 화면 크기 무관하게 중앙에 390x844 프레임 고정 노출
     <div className="min-h-screen w-full flex items-center justify-center overflow-auto bg-[#F6F7FB]">
@@ -13,14 +14,14 @@ const LoginPage = () => {
           aria-hidden
         />
 
-        {/* 문구: 1만 신부님의 선택 (left:140, top:130, w:109) */}
+        {/* 문구: 1만 신부님의 선택 */}
         <div className="absolute left-[140px] top-[130px] w-[109px] h-[21px] text-center">
           <span className="font-pretendard font-semibold text-[16px] leading-[21px] tracking-[-0.32px]">
             1만 신부님의 선택
           </span>
         </div>
 
-        {/* 로고: 웨딩PICK (left:92, top:155, w:205, h:60) */}
+        {/* 로고: 웨딩PICK */}
         <h1
           className="absolute left-[92px] top-[155px] w-[205px] h-[60px] 
                font-allimjang font-[700] text-[50px] leading-[60px] text-[#FF2233] select-none"
@@ -28,17 +29,17 @@ const LoginPage = () => {
           웨딩PICK
         </h1>
 
-        {/* 고객 로그인 버튼 (left:20, top:646, 350x56, bg:#FF2233) */}
+        {/* 고객 로그인 버튼 */}
         <Link
           to="/log-in/client"
           className="absolute left-[20px] top-[646px] w-[350px] h-[56px] rounded-[50px] bg-[#FF2233] flex items-center justify-center px-0"
         >
-          <span className="font-pretendard font-semibold text-[16px]">
+          <span className="font-pretendard font-semibold text-[16px] text-white">
             고객 로그인
           </span>
         </Link>
 
-        {/* 사장님 로그인 버튼 (left:20, top:714, 350x56, white + #FF2233 border) */}
+        {/* 사장님 로그인 버튼 */}
         <Link
           to="/log-in/owner"
           className="absolute left-[20px] top-[714px] w-[350px] h-[56px] rounded-[50px] bg-white border border-[#FF2233] flex items-center justify-center px-0"
@@ -52,4 +53,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default MobileView;
