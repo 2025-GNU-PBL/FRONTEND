@@ -9,6 +9,7 @@ if (!API_BASE) {
   );
 }
 
+// 로그인/토큰 관련 엔드포인트들 (상단에서 먼저 선언)
 const AUTH_PATHS = [
   "/api/v1/auth/login",
   "/auth/login",
@@ -17,10 +18,6 @@ const AUTH_PATHS = [
   "/auth/refresh",
 ];
 
-const isAuthPath = (url?: string | null) => {
-  if (!url) return false;
-  return AUTH_PATHS.some((p) => url.includes(p));
-};
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -54,10 +51,12 @@ api.interceptors.response.use(
       return Promise.reject(new Error(message));
     };
 
+    // 로그인/리프레시 요청 자체의 실패는 그대로 내보냄 (리프레시 재시도 금지)
     if (isAuthPath(original?.url)) {
       return normReject(error);
     }
 
+    // 액세스 토큰 만료 처리
     if (
       response?.status === 401 &&
       (response.data as any)?.code === "AUTH4001" &&
