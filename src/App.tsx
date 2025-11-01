@@ -13,7 +13,7 @@ import ChatPage from "./pages/ChatPage/ChatPage";
 import ScrollToTop from "./components/ScrollToTop";
 import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain";
 import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
-import SignUpPage from "./pages/SignupPage/SignupPage";
+import SignUpPage from "./pages/SignupPage/step1/SignupPage";
 import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPage";
 import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";

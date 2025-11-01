@@ -61,7 +61,7 @@ export default function MobileView() {
     <div className="w-full bg-white">
       {/* 프레임 하나로 통일 (헤더 + 본문) */}
       <div className="mx-auto w-[390px] h-[844px] bg-[#F6F7FB] flex flex-col">
-        {/* 헤더: '내 정보 조회'에서는 메뉴 숨김 */}
+        {/* 헤더*/}
         <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
           <MyPageHeader
             title="내 정보 조회"
@@ -71,7 +71,7 @@ export default function MobileView() {
         </div>
 
         {/* 본문 */}
-        <div className="flex-1 px-5 pt-6 pb-0 overflow-auto space-y-6">
+        <div className="flex-1 px-5 pt-20 pb-0 overflow-auto space-y-6">
           {/* 상단 프로필 카드 */}
           <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
             <div className="flex items-center gap-4">
