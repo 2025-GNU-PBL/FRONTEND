@@ -1,4 +1,4 @@
-import { Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { Outlet, Route, Routes, useLocation, useMatch } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ClientLoginPage from "./pages/LoginPage/client/ClientLoginPage";
@@ -28,19 +28,27 @@ import { useAppDispatch, useAppSelector } from "./store/hooks";
 import LoginPage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";
+import FavoritesPage from "./pages/FavoritesPage/FavoritesPage";
 
 function Layout() {
   const location = useLocation();
+  const isChatDetail = !!useMatch("/chat/:id"); // ✅ /chat/:id 매칭 감지
+
+  // 네비바 숨길 경로
   const hideNavOnPaths = [
     "/log-in",
     "/sign-up",
     "/log-in/client",
     "/log-in/owner",
   ];
+
+  // 푸터 숨길 경로 (정적 + 동적)
   const hideFooterOnPaths = ["/log-in", "/log-in/client", "/log-in/owner"];
 
   const showNavbar = !hideNavOnPaths.includes(location.pathname);
-  const showFooter = !hideFooterOnPaths.includes(location.pathname);
+  // ✅ /chat/:id일 때 푸터 숨김
+  const showFooter =
+    !hideFooterOnPaths.includes(location.pathname) && !isChatDetail;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -64,17 +72,16 @@ const App = () => {
   const dispatch = useAppDispatch();
   const { pathname } = useLocation();
 
-  // ✅ persist rehydration 여부와 isAuth
   const isAuth = useAppSelector((s) => s.user.isAuth);
-  const rehydrated = useAppSelector((s: any) => s._persist?.rehydrated);
+  const rehydrated = useAppSelector((s) => s._persist?.rehydrated);
 
   useEffect(() => {
-    // ✅ 앱(또는 라우트) 진입 시: 토큰이 있고 아직 isAuth가 아니면 서버와 동기화
     const token = localStorage.getItem("accessToken");
     if (rehydrated && token && !isAuth) {
       dispatch(authUser());
     }
   }, [rehydrated, pathname, isAuth, dispatch]);
+
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
@@ -88,14 +95,19 @@ const App = () => {
         <Route path="/search" element={<SearchPage />} />
         <Route path="/quotation" element={<QuotationPage />} />
 
-        {/* 로그인한 사람만 갈 수 있는 경로 */}
+        {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/cart" element={<CartPage />} />
-          <Route path="/chat" element={<ChatPage />} />
           <Route path="/my-page" element={<MyPage />} />
+          <Route path="/favorites" element={<FavoritesPage />} />
+
+          {/* ✅ 채팅 라우트: /chat 과 /chat/:id 모두 ChatPage로 */}
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/chat/:id" element={<ChatPage />} />
         </Route>
-        {/* 로그인한 사람은 갈 수 없는 경로 */}
+
+        {/* 로그인한 사람은 접근 불가 */}
         <Route element={<NotAuthRoutes isAuth={isAuth} />}>
           <Route path="/log-in" element={<LoginPage />} />
           <Route path="/log-in/client" element={<ClientLoginPage />} />

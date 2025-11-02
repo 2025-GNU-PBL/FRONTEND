@@ -1,53 +1,57 @@
 import { Link } from "react-router-dom";
 
-// ✅ Mobile 전용 뷰
+// ✅ Mobile-First 반응형 뷰
 const MobileView = () => {
   return (
-    // 화면 크기 무관하게 중앙에 390x844 프레임 고정 노출
-    <div className="min-h-screen w-full flex items-center justify-center overflow-auto bg-[#F6F7FB]">
-      {/* 모바일 프레임 */}
-      <div className="relative w-[390px] h-[844px] bg-[#F6F7FB] overflow-hidden">
-        {/* BG 이미지 레이어 (561x844, left:-86, top:0) */}
-        <div
-          className="absolute w-[561px] h-[844px] left-[-86px] top-0 bg-no-repeat bg-cover"
-          style={{ backgroundImage: "url(/images/login-bg.png)" }}
-          aria-hidden
-        />
+    <div className="relative min-h-screen w-full overflow-hidden bg-[#F6F7FB]">
+      {/* 배경 이미지 레이어 */}
+      <div
+        className="absolute inset-0 w-full h-full bg-cover bg-center"
+        style={{ backgroundImage: "url(/images/login-bg.png)" }}
+        aria-hidden
+      />
 
-        {/* 문구: 1만 신부님의 선택 */}
-        <div className="absolute left-[140px] top-[130px] w-[109px] h-[21px] text-center">
-          <span className="font-pretendard font-semibold text-[16px] leading-[21px] tracking-[-0.32px]">
-            1만 신부님의 선택
-          </span>
+      {/* 컨텐츠 레이어
+        - ❗ py-10 (상하 40px) -> pt-10 (상 40px), pb-[74px] (하 74px)로 수정
+      */}
+      <div className="relative z-10 flex flex-col justify-between min-h-screen w-full px-5 pt-10 pb-[74px]">
+        {/* === 상단 컨텐츠 (로고) === */}
+        <div className="flex flex-col items-center pt-[90px] md:pt-20">
+          {/* 문구: 1만 신부님의 선택 */}
+          <div className="text-center">
+            <span className="font-pretendard font-semibold text-[16px] leading-[21px] tracking-[-0.32px] md:text-lg">
+              1만 신부님의 선택
+            </span>
+          </div>
+
+          {/* 로고: 웨딩PICK */}
+          <h1 className="mt-2 font-allimjang font-[700] text-[50px] leading-[60px] text-[#FF2233] select-none md:text-6xl">
+            웨딩PICK
+          </h1>
         </div>
 
-        {/* 로고: 웨딩PICK */}
-        <h1
-          className="absolute left-[92px] top-[155px] w-[205px] h-[60px] 
-               font-allimjang font-[700] text-[50px] leading-[60px] text-[#FF2233] select-none"
-        >
-          웨딩PICK
-        </h1>
+        {/* === 하단 컨텐츠 (버튼) === */}
+        <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
+          {/* 고객 로그인 버튼 */}
+          <Link
+            to="/log-in/client"
+            className="w-full h-14 rounded-[50px] bg-[#FF2233] flex items-center justify-center"
+          >
+            <span className="font-pretendard font-semibold text-[16px] md:text-lg text-white">
+              고객 로그인
+            </span>
+          </Link>
 
-        {/* 고객 로그인 버튼 */}
-        <Link
-          to="/log-in/client"
-          className="absolute left-[20px] top-[646px] w-[350px] h-[56px] rounded-[50px] bg-[#FF2233] flex items-center justify-center px-0"
-        >
-          <span className="font-pretendard font-semibold text-[16px] text-white">
-            고객 로그인
-          </span>
-        </Link>
-
-        {/* 사장님 로그인 버튼 */}
-        <Link
-          to="/log-in/owner"
-          className="absolute left-[20px] top-[714px] w-[350px] h-[56px] rounded-[50px] bg-white border border-[#FF2233] flex items-center justify-center px-0"
-        >
-          <span className="text-[#FF2233] font-semibold text-[16px] leading-[150%] tracking-[-0.2px]">
-            사장님 로그인
-          </span>
-        </Link>
+          {/* 사장님 로그인 버튼 */}
+          <Link
+            to="/log-in/owner"
+            className="w-full h-14 rounded-[50px] bg-white border border-[#FF2233] flex items-center justify-center"
+          >
+            <span className="text-[#FF2233] font-semibold text-[16px] md:text-lg leading-[150%] tracking-[-0.2px]">
+              사장님 로그인
+            </span>
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -3,37 +3,41 @@ import { Link } from "react-router-dom";
 const WebView = () => {
   return (
     <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col justify-center">
-      {/* Main */}
-      <main className="mx-auto max-w-6xl w-full px-4 py-12 md:py-20 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+      {/* ✅ md 구간에서는 1열, lg 이상에서만 2열 */}
+      <main className="mx-auto max-w-6xl w-full px-4 py-12 md:py-20 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
         {/* Left: Hero / Marketing */}
-        <section className="flex flex-col justify-center">
-          <Link to="/">
-            <h1 className="font-allimjang text-[56px] leading-[1.05] text-[#FF2233] mb-4">
+        <section className="flex flex-col justify-center order-1 lg:order-none">
+          <Link to="/" className="text-center lg:text-left">
+            <h1 className="font-allimjang text-[48px] md:text-[54px] lg:text-[60px] leading-[1.05] text-[#FF2233] mb-4">
               웨딩PICK
             </h1>
           </Link>
-          <p className="font-pretendard text-xl md:text-2xl text-gray-700 mb-8">
-            1만 신부님의 선택, 실시간으로 비교하고{" "}
-            <span className="font-semibold text-gray-900">딱 맞는 업체</span>를
-            고르세요.
-          </p>
 
-          <ul className="space-y-3 text-gray-700">
-            <li className="flex items-start gap-3">
-              <span className="mt-1 h-2 w-2 rounded-full bg-[#FF2233]" />
+          <div className="font-pretendard text-lg md:text-xl lg:text-2xl text-gray-700 mb-8 space-y-1 text-center lg:text-left">
+            <p>
+              1만 신부님의 선택, 실시간으로 비교하고{" "}
+              <span className="font-semibold text-gray-900">딱 맞는 업체</span>
+              를 고르세요.
+            </p>
+          </div>
+
+          {/* ✅ 모바일에서는 중앙정렬, lg 이상에서는 좌측정렬 */}
+          <ul className="space-y-3 text-gray-700 text-center lg:text-left">
+            <li className="flex flex-col lg:flex-row lg:items-start lg:gap-3 justify-center lg:justify-start">
+              <span className="hidden lg:block mt-1 h-2 w-2 rounded-full bg-[#FF2233]" />
               <span>검증된 후기와 투명한 가격으로 합리적인 선택</span>
             </li>
-            <li className="flex items-start gap-3">
-              <span className="mt-1 h-2 w-2 rounded-full bg-[#FF2233]" />
+            <li className="flex flex-col lg:flex-row lg:items-start lg:gap-3 justify-center lg:justify-start">
+              <span className="hidden lg:block mt-1 h-2 w-2 rounded-full bg-[#FF2233]" />
               <span>맞춤 추천으로 상담 시간 절약</span>
             </li>
-            <li className="flex items-start gap-3">
-              <span className="mt-1 h-2 w-2 rounded-full bg-[#FF2233]" />
+            <li className="flex flex-col lg:flex-row lg:items-start lg:gap-3 justify-center lg:justify-start">
+              <span className="hidden lg:block mt-1 h-2 w-2 rounded-full bg-[#FF2233]" />
               <span>모바일/웹 어디서나 이어서 진행</span>
             </li>
           </ul>
 
-          <div className="mt-10 flex items-center gap-3 text-sm text-gray-500">
+          <div className="mt-10 flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-3 text-sm text-gray-500">
             <div className="flex -space-x-2">
               <img
                 src="https://images.icon-icons.com/2643/PNG/512/avatar_female_woman_person_people_white_tone_icon_159360.png"
@@ -56,14 +60,16 @@ const WebView = () => {
         </section>
 
         {/* Right: Auth Card */}
-        <section className="flex justify-center md:justify-end">
+        {/* ✅ md~lg 사이에서는 아래쪽, lg 이상에서는 오른쪽 정렬 */}
+        <section className="flex justify-center lg:justify-end order-2 lg:order-none">
           <div className="relative w-full max-w-[440px]">
+            {/* subtle offset layer */}
             <div className="absolute inset-0 -z-10 translate-x-4 translate-y-4 rounded-3xl bg-white" />
             <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
-              <h2 className="font-pretendard text-2xl font-semibold mb-2">
+              <h2 className="font-pretendard text-2xl font-semibold mb-2 text-center lg:text-left">
                 로그인
               </h2>
-              <p className="text-sm text-gray-500 mb-8">
+              <p className="text-sm text-gray-500 mb-8 text-center lg:text-left">
                 계정 유형을 선택하세요.
               </p>
 
@@ -96,7 +102,7 @@ const WebView = () => {
             </div>
 
             {/* 작은 캡션 */}
-            <p className="mt-4 text-xs text-gray-500 text-center">
+            <p className="mt-4 text-xs text-gray-500 text-center lg:text-left">
               로그인 시 서비스 이용약관 및 개인정보처리방침에 동의하게 됩니다.
             </p>
           </div>

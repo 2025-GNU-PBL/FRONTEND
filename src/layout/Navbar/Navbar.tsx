@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { useAppSelector } from "../../store/hooks";
 
 const menuItems = [
   { name: "웨딩홀", path: "/wedding" },
@@ -10,6 +11,9 @@ const menuItems = [
 ];
 
 const Navbar = () => {
+  // ✅ Redux에서 로그인 여부 확인
+  const isAuth = useAppSelector((s) => s.user.isAuth);
+
   return (
     // 데스크톱 전용 네비게이션
     <nav className="fixed top-0 left-0 hidden w-full md:flex z-50 bg-white/80 backdrop-blur border-b border-gray-200">
@@ -51,23 +55,46 @@ const Navbar = () => {
             <Icon icon="iconamoon:search-light" className="h-6 w-6" />
           </Link>
 
-          {/* ❤️ 찜하기 */}
-          <Link
-            to="/cart"
-            aria-label="찜 목록"
-            className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
-          >
-            <Icon icon="solar:heart-linear" className="h-6 w-6" />
-          </Link>
+          {isAuth ? (
+            // ✅ 로그인 시: 4개 아이콘 모두 표시
+            <>
+              {/* ❤️ 찜하기 */}
+              <Link
+                to="/favorites"
+                aria-label="찜 목록"
+                className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
+              >
+                <Icon icon="solar:heart-linear" className="h-6 w-6" />
+              </Link>
 
-          {/* 👤 마이페이지 */}
-          <Link
-            to="/my-page"
-            aria-label="마이페이지"
-            className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
-          >
-            <Icon icon="solar:user-circle-bold" className="h-6 w-6" />
-          </Link>
+              {/* 💬 채팅 */}
+              <Link
+                to="/chat"
+                aria-label="채팅"
+                className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
+              >
+                <Icon icon="solar:chat-square-outline" className="h-6 w-6" />
+              </Link>
+
+              {/* 👤 마이페이지 */}
+              <Link
+                to="/my-page"
+                aria-label="마이페이지"
+                className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
+              >
+                <Icon icon="solar:user-rounded-linear" className="h-6 w-6" />
+              </Link>
+            </>
+          ) : (
+            // 🚪 비로그인 시: 검색 + 로그인 아이콘만 표시
+            <Link
+              to="/log-in"
+              aria-label="로그인"
+              className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
+            >
+              <Icon icon="solar:login-3-linear" className="h-6 w-6" />
+            </Link>
+          )}
         </div>
       </div>
     </nav>
