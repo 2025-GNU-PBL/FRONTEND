@@ -18,6 +18,10 @@ const AUTH_PATHS = [
   "/auth/refresh",
 ];
 
+const isAuthPath = (url?: string | null) => {
+  if (!url) return false;
+  return AUTH_PATHS.some((p) => url.includes(p));
+};
 
 const api = axios.create({
   baseURL: API_BASE,
