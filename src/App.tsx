@@ -6,18 +6,23 @@ import OwnerLoginPage from "./pages/LoginPage/owner/OwnerLoginPage";
 import KakaoCallback from "./pages/LoginPage/callbacks/KakaoCallback";
 import NaverCallback from "./pages/LoginPage/callbacks/NaverCallback";
 import WeddingPage from "./pages/WeddingPage/WeddingPage";
-import CalendarPage from "./pages/CalendarPage/CalendarPage";
 import FaqPage from "./pages/FaqPage/FaqPage";
 import EventPage from "./pages/EventPage/EventPage";
 import CartPage from "./pages/CartPage/CartPage";
 import ChatPage from "./pages/ChatPage/ChatPage";
-import MyPage from "./pages/MyPage/MyPage";
 import ScrollToTop from "./components/ScrollToTop";
+import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain";
+import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
+import SignUpPage from "./pages/SignupPage/SignupPage";
+import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPage";
+import Navbar from "./layout/Navbar/Navbar";
+import Footer from "./layout/Footer/Footer";
+import { useAppDispatch, useAppSelector } from "./store/hooks";
+import { useEffect } from "react";
+import { authUser } from "./store/thunkFunctions";
 import MainPage from "./pages/MainPage/MainPage";
 import StudioPage from "./pages/StudioPage/StudioPage";
-import DressPage from "./pages/DressPage/DressPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
-import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
 import SignUpPage from "./pages/SignupPage/SignupPage";
 import { useEffect } from "react";
@@ -29,6 +34,8 @@ import LoginPage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";
 import FavoritesPage from "./pages/FavoritesPage/FavoritesPage";
+import DressPage from "./pages/DressPage/DressPage";
+import SelectRolePage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 
 function Layout() {
   const location = useLocation();
@@ -76,6 +83,7 @@ const App = () => {
   const rehydrated = useAppSelector((s) => s._persist?.rehydrated);
 
   useEffect(() => {
+    // 앱(또는 라우트) 진입 시: 토큰이 있고 아직 isAuth가 아니면 서버와 동기화
     const token = localStorage.getItem("accessToken");
     if (rehydrated && token && !isAuth) {
       dispatch(authUser());
@@ -117,6 +125,19 @@ const App = () => {
           <Route path="/sign-up" element={<SignUpPage />} />
           <Route path="/users/:id/home" element={<SignUpPage />} />
         </Route>
+        <Route path="/studio" element={<StudioPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
+        <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
+        <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
+        <Route path="/log-in" element={<SelectRolePage />} />
+        <Route path="/log-in/client" element={<ClientLoginPage />} />
+        <Route path="/log-in/owner" element={<OwnerLoginPage />} />
+        <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
+        <Route path="/auth/naver/callback" element={<NaverCallback />} />
+        <Route path="/sign-up" element={<SignUpPage />} />
+        <Route path="/users/:id/home" element={<SignUpPage />} />
       </Route>
     </Routes>
   );
