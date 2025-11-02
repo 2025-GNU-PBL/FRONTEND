@@ -13,13 +13,7 @@ import ChatPage from "./pages/ChatPage/ChatPage";
 import ScrollToTop from "./components/ScrollToTop";
 import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain";
 import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
-import SignUpPage from "./pages/SignupPage/SignupPage";
 import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPage";
-import Navbar from "./layout/Navbar/Navbar";
-import Footer from "./layout/Footer/Footer";
-import { useAppDispatch, useAppSelector } from "./store/hooks";
-import { useEffect } from "react";
-import { authUser } from "./store/thunkFunctions";
 import MainPage from "./pages/MainPage/MainPage";
 import StudioPage from "./pages/StudioPage/StudioPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
@@ -36,6 +30,8 @@ import Footer from "./layout/Footer/Footer";
 import FavoritesPage from "./pages/FavoritesPage/FavoritesPage";
 import DressPage from "./pages/DressPage/DressPage";
 import SelectRolePage from "./pages/LoginPage/RoleSelection/SelectRolePage";
+import QuotationPage from "./pages/QuotationPage/QuotationPage";
+import CalendarPage from "./pages/CalendarPage/CalendarPage";
 
 function Layout() {
   const location = useLocation();
@@ -107,7 +103,7 @@ const App = () => {
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/cart" element={<CartPage />} />
-          <Route path="/my-page" element={<MyPage />} />
+          <Route path="/my-page" element={<ClientMyPageMain />} />
           <Route path="/favorites" element={<FavoritesPage />} />
 
           {/* ✅ 채팅 라우트: /chat 과 /chat/:id 모두 ChatPage로 */}
