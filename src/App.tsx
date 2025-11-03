@@ -26,12 +26,13 @@ import MakeupPage from "./pages/MakeupPage/MakeupPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
 import DressPage from "./pages/DressPage/DressPage";
 import SelectRolePage from "./pages/LoginPage/RoleSelection/SelectRolePage";
+import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
 
 function Layout() {
   const location = useLocation();
   const hideNavOnPaths = [
     "/log-in",
-    "/sign-up",
+    "/sign-up/step1",
     "/log-in/client",
     "/log-in/owner",
   ];
@@ -62,7 +63,7 @@ const App = () => {
   const dispatch = useAppDispatch();
   const { pathname } = useLocation();
 
-  // ✅ persist rehydration 여부와 isAuth
+  // persist rehydration 여부와 isAuth
   const isAuth = useAppSelector((s) => s.user.isAuth);
   const rehydrated = useAppSelector((s: any) => s._persist?.rehydrated);
 
@@ -95,7 +96,8 @@ const App = () => {
         <Route path="/log-in/owner" element={<OwnerLoginPage />} />
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
         <Route path="/auth/naver/callback" element={<NaverCallback />} />
-        <Route path="/sign-up" element={<SignUpPage />} />
+        <Route path="/sign-up/step1" element={<SignUpPage />} />
+        <Route path="/sign-up/step2" element={<JoinAddressPage />} />
         <Route path="/users/:id/home" element={<SignUpPage />} />
       </Route>
     </Routes>

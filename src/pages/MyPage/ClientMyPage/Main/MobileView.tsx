@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useDispatch /*, useSelector*/ } from "react-redux";
 // import { selectUserName, logoutThunk } from "@/store/authSlice";
-import MyPageHeader from "../../../../components/clientMypage/MyPageHeader";
+import MyPageHeader from "../../../../components/MyPageHeader";
 import { Icon } from "@iconify/react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;

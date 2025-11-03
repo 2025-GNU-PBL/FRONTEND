@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../../components/clientMypage/MyPageHeader";
+import MyPageHeader from "../../../../components/MyPageHeader";
 
 type Profile = {
   name: string;

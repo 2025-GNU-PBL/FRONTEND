@@ -1,11 +1,16 @@
 import React, { useState } from "react";
-import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../components/clientMypage/MyPageHeader";
+import MyPageHeader from "../../../components/MyPageHeader";
 
 export default function MobileView() {
   const [phone, setPhone] = useState("");
   const nav = useNavigate();
+
+  // 다음 단계로 이동하는 핸들러
+  const handleNext = () => {
+    if (!phone) return;
+    nav("/sign-up/step2");
+  };
 
   return (
     <div className="w-full bg-white">
@@ -40,15 +45,17 @@ export default function MobileView() {
               placeholder="010-1234-5678"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full text-[14px] text-[#9D9D9D] focus:outline-none"
+              className="w-full text-[14px] text-[#1E2124] placeholder:text-[#9D9D9D] focus:outline-none"
             />
           </div>
 
           {/* Next Button */}
           <button
-            className={`absolute left-[20px] top-[700px] w-[350px] h-[56px] rounded-[12px] font-semibold text-[16px] text-white ${
-              phone ? "bg-[#FF0000]" : "bg-[#D9D9D9]"
-            }`}
+            type="button"
+            onClick={handleNext}
+            disabled={!phone}
+            className={`absolute left-[20px] top-[700px] w-[350px] h-[56px] rounded-[12px] font-semibold text-[16px] text-white transition
+              ${phone ? "bg-[#FF0000]" : "bg-[#D9D9D9] cursor-not-allowed"}`}
           >
             다음
           </button>
