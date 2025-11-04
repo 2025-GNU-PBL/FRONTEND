@@ -19,8 +19,6 @@ import StudioPage from "./pages/StudioPage/StudioPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
 import SignUpPage from "./pages/SignupPage/SignupPage";
-import { useEffect } from "react";
-import { authUser } from "./store/thunkFunctions";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import NotAuthRoutes from "./components/NotAuthRoutes";
 import { useAppDispatch, useAppSelector } from "./store/hooks";
@@ -29,13 +27,14 @@ import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";
 import FavoritesPage from "./pages/FavoritesPage/FavoritesPage";
 import DressPage from "./pages/DressPage/DressPage";
-import SelectRolePage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import CalendarPage from "./pages/CalendarPage/CalendarPage";
+import { useEffect } from "react";
+import { authUser } from "./store/thunkFunctions";
 
 function Layout() {
   const location = useLocation();
-  const isChatDetail = !!useMatch("/chat/:id"); // ✅ /chat/:id 매칭 감지
+  const isChatDetail = !!useMatch("/chat/:id");
 
   // 네비바 숨길 경로
   const hideNavOnPaths = [
@@ -49,7 +48,6 @@ function Layout() {
   const hideFooterOnPaths = ["/log-in", "/log-in/client", "/log-in/owner"];
 
   const showNavbar = !hideNavOnPaths.includes(location.pathname);
-  // ✅ /chat/:id일 때 푸터 숨김
   const showFooter =
     !hideFooterOnPaths.includes(location.pathname) && !isChatDetail;
 
@@ -73,18 +71,19 @@ function Layout() {
 
 const App = () => {
   const dispatch = useAppDispatch();
-  const { pathname } = useLocation();
 
-  const isAuth = useAppSelector((s) => s.user.isAuth);
-  const rehydrated = useAppSelector((s) => s._persist?.rehydrated);
+  const { isAuth } = useAppSelector((state) => state.user);
+  const rehydrated = useAppSelector((state) => state._persist?.rehydrated);
 
+  // ✅ 앱이 복원되고 로그인된 상태라면, 유저 프로필 동기화
   useEffect(() => {
-    // 앱(또는 라우트) 진입 시: 토큰이 있고 아직 isAuth가 아니면 서버와 동기화
-    const token = localStorage.getItem("accessToken");
-    if (rehydrated && token && !isAuth) {
+    if (rehydrated && isAuth) {
       dispatch(authUser());
     }
-  }, [rehydrated, pathname, isAuth, dispatch]);
+  }, [rehydrated, isAuth, dispatch]);
+
+  // 리덕스 퍼시스트가 완료될 때까지만 기다림 (깜빡임 방지)
+  if (!rehydrated) return null;
 
   return (
     <Routes>
@@ -105,8 +104,6 @@ const App = () => {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/my-page" element={<ClientMyPageMain />} />
           <Route path="/favorites" element={<FavoritesPage />} />
-
-          {/* ✅ 채팅 라우트: /chat 과 /chat/:id 모두 ChatPage로 */}
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/:id" element={<ChatPage />} />
         </Route>
@@ -121,19 +118,11 @@ const App = () => {
           <Route path="/sign-up" element={<SignUpPage />} />
           <Route path="/users/:id/home" element={<SignUpPage />} />
         </Route>
-        <Route path="/studio" element={<StudioPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/chat" element={<ChatPage />} />
+
+        {/* 기타 중복 경로 제거 */}
         <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
         <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
         <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
-        <Route path="/log-in" element={<SelectRolePage />} />
-        <Route path="/log-in/client" element={<ClientLoginPage />} />
-        <Route path="/log-in/owner" element={<OwnerLoginPage />} />
-        <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
-        <Route path="/auth/naver/callback" element={<NaverCallback />} />
-        <Route path="/sign-up" element={<SignUpPage />} />
-        <Route path="/users/:id/home" element={<SignUpPage />} />
       </Route>
     </Routes>
   );
