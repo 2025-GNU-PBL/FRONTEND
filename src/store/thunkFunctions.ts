@@ -4,17 +4,16 @@ import api from "../lib/api/axios";
 
 // 회원가입
 type RegisterBody = {
-  name: string;
-  email: string;
-  password: string;
-  role: number;
+  age: number;
+  phoneNumber: string;
+  address: string;
 };
 
 export const registerUser = createAsyncThunk(
   "user/registerUser",
   async (body: RegisterBody, thunkAPI) => {
     try {
-      const res = await api.post("/api/users/register", body);
+      const res = await api.post("/api/v1/customer", body);
       return res.data;
     } catch (error) {
       if (isAxiosError(error)) {
@@ -95,26 +94,18 @@ export const logoutUser = createAsyncThunk(
   }
 );
 
-// ✅ 인증 유저 조회 (App에서 호출할 thunk)
 export const authUser = createAsyncThunk(
   "user/authUser",
   async (_, thunkAPI) => {
     try {
-      // 액세스 토큰은 axios 인터셉터가 자동으로 헤더에 첨부
-      const res = await api.get("/api/v1/auth/me");
-      return res.data; // { id, email, name, role, image? } 형태 기대
+      const response = await api.get("/api/v1/customer");
+      return response.data;
     } catch (error) {
-      // 401 등 실패 시 로컬 토큰/상태 정리
       if (isAxiosError(error)) {
-        // 토큰 정리 (리프레시도 무효일 수 있으므로 모두 삭제)
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("persist:root");
-        return thunkAPI.rejectWithValue(
-          error.response?.data || "인증 정보 확인 실패"
-        );
+        // 필요하다면 에러 로깅만
+        console.warn("logoutUser server error:", error.response?.status);
       }
-      return thunkAPI.rejectWithValue("인증 정보 확인 실패");
+      return thunkAPI.fulfillWithValue({ server: false }); // ✅ rejected 대신 fulfilled로 보냄
     }
   }
 );
