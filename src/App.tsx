@@ -27,6 +27,7 @@ import SearchPage from "./pages/SearchPage/SearchPage";
 import DressPage from "./pages/DressPage/DressPage";
 import SelectRolePage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
+import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
 
 function Layout() {
   const location = useLocation();
@@ -98,6 +99,7 @@ const App = () => {
         <Route path="/auth/naver/callback" element={<NaverCallback />} />
         <Route path="/sign-up/step1" element={<SignUpPage />} />
         <Route path="/sign-up/step2" element={<JoinAddressPage />} />
+        <Route path="/sign-up/step3" element={<WeddingInfoPage />} />
         <Route path="/users/:id/home" element={<SignUpPage />} />
       </Route>
     </Routes>

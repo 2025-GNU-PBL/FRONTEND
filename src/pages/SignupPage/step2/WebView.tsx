@@ -81,33 +81,37 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
     // eslint-disable-next-line new-cap
     new window.daum.Postcode({
       oncomplete: (data: any) => {
-        let addr = "";
+        // 1) 대표주소: 여러 필드로 안전하게 폴백
+        const addressText =
+          (data.roadAddress && data.roadAddress.trim()) ||
+          (data.jibunAddress && data.jibunAddress.trim()) ||
+          (data.autoRoadAddress && data.autoRoadAddress.trim()) ||
+          (data.autoJibunAddress && data.autoJibunAddress.trim()) ||
+          (data.address && data.address.trim()) ||
+          "";
+
+        // 2) 참고항목(동/건물명)
         let extraAddr = "";
-
         if (data.userSelectedType === "R") {
-          addr = data.roadAddress;
-        } else {
-          addr = data.jibunAddress;
-        }
-
-        if (data.userSelectedType === "R") {
-          if (data.bname !== "" && /[동|로|가]$/g.test(data.bname)) {
+          if (data.bname && /[동|로|가]$/g.test(data.bname)) {
             extraAddr += data.bname;
           }
-          if (data.buildingName !== "" && data.apartment === "Y") {
-            extraAddr +=
-              extraAddr !== "" ? ", " + data.buildingName : data.buildingName;
+          if (data.buildingName && data.apartment === "Y") {
+            extraAddr += extraAddr
+              ? `, ${data.buildingName}`
+              : data.buildingName;
           }
-          if (extraAddr !== "") extraAddr = " (" + extraAddr + ")";
+          if (extraAddr) extraAddr = ` (${extraAddr})`;
           setExtraAddress(extraAddr);
         } else {
           setExtraAddress("");
         }
 
-        setZipcode(data.zonecode);
-        setAddress(addr);
+        setZipcode(data.zonecode || "");
+        setAddress(addressText);
         setIsPostcodeOpen(false);
 
+        // 상세주소로 포커스
         setTimeout(() => {
           const input = document.getElementById(
             idDetail
@@ -207,7 +211,6 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
               </h3>
 
               {/* 우편번호 + 우편번호 찾기 */}
-              {/* ✅ 변경: gap-2 → gap-3 (버튼과 입력 간 가로 간격 12px) */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-1">
                   <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
@@ -234,9 +237,23 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
                 </div>
               </div>
 
-              {/* 상세주소 / 참고항목 */}
-              {/* ✅ 변경: space-y-2 → space-y-4 (세로 간격 16px) */}
+              {/* 주소 / 상세주소 / 참고항목 */}
               <div className="mt-4 space-y-4">
+                {/* 주소(대표주소): 읽기 전용 */}
+                <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
+                  <input
+                    id={idAddress}
+                    name="address"
+                    type="text"
+                    readOnly
+                    value={address}
+                    placeholder="예) 연희동 132, 도산대로 33"
+                    autoComplete="street-address"
+                    className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
+                  />
+                </div>
+
+                {/* 상세주소 */}
                 <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
                   <input
                     id={idDetail}
@@ -249,6 +266,8 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
                     className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
                   />
                 </div>
+
+                {/* 참고항목 */}
                 <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
                   <input
                     id={idExtra}
@@ -263,7 +282,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
               </div>
             </div>
 
-            {/* ✅ 변경: mt-7 → mt-9 (폼과 ‘다음’ 버튼 사이 간격 확대) */}
+            {/* 액션 바 */}
             <div className="mt-9 flex flex-col sm:flex-row gap-3 sm:justify-end">
               <button
                 type="button"

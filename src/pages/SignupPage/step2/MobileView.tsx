@@ -39,9 +39,10 @@ export default function MobileView({
   // 우편번호 레이어 오픈 상태
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
 
-  // ✅ 고유 id 생성 (중복 id 경고 해결)
+  // 고유 id 생성
   const uid = useId();
   const idZipcode = `${uid}-zipcode`;
+  const idAddress = `${uid}-Address`;
   const idDetail = `${uid}-detailAddress`;
   const idExtra = `${uid}-extraAddress`;
 
@@ -75,20 +76,19 @@ export default function MobileView({
     setIsPostcodeOpen(false);
   }, []);
 
-  // 열기(오버레이만 켬 → 실제 embed는 아래 useEffect에서)
+  // 열기
   const openPostcode = useCallback(() => {
     if (!postcodeReady) return;
     setIsPostcodeOpen(true);
   }, [postcodeReady]);
 
-  // ✅ 오버레이가 렌더된 뒤에 embed 실행 (wrapRef가 준비된 시점)
+  // 오버레이가 렌더된 뒤에 embed 실행
   useEffect(() => {
     if (!isPostcodeOpen || !postcodeReady || !wrapRef.current) return;
 
     const element_wrap = wrapRef.current;
     element_wrap.innerHTML = ""; // 중복 embed 방지
 
-    // eslint-disable-next-line new-cap
     new window.daum.Postcode({
       oncomplete: (data: any) => {
         let addr = "";
@@ -181,6 +181,21 @@ export default function MobileView({
                   우편번호 찾기
                 </button>
               </div>
+            </div>
+
+            {/* 주소 */}
+            <div className="h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center bg-white">
+              <input
+                id={idAddress}
+                name="address"
+                type="text"
+                readOnly
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="예) 연희동 132, 도산대로 33"
+                autoComplete="street-address"
+                className="w-full h-full px-[16px] text-[14px] text-[#1E2124] placeholder:text-[#9D9D9D] outline-none"
+              />
             </div>
 
             {/* 상세주소 */}
