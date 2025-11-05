@@ -9,6 +9,7 @@ export type Product = {
   createdAt: string;
   thumbnail: string | null;
   region: string;
+  ownerName: string;
   tags: {
     id: number;
     tagName: string;
