@@ -5,9 +5,9 @@ import { Icon } from "@iconify/react";
 interface WebWeddingInfoViewProps {
   onBack?: () => void;
   onNext?: (payload: {
-    hallName: string;
-    province: string;
-    district: string;
+    weddingDate: string; // ✅ 예식일
+    weddingSido: string; // ✅ 시/도
+    weddingSigungu: string; // ✅ 시/군/구
   }) => void;
   onSkip?: () => void;
 }
@@ -28,23 +28,28 @@ export default function WebWeddingInfoView({
   onSkip,
 }: WebWeddingInfoViewProps) {
   const nav = useNavigate();
-  const [hallName, setHallName] = useState("");
-  const [province, setProvince] = useState("");
-  const [district, setDistrict] = useState("");
+  const [weddingDate, setWeddingDate] = useState("");
+  const [weddingSido, setWeddingSido] = useState("");
+  const [weddingSigungu, setWeddingSigungu] = useState("");
 
   const districtOptions = useMemo(
-    () => (province ? DISTRICTS[province as keyof typeof DISTRICTS] ?? [] : []),
-    [province]
+    () =>
+      weddingSido ? DISTRICTS[weddingSido as keyof typeof DISTRICTS] ?? [] : [],
+    [weddingSido]
   );
 
   const canNext = useMemo(
-    () => Boolean(hallName.trim() && province && district),
-    [hallName, province, district]
+    () => Boolean(weddingDate && weddingSido && weddingSigungu),
+    [weddingDate, weddingSido, weddingSigungu]
   );
 
   const handleNext = () => {
     if (!canNext) return;
-    onNext?.({ hallName: hallName.trim(), province, district });
+    onNext?.({
+      weddingDate,
+      weddingSido,
+      weddingSigungu,
+    });
     nav("/sign-up/step4");
   };
 
@@ -52,6 +57,13 @@ export default function WebWeddingInfoView({
     onSkip?.();
     nav("/sign-up/step4");
   };
+
+  // 오늘 이전 날짜 선택 방지
+  const today = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const minDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(
+    today.getDate()
+  )}`;
 
   return (
     <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-20">
@@ -71,14 +83,14 @@ export default function WebWeddingInfoView({
           </h1>
 
           <p className="font-pretendard text-lg md:text-2xl text-gray-700 mt-4">
-            예식장과 지역을 알려주시면{" "}
+            예식일과 지역을 알려주시면{" "}
             <span className="font-semibold text-gray-900">맞춤 추천</span>에
             도움이 돼요.
           </p>
 
           <ul className="mt-8 space-y-3 text-gray-700">
             {[
-              "예식장 이름 간단 입력",
+              "예식일 선택",
               "시/도 선택 후 시/군/구 자동 활성화",
               "모바일·웹 동일 UX",
             ].map((t) => (
@@ -136,17 +148,18 @@ export default function WebWeddingInfoView({
 
               {/* 폼 필드 */}
               <div className="space-y-4">
-                {/* 예식장 이름 */}
+                {/* 예식일 */}
                 <div>
                   <label className="block text-[12px] text-[#666] mb-[6px]">
-                    예식장 이름
+                    예식일
                   </label>
                   <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
                     <input
-                      value={hallName}
-                      onChange={(e) => setHallName(e.target.value)}
-                      placeholder="이름"
-                      className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
+                      type="date"
+                      value={weddingDate}
+                      onChange={(e) => setWeddingDate(e.target.value)}
+                      min={minDate}
+                      className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] focus:outline-none bg-transparent"
                     />
                   </div>
                 </div>
@@ -161,10 +174,10 @@ export default function WebWeddingInfoView({
                     <div className="relative">
                       <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white px-4">
                         <select
-                          value={province}
+                          value={weddingSido}
                           onChange={(e) => {
-                            setProvince(e.target.value);
-                            setDistrict("");
+                            setWeddingSido(e.target.value);
+                            setWeddingSigungu("");
                           }}
                           className="w-full h-full outline-none bg-transparent text-[14px] text-[#1E2124]"
                         >
@@ -186,13 +199,13 @@ export default function WebWeddingInfoView({
                     <div className="relative">
                       <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white px-4">
                         <select
-                          value={district}
-                          onChange={(e) => setDistrict(e.target.value)}
-                          disabled={!province}
+                          value={weddingSigungu}
+                          onChange={(e) => setWeddingSigungu(e.target.value)}
+                          disabled={!weddingSido}
                           className="w-full h-full outline-none bg-transparent text-[14px] text-[#1E2124] disabled:text-[#9D9D9D]"
                         >
                           <option value="">
-                            {province ? "시/군/구" : "시/도를 먼저 선택"}
+                            {weddingSido ? "시/군/구" : "시/도를 먼저 선택"}
                           </option>
                           {districtOptions.map((d) => (
                             <option key={d} value={d}>

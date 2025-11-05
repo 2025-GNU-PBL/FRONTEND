@@ -6,9 +6,9 @@ import MyPageHeader from "../../../components/MyPageHeader";
 interface MobileWeddingInfoViewProps {
   onBack?: () => void;
   onNext?: (payload: {
-    hallName: string;
-    province: string;
-    district: string;
+    weddingDate: string; // ✅ 예식일(YYYY-MM-DD)
+    weddingSido: string; // ✅ 시/도
+    weddingSigungu: string; // ✅ 시/군/구
   }) => void;
   onSkip?: () => void;
   title?: string;
@@ -29,25 +29,30 @@ export default function MobileView({
   onSkip,
   title = "예식 정보",
 }: MobileWeddingInfoViewProps) {
-  const [hallName, setHallName] = useState("");
-  const [province, setProvince] = useState("");
-  const [district, setDistrict] = useState("");
+  const [weddingDate, setWeddingDate] = useState(""); // "YYYY-MM-DD"
+  const [weddingSido, setWeddingSido] = useState("");
+  const [weddingSigungu, setWeddingSigungu] = useState("");
 
   const navigate = useNavigate();
 
   const districtOptions = useMemo(
-    () => (province ? DISTRICTS[province as keyof typeof DISTRICTS] ?? [] : []),
-    [province]
+    () =>
+      weddingSido ? DISTRICTS[weddingSido as keyof typeof DISTRICTS] ?? [] : [],
+    [weddingSido]
   );
 
   const isComplete = useMemo(
-    () => Boolean(hallName.trim() && province && district),
-    [hallName, province, district]
+    () => Boolean(weddingDate && weddingSido && weddingSigungu),
+    [weddingDate, weddingSido, weddingSigungu]
   );
 
   const handleNext = () => {
     if (!isComplete) return;
-    onNext?.({ hallName: hallName.trim(), province, district });
+    onNext?.({
+      weddingDate,
+      weddingSido,
+      weddingSigungu,
+    });
     navigate("/sign-up/step4");
   };
 
@@ -55,6 +60,13 @@ export default function MobileView({
     onSkip?.();
     navigate("/sign-up/step4");
   };
+
+  // 오늘 이전 날짜 선택 방지(선택 사항)
+  const today = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const minDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(
+    today.getDate()
+  )}`;
 
   return (
     <div className="relative w-[390px] h-[844px] bg-white overflow-hidden">
@@ -68,20 +80,22 @@ export default function MobileView({
           3 / 3
         </div>
 
-        <h1 className="text-[24px] font-bold leading-[36px] -tracking-[0.3px] text-[#1E2124] mb-[24px]">
+        <h1 className="text-[24px] font-bold leading-[36px] -tracking-[0.3px] text-[#1E2124] mb-[24px] whitespace-pre-line">
           예식 정보를{"\n"}입력해 주세요
         </h1>
 
-        {/* 예식장 이름 */}
+        {/* 예식일 */}
         <label className="block text-[#666] text-[12px] leading-[18px] -tracking-[0.1px] mb-[6px]">
-          예식장 이름
+          예식일
         </label>
         <div className="w-[350px] h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-4 mb-[18px]">
           <input
-            value={hallName}
-            onChange={(e) => setHallName(e.target.value)}
-            placeholder="이름"
-            className="w-full h-full outline-none text-[14px] placeholder:text-[#9D9D9D]"
+            type="date"
+            value={weddingDate}
+            onChange={(e) => setWeddingDate(e.target.value)}
+            min={minDate}
+            placeholder="YYYY-MM-DD"
+            className="w-full h-full outline-none text-[14px] placeholder:text-[#9D9D9D] bg-transparent"
           />
         </div>
 
@@ -94,10 +108,10 @@ export default function MobileView({
           <div className="relative">
             <div className="w-[170px] h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-4">
               <select
-                value={province}
+                value={weddingSido}
                 onChange={(e) => {
-                  setProvince(e.target.value);
-                  setDistrict("");
+                  setWeddingSido(e.target.value);
+                  setWeddingSigungu("");
                 }}
                 className="w-full h-full outline-none bg-transparent text-[14px] text-[#1E2124]"
               >
@@ -119,13 +133,13 @@ export default function MobileView({
           <div className="relative">
             <div className="w-[170px] h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-4">
               <select
-                value={district}
-                onChange={(e) => setDistrict(e.target.value)}
-                disabled={!province}
+                value={weddingSigungu}
+                onChange={(e) => setWeddingSigungu(e.target.value)}
+                disabled={!weddingSido}
                 className="w-full h-full outline-none bg-transparent text-[14px] text-[#1E2124] disabled:text-[#9D9D9D]"
               >
                 <option value="">
-                  {province ? "시/군/구" : "시/도를 먼저 선택"}
+                  {weddingSido ? "시/군/구" : "시/도를 먼저 선택"}
                 </option>
                 {districtOptions.map((d) => (
                   <option key={d} value={d}>

@@ -1,8 +1,42 @@
+// src/store/thunkFunctions.ts
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { isAxiosError } from "axios";
 import api from "../lib/api/axios";
+import type { RootState } from "./store";
 
-// 회원가입
+/* =========================================================================
+ * 공통 유틸
+ * ========================================================================= */
+
+// 010-1234-5678 포맷으로 정규화
+const normalizePhone = (raw: string) => {
+  const d = (raw || "").replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("010")) {
+    return `010-${d.slice(3, 7)}-${d.slice(7)}`;
+  }
+  return raw || "";
+};
+
+// ""(빈문자) -> null 로 바꿔 백엔드 DTO와 깔끔히 맞추기
+const toNullIfEmpty = <T extends Record<string, any>>(obj: T): T => {
+  const out: Record<string, any> = {};
+  Object.entries(obj).forEach(([k, v]) => {
+    if (v === "" || v === undefined) out[k] = null;
+    else out[k] = v;
+  });
+  return out as T;
+};
+
+// YYYY-MM-DD 형식 검증 (맞으면 그대로, 아니면 null)
+const safeDate = (d?: string | null) => {
+  if (!d) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
+};
+
+/* =========================================================================
+ * 회원 계정(기존)
+ * ========================================================================= */
+
 type RegisterBody = {
   name: string;
   email: string;
@@ -25,27 +59,41 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-// ✅ 소셜 로그인 공통 payload
+/* =========================================================================
+ * 소셜 로그인
+ *  - 백엔드 스펙: { code, socialProvider: "KAKAO"|"NAVER", userRole, (state?) }
+ *  - 일부 환경에서 state 검증이 필요하므로 '있으면 포함' 방식
+ * ========================================================================= */
+
 type SocialLoginPayload = {
   code: string;
-  state?: string | null;
   role: "CUSTOMER" | "OWNER";
+  state?: string | null;
 };
 
-// ✅ 카카오 로그인
 export const kakaoLoginUser = createAsyncThunk(
   "user/kakaoLoginUser",
-  async ({ code, state, role }: SocialLoginPayload, thunkAPI) => {
+  async ({ code, role, state }: SocialLoginPayload, thunkAPI) => {
     try {
-      const res = await api.post("/api/v1/auth/login", {
+      const body: Record<string, any> = {
         code,
         socialProvider: "KAKAO",
         userRole: role,
-        state,
-      });
-      return res.data; // { id, email, name, role, image?, accessToken? }
+        ...(state != null ? { state } : {}),
+      };
+
+      // 디버깅
+      console.log("[kakaoLoginUser] request body:", body);
+
+      const res = await api.post("/api/v1/auth/login", body);
+      return res.data; // { id, email, name, role, accessToken? ... }
     } catch (error) {
       if (isAxiosError(error)) {
+        console.error(
+          "kakaoLoginUser error:",
+          error.response?.status,
+          error.response?.data
+        );
         return thunkAPI.rejectWithValue(
           error.response?.data || "카카오 로그인 실패"
         );
@@ -55,20 +103,28 @@ export const kakaoLoginUser = createAsyncThunk(
   }
 );
 
-// ✅ 네이버 로그인
 export const naverLoginUser = createAsyncThunk(
   "user/naverLoginUser",
-  async ({ code, state, role }: SocialLoginPayload, thunkAPI) => {
+  async ({ code, role, state }: SocialLoginPayload, thunkAPI) => {
     try {
-      const res = await api.post("/api/v1/auth/login", {
+      const body: Record<string, any> = {
         code,
         socialProvider: "NAVER",
         userRole: role,
-        state,
-      });
-      return res.data; // { id, email, name, role, image?, accessToken? }
+        ...(state != null ? { state } : {}),
+      };
+
+      console.log("[naverLoginUser] request body:", body);
+
+      const res = await api.post("/api/v1/auth/login", body);
+      return res.data;
     } catch (error) {
       if (isAxiosError(error)) {
+        console.error(
+          "naverLoginUser error:",
+          error.response?.status,
+          error.response?.data
+        );
         return thunkAPI.rejectWithValue(
           error.response?.data || "네이버 로그인 실패"
         );
@@ -78,35 +134,34 @@ export const naverLoginUser = createAsyncThunk(
   }
 );
 
+/* =========================================================================
+ * 로그아웃 / 인증 유저
+ * ========================================================================= */
+
 export const logoutUser = createAsyncThunk(
   "user/logoutUser",
   async (_, thunkAPI) => {
     try {
-      const res = await api.post("/api/v1/auth/logout"); // 200/204 기대
+      const res = await api.post("/api/v1/auth/logout");
       return { server: true, data: res.data };
     } catch (error) {
-      // 👇 서버 실패/네트워크 이슈여도 클라이언트 로그아웃은 '성공'으로 처리
       if (isAxiosError(error)) {
-        // 필요하다면 에러 로깅만
         console.warn("logoutUser server error:", error.response?.status);
       }
-      return thunkAPI.fulfillWithValue({ server: false }); // ✅ rejected 대신 fulfilled로 보냄
+      // 서버 실패여도 클라에서는 성공 처리
+      return thunkAPI.fulfillWithValue({ server: false });
     }
   }
 );
 
-// ✅ 인증 유저 조회 (App에서 호출할 thunk)
 export const authUser = createAsyncThunk(
   "user/authUser",
   async (_, thunkAPI) => {
     try {
-      // 액세스 토큰은 axios 인터셉터가 자동으로 헤더에 첨부
       const res = await api.get("/api/v1/auth/me");
-      return res.data; // { id, email, name, role, image? } 형태 기대
+      return res.data;
     } catch (error) {
-      // 401 등 실패 시 로컬 토큰/상태 정리
       if (isAxiosError(error)) {
-        // 토큰 정리 (리프레시도 무효일 수 있으므로 모두 삭제)
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("persist:root");
@@ -118,3 +173,46 @@ export const authUser = createAsyncThunk(
     }
   }
 );
+
+const CUSTOMER_CREATE_ENDPOINT = "/api/v1/customers";
+
+export const submitSignup = createAsyncThunk<
+  { ok: true },
+  void,
+  { state: RootState }
+>("signup/submitSignup", async (_, { getState, rejectWithValue }) => {
+  try {
+    const state = getState();
+    const d = state.signup.values;
+
+    const payload = toNullIfEmpty({
+      phoneNumber: normalizePhone(d.phone),
+
+      address: d.address,
+      zipCode: d.zipCode,
+      roadAddress: d.roadAddress,
+      jibunAddress: d.jibunAddress,
+      detailAddress: d.detailAddress,
+
+      sido: d.sido,
+      sigungu: d.sigungu,
+      dong: d.dong,
+      buildingName: d.buildingName,
+
+      weddingSido: d.weddingSido,
+      weddingSigungu: d.weddingSigungu,
+      weddingDate: safeDate(d.weddingDate),
+    });
+
+    // 디버깅
+    console.log("[submitSignup] payload:", payload);
+
+    const res = await api.post(CUSTOMER_CREATE_ENDPOINT, payload);
+    return { ok: true, ...res.data };
+  } catch (error) {
+    if (isAxiosError(error)) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+    return rejectWithValue("회원가입 정보 제출 실패");
+  }
+});
