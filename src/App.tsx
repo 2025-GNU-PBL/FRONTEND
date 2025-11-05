@@ -28,6 +28,7 @@ import DressPage from "./pages/DressPage/DressPage";
 import SelectRolePage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
 import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
+import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
 
 function Layout() {
   const location = useLocation();
@@ -100,6 +101,7 @@ const App = () => {
         <Route path="/sign-up/step1" element={<SignUpPage />} />
         <Route path="/sign-up/step2" element={<JoinAddressPage />} />
         <Route path="/sign-up/step3" element={<WeddingInfoPage />} />
+        <Route path="/sign-up/step4" element={<SignupCompletePage />} />
         <Route path="/users/:id/home" element={<SignUpPage />} />
       </Route>
     </Routes>

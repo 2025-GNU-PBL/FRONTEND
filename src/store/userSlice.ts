@@ -4,7 +4,7 @@ import {
   naverLoginUser,
   registerUser,
   logoutUser,
-  authUser, // ✅ 추가
+  authUser,
 } from "./thunkFunctions";
 import { toast } from "react-toastify";
 

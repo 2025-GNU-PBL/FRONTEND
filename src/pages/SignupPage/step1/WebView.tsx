@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
 export default function WebView() {
   const [phone, setPhone] = useState("");
+  const nav = useNavigate();
 
   // 간단 유효성: 010-0000-0000 또는 하이픈 없이 11자리
   const isValid = useMemo(() => {
@@ -12,7 +14,8 @@ export default function WebView() {
 
   const onNext = () => {
     if (!isValid) return;
-    alert("다음 스텝으로 이동합니다."); // 라우팅 연결 지점
+    alert("다음 스텝으로 이동합니다.");
+    nav("/sign-up/step2");
   };
 
   return (

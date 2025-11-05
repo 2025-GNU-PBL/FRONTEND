@@ -1,4 +1,3 @@
-// MobileView.tsx
 import React, {
   useCallback,
   useEffect,
@@ -7,6 +6,7 @@ import React, {
   useMemo,
   useId,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import MyPageHeader from "../../../components/MyPageHeader";
 
 declare global {
@@ -35,6 +35,8 @@ export default function MobileView({
   const [address, setAddress] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
   const [extraAddress, setExtraAddress] = useState("");
+
+  const navigate = useNavigate();
 
   // 우편번호 레이어 오픈 상태
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
@@ -136,7 +138,11 @@ export default function MobileView({
       alert("우편번호/주소/상세주소를 모두 입력해주세요.");
       return;
     }
+
+    // 기존 콜백 유지 (필요 시 상위에서 저장 등 처리)
     onNext?.({ zipcode, address, detailAddress, extraAddress });
+
+    navigate("/sign-up/step3");
   };
 
   return (

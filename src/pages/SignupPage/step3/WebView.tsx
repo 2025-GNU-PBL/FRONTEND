@@ -1,5 +1,5 @@
-// WebWeddingInfoView.tsx
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
 interface WebWeddingInfoViewProps {
@@ -12,12 +12,13 @@ interface WebWeddingInfoViewProps {
   onSkip?: () => void;
 }
 
-/** 시/도 & 시/군/구 샘플 데이터 (필요 시 확장) */
-const PROVINCES = ["서울특별시", "부산광역시", "경기도"] as const;
+/** 시/도 & 시/군/구 샘플 데이터 */
+const PROVINCES = ["서울특별시", "부산광역시", "인천광역시", "경기도"] as const;
 
 const DISTRICTS: Record<(typeof PROVINCES)[number], string[]> = {
   서울특별시: ["강남구", "서초구", "송파구", "마포구", "종로구"],
   부산광역시: ["해운대구", "수영구", "남구", "부산진구", "동래구"],
+  인천광역시: ["남동구", "연수구", "부평구", "계양구", "서구"],
   경기도: ["성남시", "수원시", "용인시", "고양시", "부천시"],
 };
 
@@ -26,6 +27,7 @@ export default function WebWeddingInfoView({
   onNext,
   onSkip,
 }: WebWeddingInfoViewProps) {
+  const nav = useNavigate();
   const [hallName, setHallName] = useState("");
   const [province, setProvince] = useState("");
   const [district, setDistrict] = useState("");
@@ -43,11 +45,17 @@ export default function WebWeddingInfoView({
   const handleNext = () => {
     if (!canNext) return;
     onNext?.({ hallName: hallName.trim(), province, district });
+    nav("/sign-up/step4");
+  };
+
+  const handleSkip = () => {
+    onSkip?.();
+    nav("/sign-up/step4");
   };
 
   return (
     <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-20">
-      {/* 상단 얇은 그라디언트 바 (주소 WebView와 동일 스타일) */}
+      {/* 상단 얇은 그라디언트 바 */}
       <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
 
       <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
@@ -82,7 +90,7 @@ export default function WebWeddingInfoView({
           </ul>
         </section>
 
-        {/* Right — Form 카드 (주소 WebView 카드 레이아웃 그대로) */}
+        {/* Right — Form 카드 */}
         <section className="md:col-span-6 flex justify-center md:justify-end">
           <div className="relative w-full max-w-[520px]">
             {/* soft glow & offset */}
@@ -219,7 +227,7 @@ export default function WebWeddingInfoView({
 
                 <button
                   type="button"
-                  onClick={onSkip}
+                  onClick={handleSkip}
                   className="w-full sm:w-[220px] h-[56px] rounded-[12px] text-[#999] text-[14px] font-semibold border border-transparent hover:border-gray-200"
                 >
                   나중에 하기

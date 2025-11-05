@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
+import { useNavigate } from "react-router-dom";
 import MyPageHeader from "../../../components/MyPageHeader";
 
 interface MobileWeddingInfoViewProps {
@@ -13,11 +14,12 @@ interface MobileWeddingInfoViewProps {
   title?: string;
 }
 
-const PROVINCES = ["서울특별시", "부산광역시", "경기도"] as const;
+const PROVINCES = ["서울특별시", "부산광역시", "인천광역시", "경기도"] as const;
 
 const DISTRICTS: Record<(typeof PROVINCES)[number], string[]> = {
   서울특별시: ["강남구", "서초구", "송파구", "마포구", "종로구"],
   부산광역시: ["해운대구", "수영구", "남구", "부산진구", "동래구"],
+  인천광역시: ["연수구", "남동구", "미추홀구", "부평구", "서구"],
   경기도: ["성남시", "수원시", "용인시", "고양시", "부천시"],
 };
 
@@ -30,6 +32,8 @@ export default function MobileView({
   const [hallName, setHallName] = useState("");
   const [province, setProvince] = useState("");
   const [district, setDistrict] = useState("");
+
+  const navigate = useNavigate();
 
   const districtOptions = useMemo(
     () => (province ? DISTRICTS[province as keyof typeof DISTRICTS] ?? [] : []),
@@ -44,6 +48,12 @@ export default function MobileView({
   const handleNext = () => {
     if (!isComplete) return;
     onNext?.({ hallName: hallName.trim(), province, district });
+    navigate("/sign-up/step4");
+  };
+
+  const handleSkip = () => {
+    onSkip?.();
+    navigate("/sign-up/step4");
   };
 
   return (
@@ -132,7 +142,7 @@ export default function MobileView({
         </div>
       </div>
 
-      {/* 하단 버튼 영역 - 위치/가시성 수정 */}
+      {/* 하단 버튼 영역 */}
       <div className="fixed left-1/2 -translate-x-1/2 bottom-[80px] w-[390px] px-[20px] pb-[8px] z-50 pointer-events-none">
         <div className="pointer-events-auto flex flex-col gap-3 py-3">
           <button
@@ -146,7 +156,7 @@ export default function MobileView({
           </button>
           <button
             type="button"
-            onClick={onSkip}
+            onClick={handleSkip}
             className="w-[350px] h-[53px] mx-auto rounded-[12px] text-[#999] text-[14px] font-semibold"
           >
             나중에 하기

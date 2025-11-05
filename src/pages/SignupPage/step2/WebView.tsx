@@ -1,4 +1,3 @@
-// WebView.tsx
 import React, {
   useCallback,
   useEffect,
@@ -7,6 +6,7 @@ import React, {
   useState,
   useId,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
 declare global {
@@ -26,6 +26,7 @@ interface WebViewProps {
 }
 
 export default function WebView({ onBack, onNext }: WebViewProps) {
+  const nav = useNavigate();
   const [zipcode, setZipcode] = useState("");
   const [address, setAddress] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
@@ -127,6 +128,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
   const handleNext = () => {
     if (!canNext) return;
     onNext?.({ zipcode, address, detailAddress, extraAddress });
+    nav("/sign-up/step3");
   };
 
   return (
