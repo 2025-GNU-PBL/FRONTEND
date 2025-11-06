@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { Icon } from "@iconify/react";
-import MyPageHeader from "../../../../components/MyPageHeader";
+import MyPageHeader from "../../../../components/clientMypage/MyPageHeader";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
 
