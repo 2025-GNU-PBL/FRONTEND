@@ -125,9 +125,6 @@ const App = () => {
         <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
         <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
         <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
-        <Route path="/log-in" element={<SelectRolePage />} />
-        <Route path="/log-in/client" element={<ClientLoginPage />} />
-        <Route path="/log-in/owner" element={<OwnerLoginPage />} />
         <Route path="/sign-up/step1" element={<SignupPage />} />
         <Route path="/sign-up/step2" element={<JoinAddressPage />} />
         <Route path="/sign-up/step3" element={<WeddingInfoPage />} />
