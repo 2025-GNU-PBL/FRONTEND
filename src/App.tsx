@@ -31,6 +31,7 @@ import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import CalendarPage from "./pages/CalendarPage/CalendarPage";
 import { useEffect } from "react";
 import { authCustomer, authOwner } from "./store/thunkFunctions";
+import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
 
 function Layout() {
   const location = useLocation();
@@ -45,7 +46,12 @@ function Layout() {
   ];
 
   // 푸터 숨길 경로 (정적 + 동적)
-  const hideFooterOnPaths = ["/log-in", "/log-in/client", "/log-in/owner"];
+  const hideFooterOnPaths = [
+    "/log-in",
+    "/log-in/client",
+    "/log-in/owner",
+    "/test",
+  ];
 
   const showNavbar = !hideNavOnPaths.includes(location.pathname);
   const showFooter =
@@ -111,6 +117,7 @@ const App = () => {
         <Route path="/makeup" element={<MakeupPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/quotation" element={<QuotationPage />} />
+        <Route path="/test" element={<ProductCreate />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>
