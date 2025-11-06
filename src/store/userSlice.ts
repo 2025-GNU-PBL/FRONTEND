@@ -5,7 +5,6 @@ import {
   registerUser,
   logoutUser,
   authUser,
-  // authUser, // ✅ 추가
 } from "./thunkFunctions";
 import { toast } from "react-toastify";
 
@@ -136,17 +135,16 @@ const userSlice = createSlice({
       toast.info("로그아웃 되었습니다.");
     });
 
-    // ❌ 더 이상 rejected에서 에러 토스트를 띄우지 않습니다.
     builder.addCase(logoutUser.rejected, (state) => {
       // 혹시 모를 예상치 못한 상황 대비: 그래도 클라 로그아웃 처리
       state.isAuth = false;
       state.userData = null;
       state.error = null;
       localStorage.removeItem("accessToken");
-      // 토스트 없음 (조용히 처리)
+      // 토스트 없음
     });
 
-    // ✅ 인증 유저 조회
+    // 인증 유저 조회
     builder.addCase(authUser.pending, (state) => {
       state.isLoading = true;
       state.error = null;
@@ -168,6 +166,7 @@ const userSlice = createSlice({
           ? action.payload
           : "인증 정보 확인 실패";
       state.error = errorMessage;
+      // toast.error(errorMessage);
     });
   },
 });
