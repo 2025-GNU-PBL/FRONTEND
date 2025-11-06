@@ -1,7 +1,7 @@
 import MobileView from "./views/MobileView";
 import WebView from "./views/WebView";
 
-const FaqPage = () => {
+const ProductEdit = () => {
   return (
     <div className="min-h-screen">
       <div className="md:hidden">
@@ -14,4 +14,4 @@ const FaqPage = () => {
   );
 };
 
-export default FaqPage;
+export default ProductEdit;

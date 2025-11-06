@@ -30,7 +30,7 @@ import DressPage from "./pages/DressPage/DressPage";
 import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import CalendarPage from "./pages/CalendarPage/CalendarPage";
 import { useEffect } from "react";
-import { authUser } from "./store/thunkFunctions";
+import { authCustomer, authOwner } from "./store/thunkFunctions";
 
 function Layout() {
   const location = useLocation();
@@ -72,15 +72,29 @@ function Layout() {
 const App = () => {
   const dispatch = useAppDispatch();
 
-  const { isAuth } = useAppSelector((state) => state.user);
+  const { isAuth, role } = useAppSelector((state) => state.user);
   const rehydrated = useAppSelector((state) => state._persist?.rehydrated);
 
-  // ✅ 앱이 복원되고 로그인된 상태라면, 유저 프로필 동기화
+  /**
+   * ✅ 앱이 복원되고 로그인된 상태라면, 역할(role)에 따라 프로필/권한을 서버에서 동기화
+   * - CUSTOMER → authCustomer()
+   * - OWNER    → authOwner()
+   * - (선택) role이 없는 특이 케이스 대비: 필요 시 순차 조회 로직을 추가할 수 있음
+   */
   useEffect(() => {
-    if (rehydrated && isAuth) {
-      dispatch(authUser());
+    if (!rehydrated || !isAuth) return;
+
+    if (role === "CUSTOMER") {
+      dispatch(authCustomer());
+    } else if (role === "OWNER") {
+      dispatch(authOwner());
+    } else {
+      // ⚠️ 예외 케이스(로그인인데 role이 비어있음). 필요 시 아래 주석을 해제해 포괄 처리 가능.
+      // dispatch(authOwner())
+      //   .unwrap()
+      //   .catch(() => dispatch(authCustomer()).unwrap().catch(() => {}));
     }
-  }, [rehydrated, isAuth, dispatch]);
+  }, [rehydrated, isAuth, role, dispatch]);
 
   // 리덕스 퍼시스트가 완료될 때까지만 기다림 (깜빡임 방지)
   if (!rehydrated) return null;
