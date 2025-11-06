@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 // ⚠️ 프로젝트 경로에 맞게 수정
 import api from "../../../lib/api/axios";
-import type { weddingProduct } from "../../../type/product";
+import type { Product } from "../../../type/product";
 
 // ===== 타입 선언 =====
 type CategoryKey = "hall" | "studio" | "dress" | "makeup";
@@ -30,7 +30,7 @@ type Props = {
   active: CategoryKey;
   setActive: (key: CategoryKey) => void;
   categories: Category[];
-  products: weddingProduct[]; // MainPage가 내려주는 첫 페이지
+  products: Product[]; // MainPage가 내려주는 첫 페이지
   pageMeta: PageMeta | null; // 첫 페이지 메타 (size/number/totalPages)
   isMenuOpen: boolean;
   openMenu: () => void;
@@ -88,7 +88,7 @@ export default function MobileView({
   const navigate = useNavigate();
 
   // ====== 무한 스크롤 상태 ======
-  const [items, setItems] = useState<weddingProduct[]>(products ?? []);
+  const [items, setItems] = useState<Product[]>(products ?? []);
   const [currPage, setCurrPage] = useState<number>(pageMeta?.number ?? 0);
   const [totalPages, setTotalPages] = useState<number>(
     pageMeta?.totalPages ?? 1
@@ -125,7 +125,7 @@ export default function MobileView({
       const nextPage = currPage + 1;
       const endpoint = ENDPOINT_BY_CATEGORY[active];
 
-      const res = await api.get<PageResponse<weddingProduct>>(endpoint, {
+      const res = await api.get<PageResponse<Product>>(endpoint, {
         params: { page: nextPage, size: pageSize },
       });
 
