@@ -30,15 +30,10 @@ import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";
 import FavoritesPage from "./pages/FavoritesPage/FavoritesPage";
 import DressPage from "./pages/DressPage/DressPage";
-import SelectRolePage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
 import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
 import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
-import QuotationPage from "./pages/QuotationPage/QuotationPage";
-import CalendarPage from "./pages/CalendarPage/CalendarPage";
 import SignupPage from "./pages/SignupPage/step1/SignupPage";
-import { useEffect } from "react";
-import { authUser } from "./store/thunkFunctions";
 
 function Layout() {
   const location = useLocation();
