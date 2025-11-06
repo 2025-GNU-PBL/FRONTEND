@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, Route, Routes, useLocation, useMatch } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -17,10 +18,13 @@ import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPa
 import MainPage from "./pages/MainPage/MainPage";
 import StudioPage from "./pages/StudioPage/StudioPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
+import QuotationPage from "./pages/QuotationPage/QuotationPage";
+import CalendarPage from "./pages/CalendarPage/CalendarPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import NotAuthRoutes from "./components/NotAuthRoutes";
 import { useAppDispatch, useAppSelector } from "./store/hooks";
+import { authUser } from "./store/thunkFunctions";
 import LoginPage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";
