@@ -1,3 +1,4 @@
+// src/pages/SignupPage/step2/MobileView.tsx
 import React, {
   useCallback,
   useEffect,
@@ -6,7 +7,7 @@ import React, {
   useMemo,
   useId,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import MyPageHeader from "../../../components/MyPageHeader";
 
 declare global {
@@ -15,6 +16,7 @@ declare global {
   }
 }
 
+/** 상위에서 받는 props */
 interface MobileViewProps {
   onBack?: () => void;
   onNext?: (payload: {
@@ -24,6 +26,60 @@ interface MobileViewProps {
     extraAddress: string;
   }) => void;
   title?: string;
+}
+
+let DAUM_POSTCODE_LOADING: Promise<void> | null = null;
+
+function loadDaumPostcodeOnce(): Promise<void> {
+  // 이미 로드 완료
+  if (window.daum?.Postcode) return Promise.resolve();
+
+  // 로딩 중이면 같은 Promise 반환
+  if (DAUM_POSTCODE_LOADING) return DAUM_POSTCODE_LOADING;
+
+  DAUM_POSTCODE_LOADING = new Promise<void>((resolve, reject) => {
+    // 기존 스크립트 태그가 있으면 그 이벤트를 기다림
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[data-daum-postcode="true"]'
+    );
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error("daum postcode load error")),
+        { once: true }
+      );
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.setAttribute("data-daum-postcode", "true");
+
+    script.src =
+      "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+    script.async = true;
+
+    script.onload = () => resolve();
+
+    script.onerror = () => {
+      console.warn("[daum postcode] first load failed, retrying...");
+      script.remove();
+
+      const retry = document.createElement("script");
+      retry.setAttribute("data-daum-postcode", "true");
+      retry.src =
+        "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+      retry.async = true;
+      retry.onload = () => resolve();
+      retry.onerror = () =>
+        reject(new Error("Failed to load daum postcode script."));
+      document.head.appendChild(retry);
+    };
+
+    document.head.appendChild(script);
+  });
+
+  return DAUM_POSTCODE_LOADING;
 }
 
 export default function MobileView({
@@ -37,6 +93,8 @@ export default function MobileView({
   const [extraAddress, setExtraAddress] = useState("");
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const { phone } = location.state || {};
 
   // 우편번호 레이어 오픈 상태
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
@@ -56,20 +114,22 @@ export default function MobileView({
     [zipcode, address, detailAddress]
   );
 
-  // 카카오 우편번호 스크립트 로드
   useEffect(() => {
+    let mounted = true;
+
     if (window.daum?.Postcode) {
       setPostcodeReady(true);
       return;
     }
-    const script = document.createElement("script");
-    script.src =
-      "//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
-    script.async = true;
-    script.onload = () => setPostcodeReady(true);
-    document.body.appendChild(script);
+
+    loadDaumPostcodeOnce()
+      .then(() => mounted && setPostcodeReady(true))
+      .catch((e) => {
+        console.error("[daum postcode] load failed:", e);
+      });
+
     return () => {
-      document.body.removeChild(script);
+      mounted = false;
     };
   }, []);
 
@@ -96,21 +156,24 @@ export default function MobileView({
         let addr = "";
         let extraAddr = "";
 
+        // 도로명/지번 선택 처리
         if (data.userSelectedType === "R") {
           addr = data.roadAddress;
         } else {
           addr = data.jibunAddress;
         }
 
+        // 참고항목
         if (data.userSelectedType === "R") {
           if (data.bname !== "" && /[동|로|가]$/g.test(data.bname)) {
             extraAddr += data.bname;
           }
           if (data.buildingName !== "" && data.apartment === "Y") {
-            extraAddr +=
-              extraAddr !== "" ? ", " + data.buildingName : data.buildingName;
+            extraAddr += extraAddr
+              ? ", " + data.buildingName
+              : data.buildingName;
           }
-          if (extraAddr !== "") extraAddr = " (" + extraAddr + ")";
+          if (extraAddr) extraAddr = " (" + extraAddr + ")";
           setExtraAddress(extraAddr);
         } else {
           setExtraAddress("");
@@ -138,11 +201,17 @@ export default function MobileView({
       alert("우편번호/주소/상세주소를 모두 입력해주세요.");
       return;
     }
-
-    // 기존 콜백 유지 (필요 시 상위에서 저장 등 처리)
     onNext?.({ zipcode, address, detailAddress, extraAddress });
 
-    navigate("/sign-up/step3");
+    navigate("/sign-up/step3", {
+      state: {
+        phone,
+        zipcode,
+        address,
+        detailAddress,
+        extraAddress,
+      },
+    });
   };
 
   return (
@@ -218,7 +287,7 @@ export default function MobileView({
               />
             </div>
 
-            {/* 참고항목 (읽기 전용) */}
+            {/* 참고항목 */}
             <div className="h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center bg-white">
               <input
                 id={idExtra}

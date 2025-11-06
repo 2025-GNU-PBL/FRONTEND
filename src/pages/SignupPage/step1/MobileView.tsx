@@ -9,7 +9,9 @@ export default function MobileView() {
   // 다음 단계로 이동하는 핸들러
   const handleNext = () => {
     if (!phone) return;
-    nav("/sign-up/step2");
+    nav("/sign-up/step2", {
+      state: { phone },
+    });
   };
 
   return (

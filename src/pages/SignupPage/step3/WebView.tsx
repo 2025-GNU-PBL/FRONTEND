@@ -1,69 +1,154 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+// src/pages/SignupPage/step2/WebView.tsx
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useId,
+} from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
-interface WebWeddingInfoViewProps {
-  onBack?: () => void;
-  onNext?: (payload: {
-    weddingDate: string; // ✅ 예식일
-    weddingSido: string; // ✅ 시/도
-    weddingSigungu: string; // ✅ 시/군/구
-  }) => void;
-  onSkip?: () => void;
+declare global {
+  interface Window {
+    daum?: any;
+  }
 }
 
-/** 시/도 & 시/군/구 샘플 데이터 */
-const PROVINCES = ["서울특별시", "부산광역시", "인천광역시", "경기도"] as const;
+interface WebViewProps {
+  onBack?: () => void;
+  onNext?: (payload: {
+    zipcode: string;
+    address: string;
+    detailAddress: string;
+    extraAddress: string;
+  }) => void;
+}
 
-const DISTRICTS: Record<(typeof PROVINCES)[number], string[]> = {
-  서울특별시: ["강남구", "서초구", "송파구", "마포구", "종로구"],
-  부산광역시: ["해운대구", "수영구", "남구", "부산진구", "동래구"],
-  인천광역시: ["남동구", "연수구", "부평구", "계양구", "서구"],
-  경기도: ["성남시", "수원시", "용인시", "고양시", "부천시"],
-};
-
-export default function WebWeddingInfoView({
-  onBack,
-  onNext,
-  onSkip,
-}: WebWeddingInfoViewProps) {
+export default function WebView({ onBack, onNext }: WebViewProps) {
   const nav = useNavigate();
-  const [weddingDate, setWeddingDate] = useState("");
-  const [weddingSido, setWeddingSido] = useState("");
-  const [weddingSigungu, setWeddingSigungu] = useState("");
+  const location = useLocation();
+  const { phone } = (location.state as { phone?: string }) || {};
 
-  const districtOptions = useMemo(
-    () =>
-      weddingSido ? DISTRICTS[weddingSido as keyof typeof DISTRICTS] ?? [] : [],
-    [weddingSido]
-  );
+  const [zipcode, setZipcode] = useState("");
+  const [address, setAddress] = useState("");
+  const [detailAddress, setDetailAddress] = useState("");
+  const [extraAddress, setExtraAddress] = useState("");
+
+  const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
+
+  const uid = useId();
+  const idAddress = `${uid}-address`;
+  const idZipcode = `${uid}-zipcode`;
+  const idDetail = `${uid}-detailAddress`;
+  const idExtra = `${uid}-extraAddress`;
+
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [postcodeReady, setPostcodeReady] = useState(false);
 
   const canNext = useMemo(
-    () => Boolean(weddingDate && weddingSido && weddingSigungu),
-    [weddingDate, weddingSido, weddingSigungu]
+    () => Boolean(zipcode && address && detailAddress),
+    [zipcode, address, detailAddress]
   );
+
+  useEffect(() => {
+    // 이미 로드되어 있으면 바로 사용
+    if (window.daum?.Postcode) {
+      setPostcodeReady(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src =
+      "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+    script.async = true;
+    script.onload = () => setPostcodeReady(true);
+    script.onerror = () => console.error("[daum postcode] load failed");
+    document.body.appendChild(script);
+
+    return () => {
+      // 다른 화면에서도 사용할 수 있으므로 제거는 선택.
+      // 필요 시 아래 주석을 해제하세요.
+      // document.body.removeChild(script);
+    };
+  }, []);
+
+  const foldDaumPostcode = useCallback(() => {
+    setIsPostcodeOpen(false);
+  }, []);
+
+  const openPostcode = useCallback(() => {
+    if (!postcodeReady) return;
+    setIsPostcodeOpen(true);
+  }, [postcodeReady]);
+
+  useEffect(() => {
+    if (!isPostcodeOpen || !postcodeReady || !wrapRef.current) return;
+
+    const element_wrap = wrapRef.current;
+    element_wrap.innerHTML = "";
+
+    // eslint-disable-next-line new-cap
+    new window.daum.Postcode({
+      oncomplete: (data: any) => {
+        // 대표주소 안전 폴백
+        const addressText =
+          (data.roadAddress && data.roadAddress.trim()) ||
+          (data.jibunAddress && data.jibunAddress.trim()) ||
+          (data.autoRoadAddress && data.autoRoadAddress.trim()) ||
+          (data.autoJibunAddress && data.autoJibunAddress.trim()) ||
+          (data.address && data.address.trim()) ||
+          "";
+
+        // 참고항목(동/건물명)
+        let extraAddr = "";
+        if (data.userSelectedType === "R") {
+          if (data.bname && /[동|로|가]$/g.test(data.bname)) {
+            extraAddr += data.bname;
+          }
+          if (data.buildingName && data.apartment === "Y") {
+            extraAddr += extraAddr
+              ? `, ${data.buildingName}`
+              : data.buildingName;
+          }
+          if (extraAddr) extraAddr = ` (${extraAddr})`;
+          setExtraAddress(extraAddr);
+        } else {
+          setExtraAddress("");
+        }
+
+        setZipcode(data.zonecode || "");
+        setAddress(addressText);
+        setIsPostcodeOpen(false);
+
+        // 상세주소 포커스
+        setTimeout(() => {
+          const input = document.getElementById(
+            idDetail
+          ) as HTMLInputElement | null;
+          input?.focus();
+        }, 0);
+      },
+      width: "100%",
+      height: "100%",
+    }).embed(element_wrap);
+  }, [isPostcodeOpen, postcodeReady, idDetail]);
 
   const handleNext = () => {
     if (!canNext) return;
-    onNext?.({
-      weddingDate,
-      weddingSido,
-      weddingSigungu,
+
+    onNext?.({ zipcode, address, detailAddress, extraAddress });
+    nav("/sign-up/step4", {
+      state: {
+        phone, // step1의 전화번호
+        zipcode,
+        address,
+        detailAddress,
+        extraAddress,
+      },
     });
-    nav("/sign-up/step4");
   };
-
-  const handleSkip = () => {
-    onSkip?.();
-    nav("/sign-up/step4");
-  };
-
-  // 오늘 이전 날짜 선택 방지
-  const today = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const minDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(
-    today.getDate()
-  )}`;
 
   return (
     <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-20">
@@ -79,20 +164,20 @@ export default function WebWeddingInfoView({
           </span>
 
           <h1 className="font-allimjang text-[44px] md:text-[56px] leading-[1.05] mt-3 tracking-[-0.02em]">
-            <span className="text-[#FF4646]">예식 정보</span>를 입력해 주세요
+            <span className="text-[#FF4646]">주소</span>만 정확히 입력해 주세요
           </h1>
 
           <p className="font-pretendard text-lg md:text-2xl text-gray-700 mt-4">
-            예식일과 지역을 알려주시면{" "}
-            <span className="font-semibold text-gray-900">맞춤 추천</span>에
-            도움이 돼요.
+            정확한 주소 입력은{" "}
+            <span className="font-semibold text-gray-900">맞춤 추천</span>의
+            첫걸음이에요.
           </p>
 
           <ul className="mt-8 space-y-3 text-gray-700">
             {[
-              "예식일 선택",
-              "시/도 선택 후 시/군/구 자동 활성화",
-              "모바일·웹 동일 UX",
+              "도로명/지번 모두 검색 가능",
+              "건물명 자동 참고항목 입력",
+              "모바일·웹 동일 UI",
             ].map((t) => (
               <li key={t} className="flex items-start gap-3">
                 <span className="mt-[6px] h-2 w-2 rounded-full bg-[#FF4646]" />
@@ -131,95 +216,89 @@ export default function WebWeddingInfoView({
               {/* 진행도 */}
               <div className="mt-5">
                 <div className="flex items-center justify-between text-sm text-[#1E2124]">
-                  <span>3 / 3</span>
-                  <span className="text-gray-500">예식 정보 입력</span>
+                  <span>2 / 3</span>
+                  <span className="text-gray-500">주소 입력</span>
                 </div>
                 <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full w-full bg-[#FF4646] rounded-full" />
+                  <div className="h-full w-2/3 bg-[#FF4646] rounded-full" />
                 </div>
               </div>
 
               {/* 타이틀 */}
               <h3 className="mt-6 mb-6 text-[26px] md:text-[28px] leading-[38px] font-bold tracking-[-0.3px] text-[#1E2124]">
-                예식 정보를
+                회원님의
                 <br />
-                입력해 주세요
+                주소를 알려주세요
               </h3>
 
-              {/* 폼 필드 */}
-              <div className="space-y-4">
-                {/* 예식일 */}
-                <div>
-                  <label className="block text-[12px] text-[#666] mb-[6px]">
-                    예식일
-                  </label>
+              {/* 우편번호 + 우편번호 찾기 */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1">
                   <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
                     <input
-                      type="date"
-                      value={weddingDate}
-                      onChange={(e) => setWeddingDate(e.target.value)}
-                      min={minDate}
-                      className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] focus:outline-none bg-transparent"
+                      id={idZipcode}
+                      name="zipcode"
+                      type="text"
+                      readOnly
+                      value={zipcode}
+                      placeholder="우편번호"
+                      autoComplete="postal-code"
+                      className="w-full h-full px-3 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
                     />
                   </div>
                 </div>
+                <div className="col-span-2">
+                  <button
+                    type="button"
+                    onClick={openPostcode}
+                    className="w-full h-[54px] rounded-[12px] border border-[#404040] text-[#404040] text-[14px] font-medium hover:bg-black/5 transition"
+                  >
+                    우편번호 찾기
+                  </button>
+                </div>
+              </div>
 
-                {/* 예식 지역 */}
-                <div>
-                  <label className="block text-[12px] text-[#666] mb-[6px]">
-                    예식 지역
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* 시/도 */}
-                    <div className="relative">
-                      <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white px-4">
-                        <select
-                          value={weddingSido}
-                          onChange={(e) => {
-                            setWeddingSido(e.target.value);
-                            setWeddingSigungu("");
-                          }}
-                          className="w-full h-full outline-none bg-transparent text-[14px] text-[#1E2124]"
-                        >
-                          <option value="">시/도</option>
-                          {PROVINCES.map((p) => (
-                            <option key={p} value={p}>
-                              {p}
-                            </option>
-                          ))}
-                        </select>
-                        <Icon
-                          icon="solar:alt-arrow-down-linear"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-black pointer-events-none"
-                        />
-                      </div>
-                    </div>
+              {/* 주소 / 상세주소 / 참고항목 */}
+              <div className="mt-4 space-y-4">
+                {/* 주소(대표주소): 읽기 전용 */}
+                <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
+                  <input
+                    id={idAddress}
+                    name="address"
+                    type="text"
+                    readOnly
+                    value={address}
+                    placeholder="예) 연희동 132, 도산대로 33"
+                    autoComplete="street-address"
+                    className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
+                  />
+                </div>
 
-                    {/* 시/군/구 */}
-                    <div className="relative">
-                      <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white px-4">
-                        <select
-                          value={weddingSigungu}
-                          onChange={(e) => setWeddingSigungu(e.target.value)}
-                          disabled={!weddingSido}
-                          className="w-full h-full outline-none bg-transparent text-[14px] text-[#1E2124] disabled:text-[#9D9D9D]"
-                        >
-                          <option value="">
-                            {weddingSido ? "시/군/구" : "시/도를 먼저 선택"}
-                          </option>
-                          {districtOptions.map((d) => (
-                            <option key={d} value={d}>
-                              {d}
-                            </option>
-                          ))}
-                        </select>
-                        <Icon
-                          icon="solar:alt-arrow-down-linear"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-black pointer-events-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                {/* 상세주소 */}
+                <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
+                  <input
+                    id={idDetail}
+                    name="detailAddress"
+                    type="text"
+                    value={detailAddress}
+                    onChange={(e) => setDetailAddress(e.target.value)}
+                    placeholder="상세주소"
+                    autoComplete="address-line2"
+                    className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
+                  />
+                </div>
+
+                {/* 참고항목 */}
+                <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
+                  <input
+                    id={idExtra}
+                    name="extraAddress"
+                    type="text"
+                    readOnly
+                    value={extraAddress}
+                    placeholder="참고항목"
+                    className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
+                  />
                 </div>
               </div>
 
@@ -237,19 +316,52 @@ export default function WebWeddingInfoView({
                 >
                   다음
                 </button>
-
-                <button
-                  type="button"
-                  onClick={handleSkip}
-                  className="w-full sm:w-[220px] h-[56px] rounded-[12px] text-[#999] text-[14px] font-semibold border border-transparent hover:border-gray-200"
-                >
-                  나중에 하기
-                </button>
               </div>
+
+              {/* 약관 안내 */}
+              <p className="mt-5 text-[12px] text-gray-500 text-center">
+                계속 진행하면{" "}
+                <a
+                  href="#"
+                  className="underline underline-offset-2 hover:text-[#FF4646]"
+                >
+                  서비스 이용약관
+                </a>
+                과{" "}
+                <a
+                  href="#"
+                  className="underline underline-offset-2 hover:text-[#FF4646]"
+                >
+                  개인정보처리방침
+                </a>
+                에 동의한 것으로 간주됩니다.
+              </p>
             </div>
           </div>
         </section>
       </main>
+
+      {/* 카카오 우편번호 모달 */}
+      {isPostcodeOpen && (
+        <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-sm">
+          <div className="h-[60px] flex items-center justify-end px-4 border-b border-[#E5E7EB] bg-white relative z-50">
+            <button
+              onClick={foldDaumPostcode}
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/5"
+              aria-label="닫기"
+            >
+              <Icon
+                icon="solar:close-circle-line-duotone"
+                className="w-7 h-7 text-[#1E2124]"
+              />
+            </button>
+          </div>
+          <div
+            ref={wrapRef}
+            className="absolute left-0 right-0 top-[60px] bottom-0 z-40"
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import MyPageHeader from "../../../components/MyPageHeader";
 
 interface MobileWeddingInfoViewProps {
   onBack?: () => void;
   onNext?: (payload: {
-    weddingDate: string; // ✅ 예식일(YYYY-MM-DD)
-    weddingSido: string; // ✅ 시/도
-    weddingSigungu: string; // ✅ 시/군/구
+    weddingDate: string;
+    weddingSido: string;
+    weddingSigungu: string;
   }) => void;
   onSkip?: () => void;
   title?: string;
@@ -34,6 +34,8 @@ export default function MobileView({
   const [weddingSigungu, setWeddingSigungu] = useState("");
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const prevState = (location.state as any) || {}; // { phone, zipcode, address, detailAddress, extraAddress, ... }
 
   const districtOptions = useMemo(
     () =>
@@ -48,17 +50,26 @@ export default function MobileView({
 
   const handleNext = () => {
     if (!isComplete) return;
-    onNext?.({
-      weddingDate,
-      weddingSido,
-      weddingSigungu,
+    onNext?.({ weddingDate, weddingSido, weddingSigungu });
+
+    navigate("/sign-up/step4", {
+      state: {
+        ...prevState,
+        weddingDate,
+        weddingSido,
+        weddingSigungu,
+      },
     });
-    navigate("/sign-up/step4");
   };
 
   const handleSkip = () => {
     onSkip?.();
-    navigate("/sign-up/step4");
+    // [변경] 스킵 시에도 이전 상태는 유지해서 전달
+    navigate("/sign-up/step4", {
+      state: {
+        ...prevState,
+      },
+    });
   };
 
   // 오늘 이전 날짜 선택 방지(선택 사항)
@@ -75,7 +86,6 @@ export default function MobileView({
 
       {/* 본문 */}
       <div className="absolute left-1/2 -translate-x-1/2 top-[143px] w-[350px] pb-[140px]">
-        {/* ↑ 스크롤 시 버튼 영역과 겹치지 않게 여유 하단패딩 추가 */}
         <div className="text-[14px] leading-[22px] -tracking-[0.2px] text-[#1E2124] mb-[8px]">
           3 / 3
         </div>
@@ -156,7 +166,7 @@ export default function MobileView({
         </div>
       </div>
 
-      {/* 하단 버튼 영역 */}
+      {/* 하단 버튼 */}
       <div className="fixed left-1/2 -translate-x-1/2 bottom-[80px] w-[390px] px-[20px] pb-[8px] z-50 pointer-events-none">
         <div className="pointer-events-auto flex flex-col gap-3 py-3">
           <button

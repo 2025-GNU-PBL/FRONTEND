@@ -1,14 +1,8 @@
-// src/store/thunkFunctions.ts
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { isAxiosError } from "axios";
 import api from "../lib/api/axios";
 import type { RootState } from "./store";
 
-/* =========================================================================
- * 공통 유틸
- * ========================================================================= */
-
-// 010-1234-5678 포맷으로 정규화
 const normalizePhone = (raw: string) => {
   const d = (raw || "").replace(/\D/g, "");
   if (d.length === 11 && d.startsWith("010")) {
@@ -17,7 +11,6 @@ const normalizePhone = (raw: string) => {
   return raw || "";
 };
 
-// ""(빈문자) -> null 로 바꿔 백엔드 DTO와 깔끔히 맞추기
 const toNullIfEmpty = <T extends Record<string, any>>(obj: T): T => {
   const out: Record<string, any> = {};
   Object.entries(obj).forEach(([k, v]) => {
@@ -27,15 +20,10 @@ const toNullIfEmpty = <T extends Record<string, any>>(obj: T): T => {
   return out as T;
 };
 
-// YYYY-MM-DD 형식 검증 (맞으면 그대로, 아니면 null)
 const safeDate = (d?: string | null) => {
   if (!d) return null;
   return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
 };
-
-/* =========================================================================
- * 회원 계정(기존)
- * ========================================================================= */
 
 type RegisterBody = {
   name: string;
@@ -59,12 +47,6 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-/* =========================================================================
- * 소셜 로그인
- *  - 백엔드 스펙: { code, socialProvider: "KAKAO"|"NAVER", userRole, (state?) }
- *  - 일부 환경에서 state 검증이 필요하므로 '있으면 포함' 방식
- * ========================================================================= */
-
 type SocialLoginPayload = {
   code: string;
   role: "CUSTOMER" | "OWNER";
@@ -82,11 +64,10 @@ export const kakaoLoginUser = createAsyncThunk(
         ...(state != null ? { state } : {}),
       };
 
-      // 디버깅
       console.log("[kakaoLoginUser] request body:", body);
 
       const res = await api.post("/api/v1/auth/login", body);
-      return res.data; // { id, email, name, role, accessToken? ... }
+      return res.data;
     } catch (error) {
       if (isAxiosError(error)) {
         console.error(
@@ -134,10 +115,6 @@ export const naverLoginUser = createAsyncThunk(
   }
 );
 
-/* =========================================================================
- * 로그아웃 / 인증 유저
- * ========================================================================= */
-
 export const logoutUser = createAsyncThunk(
   "user/logoutUser",
   async (_, thunkAPI) => {
@@ -148,7 +125,6 @@ export const logoutUser = createAsyncThunk(
       if (isAxiosError(error)) {
         console.warn("logoutUser server error:", error.response?.status);
       }
-      // 서버 실패여도 클라에서는 성공 처리
       return thunkAPI.fulfillWithValue({ server: false });
     }
   }
@@ -158,7 +134,7 @@ export const authUser = createAsyncThunk(
   "user/authUser",
   async (_, thunkAPI) => {
     try {
-      const res = await api.get("/api/v1/auth/me");
+      const res = await api.get("/api/v1/auth/customer");
       return res.data;
     } catch (error) {
       if (isAxiosError(error)) {
@@ -174,43 +150,72 @@ export const authUser = createAsyncThunk(
   }
 );
 
-const CUSTOMER_CREATE_ENDPOINT = "/api/v1/customers";
+type SignupValues = {
+  phone?: string;
+  address?: string;
+  zipCode?: string;
+  roadAddress?: string;
+  jibunAddress?: string;
+  detailAddress?: string;
+  sido?: string; // 없어질 예정
+  sigungu?: string; // 없어질 예정
+  dong?: string; // 없어질 예정
+  buildingName?: string;
+  weddingSido?: string;
+  weddingSigungu?: string;
+  weddingDate?: string | null;
+};
 
 export const submitSignup = createAsyncThunk<
-  { ok: true },
-  void,
+  { ok: true } & Record<string, any>,
+  Partial<SignupValues> | void,
   { state: RootState }
->("signup/submitSignup", async (_, { getState, rejectWithValue }) => {
+>("signup/submitSignup", async (maybeValues, { getState, rejectWithValue }) => {
   try {
     const state = getState();
-    const d = state.signup.values;
+    const fromState = (state as any)?.signup?.values as
+      | Partial<SignupValues>
+      | undefined;
+    //  전달된 값이 있으면 그걸 사용, 없으면 Redux state 사용
+    const d: Partial<SignupValues> =
+      (maybeValues && Object.keys(maybeValues).length > 0
+        ? maybeValues
+        : fromState) || {};
+
+    if (!d || Object.keys(d).length === 0) {
+      return rejectWithValue("가입 정보가 비어 있습니다.");
+    }
 
     const payload = toNullIfEmpty({
-      phoneNumber: normalizePhone(d.phone),
+      phoneNumber: normalizePhone(d.phone || ""),
 
-      address: d.address,
-      zipCode: d.zipCode,
-      roadAddress: d.roadAddress,
-      jibunAddress: d.jibunAddress,
-      detailAddress: d.detailAddress,
+      address: d.address || "",
+      zipCode: d.zipCode || "",
+      roadAddress: d.roadAddress || "",
+      jibunAddress: d.jibunAddress || "",
+      detailAddress: d.detailAddress || "",
 
-      sido: d.sido,
-      sigungu: d.sigungu,
-      dong: d.dong,
-      buildingName: d.buildingName,
+      sido: d.sido || "", // 없어질 예정
+      sigungu: d.sigungu || "", // 없어질 예정
+      dong: d.dong || "", // 없어질 예정
+      buildingName: d.buildingName || "",
 
-      weddingSido: d.weddingSido,
-      weddingSigungu: d.weddingSigungu,
-      weddingDate: safeDate(d.weddingDate),
+      weddingSido: d.weddingSido || "",
+      weddingSigungu: d.weddingSigungu || "",
+      weddingDate: safeDate(d.weddingDate ?? undefined),
+
+      age: 18, // 없어질 예정
     });
 
-    // 디버깅
     console.log("[submitSignup] payload:", payload);
 
-    const res = await api.post(CUSTOMER_CREATE_ENDPOINT, payload);
+    const res = await api.post("/api/v1/customer", payload);
+
+    console.log("[submitSignup] response:", res.data);
     return { ok: true, ...res.data };
   } catch (error) {
     if (isAxiosError(error)) {
+      console.error("[submitSignup] axios error:", error.response?.data);
       return rejectWithValue(error.response?.data || error.message);
     }
     return rejectWithValue("회원가입 정보 제출 실패");

@@ -1,3 +1,4 @@
+// src/pages/SignupPage/step2/WebView.tsx
 import React, {
   useCallback,
   useEffect,
@@ -6,7 +7,7 @@ import React, {
   useState,
   useId,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
 declare global {
@@ -27,6 +28,9 @@ interface WebViewProps {
 
 export default function WebView({ onBack, onNext }: WebViewProps) {
   const nav = useNavigate();
+  const location = useLocation();
+  const { phone } = (location.state as { phone?: string }) || {};
+
   const [zipcode, setZipcode] = useState("");
   const [address, setAddress] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
@@ -49,18 +53,24 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
   );
 
   useEffect(() => {
+    // 이미 로드되어 있으면 바로 사용
     if (window.daum?.Postcode) {
       setPostcodeReady(true);
       return;
     }
+
     const script = document.createElement("script");
     script.src =
-      "//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+      "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
     script.async = true;
     script.onload = () => setPostcodeReady(true);
+    script.onerror = () => console.error("[daum postcode] load failed");
     document.body.appendChild(script);
+
     return () => {
-      document.body.removeChild(script);
+      // 다른 화면에서도 사용할 수 있으므로 제거는 선택.
+      // 필요 시 아래 주석을 해제하세요.
+      // document.body.removeChild(script);
     };
   }, []);
 
@@ -82,7 +92,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
     // eslint-disable-next-line new-cap
     new window.daum.Postcode({
       oncomplete: (data: any) => {
-        // 1) 대표주소: 여러 필드로 안전하게 폴백
+        // 대표주소 안전 폴백
         const addressText =
           (data.roadAddress && data.roadAddress.trim()) ||
           (data.jibunAddress && data.jibunAddress.trim()) ||
@@ -91,7 +101,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
           (data.address && data.address.trim()) ||
           "";
 
-        // 2) 참고항목(동/건물명)
+        // 참고항목(동/건물명)
         let extraAddr = "";
         if (data.userSelectedType === "R") {
           if (data.bname && /[동|로|가]$/g.test(data.bname)) {
@@ -112,7 +122,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
         setAddress(addressText);
         setIsPostcodeOpen(false);
 
-        // 상세주소로 포커스
+        // 상세주소 포커스
         setTimeout(() => {
           const input = document.getElementById(
             idDetail
@@ -127,8 +137,18 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
 
   const handleNext = () => {
     if (!canNext) return;
+
     onNext?.({ zipcode, address, detailAddress, extraAddress });
-    nav("/sign-up/step3");
+
+    nav("/sign-up/step3", {
+      state: {
+        phone,
+        zipcode,
+        address,
+        detailAddress,
+        extraAddress,
+      },
+    });
   };
 
   return (
@@ -282,42 +302,42 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
                   />
                 </div>
               </div>
-            </div>
 
-            {/* 액션 바 */}
-            <div className="mt-9 flex flex-col sm:flex-row gap-3 sm:justify-end">
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={!canNext}
-                className={`w-full sm:w-[220px] h-[56px] rounded-[12px] text-white text-[16px] font-semibold transition-transform active:scale-[0.99] ${
-                  canNext
-                    ? "bg-[#FF4646] hover:brightness-95"
-                    : "bg-[#D9D9D9] cursor-not-allowed"
-                }`}
-              >
-                다음
-              </button>
-            </div>
+              {/* 액션 바 */}
+              <div className="mt-9 flex flex-col sm:flex-row gap-3 sm:justify-end">
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={!canNext}
+                  className={`w-full sm:w-[220px] h-[56px] rounded-[12px] text-white text-[16px] font-semibold transition-transform active:scale-[0.99] ${
+                    canNext
+                      ? "bg-[#FF4646] hover:brightness-95"
+                      : "bg-[#D9D9D9] cursor-not-allowed"
+                  }`}
+                >
+                  다음
+                </button>
+              </div>
 
-            {/* 약관 안내 */}
-            <p className="mt-5 text-[12px] text-gray-500 text-center">
-              계속 진행하면{" "}
-              <a
-                href="#"
-                className="underline underline-offset-2 hover:text-[#FF4646]"
-              >
-                서비스 이용약관
-              </a>
-              과{" "}
-              <a
-                href="#"
-                className="underline underline-offset-2 hover:text-[#FF4646]"
-              >
-                개인정보처리방침
-              </a>
-              에 동의한 것으로 간주됩니다.
-            </p>
+              {/* 약관 안내 */}
+              <p className="mt-5 text-[12px] text-gray-500 text-center">
+                계속 진행하면{" "}
+                <a
+                  href="#"
+                  className="underline underline-offset-2 hover:text-[#FF4646]"
+                >
+                  서비스 이용약관
+                </a>
+                과{" "}
+                <a
+                  href="#"
+                  className="underline underline-offset-2 hover:text-[#FF4646]"
+                >
+                  개인정보처리방침
+                </a>
+                에 동의한 것으로 간주됩니다.
+              </p>
+            </div>
           </div>
         </section>
       </main>

@@ -1,8 +1,12 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+// src/pages/SignupPage/complete/MobileView.tsx
+import React, { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import type { AppDispatch } from "../../../store/store";
+import { submitSignup } from "../../../store/thunkFunctions";
 import signupImg from "../../../assets/images/signup.png";
+
 interface MobileCompleteViewProps {
-  /** 문구 커스터마이즈가 필요하면 넘겨주세요 */
   title?: string;
   descriptionLine1?: string;
   descriptionLine2?: string;
@@ -14,9 +18,70 @@ export default function MobileView({
   descriptionLine2 = "웨딩픽으로 간편하게 해결하세요",
 }: MobileCompleteViewProps) {
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleStart = () => {
-    navigate("/");
+  const location = useLocation();
+  const {
+    phone,
+    zipcode,
+    address,
+    detailAddress,
+    extraAddress,
+    weddingDate,
+    weddingSido,
+    weddingSigungu,
+  } = (location.state as any) || {};
+
+  const formValues = {
+    phone,
+    // 기본 주소 필드
+    address, // 일반 주소
+    zipCode: zipcode, // 우편번호
+    roadAddress: address, // 도로명 주소로 동일 전달 (지번이 없으므로 동일 매핑)
+    jibunAddress: "", // 수집 못했으면 빈값
+    detailAddress, // 상세주소
+    // 추가 정보
+    sido: "", // 없으면 빈값
+    sigungu: "",
+    dong: "",
+    buildingName: (extraAddress || "").replace(/[()]/g, ""),
+    // 예식 정보
+    weddingSido,
+    weddingSigungu,
+    weddingDate, // "YYYY-MM-DD"
+  };
+
+  const handleStart = async () => {
+    if (isSubmitting) return;
+
+    // ✅ 필수값 가드(전화번호/주소/상세주소)
+    if (!phone || !address || !detailAddress) {
+      alert(
+        "전화번호/주소/상세주소가 비어 있습니다. 이전 단계 입력을 확인해 주세요."
+      );
+      return;
+    }
+
+    // ✅ 실제로 어떤 값이 백엔드로 가는지 눈으로 확인
+    console.log("[complete] location.state:", location.state);
+    console.log("[complete] formValues:", formValues);
+
+    setIsSubmitting(true);
+    try {
+      // ✅ payload를 인자로 넘겨 호출 (수정된 thunk가 받아 사용)
+      await dispatch(submitSignup(formValues as any)).unwrap();
+      navigate("/");
+    } catch (err: any) {
+      console.error("[submitSignup] error:", err);
+      alert(
+        typeof err === "string"
+          ? err
+          : err?.message || "회원가입 제출에 실패했습니다."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -54,9 +119,12 @@ export default function MobileView({
         <button
           type="button"
           onClick={handleStart}
-          className="w-[350px] h-[56px] mx-auto rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold active:scale-[0.99] transition"
+          disabled={isSubmitting}
+          className={`w-[350px] h-[56px] mx-auto rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold active:scale-[0.99] transition ${
+            isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+          }`}
         >
-          시작하기
+          {isSubmitting ? "처리 중..." : "시작하기"}
         </button>
       </div>
     </div>
