@@ -174,9 +174,124 @@ const Card: React.FC<CardProps> = ({ product, liked, onToggleLike }) => (
   </motion.div>
 );
 
-/* ========================= 메인 뷰 ========================= */
+/* ========================= 공통 상수/유틸(컴포넌트 밖으로 이동) ========================= */
 
 const SIZE = 6; // 사이즈 고정(클로저/의존성 꼬임 방지)
+
+/** 파싱 결과 타입 (컴포넌트 외부로 이동) */
+type ParsedResult = {
+  list: Product[];
+  totalElements: number | null;
+  pageNumberFromServer: number | null;
+  hasMore: boolean;
+};
+
+/** 응답 파싱 (컴포넌트 외부로 이동) */
+const parseResponse = (resp: unknown, currentPage: number): ParsedResult => {
+  // PagedResponse 케이스
+  if (isPagedResponse(resp)) {
+    const content = resp.content;
+    const meta = resp.page;
+    const total = meta?.totalElements ?? null;
+    const totalPages = meta?.totalPages ?? null;
+
+    return {
+      list: content,
+      totalElements: total,
+      pageNumberFromServer:
+        typeof meta?.number === "number" ? meta.number : null,
+      hasMore:
+        typeof totalPages === "number"
+          ? currentPage + 1 < totalPages
+          : content.length === SIZE,
+    };
+  }
+
+  // { content, page } 형태이지만 타입 느슨한 케이스
+  if (resp && typeof resp === "object") {
+    const obj = resp as Record<string, unknown>;
+
+    const maybeContent = obj.content;
+    if (isProductArray(maybeContent)) {
+      const meta = obj.page;
+      const metaOk = isPageMeta(meta) ? meta : undefined;
+      const total = metaOk?.totalElements ?? null;
+      const totalPages = metaOk?.totalPages ?? null;
+
+      return {
+        list: maybeContent,
+        totalElements: total,
+        pageNumberFromServer:
+          typeof metaOk?.number === "number" ? metaOk.number : null,
+        hasMore:
+          typeof totalPages === "number"
+            ? currentPage + 1 < totalPages
+            : maybeContent.length === SIZE,
+      };
+    }
+
+    // 흔한 래핑: { data: ... }
+    if ("data" in obj) {
+      return parseResponse(obj.data, currentPage);
+    }
+  }
+
+  // 배열 응답 케이스
+  if (isProductArray(resp)) {
+    return {
+      list: resp,
+      totalElements: null,
+      pageNumberFromServer: null,
+      hasMore: resp.length === SIZE,
+    };
+  }
+
+  // 알 수 없는 응답
+  return {
+    list: [],
+    totalElements: null,
+    pageNumberFromServer: null,
+    hasMore: false,
+  };
+};
+
+/** 요청 유틸: 0-base 기본, 필요 시 1-base 재시도 (컴포넌트 외부로 이동) */
+const requestPage = async (
+  nextPage: number,
+  forceOneBased = false
+): Promise<ParsedResult> => {
+  const page0 = forceOneBased ? nextPage + 1 : nextPage;
+
+  const params0 = {
+    page: page0, // 일부 서버는 page(0 or 1-base)
+    number: page0, // 일부 서버는 number 사용
+    pageNumber: page0, // 일부 서버는 pageNumber 사용
+    pageNo: nextPage + 1, // 일부 서버는 pageNo(1-base) 사용
+    offset: page0 * SIZE, // 일부 서버는 offset 사용
+    size: SIZE,
+    sort: "createdAt,desc",
+  };
+
+  // 디버그 로그는 유지(기능 동일)
+  console.log(
+    "[fetchPage] 호출 파라미터:",
+    params0,
+    "(forceOneBased:",
+    forceOneBased,
+    ")"
+  );
+
+  // 응답 타입은 알 수 없으므로 unknown으로 안전 수신
+  const response = await api.get<unknown>("/api/v1/wedding-hall", {
+    params: params0,
+  });
+
+  const raw = (response as { data?: unknown })?.data ?? response;
+
+  return parseResponse(raw, nextPage);
+};
+
+/* ========================= 메인 뷰 ========================= */
 
 const MobileView: React.FC = () => {
   const navigate = useNavigate();
@@ -226,122 +341,8 @@ const MobileView: React.FC = () => {
     };
   }, [isMenuOpen]);
 
-  /* ===== 응답 파싱 ===== */
-  type ParsedResult = {
-    list: Product[];
-    totalElements: number | null;
-    pageNumberFromServer: number | null;
-    hasMore: boolean;
-  };
-
-  const parseResponse = (resp: unknown, currentPage: number): ParsedResult => {
-    // PagedResponse 케이스
-    if (isPagedResponse(resp)) {
-      const content = resp.content;
-      const meta = resp.page;
-      const total = meta?.totalElements ?? null;
-      const totalPages = meta?.totalPages ?? null;
-
-      return {
-        list: content,
-        totalElements: total,
-        pageNumberFromServer:
-          typeof meta?.number === "number" ? meta.number : null,
-        hasMore:
-          typeof totalPages === "number"
-            ? currentPage + 1 < totalPages
-            : content.length === SIZE,
-      };
-    }
-
-    // { content, page } 형태이지만 타입 느슨한 케이스
-    if (resp && typeof resp === "object") {
-      const obj = resp as Record<string, unknown>;
-
-      const maybeContent = obj.content;
-      if (isProductArray(maybeContent)) {
-        const meta = obj.page;
-        const metaOk = isPageMeta(meta) ? meta : undefined;
-        const total = metaOk?.totalElements ?? null;
-        const totalPages = metaOk?.totalPages ?? null;
-
-        return {
-          list: maybeContent,
-          totalElements: total,
-          pageNumberFromServer:
-            typeof metaOk?.number === "number" ? metaOk.number : null,
-          hasMore:
-            typeof totalPages === "number"
-              ? currentPage + 1 < totalPages
-              : maybeContent.length === SIZE,
-        };
-      }
-
-      // 흔한 래핑: { data: ... }
-      if ("data" in obj) {
-        return parseResponse(obj.data, currentPage);
-      }
-    }
-
-    // 배열 응답 케이스
-    if (isProductArray(resp)) {
-      return {
-        list: resp,
-        totalElements: null,
-        pageNumberFromServer: null,
-        hasMore: resp.length === SIZE,
-      };
-    }
-
-    // 알 수 없는 응답
-    return {
-      list: [],
-      totalElements: null,
-      pageNumberFromServer: null,
-      hasMore: false,
-    };
-  };
-
-  /* ===== 요청 유틸: 0-base 기본, 필요 시 1-base 재시도 ===== */
-  const requestPage = async (
-    nextPage: number,
-    forceOneBased = false
-  ): Promise<ParsedResult> => {
-    const page0 = forceOneBased ? nextPage + 1 : nextPage;
-
-    const params0 = {
-      page: page0, // 일부 서버는 page(0 or 1-base)
-      number: page0, // 일부 서버는 number 사용
-      pageNumber: page0, // 일부 서버는 pageNumber 사용
-      pageNo: nextPage + 1, // 일부 서버는 pageNo(1-base) 사용
-      offset: page0 * SIZE, // 일부 서버는 offset 사용
-      size: SIZE,
-      sort: "createdAt,desc",
-    };
-
-    // 디버그 로그는 유지(기능 동일)
-    console.log(
-      "[fetchPage] 호출 파라미터:",
-      params0,
-      "(forceOneBased:",
-      forceOneBased,
-      ")"
-    );
-
-    // 응답 타입은 알 수 없으므로 unknown으로 안전 수신
-    const response = await api.get<unknown>("/api/v1/wedding-hall", {
-      params: params0,
-    });
-
-    // 서버 케이스: data 아래에 실제 페이로드가 있거나, 바로 data가 배열/객체일 수 있음
-    const raw =
-      // axios의 일반 구조: { data: ... }
-      (response as { data?: unknown })?.data ?? response;
-
-    return parseResponse(raw, nextPage);
-  };
-
-  /* ===== 실제 페이지 패치 ===== */
+  /* ===== 실제 페이지 패치 =====
+     requestPage가 컴포넌트 밖으로 나가서, 의존성 배열에 포함할 필요가 없어졌습니다. */
   const fetchPage = useCallback(
     async (nextPage: number) => {
       if (fetchingLockRef.current || !hasMore) return;
