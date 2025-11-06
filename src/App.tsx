@@ -14,7 +14,6 @@ import ChatPage from "./pages/ChatPage/ChatPage";
 import ScrollToTop from "./components/ScrollToTop";
 import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain";
 import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
-import SignUpPage from "./pages/SignupPage/step1/SignupPage";
 import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPage";
 import MainPage from "./pages/MainPage/MainPage";
 import StudioPage from "./pages/StudioPage/StudioPage";
@@ -35,6 +34,11 @@ import SelectRolePage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
 import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
 import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
+import QuotationPage from "./pages/QuotationPage/QuotationPage";
+import CalendarPage from "./pages/CalendarPage/CalendarPage";
+import SignupPage from "./pages/SignupPage/step1/SignupPage";
+import { useEffect } from "react";
+import { authUser } from "./store/thunkFunctions";
 
 function Layout() {
   const location = useLocation();
@@ -80,7 +84,7 @@ const App = () => {
   const isAuth = useAppSelector((s) => s.user.isAuth);
   const rehydrated = useAppSelector((s: any) => s._persist?.rehydrated);
 
-  // ✅ 앱이 복원되고 로그인된 상태라면, 유저 프로필 동기화
+  // 앱이 복원되고 로그인된 상태라면, 유저 프로필 동기화
   useEffect(() => {
     if (rehydrated && isAuth) {
       dispatch(authUser());
@@ -120,10 +124,15 @@ const App = () => {
           <Route path="/log-in/owner" element={<OwnerLoginPage />} />
           <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
           <Route path="/auth/naver/callback" element={<NaverCallback />} />
-          <Route path="/sign-up" element={<SignUpPage />} />
-          <Route path="/users/:id/home" element={<SignUpPage />} />
         </Route>
 
+        <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
+        <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
+        <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
+        <Route path="/sign-up/step1" element={<SignupPage />} />
+        <Route path="/sign-up/step2" element={<JoinAddressPage />} />
+        <Route path="/sign-up/step3" element={<WeddingInfoPage />} />
+        <Route path="/sign-up/step4" element={<SignupCompletePage />} />
       </Route>
     </Routes>
   );

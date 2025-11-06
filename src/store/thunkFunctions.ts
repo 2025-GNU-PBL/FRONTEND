@@ -133,7 +133,7 @@ export const authUser = createAsyncThunk(
   "user/authUser",
   async (_, thunkAPI) => {
     try {
-      const res = await api.get("/api/v1/auth/customer");
+      const res = await api.get("/api/v1/customer");
       return res.data;
     } catch (error) {
       if (isAxiosError(error)) {
@@ -144,7 +144,7 @@ export const authUser = createAsyncThunk(
           error.response?.data || "인증 정보 확인 실패"
         );
       }
-      return thunkAPI.fulfillWithValue({ server: false }); // ✅ rejected 대신 fulfilled로 보냄
+      return thunkAPI.fulfillWithValue({ server: false });
     }
   }
 );
