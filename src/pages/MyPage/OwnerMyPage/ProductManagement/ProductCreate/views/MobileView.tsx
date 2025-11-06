@@ -5,28 +5,26 @@ import api from "../../../../../../lib/api/axios";
 
 /**
  * 멀티파트 전송 규약
- * - 파일 파트: "images"  (여러 장이면 같은 key로 여러 번 append)
- * - JSON 파트: "request" (application/json Blob으로 전송)
- * - 전체 요청은 multipart/form-data (브라우저가 boundary 자동 지정)
- * - 이 폼에 존재하는 필드만 JSON에 매핑해서 전송
+ * - 파일 파트: "images" (key)
+ * - JSON 파트: "request" (key)
  */
 
 type ImageItem = { src: string; file?: File };
 
 type FormValues = {
-  vendorName: string; // 읽기 전용 표시, ownerName 로 전송(있으면)
-  address: string; // 읽기 전용 표시, address 로 전송(있으면)
+  vendorName: string; // 읽기 전용
+  address: string; // 읽기 전용
   category: string | null;
   name: string;
-  price: string; // 콤마 포함 → 숫자 변환
+  price: string;
   basicInfo: string; // availableTimes 로 전송
-  detail: string; // detail 로 전송
+  detail: string;
   images: ImageItem[];
 };
 
 const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"];
 
-// ✅ 서버 파트 키
+// ✅ 서버에서 요구하는 필드명
 const FILE_PART_KEY = "images";
 const JSON_PART_KEY = "request";
 
@@ -100,6 +98,8 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
   // 제출
   const onSubmit = async (values: FormValues) => {
     const priceNumber = Number(values.price.replace(/[^\d]/g, ""));
+
+    // 1) 유효성
     if (
       !values.category ||
       !values.name.trim() ||
@@ -111,59 +111,74 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
       return;
     }
 
-    // 1) JSON 파트(이 폼에서 존재하는 항목만 포함)
-    const body: Record<string, unknown> = {};
+    // 2) 엔드포인트 결정
+    let endpoint = "";
+    switch (values.category) {
+      case "웨딩홀":
+        endpoint = "/api/v1/wedding-hall";
+        break;
+      case "스튜디오":
+        endpoint = "/api/v1/studio"; // FIXME: API 엔드포인트 확인
+        break;
+      case "드레스":
+        endpoint = "/api/v1/dress"; // FIXME: API 엔드포인트 확인
+        break;
+      case "메이크업":
+        endpoint = "/api/v1/makeup"; // FIXME: API 엔드포인트 확인
+        break;
+      default:
+        alert("카테고리를 선택해주세요.");
+        return;
+    }
 
-    // 필수/핵심 매핑
-    body.name = values.name.trim();
-    body.price = priceNumber;
+    // 3) JSON 파트 생성
+    const body: Record<string, unknown> = {
+      name: values.name.trim(),
+      price: priceNumber,
+      detail: values.detail.trim(),
+      availableTimes: values.basicInfo.trim(), // "상품 기본 정보"
+      tags: [values.category],
+    };
     if (values.address?.trim()) body.address = values.address.trim();
-    body.detail = values.detail.trim();
-
-    // 추가 매핑
-    // "상품 기본 정보" -> availableTimes
-    body.availableTimes = values.basicInfo.trim();
-
-    // 업체명 -> ownerName (있으면)
     if (values.vendorName?.trim()) body.ownerName = values.vendorName.trim();
 
-    // 태그: 카테고리 1개만 전송
-    if (values.category) body.tags = [values.category];
-
-    // 필요 시 옵션/용량/지역 등은 추후 필드 추가 후 조건부 삽입
-    // body.region = "SEOUL";
-    // body.options = [{ name: "...", detail: "...", price: 0 }];
-
-    // JSON Blob 생성 (⚠️ Content-Type: application/json)
-    const jsonBlob = new Blob([JSON.stringify(body)], {
+    // ✅ JSON을 파일처럼 보내면서 Content-Type을 확실히 지정하고 파일명도 부여
+    // 일부 스택(Spring/Nest)에서 파일명이 있을 때 파트 인식이 더 안정적입니다.
+    const jsonFile = new File([JSON.stringify(body)], "request.json", {
       type: "application/json",
     });
 
-    // 2) FormData 만들고 JSON/파일 각각 별도 파트로 append
+    // 4) FormData 구성
     const formData = new FormData();
-
-    // (A) JSON 파트 (키: "request", content-type: application/json)
-    formData.append(JSON_PART_KEY, jsonBlob);
-
-    // (B) 파일 파트(여러 개, 키: "images")
-    values.images.forEach((img, idx) => {
+    formData.append(JSON_PART_KEY, jsonFile); // <- request 파트 (application/json)
+    values.images.forEach((img) => {
       if (img.file) {
-        // 파일명도 함께 전송(서버 로깅/정렬 시 유용)
-        formData.append(
-          FILE_PART_KEY,
-          img.file,
-          img.file.name || `image_${idx + 1}.jpg`
-        );
+        formData.append(FILE_PART_KEY, img.file, img.file.name); // <- images 파트
       }
     });
 
+    // (선택) 디버깅: 전송 직전 FormData 확인
+    // 주의: 실제 파일 본문은 안 보이고 [object File] 로 출력됩니다.
+    for (const [k, v] of formData.entries()) {
+      // eslint-disable-next-line no-console
+      console.log(
+        "FormData =>",
+        k,
+        v instanceof File ? `(File) ${v.name} | ${v.type} | ${v.size}B` : v
+      );
+    }
+
     try {
-      // ⚠️ Content-Type 수동 지정 금지: 브라우저가 boundary 포함해서 설정
-      const res = await api.post("/api/v1/wedding-hall", formData);
+      // ❗ 여기서 Content-Type 수동 지정하지 말 것! (boundary 자동 부착 필요)
+      const res = await api.post(endpoint, formData, {
+        // headers: { "Content-Type": "multipart/form-data" }, // <- 제거!
+        // 필요 시만 Accept 지정 (서버가 JSON 응답이라면 기본값으로도 충분)
+        // headers: { Accept: "application/json" },
+      });
+
       console.log("등록 성공:", res.data);
       alert("작성 완료!");
-      // 전송 성공 후 초기화가 필요하면 아래 주석 해제
-      // reset({ vendorName, address, category: null, name: "", price: "", basicInfo: "", detail: "", images: [] });
+      // TODO: 성공 시 페이지 이동 등
     } catch (err) {
       console.error("등록 실패:", err);
       alert("등록 중 오류가 발생했습니다.");
@@ -448,16 +463,6 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
           </div>
         </div>
       </div>
-
-      {/* 숨김 파일 입력(한 곳만 유지) */}
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        multiple
-        className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
-      />
     </div>
   );
 };

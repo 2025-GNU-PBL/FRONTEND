@@ -9,7 +9,6 @@ if (!API_BASE) {
   );
 }
 
-// 로그인/토큰 관련 엔드포인트들 (상단에서 먼저 선언)
 const AUTH_PATHS = [
   "/api/v1/auth/login",
   "/auth/login",
@@ -25,17 +24,30 @@ const isAuthPath = (url?: string | null) => {
 
 const api = axios.create({
   baseURL: API_BASE,
-  headers: { "Content-Type": "application/json" },
+  // ❌ 전역 Content-Type 지정하지 않습니다.
+  withCredentials: true, // 쿠키/세션 필요 없으면 제거해도 무방
 });
 
+// 요청 인터셉터
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (isAuthPath(config.url)) return config;
-
-  const token = localStorage.getItem("accessToken");
-  if (token) {
-    config.headers = config.headers ?? {};
-    config.headers.Authorization = `Bearer ${token}`;
+  // 토큰 주입
+  if (!isAuthPath(config.url)) {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      config.headers = config.headers ?? {};
+      (config.headers as any).Authorization = `Bearer ${token}`;
+    }
   }
+
+  // FormData면 Content-Type 제거 → 브라우저가 boundary 포함해 자동 설정
+  const data = (config as any).data;
+  if (typeof FormData !== "undefined" && data instanceof FormData) {
+    if (config.headers) {
+      delete (config.headers as any)["Content-Type"];
+      delete (config.headers as any)["content-type"];
+    }
+  }
+
   return config;
 });
 
@@ -55,12 +67,10 @@ api.interceptors.response.use(
       return Promise.reject(new Error(message));
     };
 
-    // 로그인/리프레시 요청 자체의 실패는 그대로 내보냄 (리프레시 재시도 금지)
     if (isAuthPath(original?.url)) {
       return normReject(error);
     }
 
-    // 액세스 토큰 만료 처리
     if (
       response?.status === 401 &&
       (response.data as any)?.code === "AUTH4001" &&
@@ -86,7 +96,10 @@ api.interceptors.response.use(
         const { data } = await axios.post(
           `${API_BASE}/auth/refresh`,
           { refreshToken: rt },
-          { headers: { "Content-Type": "application/json" } }
+          {
+            headers: { "Content-Type": "application/json" },
+            withCredentials: true,
+          }
         );
 
         const newAT = data?.data?.accessToken;
