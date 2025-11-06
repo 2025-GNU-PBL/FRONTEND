@@ -10,17 +10,23 @@ import { toast } from "react-toastify";
 
 export type UserRole = "CUSTOMER" | "OWNER";
 
-export type UserData = {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole | number;
-  image?: string;
+export type accessToken = {
   accessToken?: string;
+};
+
+export type UserData = {
+  id: number;
+  name: string;
+  email: string;
+  socialId: string;
+  age: number;
+  phoneNumber: string;
+  address: string;
 };
 
 type UserState = {
   userData: UserData | null;
+  jwt: object | null;
   isAuth: boolean;
   isLoading: boolean;
   error: string | null;
@@ -28,6 +34,7 @@ type UserState = {
 
 const initialState: UserState = {
   userData: null,
+  jwt: null,
   isAuth: false,
   isLoading: false,
   error: null,
@@ -41,6 +48,7 @@ const userSlice = createSlice({
       state.isAuth = false;
       state.userData = null;
       state.error = null;
+      state.jwt = null;
       localStorage.removeItem("accessToken");
       toast.info("로그아웃 되었습니다.");
     },
@@ -72,9 +80,9 @@ const userSlice = createSlice({
     });
     builder.addCase(
       kakaoLoginUser.fulfilled,
-      (state, action: PayloadAction<UserData>) => {
+      (state, action: PayloadAction<accessToken>) => {
         state.isLoading = false;
-        state.userData = action.payload;
+        state.jwt = action.payload;
         state.isAuth = true;
         if (action.payload?.accessToken) {
           localStorage.setItem("accessToken", action.payload.accessToken);
@@ -98,9 +106,9 @@ const userSlice = createSlice({
     });
     builder.addCase(
       naverLoginUser.fulfilled,
-      (state, action: PayloadAction<UserData>) => {
+      (state, action: PayloadAction<accessToken>) => {
         state.isLoading = false;
-        state.userData = action.payload;
+        state.jwt = action.payload;
         state.isAuth = true;
         if (action.payload?.accessToken) {
           localStorage.setItem("accessToken", action.payload.accessToken);
@@ -117,10 +125,12 @@ const userSlice = createSlice({
       toast.error(errorMessage);
     });
 
+    // 로그아웃
     builder.addCase(logoutUser.fulfilled, (state) => {
       state.isAuth = false;
       state.userData = null;
       state.error = null;
+      state.jwt = null;
       localStorage.removeItem("accessToken");
       toast.info("로그아웃 되었습니다.");
     });
@@ -145,16 +155,12 @@ const userSlice = createSlice({
         state.isLoading = false;
         state.userData = action.payload;
         state.isAuth = true;
-        // 서버가 새 accessToken을 내려주는 경우에 대비
-        if (action.payload?.accessToken) {
-          localStorage.setItem("accessToken", action.payload.accessToken);
-        }
       }
     );
     builder.addCase(authUser.rejected, (state, action) => {
       state.isLoading = false;
       state.isAuth = false;
-      state.userData = null;
+      // state.userData = null;
       const errorMessage =
         typeof action.payload === "string"
           ? action.payload

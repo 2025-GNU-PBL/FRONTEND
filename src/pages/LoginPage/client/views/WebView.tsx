@@ -5,39 +5,42 @@ import NaverLoginButton from "../../../../components/social/NaverLoginButton";
 const WebView = () => {
   return (
     <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col justify-center">
-      <main className="mx-auto max-w-6xl w-full px-4 py-12 md:py-20 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+      {/* ✅ 수정: md 구간에서는 1열, lg 이상에서만 2열 */}
+      <main className="mx-auto max-w-6xl w-full px-4 py-12 md:py-20 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
         {/* Left: Hero / Marketing */}
-        <section className="flex flex-col justify-center">
+        <section className="flex flex-col justify-center order-1 lg:order-none">
           <span className="inline-block rounded-full bg-[#FF4646]/10 text-[#FF4646] text-xs font-semibold px-2 py-1 mb-3 w-fit">
             고객 전용
           </span>
-          <h1 className="font-allimjang text-[54px] md:text-[60px] leading-[1.05] text-[#FF4646] mb-4">
+          <h1 className="font-allimjang text-[48px] md:text-[54px] lg:text-[60px] leading-[1.05] text-[#FF4646] mb-4 text-center lg:text-left">
             스드메, 한 번에 비교
           </h1>
-          <p className="font-pretendard text-lg md:text-2xl text-gray-700 mb-8">
-            후기·가격·혜택을 한눈에.{" "}
+
+          {/* ✅ p/div 구조 수정 유지 */}
+          <div className="font-pretendard text-lg md:text-xl lg:text-2xl text-gray-700 mb-8 space-y-1 text-center lg:text-left">
+            <p>후기·가격·혜택을 한눈에.</p>
             <div>
               <span className="font-semibold text-gray-900">딱 맞는 업체</span>
               와 바로 상담해 보세요.
             </div>
-          </p>
+          </div>
 
-          <ul className="space-y-3 text-gray-700">
-            <li className="flex items-start gap-3">
-              <span className="mt-1 h-2 w-2 rounded-full bg-[#FF4646]" />
+          <ul className="space-y-3 text-gray-700 text-center lg:text-left">
+            <li className="flex flex-col lg:flex-row lg:items-start lg:gap-3 justify-center lg:justify-start">
+              <span className="hidden lg:block mt-1 h-2 w-2 rounded-full bg-[#FF4646]" />
               <span>실시간 비교로 합리적인 선택</span>
             </li>
-            <li className="flex items-start gap-3">
-              <span className="mt-1 h-2 w-2 rounded-full bg-[#FF4646]" />
+            <li className="flex flex-col lg:flex-row lg:items-start lg:gap-3 justify-center lg:justify-start">
+              <span className="hidden lg:block mt-1 h-2 w-2 rounded-full bg-[#FF4646]" />
               <span>찜·캘린더 연동으로 일정 관리 끝</span>
             </li>
-            <li className="flex items-start gap-3">
-              <span className="mt-1 h-2 w-2 rounded-full bg-[#FF4646]" />
+            <li className="flex flex-col lg:flex-row lg:items-start lg:gap-3 justify-center lg:justify-start">
+              <span className="hidden lg:block mt-1 h-2 w-2 rounded-full bg-[#FF4646]" />
               <span>모바일/웹 어디서나 이어서 진행</span>
             </li>
           </ul>
 
-          <div className="mt-10 flex items-center gap-3 text-sm text-gray-500">
+          <div className="mt-10 flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-3 text-sm text-gray-500">
             <div className="flex -space-x-2">
               <img
                 src="https://images.icon-icons.com/2643/PNG/512/avatar_female_woman_person_people_white_tone_icon_159360.png"
@@ -60,19 +63,20 @@ const WebView = () => {
         </section>
 
         {/* Right: Auth Card */}
-        <section className="flex justify-center md:justify-end">
+        {/* ✅ md~lg 사이에서는 아래로 내려오게 */}
+        <section className="flex justify-center lg:justify-end order-2 lg:order-none">
           <div className="relative w-full max-w-[440px]">
             {/* subtle offset layer */}
             <div className="absolute inset-0 -z-10 translate-x-4 translate-y-4 rounded-3xl bg-white" />
             <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
-              <h2 className="font-pretendard text-2xl font-semibold mb-2">
+              <h2 className="font-pretendard text-2xl font-semibold mb-2 text-center lg:text-left">
                 고객 로그인
               </h2>
-              <p className="text-sm text-gray-500 mb-8">
+              <p className="text-sm text-gray-500 mb-8 text-center lg:text-left">
                 소셜 계정으로 간편하게 시작하세요.
               </p>
 
-              {/* Social Login (as-is) */}
+              {/* Social Login */}
               <div className="space-y-3 mb-2">
                 <div className="w-full h-[56px]">
                   <KakaoLoginButton role="CUSTOMER" />
@@ -89,12 +93,11 @@ const WebView = () => {
                 </span>
               </div>
 
-              <p className="text-xs text-gray-500 leading-relaxed">
+              <p className="text-xs text-gray-500 leading-relaxed text-center lg:text-left">
                 처음 로그인하시는 경우 간단한 정보 입력 후 계정이 생성됩니다.
                 로그인 시 서비스 이용약관 및 개인정보처리방침에 동의하게 됩니다.
               </p>
 
-              {/* 보조 링크 */}
               <div className="mt-6 flex items-center justify-center text-sm text-gray-500">
                 <Link to="/log-in/owner" className="hover:text-[#FF4646]">
                   사장님으로 로그인

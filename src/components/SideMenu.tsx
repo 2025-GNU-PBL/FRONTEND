@@ -98,7 +98,15 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
             style={{ fontFamily: "Pretendard" }}
             aria-live="polite"
           >
-            {userName ? `${userName}님 안녕하세요!` : `안녕하세요!`}
+            {userName ? (
+              <>
+                {userName}님
+                <br />
+                안녕하세요!
+              </>
+            ) : (
+              "안녕하세요!"
+            )}
           </div>
         ) : (
           // --- 미로그인 UI ---

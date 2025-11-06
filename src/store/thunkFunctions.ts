@@ -26,17 +26,16 @@ const safeDate = (d?: string | null) => {
 };
 
 type RegisterBody = {
-  name: string;
-  email: string;
-  password: string;
-  role: number;
+  age: number;
+  phoneNumber: string;
+  address: string;
 };
 
 export const registerUser = createAsyncThunk(
   "user/registerUser",
   async (body: RegisterBody, thunkAPI) => {
     try {
-      const res = await api.post("/api/users/register", body);
+      const res = await api.post("/api/v1/customer", body);
       return res.data;
     } catch (error) {
       if (isAxiosError(error)) {
@@ -145,7 +144,7 @@ export const authUser = createAsyncThunk(
           error.response?.data || "인증 정보 확인 실패"
         );
       }
-      return thunkAPI.rejectWithValue("인증 정보 확인 실패");
+      return thunkAPI.fulfillWithValue({ server: false }); // ✅ rejected 대신 fulfilled로 보냄
     }
   }
 );

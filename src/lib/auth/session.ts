@@ -1,3 +1,4 @@
+// src/lib/auth/session.ts
 import type { LoginResponse, UserRole } from "./types";
 
 export function saveSession(res: LoginResponse, role: UserRole) {

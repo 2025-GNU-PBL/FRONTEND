@@ -1,31 +1,37 @@
 // src/pages/MainPage/views/MobileView.tsx
 import { Icon } from "@iconify/react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import SideMenu from "../../../components/SideMenu";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
+// ⚠️ 프로젝트 경로에 맞게 수정
+import api from "../../../lib/api/axios";
+import type { Product } from "../../../type/product";
 
 // ===== 타입 선언 =====
 type CategoryKey = "hall" | "studio" | "dress" | "makeup";
 
-type Product = {
-  id: string;
-  title: string;
-  image: string;
-  subtitle?: string;
-  price?: string;
-  tag?: string;
-  avg_star?: number;
-  address?: string;
+type Category = { key: CategoryKey; label: string; icon: string };
+
+type PageMeta = {
+  size: number;
+  number: number;
+  totalElements: number;
+  totalPages: number;
 };
 
-type Category = { key: CategoryKey; label: string; icon: string };
+type PageResponse<T> = {
+  content: T[];
+  page: PageMeta;
+};
 
 type Props = {
   active: CategoryKey;
   setActive: (key: CategoryKey) => void;
   categories: Category[];
-  products: Product[];
+  products: Product[]; // MainPage가 내려주는 첫 페이지
+  pageMeta: PageMeta | null; // 첫 페이지 메타 (size/number/totalPages)
   isMenuOpen: boolean;
   openMenu: () => void;
   closeMenu: () => void;
@@ -55,24 +61,134 @@ const stagger = (delay = 0): Variants => ({
   show: {
     transition: {
       delay,
-      // 각 자식의 variants를 순차적으로 재생
       staggerChildren: 0.06,
       when: "beforeChildren",
     },
   },
 });
 
+// 카테고리별 엔드포인트
+const ENDPOINT_BY_CATEGORY: Record<CategoryKey, string> = {
+  hall: "/api/v1/wedding-hall",
+  studio: "/api/v1/studio",
+  dress: "/api/v1/dress",
+  makeup: "/api/v1/makeup",
+};
+
 export default function MobileView({
   active,
   setActive,
   categories,
   products,
+  pageMeta,
   isMenuOpen,
   openMenu,
   closeMenu,
 }: Props) {
-  const handleSelect = (key: CategoryKey) => setActive(key);
   const navigate = useNavigate();
+
+  // ====== 무한 스크롤 상태 ======
+  const [items, setItems] = useState<Product[]>(products ?? []);
+  const [currPage, setCurrPage] = useState<number>(pageMeta?.number ?? 0);
+  const [totalPages, setTotalPages] = useState<number>(
+    pageMeta?.totalPages ?? 1
+  );
+  const [pageSize, setPageSize] = useState<number>(pageMeta?.size ?? 12);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [errorMore, setErrorMore] = useState<string | null>(null);
+
+  // 카테고리/초기 데이터 바뀔 때 리셋
+  useEffect(() => {
+    setItems(products ?? []);
+    setCurrPage(pageMeta?.number ?? 0);
+    setTotalPages(pageMeta?.totalPages ?? 1);
+    setPageSize(pageMeta?.size ?? 12);
+    setErrorMore(null);
+  }, [active, products, pageMeta]);
+
+  // 다음 페이지 존재 여부
+  const hasNext = useMemo(
+    () => currPage < totalPages - 1,
+    [currPage, totalPages]
+  );
+
+  // 가로 스크롤 컨테이너 & sentinel
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const loadNextPage = useCallback(async () => {
+    if (loadingMore || !hasNext) return;
+
+    try {
+      setLoadingMore(true);
+      setErrorMore(null);
+      const nextPage = currPage + 1;
+      const endpoint = ENDPOINT_BY_CATEGORY[active];
+
+      const res = await api.get<PageResponse<Product>>(endpoint, {
+        params: { page: nextPage, size: pageSize },
+      });
+
+      const data = res.data;
+      const next = Array.isArray(data.content) ? data.content : [];
+
+      // 중복 방지 (id 기준)
+      setItems((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const merged = [...prev];
+        for (const n of next) if (!seen.has(n.id)) merged.push(n);
+        return merged;
+      });
+
+      setCurrPage(data.page?.number ?? nextPage);
+      setTotalPages(data.page?.totalPages ?? totalPages);
+      setPageSize(data.page?.size ?? pageSize);
+    } catch (err) {
+      console.error(err);
+      setErrorMore("더 불러오지 못했습니다.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [active, currPage, hasNext, pageSize, totalPages, loadingMore]);
+
+  // IntersectionObserver: 가로 스크롤 끝에 가까워지면 로드
+  useEffect(() => {
+    const rootEl = listRef.current;
+    const targetEl = sentinelRef.current;
+    if (!rootEl || !targetEl) return;
+
+    // 수평 스크롤을 고려해 오른쪽 여유(미리) 로드
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            // sentinel 보이면 다음 페이지 로드
+            loadNextPage();
+          }
+        }
+      },
+      {
+        root: rootEl,
+        // 위/오른쪽/아래/왼쪽 순. 오른쪽으로 300px 여유를 줘서 미리 로드
+        rootMargin: "0px 300px 0px 0px",
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(targetEl);
+    return () => observer.disconnect();
+  }, [loadNextPage, items.length, active]);
+
+  // 컨테이너 너비가 아이템 총 너비보다 넓어 스크롤이 안 생기면 자동으로 더 로드 (초기 보정)
+  useEffect(() => {
+    const rootEl = listRef.current;
+    if (!rootEl) return;
+    const needsMore =
+      rootEl.scrollWidth <= rootEl.clientWidth && hasNext && !loadingMore;
+    if (needsMore) {
+      loadNextPage();
+    }
+  }, [items, hasNext, loadingMore, loadNextPage]);
 
   const icons = [
     { img: "/images/wedding.png", label: "웨딩홀", path: "/wedding" },
@@ -109,7 +225,6 @@ export default function MobileView({
 
       {/* 바디 */}
       <div className="mx-5.5">
-        {/* 검색창 */}
         {/* 검색창 */}
         <motion.div
           variants={fadeUp}
@@ -186,7 +301,7 @@ export default function MobileView({
                 key={c.key}
                 type="button"
                 aria-pressed={isActive}
-                onClick={() => handleSelect(c.key)}
+                onClick={() => setActive(c.key)}
                 className={[
                   "flex items-center gap-2 rounded-full px-3 py-2 text-sm transition-colors",
                   isActive
@@ -204,22 +319,32 @@ export default function MobileView({
 
         {/* 카테고리 상품 리스트 (가로 스크롤) */}
         <div className="-mx-5 px-5">
-          <AnimatePresence mode="popLayout">
-            <motion.div
-              key={active} // 카테고리 바뀔 때 부드럽게 전환
-              className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-hide"
-              style={{ scrollPaddingLeft: 20, scrollSnapType: "x mandatory" }}
-              initial={{ opacity: 0 }}
-              animate={{
-                opacity: 1,
-                transition: { duration: 0.25, ease: EASE_OUT },
-              }}
-              exit={{
-                opacity: 0,
-                transition: { duration: 0.2, ease: EASE_OUT },
-              }}
-            >
-              {products.map((p) => (
+          {/* ✅ AnimatePresence 제거: 동일한 시각 효과를 key 전환 + fade로 유지 */}
+          <motion.div
+            key={active}
+            ref={listRef}
+            className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-hide"
+            style={{ scrollPaddingLeft: 20, scrollSnapType: "x mandatory" }}
+            initial={{ opacity: 0 }}
+            animate={{
+              opacity: 1,
+              transition: { duration: 0.25, ease: EASE_OUT },
+            }}
+          >
+            {items.map((p) => {
+              // 바뀐 타입 대응: 단일 thumbnail(string|null)
+              const thumb = p.thumbnail || "/images/placeholder.png";
+              // 별점: starCount 사용 (소수점 표시 유지)
+              const rating =
+                typeof p.starCount === "number"
+                  ? Number(p.starCount).toFixed(1)
+                  : "-";
+              // 지역 표시는 기존 디자인대로 address 앞의 두 단어 사용
+              const region = p.address
+                ? p.address.split(" ").slice(0, 2).join(" ")
+                : "";
+
+              return (
                 <motion.article
                   key={p.id}
                   className="min-w-[228px] max-w-[228px] bg-white overflow-hidden"
@@ -228,36 +353,65 @@ export default function MobileView({
                   whileInView="show"
                   viewport={{ once: true, amount: 0.2 }}
                   whileHover={{ y: -2 }}
+                  onClick={() => navigate(`/product/${p.id}`)}
                 >
                   <div className="w-full h-[144px] bg-[#F3F4F5]">
                     <img
-                      src={p.image}
-                      alt={p.title}
+                      src={thumb}
+                      alt={p.name}
                       className="h-full w-full object-cover rounded-[16px]"
+                      onError={(e) => {
+                        const t = e.currentTarget as HTMLImageElement;
+                        if (t.src !== "/images/placeholder.png") {
+                          t.src = "/images/placeholder.png";
+                        }
+                      }}
                     />
                   </div>
 
                   <div className="p-3">
                     <div className="flex items-center justify-between mb-1">
                       <h3 className="text-black/40 text-sm">
-                        {p.address
-                          ? p.address.split(" ").slice(0, 2).join(" ")
-                          : ""}{" "}
-                        <span className="mx-2">|</span>
+                        {region} <span className="mx-2">|</span>
                         <img
                           src="/images/star2.png"
                           alt="평점"
                           className="h-3 inline-block mb-1 mr-1"
                         />
-                        {p.avg_star ?? "-"}
+                        {rating}
                       </h3>
                     </div>
-                    {p.title && <p className="text-black/80">{p.title}</p>}
+                    {p.name && (
+                      <p className="text-black/80 line-clamp-1">{p.name}</p>
+                    )}
                   </div>
                 </motion.article>
-              ))}
-            </motion.div>
-          </AnimatePresence>
+              );
+            })}
+
+            {/* ➜ 가로 무한스크롤 sentinel (flex 아이템으로 끝에 고정) */}
+            <div
+              ref={sentinelRef}
+              className="flex-none w-px h-[1px]"
+              aria-hidden
+            />
+          </motion.div>
+        </div>
+
+        {/* 로딩/에러 표시 (하단 토스트 느낌) */}
+        <div className="relative">
+          {loadingMore && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded bg-black text-white text-xs px-2 py-1">
+              <Icon icon="svg-spinners:3-dots-fade" className="w-4 h-4" />더
+              불러오는 중...
+            </div>
+          )}
+          {!loadingMore && errorMore && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded bg-red-600 text-white text-xs px-2 py-1">
+              <Icon icon="mdi:alert-circle-outline" className="w-4 h-4" />
+              {errorMore}
+            </div>
+          )}
         </div>
 
         {/* 할인 배너 */}

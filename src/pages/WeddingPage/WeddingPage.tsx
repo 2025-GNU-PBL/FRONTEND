@@ -1,11 +1,21 @@
 import React from "react";
+import MobileView from "./views/MobileView";
+import WebView from "./views/WebView";
 
-const WeddingPage = () => {
+const WeddingHallPage: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col items-center mt-16">
-      WeddingPage
+    <div className="w-full min-h-screen bg-white">
+      {/* 모바일 */}
+      <div className="md:hidden">
+        <MobileView />
+      </div>
+
+      {/* 웹 */}
+      <div className="hidden md:block">
+        <WebView />
+      </div>
     </div>
   );
 };
 
-export default WeddingPage;
+export default WeddingHallPage;

@@ -7,7 +7,7 @@ const MobileView = () => {
 
   const menuItems = [
     { icon: "solar:home-2-linear", path: "/", label: "홈" },
-    { icon: "solar:heart-linear", path: "/cart", label: "찜" },
+    { icon: "solar:heart-linear", path: "/favorites", label: "찜" },
     { icon: "iconamoon:search-light", path: "/search", label: "검색" },
     { icon: "solar:chat-square-outline", path: "/chat", label: "채팅" },
     {

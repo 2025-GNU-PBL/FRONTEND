@@ -1,3 +1,5 @@
+// src/lib/env.ts
+
 export const ENV = {
   MODE: import.meta.env.VITE_APP_ENV,
   API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
