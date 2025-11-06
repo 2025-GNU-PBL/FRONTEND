@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import MyPageHeader from "../../../../components/MyPageHeader";
@@ -50,6 +56,7 @@ export default function MobileView() {
 
   const [category, setCategory] = useState<Coupon["category"]>("전체");
   const [sort, setSort] = useState<"최신순" | "오래된순">("최신순");
+  const [sortOpen, setSortOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const base =
@@ -64,9 +71,21 @@ export default function MobileView() {
     return base;
   }, [category, sort]);
 
+  // 바깥 클릭으로 정렬 메뉴 닫기
+  const popRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (popRef.current && !popRef.current.contains(e.target as Node)) {
+        setSortOpen(false);
+      }
+    };
+    if (sortOpen) document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [sortOpen]);
+
   return (
     <div className="w-full bg-white">
-      {/* 한 프레임(390×844) 내부에 헤더+본문*/}
+      {/* 화면 프레임(390×844) */}
       <div className="mx-auto w-[390px] h-[844px] bg-[#F6F7FB] flex flex-col">
         {/* 헤더 */}
         <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
@@ -110,24 +129,54 @@ export default function MobileView() {
           </div>
 
           {/* 보유개수 / 정렬 */}
-          <div className="mt-4 w-full flex items-center justify-between">
+          <div className="mt-4 w-full flex items-center justify-between relative">
             <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
               보유 쿠폰 {filtered.length}
             </span>
-            <button
-              className="flex items-center gap-1"
-              onClick={() =>
-                setSort((p) => (p === "최신순" ? "오래된순" : "최신순"))
-              }
-            >
-              <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-                {sort}
-              </span>
-              <Icon
-                icon="solar:alt-arrow-down-linear"
-                className="w-4 h-4 text-[#999999]"
-              />
-            </button>
+
+            {/* 정렬 드롭다운 */}
+            <div className="relative" ref={popRef}>
+              <button
+                className="flex items-center gap-1"
+                onClick={() => setSortOpen((p) => !p)}
+                aria-haspopup="menu"
+                aria-expanded={sortOpen}
+              >
+                <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
+                  {sort}
+                </span>
+                <Icon
+                  icon="solar:alt-arrow-down-linear"
+                  className="w-4 h-4 text-[#999999]"
+                />
+              </button>
+
+              {sortOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-36 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30"
+                >
+                  <SortItem
+                    active={sort === "최신순"}
+                    onClick={() => {
+                      setSort("최신순");
+                      setSortOpen(false);
+                    }}
+                  >
+                    최신순
+                  </SortItem>
+                  <SortItem
+                    active={sort === "오래된순"}
+                    onClick={() => {
+                      setSort("오래된순");
+                      setSortOpen(false);
+                    }}
+                  >
+                    오래된순
+                  </SortItem>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 리스트 */}
@@ -141,6 +190,29 @@ export default function MobileView() {
         </div>
       </div>
     </div>
+  );
+}
+
+function SortItem({
+  children,
+  active,
+  onClick,
+}: {
+  children: React.ReactNode;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      role="menuitem"
+      onClick={onClick}
+      className={[
+        "w-full text-left px-4 py-3 text-[14px] leading-[21px] tracking-[-0.2px]",
+        active ? "bg-gray-100 font-semibold" : "hover:bg-gray-50",
+      ].join(" ")}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -176,7 +248,7 @@ function CouponCard({ c }: { c: Coupon }) {
   return (
     <div className="w-full h-[129px] flex">
       {/* 좌측 본문 */}
-      <div className="w-[278px] h-[129px] border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-2">
+      <div className="w-[278px] h-[129px] border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-2 bg-white">
         <div className="flex flex-col gap-1 w-[222px]">
           <div className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
             {c.title}

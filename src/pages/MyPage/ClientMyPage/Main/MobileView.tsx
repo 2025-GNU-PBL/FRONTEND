@@ -49,7 +49,7 @@ export default function MobileView() {
         <main className="flex-1">
           {/* 프로필 + 상단 카드 2개 */}
           <section className="bg-[#F6F7FB]">
-            <div className="px-5 pt-4 pb-6">
+            <div className="px-5 pt-20 pb-6">
               {/* 프로필 */}
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-[#D9D9D9]" />
@@ -59,7 +59,7 @@ export default function MobileView() {
               </div>
 
               {/* 상단 2버튼 */}
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-7 grid grid-cols-2 gap-3">
                 <button
                   onClick={() => go("/my-page/profile")}
                   className="h-[61px] rounded-[12px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.02)] flex items-center justify-center active:opacity-80"
