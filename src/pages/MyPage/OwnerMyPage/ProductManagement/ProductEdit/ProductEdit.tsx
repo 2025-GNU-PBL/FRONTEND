@@ -1,16 +1,12 @@
-import React from "react";
 import MobileView from "./views/MobileView";
 import WebView from "./views/WebView";
 
-const StudioPage: React.FC = () => {
+const ProductEdit = () => {
   return (
-    <div className="w-full min-h-screen bg-white">
-      {/* 모바일 */}
+    <div className="min-h-screen">
       <div className="md:hidden">
         <MobileView />
       </div>
-
-      {/* 웹 */}
       <div className="hidden md:block">
         <WebView />
       </div>
@@ -18,4 +14,4 @@ const StudioPage: React.FC = () => {
   );
 };
 
-export default StudioPage;
+export default ProductEdit;

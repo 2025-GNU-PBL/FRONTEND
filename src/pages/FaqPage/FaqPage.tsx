@@ -3,7 +3,7 @@ import WebView from "./views/WebView";
 
 const FaqPage = () => {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen">
       <div className="md:hidden">
         <MobileView />
       </div>
