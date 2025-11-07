@@ -1,27 +1,8 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import MyPageHeader from "../../../../components/MyPageHeader";
-
-type Profile = {
-  name: string;
-  phone: string;
-  email: string;
-  address: string;
-  weddingDate: Date;
-  weddingVenue: string;
-};
-
-const getProfile = (): Profile => ({
-  name: localStorage.getItem("userName") || "홍종민",
-  phone: localStorage.getItem("userPhone") || "010-1234-5678",
-  email: localStorage.getItem("userEmail") || "email@example.com",
-  address: localStorage.getItem("userAddress") || "서울특별시 어딘가",
-  weddingDate: localStorage.getItem("userWeddingDate")
-    ? new Date(localStorage.getItem("userWeddingDate") as string)
-    : new Date("2025-11-01"),
-  weddingVenue:
-    localStorage.getItem("userWeddingVenue") || "서울 더클래스청담 그랜드홀",
-});
+import { useAppSelector } from "../../../../store/hooks";
+import type { CustomerData, UserData } from "../../../../store/userSlice"; // 실제 경로에 맞춰 수정
 
 function SectionCard({
   title,
@@ -52,16 +33,85 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
   );
 }
 
-/** 고정 레이아웃(390×844)*/
+// 이 페이지는 "고객(CUSTOMER) 전용"이라는 전제를 코드로 한 번 잡아줌
+function ensureCustomer(userData: UserData | null): CustomerData | null {
+  if (!userData) return null;
+
+  // UserData 타입에서 Customer를 판단할 가장 확실한 기준 필드를 사용
+  // (예: weddingDate, weddingSido 등 CUSTOMER에만 있는 필드)
+  if ("weddingDate" in userData) {
+    return userData as CustomerData;
+  }
+
+  // 혹시나 OWNER가 들어오면 null 처리 (또는 리다이렉트 트리거 가능)
+  return null;
+}
+
+/** 고정 레이아웃(390×844) - 고객 마이페이지 */
 export default function MobileView() {
-  const p = getProfile();
   const nav = useNavigate();
+
+  const rawUserData = useAppSelector((state) => state.user.userData);
+  const customer = ensureCustomer(rawUserData);
+
+  // 로그인 안 됐거나, CUSTOMER가 아닌 경우 예외 처리
+  if (!customer) {
+    return (
+      <div className="w-full bg-white">
+        <div className="mx-auto w-[390px] h-[844px] bg-[#F6F7FB] flex flex-col">
+          <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
+            <MyPageHeader
+              title="내 정보 조회"
+              onBack={() => nav(-1)}
+              showMenu={false}
+            />
+          </div>
+          <div className="flex-1 px-5 pt-20 flex items-center justify-center text-sm text-gray-500">
+            고객 정보가 없습니다. 다시 로그인해주세요.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 여기부터는 무조건 CustomerData라고 보고 사용하면 됨
+  const {
+    name,
+    phoneNumber,
+    email,
+    roadAddress,
+    jibunAddress,
+    address,
+    sido,
+    sigungu,
+    dong,
+    buildingName,
+    weddingDate,
+    weddingSido,
+    weddingSigungu,
+  } = customer;
+
+  const displayAddress =
+    roadAddress ||
+    jibunAddress ||
+    address ||
+    [sido, sigungu, dong, buildingName].filter(Boolean).join(" ") ||
+    "-";
+
+  const displayWeddingDate = weddingDate
+    ? new Date(weddingDate).toLocaleDateString("ko-KR")
+    : "-";
+
+  const displayWeddingVenue =
+    buildingName ||
+    [weddingSido, weddingSigungu].filter(Boolean).join(" ") ||
+    "-";
 
   return (
     <div className="w-full bg-white">
       {/* 프레임 하나로 통일 (헤더 + 본문) */}
       <div className="mx-auto w-[390px] h-[844px] bg-[#F6F7FB] flex flex-col">
-        {/* 헤더*/}
+        {/* 헤더 */}
         <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
           <MyPageHeader
             title="내 정보 조회"
@@ -78,7 +128,7 @@ export default function MobileView() {
               <div className="w-16 h-16 rounded-full bg-[#D9D9D9]" />
               <div>
                 <div className="text-[18px] font-semibold text-black tracking-[-0.2px]">
-                  {p.name}
+                  {name}
                 </div>
                 <div className="text-sm text-gray-600 tracking-[-0.2px]">
                   반가워요! 오늘도 좋은 하루 👋
@@ -90,21 +140,18 @@ export default function MobileView() {
           {/* 회원정보 */}
           <SectionCard title="회원정보">
             <div className="space-y-2">
-              <InfoRow label="고객명" value={p.name} />
-              <InfoRow label="전화번호" value={p.phone} />
-              <InfoRow label="이메일" value={p.email} />
-              <InfoRow label="주소" value={p.address} />
+              <InfoRow label="고객명" value={name} />
+              <InfoRow label="전화번호" value={phoneNumber} />
+              <InfoRow label="이메일" value={email} />
+              <InfoRow label="주소" value={displayAddress} />
             </div>
           </SectionCard>
 
-          {/* 예식정보*/}
+          {/* 예식정보 */}
           <SectionCard title="예식정보">
             <div className="space-y-2">
-              <InfoRow
-                label="예식일"
-                value={p.weddingDate.toLocaleDateString("ko-KR")}
-              />
-              <InfoRow label="예식장소" value={p.weddingVenue} />
+              <InfoRow label="예식일" value={displayWeddingDate} />
+              <InfoRow label="예식장소" value={displayWeddingVenue} />
             </div>
           </SectionCard>
 

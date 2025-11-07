@@ -1,10 +1,11 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useDispatch /*, useSelector*/ } from "react-redux";
 // import { selectUserName, logoutThunk } from "@/store/authSlice";
 import MyPageHeader from "../../../../components/MyPageHeader";
 import { Icon } from "@iconify/react";
+import { useAppSelector } from "../../../../store/hooks";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
 
@@ -12,8 +13,7 @@ export default function MobileView() {
   const nav = useNavigate();
   const dispatch = useDispatch();
 
-  // const userName = useSelector(selectUserName) ?? "홍종민";
-  const userName = localStorage.getItem("userName") || "홍종민";
+  const userName = useAppSelector((state) => state.user.userData?.name ?? "");
 
   const go = useCallback((to: string) => nav(to), [nav]);
 
@@ -61,7 +61,7 @@ export default function MobileView() {
               {/* 상단 2버튼 */}
               <div className="mt-7 grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => go("/my-page/profile")}
+                  onClick={() => go("/my-page/client/profile")}
                   className="h-[61px] rounded-[12px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.02)] flex items-center justify-center active:opacity-80"
                 >
                   <span className="inline-flex items-center justify-center gap-2">
@@ -75,7 +75,7 @@ export default function MobileView() {
                   </span>
                 </button>
                 <button
-                  onClick={() => go("/my-page/coupons")}
+                  onClick={() => go("/my-page/client/coupons")}
                   className="h-[61px] rounded-[12px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.02)] flex items-center justify-center active:opacity-80"
                 >
                   <span className="inline-flex items-center justify-center gap-2">
@@ -97,19 +97,19 @@ export default function MobileView() {
             <div className="grid grid-cols-2 gap-6">
               <MidLink
                 label="결제 관리"
-                onClick={() => go("/my-page/payments")}
+                onClick={() => go("/my-page/client/payments")}
               />
               <MidLink
                 label="스케줄 내역"
-                onClick={() => go("/my-page/schedules")}
+                onClick={() => go("/my-page/client/schedules")}
               />
               <MidLink
                 label="문의 내역"
-                onClick={() => go("/my-page/inquiries")}
+                onClick={() => go("/my-page/client/inquiries")}
               />
               <MidLink
                 label="리뷰관리"
-                onClick={() => go("/my-page/reviews")}
+                onClick={() => go("/my-page/client/reviews")}
               />
             </div>
           </section>
