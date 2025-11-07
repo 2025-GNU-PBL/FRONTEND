@@ -24,11 +24,41 @@ const AUTH_PATHS = [
   "/auth/kakao",
   "/auth/naver",
   "/auth/refresh",
-];
+] as const;
 
-const isAuthPath = (url?: string | null) => {
-  if (!url) return false;
-  return AUTH_PATHS.some((p) => url.includes(p));
+// 성능/정확도 위해 Set 사용
+const AUTH_SET = new Set<string>(AUTH_PATHS);
+
+/** 주어진 URL을 API_BASE 기준으로 파싱해 pathname만 반환 */
+const toPathname = (url?: string): string | null => {
+  if (!url) return null;
+  try {
+    // 절대 URL이면 그대로, 상대경로면 API_BASE 기준으로 절대 URL 구성
+    const u = url.startsWith("http")
+      ? new URL(url)
+      : new URL(url, API_BASE.endsWith("/") ? API_BASE : API_BASE + "/");
+    // trailing slash는 제거하지 않고 그대로 둠 (AUTH_PATHS와 동일해야 매치됨)
+    return u.pathname;
+  } catch {
+    // URL 생성이 실패하는 edge 케이스(특수문자 등)는 startsWith 비교로 fallback
+    return url;
+  }
+};
+
+/** 이 요청이 인증/토큰 관련 엔드포인트인지 여부 */
+const isAuthPath = (url?: string) => {
+  const path = toPathname(url);
+  if (!path) return false;
+
+  // 정확 매칭 우선
+  if (AUTH_SET.has(path)) return true;
+
+  // 혹시 백엔드에서 뒤에 또 세부 path가 붙는 경우를 위해 prefix 매칭도 보조적으로 허용
+  // 예: /auth/login/kakao, /api/v1/auth/login/callback 등
+  for (const p of AUTH_SET) {
+    if (path === p || path.startsWith(p + "/")) return true;
+  }
+  return false;
 };
 
 const api = axios.create({

@@ -349,6 +349,7 @@ const userSlice = createSlice({
           ? action.payload
           : "인증 정보 확인 실패";
       state.error = errorMessage;
+      // toast.error(errorMessage);
     });
   },
 });

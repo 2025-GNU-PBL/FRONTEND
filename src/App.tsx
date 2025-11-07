@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, Route, Routes, useLocation, useMatch } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -17,16 +18,22 @@ import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPa
 import MainPage from "./pages/MainPage/MainPage";
 import StudioPage from "./pages/StudioPage/StudioPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
+import QuotationPage from "./pages/QuotationPage/QuotationPage";
+import CalendarPage from "./pages/CalendarPage/CalendarPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
-import SignUpPage from "./pages/SignupPage/SignupPage";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import NotAuthRoutes from "./components/NotAuthRoutes";
 import { useAppDispatch, useAppSelector } from "./store/hooks";
+import { authUser } from "./store/thunkFunctions";
 import LoginPage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";
 import FavoritesPage from "./pages/FavoritesPage/FavoritesPage";
 import DressPage from "./pages/DressPage/DressPage";
+import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
+import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
+import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
+import SignupPage from "./pages/SignupPage/step1/SignupPage";
 import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import CalendarPage from "./pages/CalendarPage/CalendarPage";
 import { useEffect } from "react";
@@ -40,7 +47,7 @@ function Layout() {
   // 네비바 숨길 경로
   const hideNavOnPaths = [
     "/log-in",
-    "/sign-up",
+    "/sign-up/step1",
     "/log-in/client",
     "/log-in/owner",
   ];
@@ -136,14 +143,15 @@ const App = () => {
           <Route path="/log-in/owner" element={<OwnerLoginPage />} />
           <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
           <Route path="/auth/naver/callback" element={<NaverCallback />} />
-          <Route path="/sign-up" element={<SignUpPage />} />
-          <Route path="/users/:id/home" element={<SignUpPage />} />
         </Route>
 
-        {/* 기타 중복 경로 제거 */}
         <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
         <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
         <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
+        <Route path="/sign-up/step1" element={<SignupPage />} />
+        <Route path="/sign-up/step2" element={<JoinAddressPage />} />
+        <Route path="/sign-up/step3" element={<WeddingInfoPage />} />
+        <Route path="/sign-up/step4" element={<SignupCompletePage />} />
       </Route>
     </Routes>
   );
