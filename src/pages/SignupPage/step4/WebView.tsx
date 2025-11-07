@@ -39,13 +39,13 @@ export default function WebView({
     weddingSigungu,
   } = (location.state as any) || {};
 
-  // 백엔드 제출 payload (Mobile과 동일 맵핑)
+  // 백엔드 제출 payload
   const formValues = {
     phone,
     // 기본 주소 필드
     address, // 일반 주소
     zipCode: zipcode, // 우편번호
-    roadAddress: address, // 도로명 주소로 동일 전달 (지번 분리 불가 시 동일 매핑)
+    roadAddress: address, // 도로명 주소로 동일 전달
     jibunAddress: "", // 수집 못했으면 빈값
     detailAddress, // 상세주소
     // 추가 정보

@@ -1,4 +1,3 @@
-// src/lib/api/axios.ts
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { clearTokens, getRefreshToken, setTokens } from "../auth/tokenStorage";
 

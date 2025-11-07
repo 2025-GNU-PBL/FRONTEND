@@ -14,7 +14,7 @@ import ChatPage from "./pages/ChatPage/ChatPage";
 import ScrollToTop from "./components/ScrollToTop";
 import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain";
 import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
-import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPage";
+import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/CouponPage";
 import MainPage from "./pages/MainPage/MainPage";
 import StudioPage from "./pages/StudioPage/StudioPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
@@ -34,6 +34,8 @@ import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
 import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
 import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
 import SignupPage from "./pages/SignupPage/step1/SignupPage";
+import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
+import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
 
 function Layout() {
   const location = useLocation();
@@ -124,6 +126,8 @@ const App = () => {
         <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
         <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
         <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
+        <Route path="/my-page/client/inquiries" element={<InquiryPage />} />
+        <Route path="/my-page/client/reviews" element={<ReviewPage />} />
         <Route path="/sign-up/step1" element={<SignupPage />} />
         <Route path="/sign-up/step2" element={<JoinAddressPage />} />
         <Route path="/sign-up/step3" element={<WeddingInfoPage />} />
