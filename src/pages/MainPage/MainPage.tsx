@@ -26,10 +26,10 @@ const categories: { key: CategoryKey; label: string; icon: string }[] = [
 ];
 
 const ENDPOINT_BY_CATEGORY: Record<CategoryKey, string> = {
-  hall: "/api/v1/wedding-hall",
-  studio: "/api/v1/studio",
-  dress: "/api/v1/dress",
-  makeup: "/api/v1/makeup",
+  hall: "/api/v1/wedding-hall/filter",
+  studio: "/api/v1/studio/filter",
+  dress: "/api/v1/dress/filter",
+  makeup: "/api/v1/makeup/filter",
 };
 
 export default function MainPage() {

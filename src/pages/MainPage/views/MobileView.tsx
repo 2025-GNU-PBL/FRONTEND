@@ -23,15 +23,15 @@ type PageMeta = {
 
 type PageResponse<T> = {
   content: T[];
-  page: PageMeta;
+  page?: PageMeta; // 서버가 줄 수도, 안 줄 수도 있다고 가정
 };
 
 type Props = {
   active: CategoryKey;
   setActive: (key: CategoryKey) => void;
   categories: Category[];
-  products: Product[]; // MainPage가 내려주는 첫 페이지
-  pageMeta: PageMeta | null; // 첫 페이지 메타 (size/number/totalPages)
+  products: Product[]; // MainPage가 내려주는 첫 페이지(선택)
+  pageMeta: PageMeta | null; // 첫 페이지 메타(선택)
   isMenuOpen: boolean;
   openMenu: () => void;
   closeMenu: () => void;
@@ -69,10 +69,10 @@ const stagger = (delay = 0): Variants => ({
 
 // 카테고리별 엔드포인트
 const ENDPOINT_BY_CATEGORY: Record<CategoryKey, string> = {
-  hall: "/api/v1/wedding-hall",
-  studio: "/api/v1/studio",
-  dress: "/api/v1/dress",
-  makeup: "/api/v1/makeup",
+  hall: "/api/v1/wedding-hall/filter",
+  studio: "/api/v1/studio/filter",
+  dress: "/api/v1/dress/filter",
+  makeup: "/api/v1/makeup/filter",
 };
 
 export default function MobileView({
@@ -89,28 +89,44 @@ export default function MobileView({
 
   // ====== 무한 스크롤 상태 ======
   const [items, setItems] = useState<Product[]>(products ?? []);
-  const [currPage, setCurrPage] = useState<number>(pageMeta?.number ?? 0);
-  const [totalPages, setTotalPages] = useState<number>(
-    pageMeta?.totalPages ?? 1
+
+  // 서버 파라미터 규격: pageNumber(1부터), pageSize(기본 6)
+  const DEFAULT_PAGE_SIZE = 6;
+
+  // 현재까지 로드한 페이지 번호(서버 기준 1-base)
+  const [pageNumber, setPageNumber] = useState<number>(
+    (products?.length ?? 0) > 0 ? 1 : 0
   );
-  const [pageSize, setPageSize] = useState<number>(pageMeta?.size ?? 12);
+  // 요청에 사용할 페이지 크기
+  const [pageSize, setPageSize] = useState<number>(
+    pageMeta?.size ?? DEFAULT_PAGE_SIZE
+  );
+  // 더 가져오는 중/에러/끝 여부
   const [loadingMore, setLoadingMore] = useState(false);
   const [errorMore, setErrorMore] = useState<string | null>(null);
+  const [reachedEnd, setReachedEnd] = useState<boolean>(false); // 마지막 페이지 도달 여부(메타 없을 때도 동작)
 
   // 카테고리/초기 데이터 바뀔 때 리셋
   useEffect(() => {
     setItems(products ?? []);
-    setCurrPage(pageMeta?.number ?? 0);
-    setTotalPages(pageMeta?.totalPages ?? 1);
-    setPageSize(pageMeta?.size ?? 12);
+    // 첫 페이지를 이미 갖고 있으면 현재 pageNumber=1로 간주
+    setPageNumber((products?.length ?? 0) > 0 ? 1 : 0);
+    setPageSize(pageMeta?.size ?? DEFAULT_PAGE_SIZE);
     setErrorMore(null);
+    setReachedEnd(false);
   }, [active, products, pageMeta]);
 
-  // 다음 페이지 존재 여부
-  const hasNext = useMemo(
-    () => currPage < totalPages - 1,
-    [currPage, totalPages]
-  );
+  // 다음 페이지가 있는지: 메타가 있으면 메타로, 없으면 reachedEnd로 판단
+  const hasNext = useMemo(() => {
+    if (pageMeta?.totalPages && pageMeta?.number !== undefined) {
+      // pageMeta.number가 0-base일 가능성이 있으므로 방어적으로 처리
+      // 0-base로 왔다면 number+1이 현재 페이지의 1-base 대체값
+      const currentByMetaOneBase =
+        pageMeta.number >= 1 ? pageMeta.number : pageMeta.number + 1;
+      return currentByMetaOneBase < pageMeta.totalPages && !reachedEnd;
+    }
+    return !reachedEnd;
+  }, [pageMeta, reachedEnd]);
 
   // 가로 스크롤 컨테이너 & sentinel
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -122,15 +138,17 @@ export default function MobileView({
     try {
       setLoadingMore(true);
       setErrorMore(null);
-      const nextPage = currPage + 1;
+
+      // 현재까지 1페이지를 읽은 상태라면 다음 호출은 pageNumber+1
+      const nextPage = (pageNumber || 0) + 1;
       const endpoint = ENDPOINT_BY_CATEGORY[active];
 
       const res = await api.get<PageResponse<Product>>(endpoint, {
-        params: { page: nextPage, size: pageSize },
+        params: { pageNumber: nextPage, pageSize },
       });
 
       const data = res.data;
-      const next = Array.isArray(data.content) ? data.content : [];
+      const next = Array.isArray(data?.content) ? data.content : [];
 
       // 중복 방지 (id 기준)
       setItems((prev) => {
@@ -140,16 +158,33 @@ export default function MobileView({
         return merged;
       });
 
-      setCurrPage(data.page?.number ?? nextPage);
-      setTotalPages(data.page?.totalPages ?? totalPages);
-      setPageSize(data.page?.size ?? pageSize);
+      // 다음 페이지 번호로 갱신
+      setPageNumber(nextPage);
+
+      // 서버가 메타를 준다면 반영
+      if (data?.page?.size) setPageSize(data.page.size);
+
+      // 메타가 없더라도, 받아온 아이템 수가 pageSize보다 작으면 마지막 페이지로 간주
+      if (next.length < (data?.page?.size ?? pageSize)) {
+        setReachedEnd(true);
+      }
+
+      // 메타가 있다면 totalPages 기준으로도 종료 판단 (안전망)
+      if (
+        data?.page?.totalPages !== undefined &&
+        data?.page?.number !== undefined
+      ) {
+        const metaOneBase =
+          data.page.number >= 1 ? data.page.number : data.page.number + 1;
+        if (metaOneBase >= data.page.totalPages) setReachedEnd(true);
+      }
     } catch (err) {
       console.error(err);
       setErrorMore("더 불러오지 못했습니다.");
     } finally {
       setLoadingMore(false);
     }
-  }, [active, currPage, hasNext, pageSize, totalPages, loadingMore]);
+  }, [active, hasNext, loadingMore, pageNumber, pageSize]);
 
   // IntersectionObserver: 가로 스크롤 끝에 가까워지면 로드
   useEffect(() => {
@@ -157,19 +192,17 @@ export default function MobileView({
     const targetEl = sentinelRef.current;
     if (!rootEl || !targetEl) return;
 
-    // 수평 스크롤을 고려해 오른쪽 여유(미리) 로드
     const observer = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
           if (e.isIntersecting) {
-            // sentinel 보이면 다음 페이지 로드
             loadNextPage();
           }
         }
       },
       {
         root: rootEl,
-        // 위/오른쪽/아래/왼쪽 순. 오른쪽으로 300px 여유를 줘서 미리 로드
+        // 오른쪽 300px 여유 줘서 미리 로드
         rootMargin: "0px 300px 0px 0px",
         threshold: 0.01,
       }
@@ -179,7 +212,7 @@ export default function MobileView({
     return () => observer.disconnect();
   }, [loadNextPage, items.length, active]);
 
-  // 컨테이너 너비가 아이템 총 너비보다 넓어 스크롤이 안 생기면 자동으로 더 로드 (초기 보정)
+  // 컨테이너 너비가 아이템 총 너비보다 넓어 처음에 스크롤이 안 생기면 자동으로 더 로드 (초기 보정)
   useEffect(() => {
     const rootEl = listRef.current;
     if (!rootEl) return;
@@ -319,7 +352,7 @@ export default function MobileView({
 
         {/* 카테고리 상품 리스트 (가로 스크롤) */}
         <div className="-mx-5 px-5">
-          {/* ✅ AnimatePresence 제거: 동일한 시각 효과를 key 전환 + fade로 유지 */}
+          {/* ✅ key 전환 + fade로 유지 */}
           <motion.div
             key={active}
             ref={listRef}
@@ -332,14 +365,11 @@ export default function MobileView({
             }}
           >
             {items.map((p) => {
-              // 바뀐 타입 대응: 단일 thumbnail(string|null)
               const thumb = p.thumbnail || "/images/placeholder.png";
-              // 별점: starCount 사용 (소수점 표시 유지)
               const rating =
                 typeof p.starCount === "number"
                   ? Number(p.starCount).toFixed(1)
                   : "-";
-              // 지역 표시는 기존 디자인대로 address 앞의 두 단어 사용
               const region = p.address
                 ? p.address.split(" ").slice(0, 2).join(" ")
                 : "";
@@ -410,6 +440,12 @@ export default function MobileView({
             <div className="mt-3 inline-flex items-center gap-2 rounded bg-red-600 text-white text-xs px-2 py-1">
               <Icon icon="mdi:alert-circle-outline" className="w-4 h-4" />
               {errorMore}
+            </div>
+          )}
+          {!loadingMore && reachedEnd && items.length > 0 && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded bg-gray-200 text-gray-700 text-xs px-2 py-1">
+              <Icon icon="mdi:check-all" className="w-4 h-4" />
+              마지막 상품까지 표시되었습니다.
             </div>
           )}
         </div>

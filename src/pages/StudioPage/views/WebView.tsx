@@ -171,7 +171,7 @@ const WebView: React.FC = () => {
       try {
         setLoading(true);
         setErrorMsg("");
-        const response = await api.get("/api/v1/wedding-hall/filter");
+        const response = await api.get(`/api/v1/studio`);
         const data: Product[] = Array.isArray(response?.data)
           ? response.data
           : response?.data?.content ?? response?.data ?? [];

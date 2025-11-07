@@ -1,30 +1,61 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useForm, Controller, useWatch } from "react-hook-form";
-import api from "../../../../../../lib/api/axios";
+import { multipartApi } from "../../../../../../lib/api/multipartApi";
 
 /**
  * 멀티파트 전송 규약
  * - 파일 파트: "images" (key)
- * - JSON 파트: "request" (key)
+ * - JSON 파트: "request" (key)  👉 Blob(application/json) + filename("request.json")
  */
 
 type ImageItem = { src: string; file?: File };
+type TagItem = { id?: number | null; tagName: string };
+
+type Region =
+  | "SEOUL"
+  | "GYEONGGI"
+  | "INCHEON"
+  | "BUSAN"
+  | "DAEGU"
+  | "GWANGJU"
+  | "DAEJEON"
+  | "ULSAN"
+  | "SEJONG"
+  | "GANGWON"
+  | "CHUNGBUK"
+  | "CHUNGNAM"
+  | "JEONBUK"
+  | "JEONNAM"
+  | "GYEONGBUK"
+  | "GYEONGNAM"
+  | "JEJU";
 
 type FormValues = {
+  // 기존(디자인 유지)
   vendorName: string; // 읽기 전용
   address: string; // 읽기 전용
   category: string | null;
   name: string;
   price: string;
-  basicInfo: string; // availableTimes 로 전송
+  basicInfo: string; // 기존 UI 유지 (JSON에는 포함 X)
   detail: string;
   images: ImageItem[];
+
+  // 추가된 필드(예시 JSON 대응)
+  availableTime: string; // 예: "09:00-11:00, 13:00-15:00"
+  region: Region | "";
+  ownerName: string;
+  starCount: string; // 숫자 텍스트 입력 → number 변환
+  subwayAccessible: boolean;
+  diningAvailable: boolean;
+  thumbnail: string; // URL (선택)
+  tags: TagItem[];
 };
 
-const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"];
+const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"] as const;
 
-// ✅ 서버에서 요구하는 필드명
+// 서버에서 요구하는 파트 키
 const FILE_PART_KEY = "images";
 const JSON_PART_KEY = "request";
 
@@ -33,8 +64,12 @@ type Props = {
   address?: string; // 백엔드에서 전달
 };
 
-const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
+const regions: Region[] = ["SEOUL", "GYEONGGI", "INCHEON", "BUSAN"];
+
+const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const [tagNameInput, setTagNameInput] = useState("");
+  const [tagIdInput, setTagIdInput] = useState("");
 
   const {
     register,
@@ -45,6 +80,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
   } = useForm<FormValues>({
     mode: "onChange",
     defaultValues: {
+      // 기존
       vendorName,
       address,
       category: null,
@@ -53,11 +89,22 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
       basicInfo: "",
       detail: "",
       images: [],
+      // 추가
+      availableTime: "",
+      region: "",
+      ownerName: vendorName || "",
+      starCount: "0",
+      subwayAccessible: false,
+      diningAvailable: false,
+      thumbnail: "",
+      tags: [],
     },
   });
 
+  // 기존 훅 유지
   const images = useWatch({ control, name: "images" }) || [];
   const category = useWatch({ control, name: "category" }) || null;
+  const tags = useWatch({ control, name: "tags" }) || [];
 
   const handlePickFiles = () => fileRef.current?.click();
 
@@ -95,72 +142,116 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
     return onlyNum.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
+  const addTag = () => {
+    const name = tagNameInput.trim();
+    if (!name) return;
+    const idVal =
+      tagIdInput.trim() === "" ? null : Number(tagIdInput.trim() || NaN);
+    if (idVal !== null && Number.isNaN(idVal)) {
+      alert("태그 ID는 숫자이거나 비워두세요.");
+      return;
+    }
+    const next: TagItem = { tagName: name, id: idVal };
+    setValue("tags", [...tags, next], { shouldDirty: true, shouldTouch: true });
+    setTagNameInput("");
+    setTagIdInput("");
+  };
+
+  const removeTag = (idx: number) => {
+    const next = tags.filter((_, i) => i !== idx);
+    setValue("tags", next, { shouldDirty: true, shouldTouch: true });
+  };
+
+  // 🧭 수평 스크롤용 wheel 핸들러 (React SyntheticEvent 타입 사용)
+  const handleHorizontalWheel: React.WheelEventHandler<HTMLDivElement> = (
+    e
+  ) => {
+    const { deltaY, deltaX } = e;
+    // 세로 제스처가 더 크면 가로 스크롤로 전환
+    if (Math.abs(deltaY) > Math.abs(deltaX)) {
+      e.currentTarget.scrollLeft += deltaY;
+      e.preventDefault(); // 세로 스크롤 방지
+    }
+  };
+
   // 제출
   const onSubmit = async (values: FormValues) => {
     const priceNumber = Number(values.price.replace(/[^\d]/g, ""));
+    const starCountNumber = Number(values.starCount.replace(/[^\d]/g, ""));
 
-    // 1) 유효성
+    // ✅ 기존 + 추가 필드 유효성
     if (
       !values.category ||
       !values.name.trim() ||
-      !(priceNumber > 0) ||
-      !values.basicInfo.trim() ||
+      !(priceNumber >= 0) ||
       !values.detail.trim() ||
-      images.length < 1
+      images.length < 1 ||
+      !values.availableTime.trim() || // 추가 필수
+      !values.region || // 추가 필수
+      !values.ownerName.trim() // 추가 필수
     ) {
+      alert("필수 항목을 모두 입력해주세요.");
       return;
     }
 
-    // 2) 엔드포인트 결정
+    // 엔드포인트 결정 (기존 로직 유지)
     let endpoint = "";
     switch (values.category) {
       case "웨딩홀":
         endpoint = "/api/v1/wedding-hall";
         break;
       case "스튜디오":
-        endpoint = "/api/v1/studio"; // FIXME: API 엔드포인트 확인
+        endpoint = "/api/v1/studio"; // TODO: 실제 엔드포인트 확인
         break;
       case "드레스":
-        endpoint = "/api/v1/dress"; // FIXME: API 엔드포인트 확인
+        endpoint = "/api/v1/dress"; // TODO: 실제 엔드포인트 확인
         break;
       case "메이크업":
-        endpoint = "/api/v1/makeup"; // FIXME: API 엔드포인트 확인
+        endpoint = "/api/v1/makeup"; // TODO: 실제 엔드포인트 확인
         break;
       default:
         alert("카테고리를 선택해주세요.");
         return;
     }
 
-    // 3) JSON 파트 생성
+    // 🔥 예시 스키마에 맞춘 JSON (id/createdAt은 서버 생성 가정으로 제외)
     const body: Record<string, unknown> = {
       name: values.name.trim(),
-      price: priceNumber,
+      starCount: Number.isNaN(starCountNumber) ? 0 : starCountNumber,
+      address: values.address?.trim() ?? "",
       detail: values.detail.trim(),
-      availableTimes: values.basicInfo.trim(), // "상품 기본 정보"
-      tags: [values.category],
+      price: priceNumber,
+      availableTime: values.availableTime.trim(), // 예시와 동일 키(단수)
+      thumbnail: values.thumbnail.trim() || undefined, // 선택
+      region: values.region,
+      ownerName: values.ownerName.trim(),
+      subwayAccessible: Boolean(values.subwayAccessible),
+      diningAvailable: Boolean(values.diningAvailable),
+      tags: (values.tags || []).map((t) => {
+        const obj: { id?: number | null; tagName: string } = {
+          tagName: t.tagName,
+        };
+        if (typeof t.id === "number") obj.id = t.id;
+        else if (t.id === null) obj.id = null;
+        return obj;
+      }),
     };
-    if (values.address?.trim()) body.address = values.address.trim();
-    if (values.vendorName?.trim()) body.ownerName = values.vendorName.trim();
 
-    // ✅ JSON을 파일처럼 보내면서 Content-Type을 확실히 지정하고 파일명도 부여
-    // 일부 스택(Spring/Nest)에서 파일명이 있을 때 파트 인식이 더 안정적입니다.
-    const jsonFile = new File([JSON.stringify(body)], "request.json", {
+    // ✅ JSON 파트를 application/json Blob + filename 으로 전송
+    const jsonBlob = new Blob([JSON.stringify(body)], {
       type: "application/json",
     });
 
-    // 4) FormData 구성
     const formData = new FormData();
-    formData.append(JSON_PART_KEY, jsonFile); // <- request 파트 (application/json)
+    formData.append(JSON_PART_KEY, jsonBlob, "request.json");
+
+    // 파일 파트들
     values.images.forEach((img) => {
-      if (img.file) {
-        formData.append(FILE_PART_KEY, img.file, img.file.name); // <- images 파트
-      }
+      if (img.file) formData.append(FILE_PART_KEY, img.file, img.file.name);
     });
 
-    // (선택) 디버깅: 전송 직전 FormData 확인
-    // 주의: 실제 파일 본문은 안 보이고 [object File] 로 출력됩니다.
+    // (선택) 디버깅
     for (const [k, v] of formData.entries()) {
-      // eslint-disable-next-line no-console
       console.log(
         "FormData =>",
         k,
@@ -169,16 +260,11 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
     }
 
     try {
-      // ❗ 여기서 Content-Type 수동 지정하지 말 것! (boundary 자동 부착 필요)
-      const res = await api.post(endpoint, formData, {
-        // headers: { "Content-Type": "multipart/form-data" }, // <- 제거!
-        // 필요 시만 Accept 지정 (서버가 JSON 응답이라면 기본값으로도 충분)
-        // headers: { Accept: "application/json" },
-      });
-
+      // 헤더 지정 금지 — 브라우저가 멀티파트 boundary 자동 설정
+      console.log(formData);
+      const res = await multipartApi.post(endpoint, formData);
       console.log("등록 성공:", res.data);
       alert("작성 완료!");
-      // TODO: 성공 시 페이지 이동 등
     } catch (err) {
       console.error("등록 실패:", err);
       alert("등록 중 오류가 발생했습니다.");
@@ -190,7 +276,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
   return (
     <div className="w-full flex justify-center bg-white">
       <div className="relative w-[390px] min-h-screen bg-white">
-        {/* 헤더 */}
+        {/* 헤더 (기존) */}
         <header className="absolute left-0 top-0 w-[390px] h-[60px] flex items-center justify-between px-5">
           <button
             type="button"
@@ -208,12 +294,12 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
           <div className="w-6 h-6" />
         </header>
 
-        {/* 본문 */}
+        {/* 본문 (기존 디자인 유지) */}
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="pt-[60px] pb-[130px]"
+          className="pt-[60px] pb-[210px]"
         >
-          {/* 이미지 업로드 */}
+          {/* 이미지 업로드 (기존) */}
           <section className="px-5 pt-5">
             <div
               className="flex items-center gap-2 overflow-x-auto h-20"
@@ -222,17 +308,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
                 scrollbarWidth: "none",
                 msOverflowStyle: "none",
               }}
-              // @ts-ignore
-              onWheel={(e) => {
-                if (
-                  Math.abs((e as WheelEvent).deltaY) >
-                  Math.abs((e as WheelEvent).deltaX)
-                ) {
-                  (e.currentTarget as HTMLDivElement).scrollLeft += (
-                    e as WheelEvent
-                  ).deltaY;
-                }
-              }}
+              onWheel={handleHorizontalWheel}
             >
               <button
                 type="button"
@@ -289,7 +365,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
             />
           </section>
 
-          {/* 필드들 */}
+          {/* 기존 필드 섹션들 */}
           <section className="px-5 mt-5 flex flex-col gap-5">
             {/* 업체명 (읽기 전용) */}
             <div className="flex flex-col gap-2">
@@ -385,7 +461,9 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
                   name="price"
                   rules={{
                     required: true,
-                    validate: (v) => Number(v.replace(/[^\d]/g, "")) > 0,
+                    validate: (v) =>
+                      Number(v.replace(/[^\d]/g, "")) >= 0 &&
+                      /^\d[\d,]*$/.test(v.replace(/\s/g, "")),
                   }}
                   render={({ field: { value, onChange } }) => (
                     <input
@@ -401,7 +479,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
               </div>
             </div>
 
-            {/* 상품 기본 정보 -> availableTimes */}
+            {/* 상품 기본 정보 (기존) */}
             <div className="flex flex-col gap-2">
               <label className="text-[14px] leading-[21px] text-black">
                 상품 기본 정보
@@ -412,7 +490,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
                     "상품 기본 정보에 대해 작성해주세요\nex) 상품 구성 : 촬영용 드레스 3벌 + 본식 드레스 1벌\n상담 소요 시간 : 60분  가봉 소요 시 : 90분"
                   }
                   className="w-full h-full resize-none text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
-                  {...register("basicInfo", { required: true })}
+                  {...register("basicInfo")}
                   disabled={isSubmitting}
                 />
               </div>
@@ -435,10 +513,211 @@ const MobileView: React.FC<Props> = ({ vendorName = "", address = "" }) => {
               </div>
             </div>
           </section>
+
+          {/* ----------------------------- */}
+          {/* 🔽 추가 섹션: 예시 JSON 필드들 */}
+          {/* ----------------------------- */}
+          <section className="px-5 mt-8 flex flex-col gap-5">
+            <h2 className="text-[16px] font-semibold text-[#1E2124]">
+              추가 정보
+            </h2>
+
+            {/* availableTime */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[14px] leading-[21px] text-black">
+                이용 가능 시간 (availableTime)
+              </label>
+              <div className="h-[100px] px-4 py-2 rounded-[8px] border border-[#D9D9D9]">
+                <textarea
+                  placeholder="예: 09:00-11:00, 13:00-15:00"
+                  className="w-full h-full resize-none text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
+                  {...register("availableTime", { required: true })}
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+
+            {/* region */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[14px] leading-[21px] text-black">
+                지역 (region)
+              </label>
+              <div className="h-[49px] flex items-center px-3 rounded-[8px] border border-[#D9D9D9]">
+                <select
+                  className="w-full bg-transparent outline-none text-[14px] leading-[21px]"
+                  {...register("region", { required: true })}
+                  disabled={isSubmitting}
+                >
+                  <option value="">지역 선택</option>
+                  {regions.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* ownerName */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[14px] leading-[21px] text-black">
+                대표자명 (ownerName)
+              </label>
+              <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
+                <input
+                  type="text"
+                  placeholder="예: 김용환"
+                  className="w-full text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
+                  {...register("ownerName", { required: true })}
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+
+            {/* starCount */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[14px] leading-[21px] text-black">
+                별점 수치 (starCount)
+              </label>
+              <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
+                <Controller
+                  control={control}
+                  name="starCount"
+                  rules={{
+                    required: true,
+                    validate: (v) => /^\d+$/.test(v.trim()),
+                  }}
+                  render={({ field: { value, onChange } }) => (
+                    <input
+                      inputMode="numeric"
+                      placeholder="예: 0 또는 5"
+                      className="w-full text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
+                      value={value || ""}
+                      onChange={(e) =>
+                        onChange(e.target.value.replace(/[^\d]/g, ""))
+                      }
+                      disabled={isSubmitting}
+                    />
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* 편의 옵션 */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[14px] leading-[21px] text-black">
+                편의 옵션
+              </label>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2">
+                  <Controller
+                    control={control}
+                    name="subwayAccessible"
+                    render={({ field }) => (
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4"
+                        checked={field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                        disabled={isSubmitting}
+                      />
+                    )}
+                  />
+                  <span className="text-[14px]">
+                    지하철 접근성 (subwayAccessible)
+                  </span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <Controller
+                    control={control}
+                    name="diningAvailable"
+                    render={({ field }) => (
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4"
+                        checked={field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                        disabled={isSubmitting}
+                      />
+                    )}
+                  />
+                  <span className="text-[14px]">
+                    식사 제공 (diningAvailable)
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* 태그 입력 */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[14px] leading-[21px] text-black">
+                태그 (tags)
+              </label>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="태그명 (예: 채광좋음)"
+                  className="flex-1 h-[42px] px-3 rounded-[8px] border border-[#D9D9D9] outline-none"
+                  value={tagNameInput}
+                  onChange={(e) => setTagNameInput(e.target.value)}
+                  disabled={isSubmitting}
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="ID (선택)"
+                  className="w-[110px] h-[42px] px-3 rounded-[8px] border border-[#D9D9D9] outline-none"
+                  value={tagIdInput}
+                  onChange={(e) =>
+                    setTagIdInput(e.target.value.replace(/[^\d]/g, ""))
+                  }
+                  disabled={isSubmitting}
+                />
+                <button
+                  type="button"
+                  onClick={addTag}
+                  className="h-[42px] px-3 rounded-[8px] bg-[#FF2233] text-white text-[14px] font-semibold disabled:opacity-50"
+                  disabled={isSubmitting || !tagNameInput.trim()}
+                >
+                  추가
+                </button>
+              </div>
+
+              {/* 태그 리스트 */}
+              <div className="flex flex-wrap gap-2">
+                {tags.map((t: TagItem, idx: number) => (
+                  <span
+                    key={`${t.tagName}-${idx}`}
+                    className="inline-flex items-center gap-2 px-3 h-[34px] rounded-full border border-[#FFD5D8] bg-[#FFF2F2] text-[#FF2233] text-[13px]"
+                  >
+                    {t.tagName}
+                    {typeof t.id === "number" ? (
+                      <em className="not-italic text-[#FF6B76] text-[12px]">
+                        #{t.id}
+                      </em>
+                    ) : null}
+                    <button
+                      type="button"
+                      aria-label="태그 삭제"
+                      onClick={() => removeTag(idx)}
+                      className="ml-1 w-[18px] h-[18px] flex items-center justify-center bg-white border border-[#F2F2F2] rounded-full"
+                      disabled={isSubmitting}
+                    >
+                      <Icon
+                        icon="meteor-icons:xmark"
+                        className="w-3 h-3 text-[#3C4144]"
+                      />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </section>
         </form>
 
-        {/* 하단 버튼 */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[390px]">
+        {/* 하단 버튼 (기존) */}
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[390px] bg-white">
           <div className="px-5 py-5">
             <button
               type="button"

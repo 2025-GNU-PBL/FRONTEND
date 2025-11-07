@@ -1,16 +1,31 @@
+// src/pages/MainPage/views/WebView.tsx
 import { Icon } from "@iconify/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SideMenu from "../../../components/SideMenu";
 import type { Product } from "../../../type/product";
+import api from "../../../lib/api/axios";
 
 type CategoryKey = "hall" | "studio" | "dress" | "makeup";
 type Category = { key: CategoryKey; label: string; icon: string };
+
+type PageMeta = {
+  size: number;
+  number: number; // 서버가 0-base일 수 있어 방어적으로만 사용
+  totalElements: number;
+  totalPages: number;
+};
+
+type PageResponse<T> = {
+  content: T[];
+  page?: PageMeta; // 서버가 안 줄 수도 있다고 가정
+};
 
 type Props = {
   active: CategoryKey;
   setActive: (key: CategoryKey) => void;
   categories: Category[];
-  products: Product[];
+  products: Product[]; // 최초 1페이지(선택)
   isMenuOpen: boolean;
   openMenu: () => void;
   closeMenu: () => void;
@@ -23,6 +38,17 @@ const CTA_DARK_BG = "bg-slate-900";
 const ACCENT_COLOR_HOVER = "hover:bg-[#F2EEFB]";
 const PLACEHOLDER = "/images/placeholder.png";
 
+// 카테고리별 엔드포인트
+const ENDPOINT_BY_CATEGORY: Record<CategoryKey, string> = {
+  hall: "/api/v1/wedding-hall/filter",
+  studio: "/api/v1/studio/filter",
+  dress: "/api/v1/dress/filter",
+  makeup: "/api/v1/makeup/filter",
+};
+
+// 서버 규격: pageNumber(1-base), pageSize(기본 6)
+const DEFAULT_PAGE_SIZE = 6;
+
 export default function WebView({
   active,
   setActive,
@@ -33,12 +59,126 @@ export default function WebView({
   closeMenu,
 }: Props) {
   const navigate = useNavigate();
+
+  // ====== 무한 스크롤 상태 ======
+  const [items, setItems] = useState<Product[]>(
+    Array.isArray(products) ? products : []
+  );
+  const [pageNumber, setPageNumber] = useState<number>(
+    Array.isArray(products) && products.length > 0 ? 1 : 0 // 초기 데이터가 있으면 1페이지로 간주
+  );
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const [errorMore, setErrorMore] = useState<string | null>(null);
+  const [reachedEnd, setReachedEnd] = useState<boolean>(false);
+
+  // 카테고리 변경 또는 초기 데이터 변경 시 리셋
+  useEffect(() => {
+    const safe = Array.isArray(products) ? products : [];
+    setItems(safe);
+    setPageNumber(safe.length > 0 ? 1 : 0);
+    setPageSize(DEFAULT_PAGE_SIZE);
+    setErrorMore(null);
+    setReachedEnd(false);
+  }, [active, products]);
+
+  const hasNext = useMemo(() => !reachedEnd, [reachedEnd]);
+
+  // 스크롤 컨테이너 & sentinel
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const loadNextPage = useCallback(async () => {
+    if (loadingMore || !hasNext) return;
+    try {
+      setLoadingMore(true);
+      setErrorMore(null);
+
+      const nextPage = (pageNumber || 0) + 1;
+      const endpoint = ENDPOINT_BY_CATEGORY[active];
+
+      const res = await api.get<PageResponse<Product>>(endpoint, {
+        params: {
+          pageNumber: nextPage,
+          pageSize,
+        },
+      });
+
+      const data = res.data;
+      const next = Array.isArray(data?.content) ? data.content : [];
+
+      // 중복 방지
+      setItems((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const merged = [...prev];
+        for (const n of next) if (!seen.has(n.id)) merged.push(n);
+        return merged;
+      });
+
+      setPageNumber(nextPage);
+
+      // 서버 메타가 있으면 pageSize 반영(선택)
+      if (data?.page?.size) setPageSize(data.page.size);
+
+      // 종료 판단: 응답 개수 < pageSize 이면 끝
+      if (next.length < (data?.page?.size ?? pageSize)) {
+        setReachedEnd(true);
+      }
+
+      // 추가 안전망: 메타가 있으면 totalPages 기준으로도 판단
+      if (
+        data?.page?.totalPages !== undefined &&
+        data?.page?.number !== undefined
+      ) {
+        const oneBase =
+          data.page.number >= 1 ? data.page.number : data.page.number + 1;
+        if (oneBase >= data.page.totalPages) setReachedEnd(true);
+      }
+    } catch (e) {
+      console.error(e);
+      setErrorMore("더 불러오지 못했습니다.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [active, hasNext, loadingMore, pageNumber, pageSize]);
+
+  // IntersectionObserver: 세로 스크롤 하단에 닿으면 로드
+  useEffect(() => {
+    const rootEl = scrollRef.current;
+    const targetEl = sentinelRef.current;
+    if (!rootEl || !targetEl) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            loadNextPage();
+          }
+        }
+      },
+      {
+        root: rootEl,
+        rootMargin: "300px 0px 300px 0px", // 위/아래 여유로 미리 로드
+        threshold: 0.01,
+      }
+    );
+
+    obs.observe(targetEl);
+    return () => obs.disconnect();
+  }, [loadNextPage, items.length, active]);
+
+  // 초기 보정: 스크롤이 생기지 않을 정도로 컨텐츠가 적으면 자동으로 더 로드
+  useEffect(() => {
+    const rootEl = scrollRef.current;
+    if (!rootEl) return;
+    const needsMore =
+      rootEl.scrollHeight <= rootEl.clientHeight && hasNext && !loadingMore;
+    if (needsMore) {
+      loadNextPage();
+    }
+  }, [items, hasNext, loadingMore, loadNextPage]);
+
   const safeCategories = Array.isArray(categories) ? categories : [];
-  const safeProducts = Array.isArray(products) ? products : [];
-  const shouldScroll = safeProducts.length > 9;
-
-  const handleSelect = (key: CategoryKey) => setActive(key);
-
   const formatPrice = (price?: number) =>
     typeof price === "number" && !Number.isNaN(price)
       ? `${price.toLocaleString("ko-KR")}원`
@@ -48,6 +188,8 @@ export default function WebView({
     typeof addr === "string" && addr.trim()
       ? addr.split(" ").slice(0, 2).join(" ")
       : "";
+
+  const handleSelect = (key: CategoryKey) => setActive(key);
 
   return (
     <div className="relative flex min-h-screen flex-col bg-white text-[15px] text-black/80">
@@ -154,24 +296,20 @@ export default function WebView({
           {/* 상품 그리드 */}
           <div className="col-span-12 lg:col-span-8">
             <div
+              ref={scrollRef}
               className={[
-                "relative",
-                shouldScroll
-                  ? "max-h-[980px] overflow-y-auto pr-1 scrollbar-hide lg:max-h-[820px]"
-                  : "",
+                "relative max-h-[980px] overflow-y-auto pr-1 scrollbar-hide lg:max-h-[820px]",
               ].join(" ")}
               aria-label="상품 목록"
               aria-live="polite"
               style={
-                shouldScroll
-                  ? ({
-                      scrollbarGutter: "stable both-edges",
-                    } as React.CSSProperties)
-                  : undefined
+                {
+                  scrollbarGutter: "stable both-edges",
+                } as React.CSSProperties
               }
             >
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-3">
-                {safeProducts.map((p) => (
+                {items.map((p) => (
                   <ProductCard
                     key={p.id}
                     product={p}
@@ -182,8 +320,32 @@ export default function WebView({
                 ))}
               </div>
 
-              {shouldScroll && (
-                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent" />
+              {/* 무한 스크롤 sentinel */}
+              <div ref={sentinelRef} className="h-px w-full" aria-hidden />
+
+              {/* 그라데이션 페이드 */}
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent" />
+            </div>
+
+            {/* 로딩/에러/끝 배지 */}
+            <div className="mt-3 flex gap-2">
+              {loadingMore && (
+                <span className="inline-flex items-center gap-2 rounded bg-black px-2 py-1 text-xs text-white">
+                  <Icon icon="svg-spinners:3-dots-fade" className="h-4 w-4" />더
+                  불러오는 중...
+                </span>
+              )}
+              {!loadingMore && errorMore && (
+                <span className="inline-flex items-center gap-2 rounded bg-red-600 px-2 py-1 text-xs text-white">
+                  <Icon icon="mdi:alert-circle-outline" className="h-4 w-4" />
+                  {errorMore}
+                </span>
+              )}
+              {!loadingMore && reachedEnd && items.length > 0 && (
+                <span className="inline-flex items-center gap-2 rounded bg-gray-200 px-2 py-1 text-xs text-gray-800">
+                  <Icon icon="mdi:check-all" className="h-4 w-4" />
+                  마지막 상품까지 표시되었습니다.
+                </span>
               )}
             </div>
 
@@ -221,7 +383,7 @@ export default function WebView({
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-xl font-bold">오늘의 소식</h3>
                 <button
-                  className="text-[14px] text-[#7B61D1] font-medium hover:underline"
+                  className="text-[14px] font-medium text-[#7B61D1] hover:underline"
                   onClick={() => navigate("/news")}
                 >
                   더보기{" "}
