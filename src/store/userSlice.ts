@@ -3,7 +3,6 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import {
   kakaoLoginUser,
   naverLoginUser,
-  registerUser,
   logoutUser,
   authCustomer,
   authOwner,
@@ -190,25 +189,6 @@ const userSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    /** 회원가입 */
-    builder.addCase(registerUser.pending, (state) => {
-      state.isLoading = true;
-      state.error = null;
-    });
-    builder.addCase(registerUser.fulfilled, (state) => {
-      state.isLoading = false;
-      toast.info("회원가입을 성공했습니다.");
-    });
-    builder.addCase(registerUser.rejected, (state, action) => {
-      state.isLoading = false;
-      const errorMessage =
-        typeof action.payload === "string"
-          ? action.payload
-          : "An unknown error occurred";
-      state.error = errorMessage;
-      toast.error(errorMessage);
-    });
-
     /** 카카오 로그인 */
     builder.addCase(kakaoLoginUser.pending, (state) => {
       state.isLoading = true;

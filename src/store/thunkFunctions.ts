@@ -7,49 +7,6 @@ export type UserRole = "CUSTOMER" | "OWNER";
 // 회원가입
 import type { RootState } from "./store";
 
-const normalizePhone = (raw: string) => {
-  const d = (raw || "").replace(/\D/g, "");
-  if (d.length === 11 && d.startsWith("010")) {
-    return `010-${d.slice(3, 7)}-${d.slice(7)}`;
-  }
-  return raw || "";
-};
-
-const toNullIfEmpty = <T extends Record<string, any>>(obj: T): T => {
-  const out: Record<string, any> = {};
-  Object.entries(obj).forEach(([k, v]) => {
-    if (v === "" || v === undefined) out[k] = null;
-    else out[k] = v;
-  });
-  return out as T;
-};
-
-const safeDate = (d?: string | null) => {
-  if (!d) return null;
-  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
-};
-
-type RegisterBody = {
-  age: number;
-  phoneNumber: string;
-  address: string;
-};
-
-export const registerUser = createAsyncThunk(
-  "user/registerUser",
-  async (body: RegisterBody, thunkAPI) => {
-    try {
-      const res = await api.post("/api/v1/customer", body);
-      return res.data;
-    } catch (error) {
-      if (isAxiosError(error)) {
-        return thunkAPI.rejectWithValue(error.response?.data || error.message);
-      }
-      return thunkAPI.rejectWithValue("An unexpected error occurred");
-    }
-  }
-);
-
 type SocialLoginPayload = {
   code: string;
   state?: string | null;
@@ -164,10 +121,28 @@ export const authOwner = createAsyncThunk(
     }
   }
 );
-      return thunkAPI.fulfillWithValue({ server: false });
-    }
+
+const normalizePhone = (raw: string) => {
+  const d = (raw || "").replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("010")) {
+    return `010-${d.slice(3, 7)}-${d.slice(7)}`;
   }
-);
+  return raw || "";
+};
+
+const toNullIfEmpty = <T extends Record<string, any>>(obj: T): T => {
+  const out: Record<string, any> = {};
+  Object.entries(obj).forEach(([k, v]) => {
+    if (v === "" || v === undefined) out[k] = null;
+    else out[k] = v;
+  });
+  return out as T;
+};
+
+const safeDate = (d?: string | null) => {
+  if (!d) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
+};
 
 type SignupValues = {
   phone?: string;

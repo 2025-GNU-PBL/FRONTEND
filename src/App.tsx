@@ -24,7 +24,6 @@ import SearchPage from "./pages/SearchPage/SearchPage";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import NotAuthRoutes from "./components/NotAuthRoutes";
 import { useAppDispatch, useAppSelector } from "./store/hooks";
-import { authUser } from "./store/thunkFunctions";
 import LoginPage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";
@@ -34,9 +33,6 @@ import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
 import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
 import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
 import SignupPage from "./pages/SignupPage/step1/SignupPage";
-import QuotationPage from "./pages/QuotationPage/QuotationPage";
-import CalendarPage from "./pages/CalendarPage/CalendarPage";
-import { useEffect } from "react";
 import { authCustomer, authOwner } from "./store/thunkFunctions";
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
 
