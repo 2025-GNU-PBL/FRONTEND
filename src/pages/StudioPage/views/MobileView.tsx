@@ -60,13 +60,15 @@ const formatPrice = (price: number | string) => {
 const getThumb = (p: Product) => p.thumbnail || "/images/placeholder.jpg";
 
 /* ========================= API 응답 타입 ========================= */
+/** 서버 메타 정보(페이지네이션) */
 type PageMeta = {
   size: number;
-  number: number; // 현재 페이지 (0-base)
+  number: number; // 현재 페이지(0-base 가정)
   totalElements: number;
   totalPages: number;
 };
 
+/** 페이지형 응답 */
 type PagedResponse = {
   content: Product[];
   page: PageMeta;
@@ -151,10 +153,10 @@ const MobileView: React.FC = () => {
 
   // 데이터 상태
   const [items, setItems] = useState<Product[]>([]);
-  const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(true); // ★ 초기 로딩
   const [errorMsg, setErrorMsg] = useState<string>("");
 
-  // 찜
+  // 찜(로컬)
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
   const toggleLike = useCallback((id: number) => {
     setLikedIds((prev) => {
@@ -183,86 +185,106 @@ const MobileView: React.FC = () => {
     };
   }, [isMenuOpen]);
 
-  /* ===== 무한 스크롤 ===== */
+  /* ===== (수정) 무한 스크롤 로직 ===== */
 
-  const [pageNumber, setPageNumber] = useState(1); // 1-base
-  const pageSize = 6;
-  const [hasMore, setHasMore] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const fetchingRef = useRef(false);
-  const elementRef = useRef<HTMLDivElement | null>(null);
+  // 1-based API에 맞춰 1로 시작
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true); // 더 불러올 데이터가 있는지
+  const [totalCount, setTotalCount] = useState(0); // API에서 받아올 전체 개수
+  const [isLoadingMore, setIsLoadingMore] = useState(false); // ★ 추가 로딩 중 상태
 
+  const elementRef = useRef<HTMLDivElement | null>(null); // 감지할 요소
+
+  // ★★★ StrictMode 중복 실행 방지
+  const initialFetchRef = useRef(false);
+
+  // --- 데이터 페칭 함수 ---
   const fetchMoreItems = useCallback(async () => {
-    if (fetchingRef.current || !hasMore) return;
-    fetchingRef.current = true;
+    if (isLoadingMore) return;
 
-    const isInitial = pageNumber === 1;
-    if (isInitial) setLoadingInitial(true);
-    else setIsLoadingMore(true);
-
+    const isInitialLoad = page === 1;
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
     setErrorMsg("");
 
     try {
       const { data }: { data: PagedResponse } = await api.get(
-        `/api/v1/wedding-hall/filter?pageNumber=${pageNumber}&pageSize=${pageSize}`
+        `/api/v1/studio?pageNumber=${page}&pageSize=6`
       );
 
-      setTotalCount(data.page.totalElements);
+      const pageMeta = data.page;
 
+      // ✅ 기존 items와 신규 content를 id로 중복 제거 후 병합
       setItems((prev) => {
-        const map = new Map<number, Product>();
-        prev.forEach((p) => map.set(p.id, p));
-        data.content.forEach((p) => map.set(p.id, p));
-        return Array.from(map.values());
+        const seen = new Set(prev.map((p) => p.id));
+        const dedupedNew = data.content.filter((p) => !seen.has(p.id));
+        // 신규 추가 개수에 따라 이후 로직에서 분기할 수 있도록 길이를 리턴용 변수에 보관
+        (setItems as any)._lastAddedCount = dedupedNew.length; // 내부 전달용(아래에서 사용)
+        return dedupedNew.length ? [...prev, ...dedupedNew] : prev;
       });
 
-      const nextPage = pageNumber + 1;
-      const more = nextPage <= data.page.totalPages;
-      setPageNumber(nextPage);
-      setHasMore(more);
-    } catch (err) {
-      console.log(err);
-      setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
-    } finally {
-      setLoadingInitial(false);
-      setIsLoadingMore(false);
-      fetchingRef.current = false;
-    }
-  }, [pageNumber, hasMore]);
+      setTotalCount(pageMeta.totalElements);
 
+      // ✅ 신규가 0개면 페이지 증가/추가 로딩 중단 (중복만 왔거나 더 없음)
+      const lastAddedCount: number = (setItems as any)._lastAddedCount ?? 0;
+
+      if (lastAddedCount > 0) {
+        const nextPage = page + 1;
+        if (page < pageMeta.totalPages) {
+          setPage(nextPage);
+          setHasMore(true);
+        } else {
+          setHasMore(false);
+        }
+      } else {
+        // 신규가 없으면 더 이상 불러오지 않도록 차단
+        // (서버 중복 응답/정렬 변동 등의 경우에도 key 충돌 방지)
+        if (page >= pageMeta.totalPages) {
+          setHasMore(false);
+        }
+      }
+    } catch (err) {
+      console.error("데이터 로드 실패:", err);
+      setErrorMsg("데이터를 불러오는 데 실패했습니다.");
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [page, isLoadingMore]);
+
+  // --- 1. 초기 데이터 로드 ---
   useEffect(() => {
+    if (initialFetchRef.current) return;
+    initialFetchRef.current = true;
     fetchMoreItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // --- 2. Intersection Observer 설정 ---
   useEffect(() => {
-    const target = elementRef.current;
-    if (!target) return;
-
     const observer = new IntersectionObserver(
       (entries) => {
         const firstEntry = entries[0];
-        if (
-          firstEntry.isIntersecting &&
-          hasMore &&
-          !loadingInitial &&
-          !isLoadingMore &&
-          !fetchingRef.current
-        ) {
+        if (firstEntry.isIntersecting && hasMore && !isLoadingMore) {
           fetchMoreItems();
         }
       },
-      {
-        threshold: 0.2,
-        rootMargin: "200px 0px",
-      }
+      { threshold: 1.0 }
     );
 
-    observer.observe(target);
-    return () => observer.unobserve(target);
-  }, [hasMore, loadingInitial, isLoadingMore, fetchMoreItems]);
+    const currentElement = elementRef.current;
+    if (currentElement) observer.observe(currentElement);
 
-  /* ===== 렌더 ===== */
+    return () => {
+      if (currentElement) observer.unobserve(currentElement);
+    };
+  }, [hasMore, isLoadingMore, fetchMoreItems]);
+
+  /* ===== (끝) ===== */
 
   return (
     <motion.div
@@ -292,7 +314,7 @@ const MobileView: React.FC = () => {
           className="absolute left-1/2 -translate-x-1/2 top-[15.5px] text-center text-[18px] font-semibold leading-[29px] tracking-[-0.2px] text-[#1E2124]"
           variants={fade}
         >
-          웨딩홀
+          스튜디오
         </motion.h1>
         <div className="absolute right-5 top-[18px] flex items-center gap-[12px]">
           <motion.button
@@ -372,7 +394,10 @@ const MobileView: React.FC = () => {
           <p className="text-[14px] text-[#999999]">총</p>&nbsp;
           <p className="text-[14px] text-black">{totalCount}개</p>
         </div>
-        <button className="flex items-center gap-1 active:scale-95">
+        <button
+          className="flex items-center gap-1 active:scale-95"
+          onClick={() => {}}
+        >
           <span className="text-[14px] text-black">최신순</span>
           <Icon
             icon="solar:alt-arrow-down-linear"
@@ -381,8 +406,8 @@ const MobileView: React.FC = () => {
         </button>
       </motion.div>
 
-      {/* 상태 */}
-      {!!errorMsg && !loadingInitial && (
+      {/* 상태 (에러) */}
+      {!!errorMsg && !loading && (
         <motion.div className="px-5 mt-2" variants={fadeUp}>
           <p className="text-sm text-red-500">{errorMsg}</p>
         </motion.div>
@@ -395,16 +420,18 @@ const MobileView: React.FC = () => {
             className="grid grid-cols-2 gap-y-5 gap-x-2.5 px-5 mt-4 pb-12"
             variants={stagger(0.03)}
           >
+            {/* 1. 불러온 아이템들 */}
             {items.map((product) => (
               <Card
-                key={`p-${product.id}`}
+                key={product.id} // ✅ 중복 방지는 위에서 id 기반 dedupe로 해결
                 product={product}
                 liked={likedIds.has(product.id)}
                 onToggleLike={toggleLike}
               />
             ))}
 
-            {loadingInitial &&
+            {/* 2. 로딩 스켈레톤 (초기 로딩 시 + 아이템이 0개일 때만) */}
+            {loading &&
               items.length === 0 &&
               Array.from({ length: 4 }).map((_, i) => (
                 <div
@@ -419,14 +446,17 @@ const MobileView: React.FC = () => {
               ))}
           </motion.div>
 
+          {/* 3. Intersection Observer 타겟 + 추가 로딩 스피너 */}
           <div ref={elementRef} className="h-1" />
 
+          {/* 추가 로딩 중일 때 */}
           {isLoadingMore && (
             <motion.div className="pb-24 text-center" variants={fade}>
               <p className="text-sm text-[#595F63]">불러오는 중…</p>
             </motion.div>
           )}
 
+          {/* 더 이상 아이템이 없을 때 */}
           {!hasMore && items.length > 0 && !isLoadingMore && (
             <motion.div className="pb-24 text-center" variants={fade}>
               <p className="text-sm text-[#999999]">마지막 상품입니다.</p>

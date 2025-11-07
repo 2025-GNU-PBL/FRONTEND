@@ -24,7 +24,6 @@ import SearchPage from "./pages/SearchPage/SearchPage";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import NotAuthRoutes from "./components/NotAuthRoutes";
 import { useAppDispatch, useAppSelector } from "./store/hooks";
-import { authUser } from "./store/thunkFunctions";
 import LoginPage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";
@@ -36,6 +35,8 @@ import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
 import SignupPage from "./pages/SignupPage/step1/SignupPage";
 import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
 import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
+import { authCustomer, authOwner } from "./store/thunkFunctions";
+import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
 
 function Layout() {
   const location = useLocation();
@@ -50,7 +51,12 @@ function Layout() {
   ];
 
   // 푸터 숨길 경로 (정적 + 동적)
-  const hideFooterOnPaths = ["/log-in", "/log-in/client", "/log-in/owner"];
+  const hideFooterOnPaths = [
+    "/log-in",
+    "/log-in/client",
+    "/log-in/owner",
+    "/test",
+  ];
 
   const showNavbar = !hideNavOnPaths.includes(location.pathname);
   const showFooter =
@@ -77,16 +83,29 @@ function Layout() {
 const App = () => {
   const dispatch = useAppDispatch();
 
-  // persist rehydration 여부와 isAuth
-  const isAuth = useAppSelector((s) => s.user.isAuth);
-  const rehydrated = useAppSelector((s: any) => s._persist?.rehydrated);
+  const { isAuth, role } = useAppSelector((state) => state.user);
+  const rehydrated = useAppSelector((state) => state._persist?.rehydrated);
 
-  // 앱이 복원되고 로그인된 상태라면, 유저 프로필 동기화
+  /**
+   *  앱이 복원되고 로그인된 상태라면, 역할(role)에 따라 프로필/권한을 서버에서 동기화
+   * - CUSTOMER → authCustomer()
+   * - OWNER    → authOwner()
+   * - (선택) role이 없는 특이 케이스 대비: 필요 시 순차 조회 로직을 추가할 수 있음
+   */
   useEffect(() => {
-    if (rehydrated && isAuth) {
-      dispatch(authUser());
+    if (!rehydrated || !isAuth) return;
+
+    if (role === "CUSTOMER") {
+      dispatch(authCustomer());
+    } else if (role === "OWNER") {
+      dispatch(authOwner());
+    } else {
+      //  예외 케이스(로그인인데 role이 비어있음). 필요 시 아래 주석을 해제해 포괄 처리 가능.
+      // dispatch(authOwner())
+      //   .unwrap()
+      //   .catch(() => dispatch(authCustomer()).unwrap().catch(() => {}));
     }
-  }, [rehydrated, isAuth, dispatch]);
+  }, [rehydrated, isAuth, role, dispatch]);
 
   // 리덕스 퍼시스트가 완료될 때까지만 기다림 (깜빡임 방지)
   if (!rehydrated) return null;
@@ -103,6 +122,7 @@ const App = () => {
         <Route path="/makeup" element={<MakeupPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/quotation" element={<QuotationPage />} />
+        <Route path="/test" element={<ProductCreate />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>

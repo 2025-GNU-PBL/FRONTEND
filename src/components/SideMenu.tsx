@@ -153,7 +153,7 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
               }}
               onClick={() => {
                 onClose();
-                navigate("/sign-up"); // ✅ 회원가입은 /sign-up
+                navigate("/log-in"); //
               }}
             >
               회원가입

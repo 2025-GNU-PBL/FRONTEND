@@ -1,9 +1,9 @@
-import { useCallback } from "react";
+import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { Icon } from "@iconify/react";
-import { useAppSelector } from "../../../../store/hooks";
+import MyPageHeader from "../../../../components/clientMypage/MyPageHeader";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
 
@@ -11,7 +11,7 @@ export default function WebView() {
   const nav = useNavigate();
   const dispatch = useDispatch();
 
-  const userName = useAppSelector((state) => state.user.userData?.name ?? "");
+  const userName = localStorage.getItem("userName") || "홍종민";
 
   const go = useCallback((to: string) => nav(to), [nav]);
 
@@ -61,14 +61,14 @@ export default function WebView() {
                 description="프로필, 연락처, 계정 설정을 관리해요."
                 icon="mdi:account-cog-outline"
                 cta="관리하기"
-                onClick={() => go("/my-page/client/profile")}
+                onClick={() => go("/my-page/profile")}
               />
               <ActionCard
                 title="쿠폰함"
                 description="사용 가능 쿠폰과 혜택을 확인해요."
                 icon="mdi:ticket-percent-outline"
                 cta="바로가기"
-                onClick={() => go("/my-page/client/coupons")}
+                onClick={() => go("/my-page/coupons")}
               />
             </div>
           </section>
@@ -82,22 +82,22 @@ export default function WebView() {
               <MenuTile
                 label="결제 관리"
                 icon="mdi:credit-card-outline"
-                onClick={() => go("/my-page/client/payments")}
+                onClick={() => go("/my-page/payments")}
               />
               <MenuTile
                 label="스케줄 내역"
                 icon="mdi:calendar-clock-outline"
-                onClick={() => go("/my-page/client/schedules")}
+                onClick={() => go("/my-page/schedules")}
               />
               <MenuTile
                 label="문의 내역"
                 icon="mdi:message-question-outline"
-                onClick={() => go("/my-page/client/inquiries")}
+                onClick={() => go("/my-page/inquiries")}
               />
               <MenuTile
                 label="리뷰관리"
                 icon="mdi:star-outline"
-                onClick={() => go("/my-page/client/reviews")}
+                onClick={() => go("/my-page/reviews")}
               />
               <MenuTile
                 label="고객센터"

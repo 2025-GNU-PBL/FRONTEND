@@ -1,25 +1,19 @@
 import React from "react";
+import { useAppSelector } from "../../../../store/hooks";
+import type { CustomerData, UserData } from "../../../../store/userSlice"; // 실제 경로에 맞게 수정
 
-type Profile = {
-  name: string;
-  phone: string;
-  email: string;
-  address?: string;
-  weddingDate: Date;
-  weddingVenue: string;
-};
+// 이 페이지는 "고객(CUSTOMER) 전용"이라는 전제를 코드로 한 번 잡아줌
+function ensureCustomer(userData: UserData | null): CustomerData | null {
+  if (!userData) return null;
 
-const getProfile = (): Profile => ({
-  name: localStorage.getItem("userName") || "홍종민",
-  phone: localStorage.getItem("userPhone") || "010-1234-5678",
-  email: localStorage.getItem("userEmail") || "email@example.com",
-  address: localStorage.getItem("userAddress") || "서울특별시 어딘가",
-  weddingDate: localStorage.getItem("userWeddingDate")
-    ? new Date(localStorage.getItem("userWeddingDate") as string)
-    : new Date("2025-11-01"),
-  weddingVenue:
-    localStorage.getItem("userWeddingVenue") || "서울 더클래스청담 그랜드홀",
-});
+  // CUSTOMER 전용 필드(weddingDate 등)가 있는지만 확인해서 좁혀줌
+  if ("weddingDate" in userData) {
+    return userData as CustomerData;
+  }
+
+  // OWNER 등이 들어오면 null 처리 (라우팅 잘 돼 있으면 실제로는 거의 안 옴)
+  return null;
+}
 
 // 모바일과 동일한 카드/행 컴포넌트
 function SectionCard({
@@ -56,20 +50,74 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
 }
 
 export default function WebView() {
-  const p = getProfile();
+  // ✅ Redux에서 userData 가져오기
+  const rawUserData = useAppSelector((state) => state.user.userData);
+  const customer = ensureCustomer(rawUserData);
+
+  // 로그인 안 됐거나, CUSTOMER 타입이 아니면 안내 문구 노출
+  if (!customer) {
+    return (
+      <main className="w-full bg-[#F6F7FB] min-h-screen mt-15">
+        <div className="pt-10 pb-16">
+          <div className="max-w-[960px] mx-auto px-6">
+            <section className="rounded-2xl bg-white/95 backdrop-blur border border-gray-200 shadow-[0_6px_20px_rgba(0,0,0,0.05)]">
+              <div className="px-6 py-10 flex items-center justify-center">
+                <p className="text-sm text-gray-500">
+                  고객 정보가 없습니다. 다시 로그인해주세요.
+                </p>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // 여기부터는 CUSTOMER 전용 데이터만 사용
+  const {
+    name,
+    phoneNumber,
+    email,
+    roadAddress,
+    jibunAddress,
+    address,
+    sido,
+    sigungu,
+    dong,
+    buildingName,
+    weddingDate,
+    weddingSido,
+    weddingSigungu,
+  } = customer;
+
+  const displayAddress =
+    roadAddress ||
+    jibunAddress ||
+    address ||
+    [sido, sigungu, dong, buildingName].filter(Boolean).join(" ") ||
+    "-";
+
+  const displayWeddingDate = weddingDate
+    ? new Date(weddingDate).toLocaleDateString("ko-KR")
+    : "-";
+
+  const displayWeddingVenue =
+    buildingName ||
+    [weddingSido, weddingSigungu].filter(Boolean).join(" ") ||
+    "-";
 
   return (
     <main className="w-full bg-[#F6F7FB] min-h-screen mt-15">
       <div className="pt-10 pb-16">
         <div className="max-w-[960px] mx-auto px-6 space-y-8">
-          {/* 프로필 히어로 카드 (모바일 상단 프로필 카드와 동일 역할) */}
+          {/* 프로필 히어로 카드 */}
           <section className="rounded-2xl bg-white/95 backdrop-blur border border-gray-200 shadow-[0_6px_20px_rgba(0,0,0,0.05)]">
             <div className="px-6 py-6">
               <div className="flex items-center gap-5">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-200 to-gray-300" />
                 <div className="min-w-0">
                   <div className="text-[20px] font-semibold text-gray-900 tracking-[-0.2px] truncate">
-                    {p.name}
+                    {name}
                   </div>
                   <div className="mt-1 text-sm text-gray-600 tracking-[-0.2px]">
                     반가워요! 오늘도 좋은 하루 👋
@@ -82,13 +130,13 @@ export default function WebView() {
           {/* 회원정보 카드 */}
           <SectionCard title="회원정보">
             <div className="divide-y divide-gray-100">
-              <InfoRow label="고객명" value={p.name} />
+              <InfoRow label="고객명" value={name} />
               <div className="h-px bg-gray-100" />
-              <InfoRow label="전화번호" value={p.phone} />
+              <InfoRow label="전화번호" value={phoneNumber} />
               <div className="h-px bg-gray-100" />
-              <InfoRow label="이메일" value={p.email} />
+              <InfoRow label="이메일" value={email} />
               <div className="h-px bg-gray-100" />
-              <InfoRow label="주소" value={p.address} />
+              <InfoRow label="주소" value={displayAddress} />
             </div>
             <div className="pt-4 flex justify-end">
               <button
@@ -101,15 +149,12 @@ export default function WebView() {
             </div>
           </SectionCard>
 
-          {/* 예식정보 카드 (모바일 예식정보 섹션 매칭) */}
+          {/* 예식정보 카드 */}
           <SectionCard title="예식정보">
             <div className="divide-y divide-gray-100">
-              <InfoRow
-                label="예식일"
-                value={p.weddingDate.toLocaleDateString("ko-KR")}
-              />
+              <InfoRow label="예식일" value={displayWeddingDate} />
               <div className="h-px bg-gray-100" />
-              <InfoRow label="예식장소" value={p.weddingVenue} />
+              <InfoRow label="예식장소" value={displayWeddingVenue} />
             </div>
           </SectionCard>
         </div>

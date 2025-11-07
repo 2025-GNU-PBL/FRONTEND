@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import MobileView from "./views/MobileView";
 import WebView from "./views/WebView";
 
@@ -13,8 +13,7 @@ export type FavoriteItem = {
   // 필요 시 필드 추가
 };
 
-// ✅ 로컬스토리지 키
-const LS_KEY = "favorites";
+// 로컬스토리지 관련 코드 제거
 
 const sampleData: FavoriteItem[] = [
   {
@@ -46,28 +45,11 @@ const sampleData: FavoriteItem[] = [
   },
 ];
 
-function readFromStorage(): FavoriteItem[] {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return sampleData;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return sampleData;
-    return parsed;
-  } catch {
-    return sampleData;
-  }
-}
-
-function writeToStorage(items: FavoriteItem[]) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(items));
-  } catch {
-    // noop
-  }
-}
+// readFromStorage, writeToStorage 함수 제거
 
 const FavoritesPage = () => {
-  const [items, setItems] = useState<FavoriteItem[]>(() => readFromStorage());
+  // ✅ 로컬스토리지 대신 sampleData로 초기화
+  const [items, setItems] = useState<FavoriteItem[]>(sampleData);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<FavoriteItem["category"] | "all">(
     "all"
@@ -76,19 +58,22 @@ const FavoritesPage = () => {
     "recent"
   );
 
-  useEffect(() => {
-    writeToStorage(items);
-  }, [items]);
+  // 로컬스토리지 저장을 위한 useEffect 제거
 
   const removeItem = useCallback((id: string) => {
+    // setItems는 작동하지만, 다음 렌더링 시 sampleData로 다시 초기화되기 때문에
+    // 실제 UI에서는 삭제가 반영되지 않습니다.
     setItems((prev) => prev.filter((it) => it.id !== id));
   }, []);
 
   const clearAll = useCallback(() => {
+    // setItems는 작동하지만, 다음 렌더링 시 sampleData로 다시 초기화됩니다.
     setItems([]);
   }, []);
 
   const filtered = useMemo(() => {
+    // items 상태는 더미 데이터로 고정되었지만,
+    // 정렬/필터링 로직은 여전히 작동합니다.
     let next = [...items];
 
     // 검색
@@ -116,8 +101,7 @@ const FavoritesPage = () => {
     } else if (sort === "priceDesc") {
       next.sort((a, b) => (b.price ?? -1) - (a.price ?? -1));
     } else {
-      // recent: 로컬 배열 순서를 최신으로 취급 (이미 최신이 앞쪽)
-      // 별도 작업 없음
+      // recent: 별도 작업 없음
     }
 
     return next;
@@ -126,15 +110,15 @@ const FavoritesPage = () => {
   // 공통 핸들러 묶어서 프리젠테이션 컴포넌트에 전달
   const viewProps = {
     items: filtered,
-    totalCount: items.length,
+    totalCount: items.length, // 항상 sampleData의 길이
     query,
     setQuery,
     category,
     setCategory,
     sort,
     setSort,
-    onRemove: removeItem,
-    onClear: clearAll,
+    onRemove: removeItem, // UI에서 삭제를 시도해도 실제 데이터는 고정됨
+    onClear: clearAll, // UI에서 전체 삭제를 시도해도 실제 데이터는 고정됨
   };
 
   return (
