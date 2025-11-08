@@ -1,77 +1,50 @@
 import React, {
-  useMemo,
   useState,
   useCallback,
   useRef,
   useEffect,
+  useMemo,
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import api from "../../../../lib/api/axios";
 import MyPageHeader from "../../../../components/MyPageHeader";
 
-type Coupon = {
-  id: string;
-  category: "전체" | "웨딩홀" | "스튜디오" | "드레스" | "메이크업";
-  title: string;
-  discount: string;
-  info1: string;
-  period: string;
-  createdAt: string;
+type UserCoupon = {
+  userCouponId: number;
+  status: "AVAILABLE" | "USED" | "EXPIRED" | string;
+  downloadedAt: string;
+  usedAt: string | null;
+  couponId: number;
+  couponCode: string;
+  couponName: string;
+  couponDetail: string;
+  discountType: string; // PERCENT, AMOUNT 등
+  discountValue: number;
+  maxDiscountAmount: number;
+  minPurchaseAmount: number;
+  startDate: string; // "2025-11-07"
+  expirationDate: string;
+  category: string; // "웨딩홀" | "스튜디오" | ...
+  canUse: boolean;
+  daysUntilExpiration: number;
+  productId: number | null;
+  productName: string | null;
 };
 
-// 데모 데이터
-const SEED: Coupon[] = [
-  {
-    id: "c1",
-    category: "웨딩홀",
-    title: "[상반기 WEDDING] 구매금액 1만원 할인",
-    discount: "6%",
-    info1: "10만원 이상 구매 시 최대 1만원 할인",
-    period: "사용기간 : 25.09.29~25.10.31",
-    createdAt: "2025-09-29",
-  },
-  {
-    id: "c2",
-    category: "스튜디오",
-    title: "[상반기 WEDDING] 구매금액 1만원 할인",
-    discount: "6%",
-    info1: "10만원 이상 구매 시 최대 1만원 할인",
-    period: "사용기간 : 25.09.29~25.10.31",
-    createdAt: "2025-09-30",
-  },
-  {
-    id: "c3",
-    category: "드레스",
-    title: "[상반기 WEDDING] 구매금액 1만원 할인",
-    discount: "6%",
-    info1: "10만원 이상 구매 시 최대 1만원 할인",
-    period: "사용기간 : 25.09.29~25.10.31",
-    createdAt: "2025-10-01",
-  },
-];
+type CategoryFilter = "전체" | "웨딩홀" | "스튜디오" | "드레스" | "메이크업";
 
 export default function MobileView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
 
-  const [category, setCategory] = useState<Coupon["category"]>("전체");
+  const [category, setCategory] = useState<CategoryFilter>("전체");
   const [sort, setSort] = useState<"최신순" | "오래된순">("최신순");
   const [sortOpen, setSortOpen] = useState(false);
+  const [coupons, setCoupons] = useState<UserCoupon[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const filtered = useMemo(() => {
-    const base =
-      category === "전체"
-        ? SEED.slice()
-        : SEED.filter((c) => c.category === category);
-    base.sort((a, b) =>
-      sort === "최신순"
-        ? +new Date(b.createdAt) - +new Date(a.createdAt)
-        : +new Date(a.createdAt) - +new Date(b.createdAt)
-    );
-    return base;
-  }, [category, sort]);
-
-  // 바깥 클릭으로 정렬 메뉴 닫기
+  // 정렬 드롭다운 외부 클릭 감지
   const popRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -83,6 +56,53 @@ export default function MobileView() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [sortOpen]);
 
+  useEffect(() => {
+    const fetchMyCoupons = async () => {
+      try {
+        setLoading(true);
+
+        const res = await api.get<UserCoupon[]>(
+          "/api/v1/customer/coupon/my/available"
+        );
+
+        setCoupons(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMyCoupons();
+  }, []);
+
+  const handleDownload = useCallback(async (couponId: number) => {
+    try {
+      const res = await api.post<UserCoupon>(
+        `/api/v1/customer/coupon/${couponId}/download`
+      );
+
+      setCoupons((prev) => [...prev, res.data]);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  // 카테고리 + 정렬 적용
+  const filtered = useMemo(() => {
+    const list = coupons.filter((c) =>
+      category === "전체" ? true : c.category === category
+    );
+
+    list.sort((a, b) => {
+      const da = +new Date(a.downloadedAt || a.startDate);
+      const db = +new Date(b.downloadedAt || b.startDate);
+      return sort === "최신순" ? db - da : da - db;
+    });
+
+    return list;
+  }, [coupons, category, sort]);
+
   return (
     <div className="w-full bg-white">
       {/* 화면 프레임(390×844) */}
@@ -93,7 +113,7 @@ export default function MobileView() {
         </div>
 
         {/* 본문 */}
-        <div className="flex-1 px-5 pt-4 pb-20 overflow-auto">
+        <div className="flex-1 px-5 pt-20 pb-20 overflow-auto">
           {/* 카테고리 칩 */}
           <div className="w-full flex items-center gap-2">
             <Chip
@@ -131,7 +151,7 @@ export default function MobileView() {
           {/* 보유개수 / 정렬 */}
           <div className="mt-4 w-full flex items-center justify-between relative">
             <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-              보유 쿠폰 {filtered.length}
+              {loading ? "쿠폰 불러오는 중..." : `보유 쿠폰 ${filtered.length}`}
             </span>
 
             {/* 정렬 드롭다운 */}
@@ -181,10 +201,20 @@ export default function MobileView() {
 
           {/* 리스트 */}
           <div className="mt-4 flex flex-col gap-4">
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className="h-[200px] flex items-center justify-center text-[14px] text-[#999999]">
+                쿠폰 정보를 불러오는 중입니다...
+              </div>
+            ) : filtered.length === 0 ? (
               <EmptyState />
             ) : (
-              filtered.map((c) => <CouponCard key={c.id} c={c} />)
+              filtered.map((c) => (
+                <CouponCard
+                  key={c.userCouponId}
+                  c={c}
+                  onDownload={handleDownload}
+                />
+              ))
             )}
           </div>
         </div>
@@ -244,35 +274,48 @@ function Chip({
   );
 }
 
-function CouponCard({ c }: { c: Coupon }) {
+function CouponCard({
+  c,
+  onDownload,
+}: {
+  c: UserCoupon;
+  onDownload: (couponId: number) => void;
+}) {
+  const period = `사용기간 : ${c.startDate} ~ ${c.expirationDate}`;
+  const discountLabel =
+    c.discountType === "PERCENT"
+      ? `${c.discountValue}%`
+      : `${c.discountValue.toLocaleString()}원`;
+
   return (
     <div className="w-full h-[129px] flex">
       {/* 좌측 본문 */}
       <div className="w-[278px] h-[129px] border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-2 bg-white">
         <div className="flex flex-col gap-1 w-[222px]">
           <div className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-            {c.title}
+            {c.couponName}
           </div>
           <div className="text-[20px] font-bold leading-[32px] tracking-[-0.2px] text-black">
-            {c.discount}
+            {discountLabel}
           </div>
         </div>
-        <div className="flex flex-col w-[169px]">
-          <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
-            {c.info1}
+        <div className="flex flex-col w-[200px]">
+          <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999] line-clamp-1">
+            {c.couponDetail}
           </div>
           <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
-            {c.period}
+            {period}
           </div>
         </div>
       </div>
 
-      {/* 우측 다운로드 영역 */}
+      {/* 우측 영역: 재발급/사용 버튼 */}
       <div className="w-[72px] h-[129px] bg-[#F6F7FB] border border-l-0 border-[#F2F2F2] rounded-r-[16px] flex items-center justify-center px-[18px]">
         <button
-          className="w-9 h-9 rounded-[20px] bg-white flex items-center justify-center active:scale-95"
+          className="w-9 h-9 rounded-[20px] bg-white flex items-center justify-center active:scale-95 disabled:opacity-40"
           aria-label="download-coupon"
-          onClick={() => alert("쿠폰이 다운로드되었습니다.")}
+          onClick={() => onDownload(c.couponId)}
+          disabled={!c.canUse}
         >
           <Icon icon="mdi:download-outline" className="w-4 h-4" />
         </button>
