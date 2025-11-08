@@ -1,17 +1,13 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { useDispatch /*, useSelector*/ } from "react-redux";
-// import { selectUserName, logoutThunk } from "@/store/authSlice";
 import MyPageHeader from "../../../../components/MyPageHeader";
 import { Icon } from "@iconify/react";
-import { useAppSelector } from "../../../../store/hooks";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
+import { useAppDispatch, useAppSelector } from "../../../../store/hooks";
+import { logoutUser } from "../../../../store/thunkFunctions";
 
 export default function MobileView() {
   const nav = useNavigate();
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
 
   const userName = useAppSelector((state) => state.user.userData?.name ?? "");
 
@@ -20,22 +16,13 @@ export default function MobileView() {
   const onBack = useCallback(() => nav(-1), [nav]);
   const onMenu = useCallback(() => go("/settings"), [go]);
 
-  const onLogout = useCallback(async () => {
+  const handleLogout = async () => {
     try {
-      if (API_BASE) {
-        await axios.post(`${API_BASE}/auth/logout`, null, {
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-    } catch {
-      // ignore: 서버 로그아웃 실패해도 클라 정리
+      await dispatch(logoutUser()).unwrap();
     } finally {
-      // await dispatch(logoutThunk());
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      nav("/log-in");
+      nav("/");
     }
-  }, [nav, dispatch]);
+  };
 
   return (
     <div className="w-full bg-white">
@@ -127,7 +114,7 @@ export default function MobileView() {
             </button>
             <div className="w-6 h-px bg-black/80 rotate-90" />
             <button
-              onClick={onLogout}
+              onClick={handleLogout}
               className="text-[16px] tracking-[-0.2px] hover:opacity-80"
             >
               로그아웃

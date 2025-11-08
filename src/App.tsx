@@ -35,6 +35,8 @@ import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
 import SignupPage from "./pages/SignupPage/step1/SignupPage";
 import { authCustomer, authOwner } from "./store/thunkFunctions";
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
+import OwnerMyPageMain from "./pages/MyPage/OwnerMyPage/Main/OwnerMyPageMain";
+import ProductManagementPage from "./pages/MyPage/OwnerMyPage/ProductManagement/Main/ProductMangement";
 
 function Layout() {
   const location = useLocation();
@@ -53,7 +55,9 @@ function Layout() {
     "/log-in",
     "/log-in/client",
     "/log-in/owner",
-    "/test",
+    "/my-page/owner/product/create",
+    "/my-page/owner/product/edit",
+    "/my-page/owner/product/list",
   ];
 
   const showNavbar = !hideNavOnPaths.includes(location.pathname);
@@ -120,16 +124,35 @@ const App = () => {
         <Route path="/makeup" element={<MakeupPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/quotation" element={<QuotationPage />} />
-        <Route path="/test" element={<ProductCreate />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/cart" element={<CartPage />} />
-          <Route path="/my-page" element={<ClientMyPageMain />} />
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/:id" element={<ChatPage />} />
+          {/* 고객 마이페이지 */}
+          <Route path="/my-page/client" element={<ClientMyPageMain />} />
+          <Route
+            path="/my-page/client/profile"
+            element={<ClientProfilePage />}
+          />
+          <Route
+            path="/my-page/client/coupons"
+            element={<ClientCouponPage />}
+          />
+
+          {/* 사장 마이페이지 */}
+          <Route path="/my-page/owner" element={<OwnerMyPageMain />} />
+          <Route
+            path="/my-page/owner/product"
+            element={<ProductManagementPage />}
+          />
+          <Route
+            path="/my-page/owner/product/create"
+            element={<ProductCreate />}
+          />
         </Route>
 
         {/* 로그인한 사람은 접근 불가 */}
@@ -141,9 +164,6 @@ const App = () => {
           <Route path="/auth/naver/callback" element={<NaverCallback />} />
         </Route>
 
-        <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
-        <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
-        <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
         <Route path="/sign-up/step1" element={<SignupPage />} />
         <Route path="/sign-up/step2" element={<JoinAddressPage />} />
         <Route path="/sign-up/step3" element={<WeddingInfoPage />} />

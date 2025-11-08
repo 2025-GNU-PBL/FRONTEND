@@ -13,6 +13,7 @@ const menuItems = [
 const Navbar = () => {
   // ✅ Redux에서 로그인 여부 확인
   const isAuth = useAppSelector((s) => s.user.isAuth);
+  const userRole = useAppSelector((state) => state.user.role); // ✅ Redux에서 role 가져오기
 
   return (
     // 데스크톱 전용 네비게이션
@@ -78,7 +79,7 @@ const Navbar = () => {
 
               {/* 👤 마이페이지 */}
               <Link
-                to="/my-page"
+                to={userRole === "OWNER" ? "/my-page/owner" : "/my-page/client"}
                 aria-label="마이페이지"
                 className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
               >
