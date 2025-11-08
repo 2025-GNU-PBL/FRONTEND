@@ -1,90 +1,126 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import MyPageHeader from "../../../../components/MyPageHeader";
+import api from "../../../../lib/api/axios";
 
+/** 서버 응답 DTO  */
+type ReviewApiResponseItem = {
+  id: number;
+  customerId: number;
+  customerName: string;
+  productId: number;
+  star: number;
+  title: string; // brand
+  comment: string;
+  imageUrl?: string | null;
+  category?: string; // 추후 벡엔드 수정 예정
+  createdAt: string; // "2025-11-07T12:00:00"
+};
+
+type ReviewApiResponse = {
+  content: ReviewApiResponseItem[];
+  page: {
+    size: number;
+    number: number;
+    totalElements: number;
+    totalPages: number;
+  };
+};
+
+/** 화면에서 사용할 리뷰 타입 */
 type Review = {
   id: string;
   brand: string;
   category: string;
-  rating: number; // 0~5
-  createdAgo: string; // "5일 전" 등
+  rating: number;
+  createdAgo: string;
   content: string;
-  thumbnail: string; // 이미지 URL (데모용)
+  thumbnail: string;
 };
-
-// 데모 데이터
-const SEED: Review[] = [
-  {
-    id: "r1",
-    brand: "루이즈브랭",
-    category: "드레스",
-    rating: 5,
-    createdAgo: "5일 전",
-    content:
-      "하객들이 극찬한 최신급 식사 퀄리티 덕분에 모두가 만족했던 웨딩이었어요.",
-    thumbnail:
-      "https://images.pexels.com/photos/3738085/pexels-photo-3738085.jpeg?auto=compress&w=200",
-  },
-  {
-    id: "r2",
-    brand: "루이즈브랭",
-    category: "드레스",
-    rating: 5,
-    createdAgo: "5일 전",
-    content:
-      "드레스 핏이 너무 예쁘고 상담해주시는 분도 친절해서 준비 과정이 편했어요.",
-    thumbnail:
-      "https://images.pexels.com/photos/3738085/pexels-photo-3738085.jpeg?auto=compress&w=200",
-  },
-  {
-    id: "r3",
-    brand: "루이즈브랭",
-    category: "드레스",
-    rating: 4,
-    createdAgo: "5일 전",
-    content: "전체적으로 만족스러웠고, 다음에 또 이용하고 싶어요.",
-    thumbnail:
-      "https://images.pexels.com/photos/3738085/pexels-photo-3738085.jpeg?auto=compress&w=200",
-  },
-  {
-    id: "r4",
-    brand: "루이즈브랭",
-    category: "드레스",
-    rating: 5,
-    createdAgo: "5일 전",
-    content: "사진보다 실물이 더 예뻐요. 추천합니다!",
-    thumbnail:
-      "https://images.pexels.com/photos/3738085/pexels-photo-3738085.jpeg?auto=compress&w=200",
-  },
-];
 
 export default function MobileView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
 
-  // 🔹 리뷰 목록 상태로 관리 (삭제 반영 위해)
-  const [reviews, setReviews] = useState<Review[]>(SEED);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const hasReviews = reviews.length > 0;
+  const hasReviews = !loading && reviews.length > 0;
 
-  // 🔹 삭제 핸들러
-  const handleDelete = useCallback((id: string) => {
-    setReviews((prev) => prev.filter((r) => r.id !== id));
+  /** API 응답 → UI 모델 매핑 */
+  const mapToReview = (item: ReviewApiResponseItem): Review => ({
+    id: String(item.id),
+    brand: item.title || "상품명 미지정", // title을 브랜드처럼 노출
+    category: "", // 서버에 없으니 공백으로 처리
+    rating: item.star ?? 0, // star → rating
+    createdAgo: "", // createdAt이 없으니 빈 문자열 (추후 백엔드 추가 시 교체)
+    content: item.comment || "",
+    thumbnail: item.imageUrl || "",
+  });
+
+  /** 내 리뷰 목록 조회 */
+  useEffect(() => {
+    const fetchMyReviews = async () => {
+      try {
+        setLoading(true);
+
+        const { data } = await api.get<ReviewApiResponse>(
+          "/api/v1/reviews/me",
+          {
+            params: {
+              pageNumber: 1,
+              pageSize: 50,
+            },
+          }
+        );
+
+        const list = (data?.content || []).map(mapToReview);
+        setReviews(list);
+      } catch (err) {
+        console.error("[Reviews/MobileView] fetchMyReviews error:", err);
+        // TODO: 토스트로 "리뷰 목록을 불러오지 못했습니다." 노출
+        setReviews([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMyReviews();
+  }, []);
+
+  /** 리뷰 삭제 */
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      // 서버 삭제 요청
+      await api.delete(`/api/v1/reviews/${id}`);
+
+      // 로컬 상태에서도 제거
+      setReviews((prev) => prev.filter((r) => r.id !== id));
+
+      // TODO: 토스트로 "리뷰가 삭제되었습니다." 노출
+    } catch (err) {
+      console.error("[Reviews/MobileView] delete error:", err);
+      // TODO: 토스트로 "리뷰 삭제에 실패했습니다." 노출
+    }
   }, []);
 
   return (
     <div className="w-full bg-white">
       {/* 화면 프레임(390×844) */}
       <div className="relative mx-auto w-[390px] h-[844px] bg-white flex flex-col overflow-hidden">
-        {/* 상단 헤더 (기존 컴포넌트 사용) */}
+        {/* 상단 헤더 */}
         <div className="sticky top-0 z-20 bg-white border-b border-[#F3F4F5]">
           <MyPageHeader title="리뷰 내역" onBack={onBack} showMenu={false} />
         </div>
 
         {/* 콘텐츠 영역 */}
         <div className="flex-1 w-full overflow-y-auto">
-          {hasReviews ? (
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center text-[14px] text-[#999999]">
+              리뷰 내역을 불러오는 중입니다...
+            </div>
+          ) : hasReviews ? (
             <>
               {/* 상단: 리뷰 개수 */}
               <div className="px-5 pt-5">
@@ -113,6 +149,8 @@ export default function MobileView() {
     </div>
   );
 }
+
+/* ---------- Row / Empty 컴포넌트 ---------- */
 
 function ReviewRow({
   review,
@@ -144,8 +182,10 @@ function ReviewRow({
             <span className="text-[14px] font-semibold text-[#111111] mr-1">
               {review.brand}
             </span>
-            <span>{review.category}</span>
-            <span className="w-[2px] h-[2px] rounded-full bg-[#D4D4D4]" />
+            {review.category && <span>{review.category}</span>}
+            {review.category && (
+              <span className="w-[2px] h-[2px] rounded-full bg-[#D4D4D4]" />
+            )}
             <span>{review.createdAgo}</span>
           </div>
 
@@ -205,4 +245,32 @@ function EmptyState() {
       </div>
     </div>
   );
+}
+
+/* ---------- 유틸 ---------- */
+
+/** createdAt ISO → "n일 전" 등으로 변환 (값 없으면 빈 문자열) */
+function formatAgo(iso?: string): string {
+  if (!iso) return "";
+  const created = new Date(iso);
+  if (Number.isNaN(created.getTime())) return "";
+
+  const now = new Date();
+  const diffMs = now.getTime() - created.getTime();
+
+  const diffMin = Math.floor(diffMs / (1000 * 60));
+  if (diffMin < 1) return "방금 전";
+  if (diffMin < 60) return `${diffMin}분 전`;
+
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}시간 전`;
+
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 30) return `${diffDay}일 전`;
+
+  const diffMonth = Math.floor(diffDay / 30);
+  if (diffMonth < 12) return `${diffMonth}개월 전`;
+
+  const diffYear = Math.floor(diffMonth / 12);
+  return `${diffYear}년 전`;
 }

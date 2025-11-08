@@ -1,77 +1,107 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import api from "../../../../lib/api/axios";
 
+/** 서버 응답 DTO (백엔드 스펙 기준) */
+type ReviewApiResponseItem = {
+  id: number;
+  customerId: number;
+  customerName: string;
+  productId: number;
+  star: number;
+  title: string; // 상품/업체명
+  comment: string;
+  imageUrl?: string | null;
+  category?: string; // (선택) 추후 백엔드에서 내려줄 수 있음
+  createdAt?: string; // "2025-11-07T12:00:00"
+};
+
+type ReviewApiResponse = {
+  content: ReviewApiResponseItem[];
+  page: {
+    size: number;
+    number: number;
+    totalElements: number;
+    totalPages: number;
+  };
+};
+
+/** 화면에서 사용할 리뷰 타입 */
 type Review = {
   id: string;
   brand: string;
   category: string;
   rating: number; // 0~5
-  createdAgo: string; // "5일 전" 등
+  createdAgo: string; // "n일 전"
   content: string;
-  thumbnail: string; // 이미지 URL (데모용)
+  thumbnail: string;
 };
-
-// 데모 데이터 (MobileView와 동일한 구조)
-const SEED: Review[] = [
-  {
-    id: "r1",
-    brand: "루이즈브랭",
-    category: "드레스",
-    rating: 5,
-    createdAgo: "5일 전",
-    content:
-      "하객들이 극찬한 최신급 식사 퀄리티 덕분에 모두가 만족했던 웨딩이었어요.",
-    thumbnail:
-      "https://images.pexels.com/photos/3738085/pexels-photo-3738085.jpeg?auto=compress&w=200",
-  },
-  {
-    id: "r2",
-    brand: "루이즈브랭",
-    category: "드레스",
-    rating: 5,
-    createdAgo: "5일 전",
-    content:
-      "드레스 핏이 너무 예쁘고 상담해주시는 분도 친절해서 준비 과정이 편했어요.",
-    thumbnail:
-      "https://images.pexels.com/photos/3738085/pexels-photo-3738085.jpeg?auto=compress&w=200",
-  },
-  {
-    id: "r3",
-    brand: "루이즈브랭",
-    category: "드레스",
-    rating: 4,
-    createdAgo: "5일 전",
-    content: "전체적으로 만족스러웠고, 다음에 또 이용하고 싶어요.",
-    thumbnail:
-      "https://images.pexels.com/photos/3738085/pexels-photo-3738085.jpeg?auto=compress&w=200",
-  },
-  {
-    id: "r4",
-    brand: "루이즈브랭",
-    category: "드레스",
-    rating: 5,
-    createdAgo: "5일 전",
-    content: "사진보다 실물이 더 예뻐요. 추천합니다!",
-    thumbnail:
-      "https://images.pexels.com/photos/3738085/pexels-photo-3738085.jpeg?auto=compress&w=200",
-  },
-];
 
 export default function WebView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
 
-  const [reviews, setReviews] = useState<Review[]>(SEED);
-  const hasReviews = reviews.length > 0;
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleDelete = useCallback((id: string) => {
-    setReviews((prev) => prev.filter((r) => r.id !== id));
+  const hasReviews = !loading && reviews.length > 0;
+
+  /** API 응답 → UI 모델 매핑 */
+  const mapToReview = (item: ReviewApiResponseItem): Review => ({
+    id: String(item.id),
+    brand: item.title || "상품명 미지정",
+    category: item.category || "", // 아직 없으면 빈 값
+    rating: typeof item.star === "number" ? item.star : 0,
+    createdAgo: formatAgo(item.createdAt),
+    content: item.comment || "",
+    thumbnail: item.imageUrl || "",
+  });
+
+  /** 내 리뷰 목록 조회 */
+  useEffect(() => {
+    const fetchMyReviews = async () => {
+      try {
+        setLoading(true);
+
+        const { data } = await api.get<ReviewApiResponse>(
+          "/api/v1/reviews/me",
+          {
+            params: {
+              pageNumber: 1,
+              pageSize: 50,
+            },
+          }
+        );
+
+        const list = (data?.content || []).map(mapToReview);
+        setReviews(list);
+      } catch (err) {
+        console.error("[Reviews/WebView] fetchMyReviews error:", err);
+        setReviews([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMyReviews();
+  }, []);
+
+  /** 리뷰 삭제 */
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      await api.delete(`/api/v1/reviews/${id}`);
+      setReviews((prev) => prev.filter((r) => r.id !== id));
+      // TODO: 토스트로 "리뷰가 삭제되었습니다." 노출
+    } catch (err) {
+      console.error("[Reviews/WebView] delete error:", err);
+      // TODO: 토스트로 "리뷰 삭제에 실패했습니다." 노출
+    }
   }, []);
 
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 상단 고정 헤더 (마이페이지 내부 헤더 스타일) */}
+      {/* 상단 고정 헤더 */}
       <header className="w-full bg-white border-b border-[#E5E6EB] sticky top-0 z-30">
         <div className="max-w-[1200px] mx-auto flex items-center justify-between py-4 px-6">
           <div className="flex items-center gap-3">
@@ -107,7 +137,7 @@ export default function WebView() {
               작성한 리뷰
             </span>
             <span className="text-[13px] text-[#999999]">
-              총 {reviews.length}개
+              {loading ? "불러오는 중..." : `총 ${reviews.length}개`}
             </span>
           </div>
 
@@ -119,13 +149,17 @@ export default function WebView() {
         </div>
 
         {/* 리스트 or 빈 화면 */}
-        {hasReviews ? (
+        {loading ? (
+          <section className="mt-8 bg-white rounded-2xl shadow-sm border border-[#E5E6EB] flex flex-col items-center justify-center py-16 gap-3 text-[14px] text-[#9CA3AF]">
+            리뷰 내역을 불러오는 중입니다...
+          </section>
+        ) : hasReviews ? (
           <section className="bg-white rounded-2xl shadow-sm border border-[#E5E6EB]">
             {/* 헤더 라인 */}
             <div className="grid grid-cols-[2.2fr_3fr_1.2fr_0.8fr] gap-3 px-6 py-3 border-b border-[#F3F4F5] text-[13px] text-[#9CA3AF]">
               <div>상품 / 업체명</div>
               <div>별점 및 리뷰 내용</div>
-              <div>작성일</div>
+              <div>작성 경과</div>
               <div className="text-center">관리</div>
             </div>
 
@@ -149,7 +183,7 @@ export default function WebView() {
   );
 }
 
-/** 리뷰 **/
+/** 리뷰 row */
 function ReviewRow({
   review,
   withSoftBackground,
@@ -183,7 +217,11 @@ function ReviewRow({
           <span className="text-[14px] font-semibold text-[#111827]">
             {review.brand}
           </span>
-          <span className="text-[12px] text-[#9CA3AF]">{review.category}</span>
+          {review.category && (
+            <span className="text-[12px] text-[#9CA3AF]">
+              {review.category}
+            </span>
+          )}
         </div>
       </div>
 
@@ -201,17 +239,21 @@ function ReviewRow({
               }
             />
           ))}
-          <span className="ml-1 text-[12px] text-[#9CA3AF]">
-            {review.createdAgo}
-          </span>
+          {review.createdAgo && (
+            <span className="ml-1 text-[12px] text-[#9CA3AF]">
+              {review.createdAgo}
+            </span>
+          )}
         </div>
         <p className="text-[13px] leading-[19px] text-[#4B5563] line-clamp-2">
           {review.content}
         </p>
       </div>
 
-      {/* 작성일 */}
-      <div className="text-[13px] text-[#6B7280]">{review.createdAgo}</div>
+      {/* 작성 경과 (같은 createdAgo 재사용) */}
+      <div className="text-[13px] text-[#6B7280]">
+        {review.createdAgo || "-"}
+      </div>
 
       {/* 삭제 */}
       <div className="flex justify-center">
@@ -227,7 +269,7 @@ function ReviewRow({
   );
 }
 
-/** 웹 빈 상태 뷰 */
+/** 웹 빈 상태 */
 function EmptyState() {
   return (
     <section className="mt-8 bg-white rounded-2xl shadow-sm border border-[#E5E6EB] flex flex-col items-center justify-center py-16 gap-5">
@@ -245,4 +287,30 @@ function EmptyState() {
       </div>
     </section>
   );
+}
+
+/** createdAt ISO → "n일 전" 등으로 변환 */
+function formatAgo(iso?: string): string {
+  if (!iso) return "";
+  const created = new Date(iso);
+  if (Number.isNaN(created.getTime())) return "";
+
+  const now = new Date();
+  const diffMs = now.getTime() - created.getTime();
+
+  const diffMin = Math.floor(diffMs / (1000 * 60));
+  if (diffMin < 1) return "방금 전";
+  if (diffMin < 60) return `${diffMin}분 전`;
+
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}시간 전`;
+
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 30) return `${diffDay}일 전`;
+
+  const diffMonth = Math.floor(diffDay / 30);
+  if (diffMonth < 12) return `${diffMonth}개월 전`;
+
+  const diffYear = Math.floor(diffMonth / 12);
+  return `${diffYear}년 전`;
 }

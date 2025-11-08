@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import MyPageHeader from "../../../../components/MyPageHeader";
 import { useAppSelector } from "../../../../store/hooks";
-import type { CustomerData, UserData } from "../../../../store/userSlice"; // 실제 경로에 맞춰 수정
+import type { CustomerData, UserData } from "../../../../store/userSlice";
 
 function SectionCard({
   title,
@@ -38,12 +38,11 @@ function ensureCustomer(userData: UserData | null): CustomerData | null {
   if (!userData) return null;
 
   // UserData 타입에서 Customer를 판단할 가장 확실한 기준 필드를 사용
-  // (예: weddingDate, weddingSido 등 CUSTOMER에만 있는 필드)
   if ("weddingDate" in userData) {
     return userData as CustomerData;
   }
 
-  // 혹시나 OWNER가 들어오면 null 처리 (또는 리다이렉트 트리거 가능)
+  // OWNER 등 다른 타입이면 null 처리
   return null;
 }
 
@@ -53,6 +52,9 @@ export default function MobileView() {
 
   const rawUserData = useAppSelector((state) => state.user.userData);
   const customer = ensureCustomer(rawUserData);
+
+  // signupSlice 에 저장된 임시 회원가입 정보
+  const signupValues = useAppSelector((state) => state.signup.values);
 
   // 로그인 안 됐거나, CUSTOMER가 아닌 경우 예외 처리
   if (!customer) {
@@ -91,20 +93,42 @@ export default function MobileView() {
     weddingSigungu,
   } = customer;
 
+  // 전화번호: 고객 정보 → 없으면 signupSlice 값
+  const displayPhone = phoneNumber || signupValues.phone || "-";
+
+  // 주소: 고객 주소 → 없으면 signupSlice 주소
   const displayAddress =
     roadAddress ||
     jibunAddress ||
     address ||
     [sido, sigungu, dong, buildingName].filter(Boolean).join(" ") ||
+    signupValues.roadAddress ||
+    signupValues.jibunAddress ||
+    signupValues.address ||
+    [
+      signupValues.sido,
+      signupValues.sigungu,
+      signupValues.dong,
+      signupValues.buildingName,
+    ]
+      .filter(Boolean)
+      .join(" ") ||
     "-";
 
-  const displayWeddingDate = weddingDate
-    ? new Date(weddingDate).toLocaleDateString("ko-KR")
+  // 예식일: 고객 예식일 → 없으면 signupSlice 예식일
+  const rawWeddingDate = weddingDate || signupValues.weddingDate;
+  const displayWeddingDate = rawWeddingDate
+    ? new Date(rawWeddingDate).toLocaleDateString("ko-KR")
     : "-";
 
+  // 예식장소: 고객 예식 장소 정보 → 없으면 signupSlice 예식 장소 정보
   const displayWeddingVenue =
     buildingName ||
     [weddingSido, weddingSigungu].filter(Boolean).join(" ") ||
+    signupValues.buildingName ||
+    [signupValues.weddingSido, signupValues.weddingSigungu]
+      .filter(Boolean)
+      .join(" ") ||
     "-";
 
   return (
@@ -141,7 +165,7 @@ export default function MobileView() {
           <SectionCard title="회원정보">
             <div className="space-y-2">
               <InfoRow label="고객명" value={name} />
-              <InfoRow label="전화번호" value={phoneNumber} />
+              <InfoRow label="전화번호" value={displayPhone} />
               <InfoRow label="이메일" value={email} />
               <InfoRow label="주소" value={displayAddress} />
             </div>
