@@ -102,7 +102,7 @@ export type CustomerData = UserBase & {
   weddingDate: string; // YYYY-MM-DD
 };
 
-// ⛳ 최종 UserData: 역할로 타입이 자동 분기됨
+// 최종 UserData: 역할로 타입이 자동 분기됨
 export type UserData = OwnerData | CustomerData;
 
 /** =========================
@@ -283,7 +283,7 @@ const userSlice = createSlice({
       // 토스트 없음
     });
 
-    /** ✅ 인증 유저 조회 (고객) */
+    /** 인증 유저 조회 (고객) */
     builder.addCase(authCustomer.pending, (state) => {
       state.isLoading = true;
       state.error = null;
@@ -307,7 +307,7 @@ const userSlice = createSlice({
       state.error = errorMessage;
     });
 
-    /** ✅ 인증 유저 조회 (사장) */
+    /** 인증 유저 조회 (사장) */
     builder.addCase(authOwner.pending, (state) => {
       state.isLoading = true;
       state.error = null;
