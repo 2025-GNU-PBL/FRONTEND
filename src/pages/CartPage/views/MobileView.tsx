@@ -31,23 +31,22 @@ const MobileView = () => {
   const [isAllChecked, setIsAllChecked] = useState(false); // All items checked
   const navigate = useNavigate(); // useNavigate 훅 초기화
 
-  useEffect(() => {
-    const fetchCartData = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get<CartData>('/api/v1/cart');
-        setCartData(response.data);
-        // 모든 아이템의 selected 상태를 기반으로 isAllChecked 초기화
-        const allSelected = response.data.items.every(item => item.selected);
-        setIsAllChecked(allSelected);
-      } catch (err) {
-        console.error("Failed to fetch cart data:", err);
-        setError("장바구니 데이터를 불러오는데 실패했습니다.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchCartData = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get<CartData>('/api/v1/cart');
+      setCartData(response.data);
+      const allSelected = response.data.items.every(item => item.selected);
+      setIsAllChecked(allSelected);
+    } catch (err) {
+      console.error("Failed to fetch cart data:", err);
+      setError("장바구니 데이터를 불러오는데 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchCartData();
   }, []);
 
@@ -73,6 +72,31 @@ const MobileView = () => {
     // TODO: 백엔드에 특정 아이템의 선택 상태 변경 요청 (필요 시)
     setCartData({ ...cartData, items: updatedItems });
     setIsAllChecked(allSelected);
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!cartData || cartData.items.length === 0) return;
+
+    const selectedCartItemIds = cartData.items
+      .filter(item => item.selected)
+      .map(item => item.cartItemId);
+
+    if (selectedCartItemIds.length === 0) {
+      alert("삭제할 상품을 선택해주세요.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await api.post('/api/v1/cart/items/bulk-delete', { cartItemIds: selectedCartItemIds });
+      alert("선택된 상품이 삭제되었습니다.");
+      await fetchCartData(); // 장바구니 데이터 새로고침
+    } catch (err) {
+      console.error("Failed to delete selected items:", err);
+      setError("선택된 상품 삭제에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -106,7 +130,7 @@ const MobileView = () => {
     <div className="cart-page-container">
       {/* Header */}
       <div className="cart-header">
-        <Icon icon="solar:alt-arrow-left-linear" className="header-back-arrow" />
+        <Icon icon="solar:alt-arrow-left-linear" className="header-back-arrow" onClick={() => navigate(-1)} />
         <h1 className="header-title">장바구니</h1>
         <div className="header-menu-icon"></div>
       </div>
@@ -126,7 +150,7 @@ const MobileView = () => {
           </button>
           <span className="select-all-text">모두선택</span>
         </div>
-        <span className="delete-selected-text">선택삭제</span>
+        <span className="delete-selected-text" onClick={handleDeleteSelected}>선택삭제</span>
       </div>
 
       {/* Product Items */}
@@ -216,7 +240,7 @@ const MobileView = () => {
             <div className="popup-buttons-container">
               <button className="popup-cart-button">
                 <span className="popup-cart-button-text">장바구니</span>
-              </button>
+              </button> 
               <button className="popup-purchase-button">
                 <span className="popup-purchase-button-text">구매하기</span>
               </button>
