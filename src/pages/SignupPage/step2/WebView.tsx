@@ -140,7 +140,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
 
     onNext?.({ zipcode, address, detailAddress, extraAddress });
 
-    nav("/sign-up/step3", {
+    nav("/sign-up/client/step3", {
       state: {
         phone,
         zipcode,

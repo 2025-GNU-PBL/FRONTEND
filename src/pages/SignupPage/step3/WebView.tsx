@@ -59,7 +59,7 @@ export default function WebView({
     const payload = { weddingDate, weddingSido, weddingSigungu };
     onNext?.(payload);
 
-    nav("/sign-up/step4", {
+    nav("/sign-up/client/step4", {
       state: {
         ...prevState,
         ...payload,
@@ -77,8 +77,8 @@ export default function WebView({
 
   const handleSkip = useCallback(() => {
     onSkip?.();
-    // 모바일과 동일: 기존 state만 넘기고 예식 정보는 선택 사항
-    nav("/sign-up/step4", {
+    // 기존 state만 넘기고 예식 정보는 선택 사항
+    nav("/sign-up/client/step4", {
       state: {
         ...prevState,
       },

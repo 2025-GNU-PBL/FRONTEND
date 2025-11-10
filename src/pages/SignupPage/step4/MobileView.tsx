@@ -55,7 +55,7 @@ export default function MobileView({
   const handleStart = async () => {
     if (isSubmitting) return;
 
-    // ✅ 필수값 가드(전화번호/주소/상세주소)
+    // 필수값 가드(전화번호/주소/상세주소)
     if (!phone || !address || !detailAddress) {
       alert(
         "전화번호/주소/상세주소가 비어 있습니다. 이전 단계 입력을 확인해 주세요."
@@ -63,13 +63,13 @@ export default function MobileView({
       return;
     }
 
-    // ✅ 실제로 어떤 값이 백엔드로 가는지 눈으로 확인
+    // 실제로 어떤 값이 백엔드로 가는지 눈으로 확인
     console.log("[complete] location.state:", location.state);
     console.log("[complete] formValues:", formValues);
 
     setIsSubmitting(true);
     try {
-      // ✅ payload를 인자로 넘겨 호출 (수정된 thunk가 받아 사용)
+      // payload를 인자로 넘겨 호출 (수정된 thunk가 받아 사용)
       await dispatch(submitSignup(formValues as any)).unwrap();
       navigate("/");
     } catch (err: any) {

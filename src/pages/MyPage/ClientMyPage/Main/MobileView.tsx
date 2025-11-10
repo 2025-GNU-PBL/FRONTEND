@@ -1,41 +1,35 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { useDispatch /*, useSelector*/ } from "react-redux";
-// import { selectUserName, logoutThunk } from "@/store/authSlice";
-import MyPageHeader from "../../../../components/MyPageHeader";
 import { Icon } from "@iconify/react";
-import { useAppSelector } from "../../../../store/hooks";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
+import MyPageHeader from "../../../../components/MyPageHeader";
+import { useAppDispatch, useAppSelector } from "../../../../store/hooks";
+import { logoutUser } from "../../../../store/thunkFunctions";
+import { forceLogout } from "../../../../store/userSlice";
 
 export default function MobileView() {
   const nav = useNavigate();
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
 
   const userName = useAppSelector((state) => state.user.userData?.name ?? "");
 
   const go = useCallback((to: string) => nav(to), [nav]);
-
   const onBack = useCallback(() => nav(-1), [nav]);
   const onMenu = useCallback(() => go("/settings"), [go]);
 
+  /** 로그아웃 처리 */
   const onLogout = useCallback(async () => {
     try {
-      if (API_BASE) {
-        await axios.post(`${API_BASE}/auth/logout`, null, {
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-    } catch {
-      // ignore: 서버 로그아웃 실패해도 클라 정리
+      // 서버 로그아웃 요청 (userSlice.logoutUser)
+      await dispatch(logoutUser()).unwrap();
+    } catch (e) {
+      // 실패 시 프론트 강제 로그아웃 (token + Redux 초기화)
+      console.error("logoutUser 실패, forceLogout 실행:", e);
+      dispatch(forceLogout());
     } finally {
-      // await dispatch(logoutThunk());
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
+      // 로그인 페이지로 이동
       nav("/log-in");
     }
-  }, [nav, dispatch]);
+  }, [dispatch, nav]);
 
   return (
     <div className="w-full bg-white">
@@ -54,7 +48,7 @@ export default function MobileView() {
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-[#D9D9D9]" />
                 <div className="text-[18px] font-semibold tracking-[-0.2px] text-black">
-                  {userName}
+                  {userName || "로그인이 필요합니다"}
                 </div>
               </div>
 
@@ -117,7 +111,6 @@ export default function MobileView() {
 
         {/* 고객센터 | 로그아웃 */}
         <section className="px-5 py-4 mb-20">
-          {/* Tailwind 기본 스케일에 없는 mb-18 → mb-20로 보정 */}
           <div className="flex items-center justify-center gap-10">
             <button
               onClick={() => go("/support")}
@@ -139,6 +132,7 @@ export default function MobileView() {
   );
 }
 
+/** 중간 버튼 공용 컴포넌트 */
 function MidLink({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
