@@ -214,7 +214,31 @@ export default function ListWebView() {
           },
         });
 
-        const mapped = (data || []).map(mapToPaymentItem);
+        let mapped = (data || []).map(mapToPaymentItem);
+
+        //개발용 더미데이터
+        if (mapped.length === 0 && import.meta.env.DEV) {
+          mapped = [
+            mapToPaymentItem({
+              orderCode: "TEST-ORDER-001",
+              productName: "[촬영] 신부신랑 헤어메이크업 (부원장)",
+              amount: 323000,
+              status: "READY",
+              approvedAt: "2025-10-14T09:00:00",
+              shopName: "제이바이로이스타",
+              thumbnail: "/images/sample-payment.png",
+            }),
+            mapToPaymentItem({
+              orderCode: "TEST-ORDER-002",
+              productName: "[촬영] 신부신랑 헤어메이크업 (부원장)",
+              amount: 323000,
+              status: "COMPLETED",
+              approvedAt: "2025-10-14T11:00:00",
+              shopName: "제이바이로이스타",
+              thumbnail: "/images/sample-payment.png",
+            }),
+          ];
+        }
         setPayments(mapped);
       } catch (e) {
         setError("결제 내역을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
@@ -247,7 +271,7 @@ export default function ListWebView() {
       </div>
 
       {/* 본문 */}
-      <div className="max-w-[1040px] mx-auto px-6 py-8">
+      <div className="max-w-[1040px] mt-20 mx-auto px-6 py-8">
         <div className="mb-6">
           <h1 className="text-[22px] font-semibold text-[#111827] tracking-[-0.3px]">
             결제 내역을 확인하세요

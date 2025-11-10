@@ -1,5 +1,3 @@
-// src/pages/mypage/customer/payment/ListMobileView.tsx
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
@@ -8,20 +6,18 @@ import api from "../../../../../lib/api/axios";
 import { useAppSelector } from "../../../../../store/hooks";
 import type { UserData, UserRole } from "../../../../../store/userSlice";
 
-/** 백엔드 /api/v1/payments/me 응답 DTO
- *  (팀원에게 요청한 shopName, thumbnail 포함)
- */
+/** 백엔드 응답 DTO */
 export interface PaymentMeItem {
   orderCode: string; // 결제/주문 식별자
   productName: string; // 상품명
   amount: number; // 결제 금액
-  status: string; // 결제 상태 (READY, PAID, COMPLETED, ...)
+  status: string; // READY / PAID / COMPLETED ...
   approvedAt: string; // 결제 승인 일시 (ISO)
   shopName: string; // 업체명
   thumbnail?: string; // 썸네일 URL
 }
 
-/** 화면에서 사용하는 상태 라벨 */
+/** 화면 상태 라벨 */
 type PaymentStatus = "예약중" | "예약완료" | "이용완료";
 
 interface PaymentItem {
@@ -34,7 +30,7 @@ interface PaymentItem {
   thumbnail?: string;
 }
 
-/** 백엔드 쿼리 파라미터 accessor 형태 (swagger 기준) */
+/** accessor 쿼리 객체 */
 interface Accessor {
   socialId: string;
   userRole: UserRole;
@@ -42,7 +38,7 @@ interface Accessor {
   customer: boolean;
 }
 
-/** 백엔드 status → 화면 라벨 매핑 */
+/** status → 라벨 */
 function mapStatusToLabel(status: string): PaymentStatus {
   switch (status) {
     case "READY":
@@ -58,8 +54,8 @@ function mapStatusToLabel(status: string): PaymentStatus {
   }
 }
 
-/** ISO 날짜 → YYYY.MM.DD */
-function formatDate(iso: string | null | undefined): string {
+/** ISO → YYYY.MM.DD */
+function formatDate(iso?: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -69,7 +65,7 @@ function formatDate(iso: string | null | undefined): string {
   return `${y}.${m}.${day}`;
 }
 
-/** API DTO → 화면용 아이템 변환 */
+/** DTO → 화면 아이템 */
 function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
   return {
     id: dto.orderCode,
@@ -82,6 +78,7 @@ function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
   };
 }
 
+/** 개별 카드 */
 function PaymentCard({ item }: { item: PaymentItem }) {
   return (
     <div className="w-full">
@@ -116,8 +113,7 @@ function PaymentCard({ item }: { item: PaymentItem }) {
           type="button"
           className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333] tracking-[-0.2px]"
           onClick={() => {
-            // TODO: 취소 요청 모달/페이지 연결
-            // orderCode 기반으로 /api/v1/payments/cancel-request 연동
+            // TODO: 취소 요청 연동 (/api/v1/payments/cancel-request)
           }}
         >
           취소 요청
@@ -127,7 +123,7 @@ function PaymentCard({ item }: { item: PaymentItem }) {
           className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333] tracking-[-0.2px]"
           onClick={() => {
             // TODO: 결제 상세 페이지로 이동
-            // orderCode 또는 paymentKey를 이용해 상세 조회
+            // e.g. nav(`/mypage/payment/${item.id}`)
           }}
         >
           결제 상세
@@ -137,6 +133,7 @@ function PaymentCard({ item }: { item: PaymentItem }) {
   );
 }
 
+/** 상태별 섹션 */
 function PaymentSection({
   status,
   items,
@@ -146,7 +143,6 @@ function PaymentSection({
 }) {
   if (items.length === 0) return null;
 
-  // 섹션 상단 기준일: 첫 번째 아이템 기준
   const baseDate = items[0]?.date ?? "";
 
   return (
@@ -182,21 +178,19 @@ function PaymentSection({
   );
 }
 
-/** 고객 마이페이지 결제내역 */
+/** 고객 마이페이지 결제내역 (Mobile) */
 export default function ListMobileView() {
   const nav = useNavigate();
 
-  // userSlice 구조에 맞게 userData, role 둘 다 가져옴
   const { userData, role } = useAppSelector((state) => state.user) as {
     userData: UserData | null;
     role: UserRole | null;
   };
 
   const [payments, setPayments] = React.useState<PaymentItem[]>([]);
-  const [loading, setLoading] = React.useState<boolean>(false);
+  const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // payment/me는 CUSTOMER 기준이므로, 조건 맞을 때만 accessor 생성
   const accessor: Accessor | null =
     userData && role
       ? {
@@ -208,7 +202,7 @@ export default function ListMobileView() {
       : null;
 
   React.useEffect(() => {
-    // 고객이 아니면 호출하지 않음
+    // CUSTOMER가 아니면 호출 안 함
     if (!accessor || !accessor.customer) {
       setPayments([]);
       return;
@@ -219,17 +213,68 @@ export default function ListMobileView() {
         setLoading(true);
         setError(null);
 
-        // swagger 예시: accessor 객체를 query 로 전달
         const { data } = await api.get<PaymentMeItem[]>("/api/v1/payments/me", {
           params: {
             accessor: JSON.stringify(accessor),
           },
         });
 
-        const mapped = (data || []).map(mapToPaymentItem);
+        let mapped = (data || []).map(mapToPaymentItem);
+
+        // 개발 모드 & 실제 데이터가 없을 때: 더미 데이터 주입
+        if (mapped.length === 0 && import.meta.env.DEV) {
+          mapped = [
+            mapToPaymentItem({
+              orderCode: "TEST-ORDER-001",
+              productName: "[촬영] 신부신랑 헤어메이크업 (부원장)",
+              amount: 323000,
+              status: "READY",
+              approvedAt: "2025-10-14T09:00:00",
+              shopName: "제이바이로이스타",
+              thumbnail: "/images/sample-payment.png",
+            }),
+            mapToPaymentItem({
+              orderCode: "TEST-ORDER-002",
+              productName: "[촬영] 신부신랑 헤어메이크업 (부원장)",
+              amount: 323000,
+              status: "COMPLETED",
+              approvedAt: "2025-10-14T11:00:00",
+              shopName: "제이바이로이스타",
+              thumbnail: "/images/sample-payment.png",
+            }),
+          ];
+        }
+
         setPayments(mapped);
       } catch (e) {
-        setError("결제 내역을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+        // 에러 시에도 개발모드라면 더미데이터로 UI 확인 가능하게 처리
+        if (import.meta.env.DEV) {
+          const fallback = [
+            mapToPaymentItem({
+              orderCode: "DEV-ERROR-ORDER-001",
+              productName: "[DEV] 결제 목록 더미 (READY)",
+              amount: 111000,
+              status: "READY",
+              approvedAt: "2025-10-10T10:00:00",
+              shopName: "더미 스튜디오",
+              thumbnail: "/images/sample-payment.png",
+            }),
+            mapToPaymentItem({
+              orderCode: "DEV-ERROR-ORDER-002",
+              productName: "[DEV] 결제 목록 더미 (COMPLETED)",
+              amount: 222000,
+              status: "COMPLETED",
+              approvedAt: "2025-10-11T11:00:00",
+              shopName: "더미 스튜디오",
+              thumbnail: "/images/sample-payment.png",
+            }),
+          ];
+          setPayments(fallback);
+        } else {
+          setError(
+            "결제 내역을 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -243,7 +288,6 @@ export default function ListMobileView() {
   );
   const completed = payments.filter((p) => p.status === "이용완료");
   const hasPayments = payments.length > 0;
-
   const isNotCustomer = role && role !== "CUSTOMER";
 
   return (
@@ -303,57 +347,6 @@ export default function ListMobileView() {
               </p>
             </div>
           )}
-        </div>
-
-        {/* 하단 GNB */}
-        <div className="w-full h-14 border-t border-[#D9D9D9] px-[35px] flex items-center justify-center">
-          <div className="w-[320px] flex items-center gap-[50px] justify-between">
-            <button
-              type="button"
-              className="w-6 h-6 flex items-center justify-center"
-            >
-              <Icon
-                icon="solar:home-2-linear"
-                className="w-6 h-6 text-[#999999]"
-              />
-            </button>
-            <button
-              type="button"
-              className="w-6 h-6 flex items-center justify-center"
-            >
-              <Icon
-                icon="solar:heart-linear"
-                className="w-6 h-6 text-[#999999]"
-              />
-            </button>
-            <button
-              type="button"
-              className="w-6 h-6 flex items-center justify-center"
-            >
-              <Icon
-                icon="solar:magnifier-linear"
-                className="w-6 h-6 text-[#999999]"
-              />
-            </button>
-            <button
-              type="button"
-              className="w-6 h-6 flex items-center justify-center"
-            >
-              <Icon
-                icon="solar:chat-square-outline"
-                className="w-6 h-6 text-[#999999]"
-              />
-            </button>
-            <button
-              type="button"
-              className="w-6 h-6 flex items-center justify-center"
-            >
-              <Icon
-                icon="solar:user-rounded-linear"
-                className="w-6 h-6 text-[#000000]"
-              />
-            </button>
-          </div>
         </div>
       </div>
     </div>
