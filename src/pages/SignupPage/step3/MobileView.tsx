@@ -52,7 +52,7 @@ export default function MobileView({
     if (!isComplete) return;
     onNext?.({ weddingDate, weddingSido, weddingSigungu });
 
-    navigate("/sign-up/step4", {
+    navigate("/sign-up/client/step4", {
       state: {
         ...prevState,
         weddingDate,
@@ -65,7 +65,7 @@ export default function MobileView({
   const handleSkip = () => {
     onSkip?.();
     // [변경] 스킵 시에도 이전 상태는 유지해서 전달
-    navigate("/sign-up/step4", {
+    navigate("/sign-up/client/step4", {
       state: {
         ...prevState,
       },

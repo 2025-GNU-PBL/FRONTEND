@@ -15,7 +15,7 @@ export default function WebView() {
   const onNext = () => {
     if (!isValid) return;
     // step2로 이동하며 state에 phone 전달
-    nav("/sign-up/step2", {
+    nav("/sign-up/client/step2", {
       state: { phone },
     });
   };
