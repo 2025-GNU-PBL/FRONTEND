@@ -3,20 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
 export default function WebView() {
-  const [phone, setPhone] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const nav = useNavigate();
 
   // 간단 유효성: 010-0000-0000 또는 하이픈 없이 11자리
   const isValid = useMemo(() => {
-    const onlyNum = phone.replace(/\D/g, "");
+    const onlyNum = phoneNumber.replace(/\D/g, "");
     return /^010\d{8}$/.test(onlyNum);
-  }, [phone]);
+  }, [phoneNumber]);
 
   const onNext = () => {
     if (!isValid) return;
-    // step2로 이동하며 state에 phone 전달
+
     nav("/sign-up/owner/step2", {
-      state: { phone },
+      state: {
+        phoneNumber,
+      },
     });
   };
 
@@ -58,7 +60,6 @@ export default function WebView() {
         {/* Right — Form 카드 */}
         <section className="md:col-span-6 flex justify-center md:justify-end">
           <div className="relative w-full max-w-[520px]">
-            {/* soft glow & offset */}
             <div className="absolute inset-0 -z-10 blur-xl rounded-3xl bg-gradient-to-br from-[#FF4646]/15 via-white to-[#111827]/5" />
             <div className="absolute inset-0 -z-10 translate-x-3 translate-y-3 rounded-3xl bg-white" />
 
@@ -67,7 +68,7 @@ export default function WebView() {
               <div className="flex items-center justify-between">
                 <button
                   aria-label="back"
-                  onClick={() => history.back()}
+                  onClick={() => nav(-1)}
                   className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/5"
                 >
                   <Icon
@@ -109,8 +110,8 @@ export default function WebView() {
                     type="tel"
                     inputMode="numeric"
                     placeholder="010-1234-5678"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
                     className="
                       w-full h-[54px] rounded-[12px]
                       border border-[#E5E7EB]

@@ -1,4 +1,3 @@
-// src/pages/SignupPage/complete/WebView.tsx
 import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -25,51 +24,48 @@ export default function WebView({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const location = useLocation();
-  const {
-    phoneNumber,
-    bzName,
-    bzNumber,
-    bankAccount,
-    zipcode,
-    roadAddress,
-    jibunAddress,
-    detailAddress,
-    buildingName,
-    extraAddress, // buildingName으로 안 넘어온 케이스 대비
-  } = (location.state as any) || {};
+  const state = (location.state as any) || {};
 
-  // DTO(OwnerSignupValues) 형식으로 정리
+  // step1/2/3 에서 넘어온 raw 값들 호환 처리
+  const phoneNumber = state.phoneNumber ?? state.phone ?? ""; // step1: phone
+  const bzName = state.bzName ?? "";
+  const bzNumber = state.bzNumber ?? "";
+  const bankAccount = state.bankAccount ?? state.accountNumber ?? "";
+
+  const zipCode = state.zipCode ?? state.zipcode ?? "";
+  const roadAddress = state.roadAddress ?? state.address ?? "";
+  const jibunAddress = state.jibunAddress ?? "";
+  const detailAddress = state.detailAddress ?? "";
+  const buildingNameRaw = state.buildingName ?? state.extraAddress ?? "";
+  const buildingName =
+    typeof buildingNameRaw === "string"
+      ? buildingNameRaw.replace(/[()]/g, "")
+      : "";
+
+  // submitOwnerSignup 이 기대하는 DTO 형태
   const ownerValues = {
     phoneNumber,
     bzName,
     bzNumber,
     bankAccount,
-    zipCode: zipcode,
+    zipCode,
     roadAddress,
-    jibunAddress: jibunAddress || "",
-    detailAddress: detailAddress || "",
-    buildingName:
-      buildingName || (extraAddress ? extraAddress.replace(/[()]/g, "") : ""),
+    jibunAddress,
+    detailAddress,
+    buildingName,
   };
 
   const handleStart = async () => {
     if (isSubmitting) return;
 
-    // 필수값 가드 (submitOwnerSignup와 동일 기준)
-    if (
-      !ownerValues.phoneNumber ||
-      !ownerValues.bzName ||
-      !ownerValues.bzNumber ||
-      !ownerValues.bankAccount ||
-      !ownerValues.zipCode ||
-      !ownerValues.roadAddress
-    ) {
+    // 필수값 가드 (thunk와 동일 기준)
+    if (!phoneNumber || !bzName || !bzNumber || !bankAccount) {
       alert("사장 회원가입 필수 정보가 부족합니다. 이전 단계를 확인해 주세요.");
       console.log("[owner-complete:web] invalid ownerValues:", ownerValues);
       return;
     }
 
-    console.log("[owner-complete:web] location.state:", location.state);
+    console.log("[owner-complete:web] location.state:", state);
     console.log("[owner-complete:web] ownerValues:", ownerValues);
 
     setIsSubmitting(true);

@@ -18,10 +18,11 @@ declare global {
 interface WebViewProps {
   onBack?: () => void;
   onNext?: (payload: {
-    zipcode: string;
-    roadAddress: string; // address → roadAddress 로 통일
+    zipCode: string;
+    roadAddress: string;
+    jibunAddress: string;
     detailAddress: string;
-    buildingName: string; // extraAddress → buildingName 으로 통일
+    buildingName: string;
   }) => void;
 }
 
@@ -30,27 +31,30 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
   const location = useLocation();
   const { phoneNumber } = (location.state as { phoneNumber?: string }) || {};
 
-  const [zipcode, setZipcode] = useState("");
-  const [address, setAddress] = useState(""); // Daum 대표 주소 (road 기반)
+  // DTO 스펙에 맞춘 상태값
+  const [zipCode, setZipCode] = useState("");
+  const [roadAddress, setRoadAddress] = useState("");
+  const [jibunAddress, setJibunAddress] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
-  const [extraAddress, setExtraAddress] = useState(""); // 참고항목 (→ buildingName)
+  const [buildingName, setBuildingName] = useState("");
 
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
-
-  const uid = useId();
-  const idAddress = `${uid}-address`;
-  const idZipcode = `${uid}-zipcode`;
-  const idDetail = `${uid}-detailAddress`;
-  const idExtra = `${uid}-extraAddress`;
-
-  const wrapRef = useRef<HTMLDivElement>(null);
   const [postcodeReady, setPostcodeReady] = useState(false);
 
+  const uid = useId();
+  const idZipCode = `${uid}-zipCode`;
+  const idRoadAddress = `${uid}-roadAddress`;
+  const idDetailAddress = `${uid}-detailAddress`;
+  const idBuildingName = `${uid}-buildingName`;
+
+  const wrapRef = useRef<HTMLDivElement>(null);
+
   const canNext = useMemo(
-    () => Boolean(zipcode && address && detailAddress),
-    [zipcode, address, detailAddress]
+    () => Boolean(zipCode && roadAddress && detailAddress),
+    [zipCode, roadAddress, detailAddress]
   );
 
+  // 카카오 우편번호 스크립트 로딩
   useEffect(() => {
     if (window.daum?.Postcode) {
       setPostcodeReady(true);
@@ -75,6 +79,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
     setIsPostcodeOpen(true);
   }, [postcodeReady]);
 
+  // 카카오 우편번호 embed 및 선택 처리
   useEffect(() => {
     if (!isPostcodeOpen || !postcodeReady || !wrapRef.current) return;
 
@@ -84,37 +89,33 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
     // eslint-disable-next-line new-cap
     new window.daum.Postcode({
       oncomplete: (data: any) => {
-        const addressText =
+        // 도로명/지번 정보 분리
+        const roadAddr =
           (data.roadAddress && data.roadAddress.trim()) ||
-          (data.jibunAddress && data.jibunAddress.trim()) ||
           (data.autoRoadAddress && data.autoRoadAddress.trim()) ||
+          "";
+        const jibunAddr =
+          (data.jibunAddress && data.jibunAddress.trim()) ||
           (data.autoJibunAddress && data.autoJibunAddress.trim()) ||
           (data.address && data.address.trim()) ||
           "";
 
-        let extraAddr = "";
-        if (data.userSelectedType === "R") {
-          if (data.bname && /[동|로|가]$/g.test(data.bname)) {
-            extraAddr += data.bname;
-          }
-          if (data.buildingName && data.apartment === "Y") {
-            extraAddr += extraAddr
-              ? `, ${data.buildingName}`
-              : data.buildingName;
-          }
-          if (extraAddr) extraAddr = ` (${extraAddr})`;
-          setExtraAddress(extraAddr);
-        } else {
-          setExtraAddress("");
+        // 건물명 (DTO: buildingName)
+        let building = "";
+        if (data.buildingName) {
+          building = data.buildingName.trim();
         }
 
-        setZipcode(data.zonecode || "");
-        setAddress(addressText);
+        setZipCode(data.zonecode || "");
+        setRoadAddress(roadAddr || jibunAddr || "");
+        setJibunAddress(jibunAddr);
+        setBuildingName(building);
         setIsPostcodeOpen(false);
 
+        // 상세주소 포커스
         setTimeout(() => {
           const input = document.getElementById(
-            idDetail
+            idDetailAddress
           ) as HTMLInputElement | null;
           input?.focus();
         }, 0);
@@ -122,28 +123,25 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
       width: "100%",
       height: "100%",
     }).embed(element_wrap);
-  }, [isPostcodeOpen, postcodeReady, idDetail]);
+  }, [isPostcodeOpen, postcodeReady, idDetailAddress]);
 
   const handleNext = () => {
     if (!canNext) return;
 
-    const buildingName = (extraAddress || "").replace(/[()]/g, "");
-
-    // 콜백에도 DTO 키 기준으로 전달
     onNext?.({
-      zipcode,
-      roadAddress: address,
+      zipCode,
+      roadAddress,
+      jibunAddress,
       detailAddress,
       buildingName,
     });
 
-    // step3로 넘길 때도 DTO 키 기준으로 전달
     nav("/sign-up/owner/step3", {
       state: {
         phoneNumber,
-        zipcode,
-        roadAddress: address,
-        jibunAddress: "", // 현재 수집X
+        zipCode,
+        roadAddress,
+        jibunAddress,
         detailAddress,
         buildingName,
       },
@@ -152,6 +150,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
 
   return (
     <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-20">
+      {/* 상단 그라디언트 바 */}
       <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
 
       <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
@@ -175,7 +174,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
           <ul className="mt-8 space-y-3 text-gray-700">
             {[
               "도로명/지번 모두 검색 가능",
-              "건물명 자동 참고항목 입력",
+              "건물명 자동 입력",
               "모바일·웹 동일 UI",
             ].map((t) => (
               <li key={t} className="flex items-start gap-3">
@@ -234,11 +233,11 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
                 <div className="col-span-1">
                   <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
                     <input
-                      id={idZipcode}
-                      name="zipcode"
+                      id={idZipCode}
+                      name="zipCode"
                       type="text"
                       readOnly
-                      value={zipcode}
+                      value={zipCode}
                       placeholder="우편번호"
                       autoComplete="postal-code"
                       className="w-full h-full px-3 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
@@ -256,17 +255,17 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
                 </div>
               </div>
 
-              {/* 주소 / 상세주소 / 참고항목 */}
+              {/* 주소 / 상세주소 / 건물명 */}
               <div className="mt-4 space-y-4">
-                {/* 대표주소 (roadAddress로 사용) */}
+                {/* 도로명 주소 */}
                 <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
                   <input
-                    id={idAddress}
-                    name="address"
+                    id={idRoadAddress}
+                    name="roadAddress"
                     type="text"
                     readOnly
-                    value={address}
-                    placeholder="예) 연희동 132, 도산대로 33"
+                    value={roadAddress}
+                    placeholder="도로명 또는 지번 주소를 선택해 주세요"
                     autoComplete="street-address"
                     className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
                   />
@@ -275,7 +274,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
                 {/* 상세주소 */}
                 <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
                   <input
-                    id={idDetail}
+                    id={idDetailAddress}
                     name="detailAddress"
                     type="text"
                     value={detailAddress}
@@ -286,15 +285,15 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
                   />
                 </div>
 
-                {/* 참고항목 (buildingName 후보) */}
+                {/* 건물명 (DTO: buildingName) */}
                 <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
                   <input
-                    id={idExtra}
-                    name="extraAddress"
+                    id={idBuildingName}
+                    name="buildingName"
                     type="text"
                     readOnly
-                    value={extraAddress}
-                    placeholder="참고항목"
+                    value={buildingName}
+                    placeholder="건물명 (있는 경우 자동 입력)"
                     className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
                   />
                 </div>
