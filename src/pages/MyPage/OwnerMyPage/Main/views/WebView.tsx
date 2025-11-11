@@ -1,8 +1,9 @@
-import { useCallback } from "react";
+import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { useAppDispatch, useAppSelector } from "../../../../store/hooks";
-import { logoutUser } from "../../../../store/thunkFunctions";
+import { useAppSelector, useAppDispatch } from "../../../../../store/hooks";
+import { logoutUser } from "../../../../../store/thunkFunctions";
+import { forceLogout } from "../../../../../store/userSlice";
 
 export default function WebView() {
   const nav = useNavigate();
@@ -12,28 +13,32 @@ export default function WebView() {
 
   const go = useCallback((to: string) => nav(to), [nav]);
 
-  const handleLogout = async () => {
+  const onLogout = useCallback(async () => {
     try {
+      // 1차: 정식 로그아웃(thunk) - 서버에도 로그아웃 요청 + userSlice 초기화
       await dispatch(logoutUser()).unwrap();
+    } catch (e) {
+      // 실패해도 2차: 프론트 단 강제 로그아웃
+      console.error("logoutUser 실패, forceLogout 수행:", e);
+      dispatch(forceLogout());
     } finally {
-      nav("/");
+      // 콜백 URL 정리 & 로그인(or 메인)으로 이동
+      nav("/log-in"); // 필요하면 "/" 로 변경
     }
-  };
+  }, [dispatch, nav]);
 
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 본문 */}
       <main className="max-w-[1200px] mx-auto px-6 py-10 mt-15">
         <div className="grid grid-cols-[1fr_2fr] gap-8 items-start">
-          {/* 왼쪽: 프로필 + 액션 카드 */}
+          {/* 왼쪽: 프로필 */}
           <section className="space-y-6">
-            {/* 프로필 카드 */}
             <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-[#D9D9D9]" />
                 <div>
                   <div className="text-[18px] font-semibold tracking-[-0.2px] text-black">
-                    {userName}
+                    {userName || "로그인이 필요합니다"}
                   </div>
                   <div className="text-sm text-gray-500 mt-0.5">
                     반가워요! 오늘도 좋은 하루 👋
@@ -42,7 +47,6 @@ export default function WebView() {
               </div>
             </div>
 
-            {/* 액션 카드: 내 정보 / 매출·쿠폰 관리 */}
             <div className="flex flex-col gap-4">
               <ActionCard
                 title="내 정보"
@@ -52,39 +56,39 @@ export default function WebView() {
                 onClick={() => go("/my-page/owner/profile")}
               />
               <ActionCard
-                title="매출 · 쿠폰 관리"
-                description="오너 전용 쿠폰 및 매출 현황을 확인해요."
+                title="매출관리"
+                description="매출을 확인해요."
                 icon="mdi:ticket-percent-outline"
                 cta="바로가기"
-                onClick={() => go("/my-page/owner/coupons")}
+                onClick={() => go("/my-page/owner/payments")}
               />
             </div>
           </section>
 
-          {/* 오른쪽: 내 활동 (오너용 링크) */}
+          {/* 오른쪽: 내 활동 */}
           <section className="rounded-2xl bg-white border border-gray-100 shadow-sm p-8">
             <h3 className="text-lg font-semibold tracking-[-0.3px] mb-6">
               내 활동
             </h3>
             <div className="grid grid-cols-3 gap-6">
               <MenuTile
-                label="쿠폰 관리"
-                icon="mdi:ticket-percent-outline"
+                label="쿠폰관리"
+                icon="mdi:credit-card-outline"
                 onClick={() => go("/my-page/owner/coupons")}
               />
               <MenuTile
-                label="일정 관리"
+                label="스케줄관리"
                 icon="mdi:calendar-clock-outline"
                 onClick={() => go("/my-page/owner/schedules")}
               />
               <MenuTile
-                label="상품 관리"
-                icon="mdi:shopping-outline"
-                onClick={() => go("/my-page/owner/product")}
+                label="상품관리"
+                icon="mdi:message-question-outline"
+                onClick={() => go("/my-page/owner/products")}
               />
               <MenuTile
-                label="예약 관리"
-                icon="mdi:clipboard-text-clock-outline"
+                label="예약관리"
+                icon="mdi:star-outline"
                 onClick={() => go("/my-page/owner/reservations")}
               />
               <MenuTile
@@ -92,11 +96,7 @@ export default function WebView() {
                 icon="mdi:lifetime-support"
                 onClick={() => go("/support")}
               />
-              <MenuTile
-                label="로그아웃"
-                icon="mdi:logout"
-                onClick={handleLogout}
-              />
+              <MenuTile label="로그아웃" icon="mdi:logout" onClick={onLogout} />
             </div>
           </section>
         </div>
@@ -105,21 +105,9 @@ export default function WebView() {
   );
 }
 
-/* ---------- 재사용 컴포넌트 ---------- */
+/* 재사용 컴포넌트는 그대로 */
 
-function ActionCard({
-  title,
-  description,
-  icon,
-  cta,
-  onClick,
-}: {
-  title: string;
-  description: string;
-  icon: string;
-  cta: string;
-  onClick: () => void;
-}) {
+function ActionCard({ title, description, icon, cta, onClick }: any) {
   return (
     <div className="w-full rounded-2xl bg-white border border-gray-100 shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition">
       <div className="flex items-start gap-3">
@@ -145,15 +133,7 @@ function ActionCard({
   );
 }
 
-function MenuTile({
-  label,
-  icon,
-  onClick,
-}: {
-  label: string;
-  icon: string;
-  onClick: () => void;
-}) {
+function MenuTile({ label, icon, onClick }: any) {
   return (
     <button
       onClick={onClick}

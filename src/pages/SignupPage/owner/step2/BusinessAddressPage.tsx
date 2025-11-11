@@ -1,15 +1,16 @@
+import React from "react";
 import MobileView from "./views/MobileView";
 import WebView from "./views/WebView";
 
-export default function OwnerMyPageMain() {
+export default function BusinessAddressPage() {
   return (
-    <div className="min-h-screen bg-white">
-      {/* 모바일 */}
+    <div className="w-full bg-white">
+      {/* Mobile */}
       <div className="md:hidden">
         <MobileView />
       </div>
 
-      {/* 데스크톱 */}
+      {/* Web */}
       <div className="hidden md:block">
         <WebView />
       </div>

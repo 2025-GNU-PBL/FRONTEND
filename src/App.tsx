@@ -35,22 +35,23 @@ import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";
 import FavoritesPage from "./pages/FavoritesPage/FavoritesPage";
 import DressPage from "./pages/DressPage/DressPage";
-
-import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
-import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
-import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
-import ClientInquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage"; // Renamed to avoid conflict
-import InquiryPage from "./pages/InquiryPage/InquiryPage"; // New InquiryPage import (updated path)
+import JoinAddressPage from "./pages/SignupPage/client/step2/JoinAddressPage";
+import WeddingInfoPage from "./pages/SignupPage/client/step3/WeddingInfoPage";
+import SignupClientCompletePage from "./pages/SignupPage/client/step4/SignupCompletePage";
+import ClientSignupPage from "./pages/SignupPage/client/step1/ClientSignupPage";
+import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
 import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
 import { authCustomer, authOwner } from "./store/thunkFunctions";
-import SignupPage from "./pages/SignupPage/step1/SignupPage"; // Re-add missing import
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
 import OwnerMyPageMain from "./pages/MyPage/OwnerMyPage/Main/OwnerMyPageMain";
-import ProductManagementPage from "./pages/MyPage/OwnerMyPage/ProductManagement/Main/ProductMangement";
-import NotificationPage from "./pages/NotificationPage/NotificationPage";
-
+import OwnerSignupPage from "./pages/SignupPage/owner/step1/OwnerSignupPage";
+import BusinessAddressPage from "./pages/SignupPage/owner/step2/BusinessAddressPage";
+import BusinessInfoPage from "./pages/SignupPage/owner/step3/BusinessInfoPage";
+import SignupOwnerCompletePage from "./pages/SignupPage/owner/step4/SignupCompletePage";
 import FloatingChatButton from "./components/chat/FloatingChatButton";
+import NotificationPage from "./pages/NotificationPage/NotificationPage";
 import ProductDetailPage from "./pages/ProductDetailPage/ProductDetailPage";
+import ProductManagementPage from "./pages/MyPage/OwnerMyPage/ProductManagement/Main/ProductMangement";
 
 function Layout() {
   const location = useLocation();
@@ -188,7 +189,8 @@ const App = () => {
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/:id" element={<ChatPage />} />
-          <Route path="/inquiry" element={<InquiryPage />} /> {/* New InquiryPage route */}
+          <Route path="/inquiry" element={<InquiryPage />} />{" "}
+          {/* New InquiryPage route */}
           {/* 고객 마이페이지 */}
           <Route path="/my-page/client" element={<ClientMyPageMain />} />
           <Route
@@ -199,7 +201,6 @@ const App = () => {
             path="/my-page/client/coupons"
             element={<ClientCouponPage />}
           />
-
           {/* 사장 마이페이지 */}
           <Route path="/my-page/owner" element={<OwnerMyPageMain />} />
           <Route
@@ -224,12 +225,33 @@ const App = () => {
         <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
         <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
         <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
-        <Route path="/my-page/client/inquiries" element={<ClientInquiryPage />} /> {/* Original InquiryPage route */}
+        <Route path="/my-page/client/inquiries" element={<InquiryPage />} />
         <Route path="/my-page/client/reviews" element={<ReviewPage />} />
-        <Route path="/sign-up/client/step1" element={<SignupPage />} />
+        <Route path="/sign-up/client/step1" element={<ClientSignupPage />} />
         <Route path="/sign-up/client/step2" element={<JoinAddressPage />} />
         <Route path="/sign-up/client/step3" element={<WeddingInfoPage />} />
-        <Route path="/sign-up/client/step4" element={<SignupCompletePage />} />
+        <Route
+          path="/sign-up/client/step4"
+          element={<SignupClientCompletePage />}
+        />
+
+        <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/profile" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/schedules" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/coupons" element={<OwnerMyPageMain />} />
+        <Route
+          path="/my-page/owner/reservtions"
+          element={<OwnerMyPageMain />}
+        />
+        <Route path="/my-page/owner/products" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/payments" element={<OwnerMyPageMain />} />
+        <Route path="/sign-up/owner/step1" element={<OwnerSignupPage />} />
+        <Route path="/sign-up/owner/step2" element={<BusinessAddressPage />} />
+        <Route path="/sign-up/owner/step3" element={<BusinessInfoPage />} />
+        <Route
+          path="/sign-up/owner/step4"
+          element={<SignupOwnerCompletePage />}
+        />
       </Route>
     </Routes>
   );

@@ -1,23 +1,21 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { isAxiosError } from "axios";
 import api from "../lib/api/axios";
+import type { RootState } from "./store";
 
 export type UserRole = "CUSTOMER" | "OWNER";
-
-// 회원가입
-import type { RootState } from "./store";
 
 type SocialLoginPayload = {
   code: string;
   state?: string | null;
-  role: UserRole; // 페이지(사장/고객)에서 명시적으로 전달
+  role: UserRole;
 };
 
-// 응답 타입(예시). 서버가 role도 함께 주면 반영 가능.
 type AuthResponse = {
   accessToken?: string;
-  // role?: UserRole;
 };
+
+/* --------------------------- 소셜 로그인 --------------------------- */
 
 export const kakaoLoginUser = createAsyncThunk(
   "user/kakaoLoginUser",
@@ -73,13 +71,22 @@ export const naverLoginUser = createAsyncThunk(
   }
 );
 
+/* ----------------------------- 로그아웃 ---------------------------- */
+
 export const logoutUser = createAsyncThunk("user/logoutUser", async () => {
-  // 서버 호출 없이 항상 성공 응답만 반환
-  // 필요하다면 shape 맞추려고 server: false 등 넣어줄 수 있음
-  return { server: false };
+  try {
+    const res = await api.post("/api/v1/auth/logout");
+    return { server: true, data: res.data };
+  } catch (error) {
+    if (isAxiosError(error)) {
+      console.warn("logoutUser server error:", error.response?.status);
+    }
+    return { server: false };
+  }
 });
 
-// 고객 인증
+/* ------------------------- 인증 조회 (GET) ------------------------- */
+
 export const authCustomer = createAsyncThunk(
   "user/authCustomer",
   async (_, thunkAPI) => {
@@ -97,7 +104,6 @@ export const authCustomer = createAsyncThunk(
   }
 );
 
-// 사장 인증
 export const authOwner = createAsyncThunk(
   "user/authOwner",
   async (_, thunkAPI) => {
@@ -115,7 +121,9 @@ export const authOwner = createAsyncThunk(
   }
 );
 
-const normalizePhone = (raw: string) => {
+/* -------------------------- 공통 유틸 함수 -------------------------- */
+
+const normalizePhone = (raw: string | undefined) => {
   const d = (raw || "").replace(/\D/g, "");
   if (d.length === 11 && d.startsWith("010")) {
     return `010-${d.slice(3, 7)}-${d.slice(7)}`;
@@ -137,6 +145,8 @@ const safeDate = (d?: string | null) => {
   return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
 };
 
+/* ------------------------ 고객 회원가입 ------------------------ */
+
 type SignupValues = {
   phone?: string;
   address?: string;
@@ -144,9 +154,9 @@ type SignupValues = {
   roadAddress?: string;
   jibunAddress?: string;
   detailAddress?: string;
-  sido?: string; // 없어질 예정
-  sigungu?: string; // 없어질 예정
-  dong?: string; // 없어질 예정
+  sido?: string;
+  sigungu?: string;
+  dong?: string;
   buildingName?: string;
   weddingSido?: string;
   weddingSigungu?: string;
@@ -163,7 +173,7 @@ export const submitSignup = createAsyncThunk<
     const fromState = state?.signup?.values as
       | Partial<SignupValues>
       | undefined;
-    //  전달된 값이 있으면 그걸 사용, 없으면 Redux state 사용
+
     const d: Partial<SignupValues> =
       (maybeValues && Object.keys(maybeValues).length > 0
         ? maybeValues
@@ -174,7 +184,7 @@ export const submitSignup = createAsyncThunk<
     }
 
     const payload = toNullIfEmpty({
-      phoneNumber: normalizePhone(d.phone || ""),
+      phoneNumber: normalizePhone(d.phone),
 
       address: d.address || "",
       zipCode: d.zipCode || "",
@@ -182,16 +192,16 @@ export const submitSignup = createAsyncThunk<
       jibunAddress: d.jibunAddress || "",
       detailAddress: d.detailAddress || "",
 
-      sido: d.sido || "", // 없어질 예정
-      sigungu: d.sigungu || "", // 없어질 예정
-      dong: d.dong || "", // 없어질 예정
+      sido: d.sido || "",
+      sigungu: d.sigungu || "",
+      dong: d.dong || "",
       buildingName: d.buildingName || "",
 
       weddingSido: d.weddingSido || "",
       weddingSigungu: d.weddingSigungu || "",
       weddingDate: safeDate(d.weddingDate ?? undefined),
 
-      age: 18, // 없어질 예정
+      age: 18,
     });
 
     console.log("[submitSignup] payload:", payload);
@@ -208,3 +218,90 @@ export const submitSignup = createAsyncThunk<
     return rejectWithValue("회원가입 정보 제출 실패");
   }
 });
+
+/* ----------------------- 사장 회원가입 ------------------------ */
+
+type OwnerSignupValues = {
+  phoneNumber?: string; // step1
+  bzName?: string; // step3
+  bzNumber?: string; // step3
+  bankAccount?: string; // step3
+  profileImage?: string | null;
+
+  zipCode?: string; // step2 (옵션)
+  roadAddress?: string; // step2 (옵션)
+  jibunAddress?: string; // step2 (옵션)
+  detailAddress?: string; // step2 (옵션)
+  buildingName?: string; // step2 (옵션)
+};
+
+export const submitOwnerSignup = createAsyncThunk<
+  { ok: true } & Record<string, any>,
+  OwnerSignupValues | void,
+  { state: RootState }
+>(
+  "signup/submitOwnerSignup",
+  async (maybeValues, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const fromState = (state as any)?.ownerSignup?.values as
+        | Partial<OwnerSignupValues>
+        | undefined;
+
+      // 인자로 들어온 값 우선, 없으면 Redux 저장값 사용
+      const d: OwnerSignupValues =
+        (maybeValues && Object.keys(maybeValues).length > 0
+          ? maybeValues
+          : fromState) || {};
+
+      const phoneNumber = d.phoneNumber?.trim();
+      const bzName = d.bzName?.trim();
+      const bzNumber = d.bzNumber?.trim();
+      const bankAccount = d.bankAccount?.trim();
+
+      // DTO 기준 필수 4개만 검증
+      if (!phoneNumber || !bzName || !bzNumber || !bankAccount) {
+        console.error("[submitOwnerSignup] missing required:", {
+          phoneNumber,
+          bzName,
+          bzNumber,
+          bankAccount,
+        });
+        return rejectWithValue("사장 회원가입 정보가 충분하지 않습니다.");
+      }
+
+      const payload = {
+        profileImage: (d.profileImage ?? "").toString(), // "" 또는 url, 500자 이내
+
+        phoneNumber: normalizePhone(phoneNumber),
+        bzNumber,
+        bankAccount,
+        bzName,
+
+        // 아래는 전부 optional
+        zipCode: d.zipCode ?? "",
+        roadAddress: d.roadAddress ?? "",
+        jibunAddress: d.jibunAddress ?? "",
+        detailAddress: d.detailAddress ?? "",
+        buildingName: d.buildingName ?? "",
+      };
+
+      console.log("[submitOwnerSignup] payload:", payload);
+
+      const res = await api.post("/api/v1/owner", payload);
+
+      console.log("[submitOwnerSignup] response:", res.data);
+      return { ok: true, ...res.data };
+    } catch (error) {
+      if (isAxiosError(error)) {
+        console.error(
+          "[submitOwnerSignup] axios error:",
+          error.response?.status,
+          error.response?.data
+        );
+        return rejectWithValue(error.response?.data || error.message);
+      }
+      return rejectWithValue("사장 회원가입 정보 제출 실패");
+    }
+  }
+);

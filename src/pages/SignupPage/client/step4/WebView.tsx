@@ -3,9 +3,9 @@ import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import type { AppDispatch } from "../../../store/store";
-import { submitSignup } from "../../../store/thunkFunctions";
-import signupImg from "../../../assets/images/signup.png";
+import type { AppDispatch } from "../../../../store/store";
+import { submitSignup } from "../../../../store/thunkFunctions";
+import signupImg from "../../../../assets/images/signup.png";
 
 interface WebCompleteViewProps {
   /** 시작하기 버튼 클릭 시 실행 (성공 후 후행 동작이 필요할 때 사용) */
