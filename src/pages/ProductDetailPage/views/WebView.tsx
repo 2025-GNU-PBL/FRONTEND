@@ -1,6 +1,114 @@
 // WebView.jsx
 
+import { useEffect, useState } from "react";
+import { Icon } from "@iconify/react";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
+import api from "../../../lib/api/axios";
+import { BasicInfoContent } from "../sections/BasicInfoContent"; // 추가
+import { DetailContent } from "../sections/DetailContent"; // 추가
+import { ReviewContent } from "../sections/ReviewContent"; // 추가
+import type { WeddingHallDetail, StudioDetail, NormalizedDetail } from "../MobileView"; // 타입 임포트
+
+type Category = "wedding" | "studio"; // MobileView와 동일
+
 const WebView = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id } = useParams<{ id: string }>();
+
+  const [activeTab, setActiveTab] = useState<"basic" | "detail" | "review">("basic"); // 탭 상태
+  const [category, setCategory] = useState<Category | null>(null);
+  const [detailData, setDetailData] = useState<NormalizedDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  /* ========================= 네비게이션 ========================= */
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  const handleHome = () => {
+    navigate("/");
+  };
+
+  const handleSearch = () => {
+    navigate("/search");
+  };
+
+  const handleCart = () => {
+    navigate("/cart");
+  };
+
+  /* ========================= 상품 상세 데이터 로딩 ========================= */
+
+  useEffect(() => {
+    if (!category || !id) return;
+
+    const fetchDetail = async () => {
+      try {
+        setLoading(true);
+        setErrorMsg("");
+
+        let url = "";
+        if (category === "wedding") {
+          url = `/api/v1/wedding-hall/${id}`;
+        } else if (category === "studio") {
+          url = `/api/v1/studio/${id}`;
+        }
+
+        const { data } = await api.get(url);
+
+        if (category === "wedding") {
+          const normalized: NormalizedDetail = {
+            ...(data as WeddingHallDetail),
+            _category: "wedding",
+          };
+          setDetailData(normalized);
+        } else if (category === "studio") {
+          const normalized: NormalizedDetail = {
+            ...(data as StudioDetail),
+            _category: "studio",
+          };
+          setDetailData(normalized);
+        }
+      } catch (error) {
+        console.error(error);
+        setErrorMsg("상세 정보를 불러오는 중 오류가 발생했습니다.");
+        setDetailData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDetail();
+  }, [category, id]);
+
+  /* ========================= 장바구니 추가 ========================= */
+  const addToCart = async () => {
+    if (!detailData || !id) {
+      alert("상품 정보를 불러올 수 없습니다.");
+      return;
+    }
+
+    try {
+      const quantity = 1; // 수량은 기본 1로 설정
+      const optionIds = detailData.options?.map(option => option.id) || [];
+
+      await api.post('/api/v1/cart/items', {
+        productId: Number(id),
+        quantity,
+        optionIds,
+      });
+      alert("상품이 장바구니에 담겼습니다.");
+      navigate("/cart"); // 장바구니 추가 후 장바구니 페이지로 이동
+    } catch (error) {
+      console.error("장바구니 추가 실패:", error);
+      alert("장바구니 추가에 실패했습니다.");
+    }
+  };
+
+  /* ========================= 렌더 ========================= */
+
   return (
     <div className="w-full min-h-screen bg-[#F7F9FA] text-[#1E2124] mt-15">
       {/* 상단 고정 헤더 */}
@@ -11,6 +119,7 @@ const WebView = () => {
             <button
               type="button"
               className="w-9 h-9 flex items-center justify-center rounded-full border border-[#E0E5EB] hover:bg-[#F7F9FA] transition"
+              onClick={handleBack}
             >
               <span
                 className="iconify"
@@ -20,19 +129,43 @@ const WebView = () => {
               />
             </button>
             <div className="text-lg font-semibold tracking-tight">
-              웨딩 스튜디오 마켓
+              {detailData?.name || "상품 상세"} {/* 동적 상품명 */}
             </div>
           </div>
 
           {/* 중앙: 탭 */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            <button className="pb-1 border-b-2 border-[#1E2124] text-[#1E2124]">
+            <button
+              type="button"
+              onClick={() => setActiveTab("basic")}
+              className={`pb-1 transition-all ${
+                activeTab === "basic"
+                  ? "border-b-2 border-[#1E2124] text-[#1E2124]"
+                  : "text-[#999999] hover:text-[#1E2124]"
+              }`}
+            >
               기본정보
             </button>
-            <button className="pb-1 text-[#999999] hover:text-[#1E2124]">
+            <button
+              type="button"
+              onClick={() => setActiveTab("detail")}
+              className={`pb-1 transition-all ${
+                activeTab === "detail"
+                  ? "border-b-2 border-[#1E2124] text-[#1E2124]"
+                  : "text-[#999999] hover:text-[#1E2124]"
+              }`}
+            >
               상품상세
             </button>
-            <button className="pb-1 text-[#999999] hover:text-[#1E2124]">
+            <button
+              type="button"
+              onClick={() => setActiveTab("review")}
+              className={`pb-1 transition-all ${
+                activeTab === "review"
+                  ? "border-b-2 border-[#1E2124] text-[#1E2124]"
+                  : "text-[#999999] hover:text-[#1E2124]"
+              }`}
+            >
               평점후기
             </button>
           </nav>
@@ -42,6 +175,7 @@ const WebView = () => {
             <button
               type="button"
               className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#F3F4F5]"
+              onClick={handleHome}
             >
               <span
                 className="iconify"
@@ -53,6 +187,7 @@ const WebView = () => {
             <button
               type="button"
               className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#F3F4F5]"
+              onClick={handleSearch}
             >
               <span
                 className="iconify"
@@ -64,6 +199,7 @@ const WebView = () => {
             <button
               type="button"
               className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#F3F4F5] relative"
+              onClick={handleCart}
             >
               <span
                 className="iconify"
@@ -71,13 +207,25 @@ const WebView = () => {
                 data-width="20"
                 data-height="20"
               />
-              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-[#FF2233] text-[10px] leading-4 text-white rounded-full flex items-center justify-center">
+              {/* TODO: 장바구니 아이템 수량 동적으로 표시 */}
+              {/* <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-[#FF2233] text-[10px] leading-4 text-white rounded-full flex items-center justify-center">
                 3
-              </span>
+              </span> */}
             </button>
           </div>
         </div>
       </header>
+
+      {/* 로딩 / 에러 상태 */}
+      {loading && !errorMsg && (
+        <div className="px-6 py-10 text-[14px] text-[#999999]">
+          상세 정보를 불러오는 중입니다...
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="px-6 py-10 text-[14px] text-red-500">{errorMsg}</div>
+      )}
 
       {/* 메인 콘텐츠 */}
       <main className="max-w-6xl mx-auto px-6 py-8 flex gap-10">
@@ -85,17 +233,31 @@ const WebView = () => {
         <section className="flex-1">
           {/* 메인 이미지 */}
           <div className="w-full aspect-[4/3] bg-[#D9D9D9] rounded-xl overflow-hidden mb-4">
-            {/* 실제 이미지 적용 시 <img src="..." /> 교체 */}
+            {detailData?.images?.[0]?.url ? (
+              <img
+                src={detailData.images[0].url}
+                alt={detailData.name}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">이미지 없음</div>
+            )} {/* 실제 이미지 적용 */}
           </div>
 
           {/* 썸네일 그리드 */}
           <div className="grid grid-cols-6 gap-2">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {detailData?.images?.slice(0, 6).map((image, i) => (
               <div
-                key={i}
+                key={image.id || i}
                 className="w-full aspect-square bg-white border border-[#F0F0F0] rounded-md overflow-hidden"
               >
-                {/* <img src="..." className="w-full h-full object-cover" /> */}
+                <img
+                  src={image.url}
+                  alt={`${detailData.name} 썸네일 ${i + 1}`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
               </div>
             ))}
           </div>
@@ -112,11 +274,11 @@ const WebView = () => {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="text-xs text-[#999999] font-semibold">
-                루이즈블랑
+                {detailData?.ownerName || "상점명"}
               </div>
               <button
                 type="button"
-                className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full bg-[#F5F5F5]"
+                className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#F5F5F5]"
               >
                 <span
                   className="iconify text-[#999999]"
@@ -144,17 +306,19 @@ const WebView = () => {
 
           {/* 상품명 */}
           <h1 className="text-xl font-semibold text-[#000000] leading-snug">
-            [촬영] 드레스 3벌 + 본식 드레스 1벌 패키지
+            {detailData?.name || "상품명"}
           </h1>
 
           {/* 뱃지 */}
           <div className="flex items-center gap-2">
-            <span className="px-2 py-1 rounded bg-[#EFEBFF] text-[11px] font-semibold text-[#803BFF]">
-              BEST
-            </span>
-            <span className="px-2 py-1 rounded bg-[#F5F5F5] text-[11px] font-semibold text-[#999999]">
-              재방문 1위
-            </span>
+            {detailData?.tags?.map((tag, index) => (
+              <span
+                key={index}
+                className="px-2 py-1 rounded bg-[#EFEBFF] text-[11px] font-semibold text-[#803BFF]"
+              >
+                {typeof tag === 'string' ? tag : tag.tagName}
+              </span>
+            ))}
           </div>
 
           {/* 평점 */}
@@ -175,7 +339,7 @@ const WebView = () => {
           <div className="flex items-end justify-between mt-1">
             <div>
               <div className="text-[24px] font-semibold text-[#000000] leading-none">
-                1,500,000원
+                {detailData?.price?.toLocaleString() || "0"}원
               </div>
             </div>
             <button
@@ -194,20 +358,17 @@ const WebView = () => {
 
           {/* 기본 정보 리스트 */}
           <div className="mt-2 pt-3 border-t border-[#F3F4F5] flex flex-col gap-2 text-[13px]">
-            <div className="flex gap-6">
-              <div className="w-20 text-[#999999]">상품 구성</div>
-              <div className="flex-1 text-[#1E2124]">
-                촬영 드레스 3벌 + 본식 드레스 1벌
-              </div>
-            </div>
-            <div className="flex gap-6">
-              <div className="w-20 text-[#999999]">상담 소요시간</div>
-              <div className="flex-1 text-[#1E2124]">50분</div>
-            </div>
-            <div className="flex gap-6">
-              <div className="w-20 text-[#999999]">가봉 소요시</div>
-              <div className="flex-1 text-[#1E2124]">90분</div>
-            </div>
+            {/* 기본 정보는 BasicInfoContent에서 렌더링되므로 여기서는 제거하거나 간소화 */}
+            {/* 예시로 몇 가지만 남겨둠 */}
+            {detailData && activeTab === "basic" && (
+              <BasicInfoContent data={detailData} category={detailData._category} onOpenCoupon={() => {}} />
+            )}
+            {detailData && activeTab === "detail" && (
+              <DetailContent data={detailData} category={detailData._category} />
+            )}
+            {detailData && activeTab === "review" && (
+              <ReviewContent targetId={detailData.id} category={detailData._category} />
+            )}
           </div>
 
           {/* 액션 버튼 */}
@@ -215,6 +376,7 @@ const WebView = () => {
             <button
               type="button"
               className="flex-1 h-12 border border-black/20 rounded-xl flex items-center justify-center text-[15px] font-semibold text-black/80"
+              onClick={addToCart} // 장바구니 추가 함수 연결
             >
               장바구니
             </button>
@@ -230,30 +392,7 @@ const WebView = () => {
 
       {/* 하단 탭 컨텐츠 영역 (예시용) */}
       <section className="max-w-6xl mx-auto px-6 pb-12">
-        <div className="mt-10 bg-white rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center gap-6 border-b border-[#F3F4F5] pb-3 mb-4 text-sm font-medium">
-            <button className="pb-2 border-b-2 border-[#1E2124] text-[#1E2124]">
-              상품 기본 정보
-            </button>
-            <button className="pb-2 text-[#999999] hover:text-[#1E2124]">
-              상품 상세 사진
-            </button>
-            <button className="pb-2 text-[#999999] hover:text-[#1E2124]">
-              리뷰 (1,454)
-            </button>
-          </div>
-          <div className="text-sm text-[#555555] leading-relaxed space-y-2">
-            <p>
-              루이즈블랑 스페셜 패키지는 촬영 드레스 3벌과 본식 드레스 1벌이
-              포함된 구성으로, 웨딩 촬영부터 본식까지 동일한 무드로 연출할 수
-              있도록 큐레이션된 상품입니다.
-            </p>
-            <p>
-              전문 스타일리스트와 1:1 상담 후 체형과 콘셉트에 맞는 드레스를
-              추천해드리며, 가봉 및 핏 조정 시간을 충분히 제공합니다.
-            </p>
-          </div>
-        </div>
+        {/* WebView에서는 BasicInfoContent, DetailContent, ReviewContent가 메인 섹션에 포함되어 있으므로, 하단 탭 컨텐츠는 제거 */}
       </section>
     </div>
   );

@@ -39,11 +39,11 @@ import DressPage from "./pages/DressPage/DressPage";
 import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
 import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
 import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
-import SignupPage from "./pages/SignupPage/step1/SignupPage";
-import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
+import ClientInquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage"; // Renamed to avoid conflict
+import InquiryPage from "./pages/InquiryPage/InquiryPage"; // New InquiryPage import (updated path)
 import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
 import { authCustomer, authOwner } from "./store/thunkFunctions";
-
+import SignupPage from "./pages/SignupPage/step1/SignupPage"; // Re-add missing import
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
 import OwnerMyPageMain from "./pages/MyPage/OwnerMyPage/Main/OwnerMyPageMain";
 import ProductManagementPage from "./pages/MyPage/OwnerMyPage/ProductManagement/Main/ProductMangement";
@@ -72,6 +72,7 @@ function Layout() {
     "/sign-up/step1",
     "/log-in/client",
     "/log-in/owner",
+    "/inquiry", // InquiryPage에 Navbar 숨김
   ];
 
   // 푸터 숨길 경로 (정적)
@@ -83,6 +84,7 @@ function Layout() {
     "/my-page/owner/product/edit",
     "/my-page/owner/product/list",
     "/test",
+    "/inquiry", // InquiryPage에 Footer 숨김
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)
@@ -186,7 +188,7 @@ const App = () => {
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/:id" element={<ChatPage />} />
-
+          <Route path="/inquiry" element={<InquiryPage />} /> {/* New InquiryPage route */}
           {/* 고객 마이페이지 */}
           <Route path="/my-page/client" element={<ClientMyPageMain />} />
           <Route
@@ -222,7 +224,7 @@ const App = () => {
         <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
         <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
         <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
-        <Route path="/my-page/client/inquiries" element={<InquiryPage />} />
+        <Route path="/my-page/client/inquiries" element={<ClientInquiryPage />} /> {/* Original InquiryPage route */}
         <Route path="/my-page/client/reviews" element={<ReviewPage />} />
         <Route path="/sign-up/client/step1" element={<SignupPage />} />
         <Route path="/sign-up/client/step2" element={<JoinAddressPage />} />

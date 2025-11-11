@@ -110,6 +110,31 @@ const MobileView = () => {
     navigate("/cart");
   };
 
+  const addToCart = async () => {
+    if (!detailData || !id) {
+      alert("상품 정보를 불러올 수 없습니다.");
+      return;
+    }
+
+    try {
+      // 수량은 기본 1로 설정. 필요시 UI 추가하여 변경
+      const quantity = 1;
+      // 모든 옵션을 선택 (선택 UI가 없으므로 모든 옵션을 포함)
+      const optionIds = detailData.options?.map(option => option.id) || [];
+
+      await api.post('/api/v1/cart/items', {
+        productId: Number(id),
+        quantity,
+        optionIds,
+      });
+      alert("상품이 장바구니에 담겼습니다.");
+      navigate("/cart"); // 장바구니 추가 후 장바구니 페이지로 이동
+    } catch (error) {
+      console.error("장바구니 추가 실패:", error);
+      alert("장바구니 추가에 실패했습니다.");
+    }
+  };
+
   /* ========================= 쿠폰 ========================= */
 
   const handleOpenCoupon = () => {
@@ -335,7 +360,7 @@ const MobileView = () => {
             <button
               type="button"
               className="flex-1 h-[56px] border border-black/20 rounded-[12px] flex items-center justify-center text-[16px] font-semibold text-black/80"
-              onClick={handleGoCart}
+              onClick={addToCart} // handleGoCart 대신 addToCart 호출
             >
               장바구니
             </button>
