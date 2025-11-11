@@ -144,12 +144,6 @@ const App = () => {
   const { isAuth, role } = useAppSelector((state) => state.user);
   const rehydrated = useAppSelector((state) => state._persist?.rehydrated);
 
-  /**
-   * ✅ 앱이 복원되고 로그인된 상태라면, 역할(role)에 따라 프로필/권한을 서버에서 동기화
-   * - CUSTOMER → authCustomer()
-   * - OWNER    → authOwner()
-   * - (선택) role이 없는 특이 케이스 대비: 필요 시 순차 조회 로직을 추가할 수 있음
-   */
   useEffect(() => {
     if (!rehydrated || !isAuth) return;
 
@@ -158,7 +152,7 @@ const App = () => {
     } else if (role === "OWNER") {
       dispatch(authOwner());
     } else {
-      // ⚠️ 예외 케이스(로그인인데 role이 비어있음). 필요 시 아래 주석을 해제해 포괄 처리 가능.
+      //  예외 케이스(로그인인데 role이 비어있음). 필요 시 아래 주석을 해제해 포괄 처리 가능.
       // dispatch(authOwner())
       //   .unwrap()
       //   .catch(() => dispatch(authCustomer()).unwrap().catch(() => {}));
@@ -228,10 +222,12 @@ const App = () => {
         <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
         <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
         <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
-        <Route path="/sign-up/step1" element={<SignupPage />} />
-        <Route path="/sign-up/step2" element={<JoinAddressPage />} />
-        <Route path="/sign-up/step3" element={<WeddingInfoPage />} />
-        <Route path="/sign-up/step4" element={<SignupCompletePage />} />
+        <Route path="/my-page/client/inquiries" element={<InquiryPage />} />
+        <Route path="/my-page/client/reviews" element={<ReviewPage />} />
+        <Route path="/sign-up/client/step1" element={<SignupPage />} />
+        <Route path="/sign-up/client/step2" element={<JoinAddressPage />} />
+        <Route path="/sign-up/client/step3" element={<WeddingInfoPage />} />
+        <Route path="/sign-up/client/step4" element={<SignupCompletePage />} />
       </Route>
     </Routes>
   );
