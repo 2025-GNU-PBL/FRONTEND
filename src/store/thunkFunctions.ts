@@ -74,16 +74,9 @@ export const naverLoginUser = createAsyncThunk(
 );
 
 export const logoutUser = createAsyncThunk("user/logoutUser", async () => {
-  try {
-    const res = await api.post("/api/v1/auth/logout"); // 200/204 기대
-    return { server: true, data: res.data };
-  } catch (error) {
-    if (isAxiosError(error)) {
-      console.warn("logoutUser server error:", error.response?.status);
-    }
-    // 서버 실패라도 클라 로그아웃은 진행 가능하므로 fulfilled로 처리
-    return { server: false };
-  }
+  // 서버 호출 없이 항상 성공 응답만 반환
+  // 필요하다면 shape 맞추려고 server: false 등 넣어줄 수 있음
+  return { server: false };
 });
 
 // 고객 인증
@@ -167,7 +160,7 @@ export const submitSignup = createAsyncThunk<
 >("signup/submitSignup", async (maybeValues, { getState, rejectWithValue }) => {
   try {
     const state = getState();
-    const fromState = (state as any)?.signup?.values as
+    const fromState = state?.signup?.values as
       | Partial<SignupValues>
       | undefined;
     //  전달된 값이 있으면 그걸 사용, 없으면 Redux state 사용

@@ -1,9 +1,11 @@
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAppSelector } from "../../../store/hooks";
 
 const MobileView = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const userRole = useAppSelector((state) => state.user.role); // ✅ Redux에서 role 가져오기
 
   const menuItems = [
     { icon: "solar:home-2-linear", path: "/", label: "홈" },
@@ -12,7 +14,7 @@ const MobileView = () => {
     { icon: "solar:chat-square-outline", path: "/chat", label: "채팅" },
     {
       icon: "solar:user-rounded-linear",
-      path: "/my-page",
+      path: userRole === "OWNER" ? "/my-page/owner" : "/my-page/client", // ✅ 조건에 따라 경로 변경
       label: "마이페이지",
     },
   ];

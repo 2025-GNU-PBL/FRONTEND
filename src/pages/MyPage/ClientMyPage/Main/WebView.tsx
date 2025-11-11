@@ -1,9 +1,8 @@
 import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { useAppSelector, useAppDispatch } from "../../../../store/hooks";
+import { useAppDispatch, useAppSelector } from "../../../../store/hooks";
 import { logoutUser } from "../../../../store/thunkFunctions";
-import { forceLogout } from "../../../../store/userSlice";
 
 export default function WebView() {
   const nav = useNavigate();
@@ -13,19 +12,13 @@ export default function WebView() {
 
   const go = useCallback((to: string) => nav(to), [nav]);
 
-  const onLogout = useCallback(async () => {
+  const handleLogout = async () => {
     try {
-      // 1차: 정식 로그아웃(thunk) - 서버에도 로그아웃 요청 + userSlice 초기화
       await dispatch(logoutUser()).unwrap();
-    } catch (e) {
-      // 실패해도 2차: 프론트 단 강제 로그아웃
-      console.error("logoutUser 실패, forceLogout 수행:", e);
-      dispatch(forceLogout());
     } finally {
-      // 콜백 URL 정리 & 로그인(or 메인)으로 이동
-      nav("/log-in"); // 필요하면 "/" 로 변경
+      nav("/");
     }
-  }, [dispatch, nav]);
+  };
 
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
@@ -96,7 +89,11 @@ export default function WebView() {
                 icon="mdi:lifetime-support"
                 onClick={() => go("/support")}
               />
-              <MenuTile label="로그아웃" icon="mdi:logout" onClick={onLogout} />
+              <MenuTile
+                label="로그아웃"
+                icon="mdi:logout"
+                onClick={handleLogout}
+              />
             </div>
           </section>
         </div>
