@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useAppDispatch, useAppSelector } from "../../../../store/hooks";
@@ -22,18 +22,16 @@ export default function WebView() {
 
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 본문 */}
       <main className="max-w-[1200px] mx-auto px-6 py-10 mt-15">
         <div className="grid grid-cols-[1fr_2fr] gap-8 items-start">
-          {/* 왼쪽: 프로필 + (아래로) 내 정보 / 쿠폰함 */}
+          {/* 왼쪽: 프로필 */}
           <section className="space-y-6">
-            {/* 프로필 카드 (기준 너비) */}
             <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-[#D9D9D9]" />
                 <div>
                   <div className="text-[18px] font-semibold tracking-[-0.2px] text-black">
-                    {userName}
+                    {userName || "로그인이 필요합니다"}
                   </div>
                   <div className="text-sm text-gray-500 mt-0.5">
                     반가워요! 오늘도 좋은 하루 👋
@@ -42,9 +40,7 @@ export default function WebView() {
               </div>
             </div>
 
-            {/* 액션 카드 */}
             <div className="flex flex-col gap-4">
-              {" "}
               <ActionCard
                 title="내 정보"
                 description="프로필, 연락처, 계정 설정을 관리해요."
@@ -106,25 +102,11 @@ export default function WebView() {
   );
 }
 
-/* ---------- 재사용 컴포넌트 ---------- */
+/* 재사용 컴포넌트는 그대로 */
 
-function ActionCard({
-  title,
-  description,
-  icon,
-  cta,
-  onClick,
-}: {
-  title: string;
-  description: string;
-  icon: string;
-  cta: string;
-  onClick: () => void;
-}) {
+function ActionCard({ title, description, icon, cta, onClick }: any) {
   return (
     <div className="w-full rounded-2xl bg-white border border-gray-100 shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition">
-      {" "}
-      {/* CHANGED: w-full 명시 */}
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-100">
           <Icon icon={icon} className="w-5 h-5 text-gray-700" />
@@ -148,15 +130,7 @@ function ActionCard({
   );
 }
 
-function MenuTile({
-  label,
-  icon,
-  onClick,
-}: {
-  label: string;
-  icon: string;
-  onClick: () => void;
-}) {
+function MenuTile({ label, icon, onClick }: any) {
   return (
     <button
       onClick={onClick}

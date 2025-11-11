@@ -79,7 +79,7 @@ export const logoutUser = createAsyncThunk("user/logoutUser", async () => {
   return { server: false };
 });
 
-// ✅ 고객 인증
+// 고객 인증
 export const authCustomer = createAsyncThunk(
   "user/authCustomer",
   async (_, thunkAPI) => {
@@ -97,7 +97,7 @@ export const authCustomer = createAsyncThunk(
   }
 );
 
-// ✅ 사장 인증
+// 사장 인증
 export const authOwner = createAsyncThunk(
   "user/authOwner",
   async (_, thunkAPI) => {

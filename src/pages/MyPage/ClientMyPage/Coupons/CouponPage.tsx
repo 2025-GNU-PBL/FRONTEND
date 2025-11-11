@@ -2,7 +2,7 @@ import React from "react";
 import MobileView from "./MobileView";
 import WebView from "./WebView";
 
-export default function ClientCouponPage() {
+export default function CouponPage() {
   return (
     <div className="w-full bg-white">
       {/* Mobile */}

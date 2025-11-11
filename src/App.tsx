@@ -17,8 +17,7 @@ import ScrollToTop from "./components/ScrollToTop";
 
 import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain";
 import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
-import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPage";
-
+import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/CouponPage";
 import MainPage from "./pages/MainPage/MainPage";
 import StudioPage from "./pages/StudioPage/StudioPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
@@ -41,7 +40,8 @@ import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
 import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
 import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
 import SignupPage from "./pages/SignupPage/step1/SignupPage";
-
+import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
+import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
 import { authCustomer, authOwner } from "./store/thunkFunctions";
 
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
@@ -144,7 +144,12 @@ const App = () => {
   const { isAuth, role } = useAppSelector((state) => state.user);
   const rehydrated = useAppSelector((state) => state._persist?.rehydrated);
 
-  // 퍼시스트 완료 후, 로그인 된 상태라면 역할에 따라 유저 정보 동기화
+  /**
+   * ✅ 앱이 복원되고 로그인된 상태라면, 역할(role)에 따라 프로필/권한을 서버에서 동기화
+   * - CUSTOMER → authCustomer()
+   * - OWNER    → authOwner()
+   * - (선택) role이 없는 특이 케이스 대비: 필요 시 순차 조회 로직을 추가할 수 있음
+   */
   useEffect(() => {
     if (!rehydrated || !isAuth) return;
 
@@ -152,6 +157,11 @@ const App = () => {
       dispatch(authCustomer());
     } else if (role === "OWNER") {
       dispatch(authOwner());
+    } else {
+      // ⚠️ 예외 케이스(로그인인데 role이 비어있음). 필요 시 아래 주석을 해제해 포괄 처리 가능.
+      // dispatch(authOwner())
+      //   .unwrap()
+      //   .catch(() => dispatch(authCustomer()).unwrap().catch(() => {}));
     }
   }, [rehydrated, isAuth, role, dispatch]);
 
@@ -215,7 +225,9 @@ const App = () => {
           <Route path="/auth/naver/callback" element={<NaverCallback />} />
         </Route>
 
-        {/* 회원가입 단계 */}
+        <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
+        <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
+        <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
         <Route path="/sign-up/step1" element={<SignupPage />} />
         <Route path="/sign-up/step2" element={<JoinAddressPage />} />
         <Route path="/sign-up/step3" element={<WeddingInfoPage />} />

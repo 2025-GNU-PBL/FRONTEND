@@ -12,7 +12,6 @@ export default function MobileView() {
   const userName = useAppSelector((state) => state.user.userData?.name ?? "");
 
   const go = useCallback((to: string) => nav(to), [nav]);
-
   const onBack = useCallback(() => nav(-1), [nav]);
   const onMenu = useCallback(() => go("/settings"), [go]);
 
@@ -41,7 +40,7 @@ export default function MobileView() {
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-[#D9D9D9]" />
                 <div className="text-[18px] font-semibold tracking-[-0.2px] text-black">
-                  {userName}
+                  {userName || "로그인이 필요합니다"}
                 </div>
               </div>
 
@@ -104,7 +103,6 @@ export default function MobileView() {
 
         {/* 고객센터 | 로그아웃 */}
         <section className="px-5 py-4 mb-20">
-          {/* Tailwind 기본 스케일에 없는 mb-18 → mb-20로 보정 */}
           <div className="flex items-center justify-center gap-10">
             <button
               onClick={() => go("/support")}
@@ -126,6 +124,7 @@ export default function MobileView() {
   );
 }
 
+/** 중간 버튼 공용 컴포넌트 */
 function MidLink({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button

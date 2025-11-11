@@ -203,7 +203,7 @@ export default function MobileView({
     }
     onNext?.({ zipcode, address, detailAddress, extraAddress });
 
-    navigate("/sign-up/step3", {
+    navigate("/sign-up/client/step3", {
       state: {
         phone,
         zipcode,

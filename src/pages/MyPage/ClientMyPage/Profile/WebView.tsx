@@ -50,9 +50,12 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
 }
 
 export default function WebView() {
-  // ✅ Redux에서 userData 가져오기
+  // Redux에서 userData 가져오기
   const rawUserData = useAppSelector((state) => state.user.userData);
   const customer = ensureCustomer(rawUserData);
+
+  // signupSlice 에 저장된 임시 회원가입 정보
+  const signupValues = useAppSelector((state) => state.signup.values);
 
   // 로그인 안 됐거나, CUSTOMER 타입이 아니면 안내 문구 노출
   if (!customer) {
@@ -90,20 +93,42 @@ export default function WebView() {
     weddingSigungu,
   } = customer;
 
+  // 전화번호: 고객 정보 → 없으면 signupSlice 값
+  const displayPhone = phoneNumber || signupValues.phone || "-";
+
+  // 주소: 고객 주소 → 없으면 signupSlice 주소
   const displayAddress =
     roadAddress ||
     jibunAddress ||
     address ||
     [sido, sigungu, dong, buildingName].filter(Boolean).join(" ") ||
+    signupValues.roadAddress ||
+    signupValues.jibunAddress ||
+    signupValues.address ||
+    [
+      signupValues.sido,
+      signupValues.sigungu,
+      signupValues.dong,
+      signupValues.buildingName,
+    ]
+      .filter(Boolean)
+      .join(" ") ||
     "-";
 
-  const displayWeddingDate = weddingDate
-    ? new Date(weddingDate).toLocaleDateString("ko-KR")
+  // 예식일: 고객 예식일 → 없으면 signupSlice 예식일
+  const rawWeddingDate = weddingDate || signupValues.weddingDate;
+  const displayWeddingDate = rawWeddingDate
+    ? new Date(rawWeddingDate).toLocaleDateString("ko-KR")
     : "-";
 
+  // 예식장소: 고객 예식 장소 정보 → 없으면 signupSlice 예식 장소 정보
   const displayWeddingVenue =
     buildingName ||
     [weddingSido, weddingSigungu].filter(Boolean).join(" ") ||
+    signupValues.buildingName ||
+    [signupValues.weddingSido, signupValues.weddingSigungu]
+      .filter(Boolean)
+      .join(" ") ||
     "-";
 
   return (
@@ -132,7 +157,7 @@ export default function WebView() {
             <div className="divide-y divide-gray-100">
               <InfoRow label="고객명" value={name} />
               <div className="h-px bg-gray-100" />
-              <InfoRow label="전화번호" value={phoneNumber} />
+              <InfoRow label="전화번호" value={displayPhone} />
               <div className="h-px bg-gray-100" />
               <InfoRow label="이메일" value={email} />
               <div className="h-px bg-gray-100" />
