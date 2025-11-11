@@ -8,7 +8,7 @@ import React, {
   useId,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../components/MyPageHeader";
+import MyPageHeader from "../../../../components/MyPageHeader";
 
 declare global {
   interface Window {

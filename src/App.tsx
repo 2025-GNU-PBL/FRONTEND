@@ -29,14 +29,15 @@ import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";
 import FavoritesPage from "./pages/FavoritesPage/FavoritesPage";
 import DressPage from "./pages/DressPage/DressPage";
-import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
-import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
-import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
-import SignupPage from "./pages/SignupPage/step1/SignupPage";
+import JoinAddressPage from "./pages/SignupPage/client/step2/JoinAddressPage";
+import WeddingInfoPage from "./pages/SignupPage/client/step3/WeddingInfoPage";
+import SignupCompletePage from "./pages/SignupPage/client/step4/SignupCompletePage";
+import SignupPage from "./pages/SignupPage/client/step1/SignupPage";
 import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
 import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
 import { authCustomer, authOwner } from "./store/thunkFunctions";
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
+import OwnerMyPageMain from "./pages/MyPage/OwnerMyPage/Main/OwnerMyPageMain";
 
 function Layout() {
   const location = useLocation();
@@ -151,6 +152,17 @@ const App = () => {
         <Route path="/sign-up/client/step2" element={<JoinAddressPage />} />
         <Route path="/sign-up/client/step3" element={<WeddingInfoPage />} />
         <Route path="/sign-up/client/step4" element={<SignupCompletePage />} />
+
+        <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/profile" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/schedules" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/coupons" element={<OwnerMyPageMain />} />
+        <Route
+          path="/my-page/owner/reservtions"
+          element={<OwnerMyPageMain />}
+        />
+        <Route path="/my-page/owner/products" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/payments" element={<OwnerMyPageMain />} />
       </Route>
     </Routes>
   );

@@ -2,9 +2,9 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import type { AppDispatch } from "../../../store/store";
-import { submitSignup } from "../../../store/thunkFunctions";
-import signupImg from "../../../assets/images/signup.png";
+import type { AppDispatch } from "../../../../store/store";
+import { submitSignup } from "../../../../store/thunkFunctions";
+import signupImg from "../../../../assets/images/signup.png";
 
 interface MobileCompleteViewProps {
   title?: string;

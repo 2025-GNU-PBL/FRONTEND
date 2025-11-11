@@ -1,7 +1,7 @@
-import MobileView from "./MobileView";
-import WebView from "./WebView";
+import MobileView from "./views/MobileView";
+import WebView from "./views/WebView";
 
-export default function ClientMyPageMain() {
+export default function OwnerMyPageMain() {
   return (
     <div className="min-h-screen bg-white">
       {/* 모바일 */}

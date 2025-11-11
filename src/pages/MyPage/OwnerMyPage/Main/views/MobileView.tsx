@@ -1,41 +1,35 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { useDispatch /*, useSelector*/ } from "react-redux";
-// import { selectUserName, logoutThunk } from "@/store/authSlice";
-import MyPageHeader from "../../../../components/clientMypage/MyPageHeader";
 import { Icon } from "@iconify/react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
+import MyPageHeader from "../../../../../components/MyPageHeader";
+import { useAppDispatch, useAppSelector } from "../../../../../store/hooks";
+import { logoutUser } from "../../../../../store/thunkFunctions";
+import { forceLogout } from "../../../../../store/userSlice";
 
 export default function MobileView() {
   const nav = useNavigate();
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
 
-  // const userName = useSelector(selectUserName) ?? "홍종민";
-  const userName = localStorage.getItem("userName") || "홍종민";
+  const userName = useAppSelector((state) => state.user.userData?.name ?? "");
 
   const go = useCallback((to: string) => nav(to), [nav]);
-
   const onBack = useCallback(() => nav(-1), [nav]);
   const onMenu = useCallback(() => go("/settings"), [go]);
 
+  /** 로그아웃 처리 */
   const onLogout = useCallback(async () => {
     try {
-      if (API_BASE) {
-        await axios.post(`${API_BASE}/auth/logout`, null, {
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-    } catch {
-      // ignore: 서버 로그아웃 실패해도 클라 정리
+      // 서버 로그아웃 요청 (userSlice.logoutUser)
+      await dispatch(logoutUser()).unwrap();
+    } catch (e) {
+      // 실패 시 프론트 강제 로그아웃 (token + Redux 초기화)
+      console.error("logoutUser 실패, forceLogout 실행:", e);
+      dispatch(forceLogout());
     } finally {
-      // await dispatch(logoutThunk());
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
+      // 로그인 페이지로 이동
       nav("/log-in");
     }
-  }, [nav, dispatch]);
+  }, [dispatch, nav]);
 
   return (
     <div className="w-full bg-white">
@@ -49,19 +43,19 @@ export default function MobileView() {
         <main className="flex-1">
           {/* 프로필 + 상단 카드 2개 */}
           <section className="bg-[#F6F7FB]">
-            <div className="px-5 pt-4 pb-6">
+            <div className="px-5 pt-20 pb-6">
               {/* 프로필 */}
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-[#D9D9D9]" />
                 <div className="text-[18px] font-semibold tracking-[-0.2px] text-black">
-                  {userName}
+                  {userName || "로그인이 필요합니다"}
                 </div>
               </div>
 
               {/* 상단 2버튼 */}
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-7 grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => go("/my-page/profile")}
+                  onClick={() => go("/my-page/client/profile")}
                   className="h-[61px] rounded-[12px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.02)] flex items-center justify-center active:opacity-80"
                 >
                   <span className="inline-flex items-center justify-center gap-2">
@@ -75,7 +69,7 @@ export default function MobileView() {
                   </span>
                 </button>
                 <button
-                  onClick={() => go("/my-page/coupons")}
+                  onClick={() => go("/my-page/owner/payments")}
                   className="h-[61px] rounded-[12px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.02)] flex items-center justify-center active:opacity-80"
                 >
                   <span className="inline-flex items-center justify-center gap-2">
@@ -84,7 +78,7 @@ export default function MobileView() {
                       className="w-5 h-5"
                     />
                     <span className="text-[16px] tracking-[-0.5px]">
-                      쿠폰함
+                      매출관리
                     </span>
                   </span>
                 </button>
@@ -96,20 +90,20 @@ export default function MobileView() {
           <section className="px-5 py-8">
             <div className="grid grid-cols-2 gap-6">
               <MidLink
-                label="결제 관리"
-                onClick={() => go("/my-page/payments")}
+                label="쿠폰관리"
+                onClick={() => go("/my-page/owner/coupons")}
               />
               <MidLink
-                label="스케줄 내역"
-                onClick={() => go("/my-page/schedules")}
+                label="일정관리"
+                onClick={() => go("/my-page/owner/schedules")}
               />
               <MidLink
-                label="문의 내역"
-                onClick={() => go("/my-page/inquiries")}
+                label="상품관리"
+                onClick={() => go("/my-page/owner/products")}
               />
               <MidLink
-                label="리뷰관리"
-                onClick={() => go("/my-page/reviews")}
+                label="예약관리"
+                onClick={() => go("/my-page/owner/reservations")}
               />
             </div>
           </section>
@@ -117,7 +111,6 @@ export default function MobileView() {
 
         {/* 고객센터 | 로그아웃 */}
         <section className="px-5 py-4 mb-20">
-          {/* Tailwind 기본 스케일에 없는 mb-18 → mb-20로 보정 */}
           <div className="flex items-center justify-center gap-10">
             <button
               onClick={() => go("/support")}
@@ -139,6 +132,7 @@ export default function MobileView() {
   );
 }
 
+/** 중간 버튼 공용 컴포넌트 */
 function MidLink({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button

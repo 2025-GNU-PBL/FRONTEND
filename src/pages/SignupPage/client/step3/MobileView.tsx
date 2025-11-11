@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../components/MyPageHeader";
+import MyPageHeader from "../../../../components/MyPageHeader";
 
 interface MobileWeddingInfoViewProps {
   onBack?: () => void;

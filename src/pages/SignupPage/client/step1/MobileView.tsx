@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../components/MyPageHeader";
+import MyPageHeader from "../../../../components/MyPageHeader";
 
 export default function MobileView() {
   const [phone, setPhone] = useState("");
