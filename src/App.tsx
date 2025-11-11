@@ -43,6 +43,8 @@ import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
 import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
 import { authCustomer, authOwner } from "./store/thunkFunctions";
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
+import PaymentListPage from "./pages/MyPage/ClientMyPage/Payments/PaymentListPage";
+import PaymentDetailPage from "./pages/MyPage/ClientMyPage/Payments/PaymentDetailPage";
 import OwnerMyPageMain from "./pages/MyPage/OwnerMyPage/Main/OwnerMyPageMain";
 import OwnerSignupPage from "./pages/SignupPage/owner/step1/OwnerSignupPage";
 import BusinessAddressPage from "./pages/SignupPage/owner/step2/BusinessAddressPage";
@@ -227,6 +229,12 @@ const App = () => {
         <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
         <Route path="/my-page/client/inquiries" element={<InquiryPage />} />
         <Route path="/my-page/client/reviews" element={<ReviewPage />} />
+        <Route path="/my-page/client/payments" element={<PaymentListPage />} />
+        <Route
+          path="/my-page/client/payments/detail"
+          element={<PaymentDetailPage />}
+        />
+
         <Route path="/sign-up/client/step1" element={<ClientSignupPage />} />
         <Route path="/sign-up/client/step2" element={<JoinAddressPage />} />
         <Route path="/sign-up/client/step3" element={<WeddingInfoPage />} />
