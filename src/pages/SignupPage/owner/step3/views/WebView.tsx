@@ -5,9 +5,9 @@ import MyPageHeader from "../../../../../components/MyPageHeader";
 interface WebBusinessInfoViewProps {
   onBack?: () => void;
   onNext?: (payload: {
-    storeName: string;
-    businessNumber: string;
-    accountNumber: string;
+    bzName: string;
+    bzNumber: string;
+    bankAccount: string;
   }) => void;
   onSkip?: () => void;
   title?: string;
@@ -19,34 +19,34 @@ export default function WebView({
   onSkip,
   title = "",
 }: WebBusinessInfoViewProps) {
-  const [storeName, setStoreName] = useState("");
-  const [businessNumber, setBusinessNumber] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
+  const [bzName, setBzName] = useState("");
+  const [bzNumber, setBzNumber] = useState("");
+  const [bankAccount, setBankAccount] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
   const prevState = (location.state as any) || {};
 
   const isComplete = useMemo(
-    () => Boolean(storeName && businessNumber && accountNumber),
-    [storeName, businessNumber, accountNumber]
+    () => Boolean(bzName && bzNumber && bankAccount),
+    [bzName, bzNumber, bankAccount]
   );
 
   const handleNext = () => {
     if (!isComplete) return;
 
     onNext?.({
-      storeName,
-      businessNumber,
-      accountNumber,
+      bzName,
+      bzNumber,
+      bankAccount,
     });
 
     navigate("/sign-up/owner/step4", {
       state: {
         ...prevState,
-        storeName,
-        businessNumber,
-        accountNumber,
+        bzName,
+        bzNumber,
+        bankAccount,
       },
     });
   };
@@ -79,7 +79,7 @@ export default function WebView({
             사업장 정보를{"\n"}입력해 주세요
           </h1>
 
-          {/* 사업장명 */}
+          {/* 사업장명 (bzName) */}
           <div className="mb-[24px]">
             <label className="block text-[#666666] text-[12px] leading-[18px] -tracking-[0.1px] mb-[6px]">
               사업장명
@@ -87,15 +87,15 @@ export default function WebView({
             <div className="w-[350px] h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-5">
               <input
                 type="text"
-                value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
+                value={bzName}
+                onChange={(e) => setBzName(e.target.value)}
                 placeholder="사업장 명"
                 className="w-full h-full outline-none bg-transparent text-[14px] leading-[22px] -tracking-[0.2px] text-[#1E2124] placeholder:text-[#9D9D9D]"
               />
             </div>
           </div>
 
-          {/* 사업자 번호 */}
+          {/* 사업자 번호 (bzNumber) */}
           <div className="mb-[24px]">
             <label className="block text-[#666666] text-[12px] leading-[18px] -tracking-[0.1px] mb-[6px]">
               사업자 번호
@@ -103,15 +103,15 @@ export default function WebView({
             <div className="w-[350px] h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-5">
               <input
                 type="text"
-                value={businessNumber}
-                onChange={(e) => setBusinessNumber(e.target.value)}
-                placeholder="1215-4548-4554"
+                value={bzNumber}
+                onChange={(e) => setBzNumber(e.target.value)}
+                placeholder="000-00-00000"
                 className="w-full h-full outline-none bg-transparent text-[14px] leading-[22px] -tracking-[0.2px] text-[#1E2124] placeholder:text-[#9D9D9D]"
               />
             </div>
           </div>
 
-          {/* 계좌번호 */}
+          {/* 계좌번호 (bankAccount) */}
           <div className="mb-[32px]">
             <label className="block text-[#666666] text-[12px] leading-[18px] -tracking-[0.1px] mb-[6px]">
               계좌번호
@@ -119,16 +119,16 @@ export default function WebView({
             <div className="w-[350px] h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-5">
               <input
                 type="text"
-                value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
-                placeholder="1215-4548-4554"
+                value={bankAccount}
+                onChange={(e) => setBankAccount(e.target.value)}
+                placeholder="은행명 + 계좌번호"
                 className="w-full h-full outline-none bg-transparent text-[14px] leading-[22px] -tracking-[0.2px] text-[#1E2124] placeholder:text-[#9D9D9D]"
               />
             </div>
           </div>
         </div>
 
-        {/* 하단 버튼 영역 (공용 footer 제외) */}
+        {/* 하단 버튼 영역 */}
         <div className="absolute left-1/2 -translate-x-1/2 bottom-[34px] w-[350px] flex flex-col gap-[12px]">
           <button
             onClick={handleNext}

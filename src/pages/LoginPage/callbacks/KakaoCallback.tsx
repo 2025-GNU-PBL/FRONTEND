@@ -59,7 +59,7 @@ export default function KakaoCallback() {
           if (needSignup) {
             nav("/sign-up/client/step1", { replace: true });
           } else {
-            nav("/", { replace: true }); // 고객 메인
+            nav("/", { replace: true });
           }
         } else {
           const owner = (await dispatch(authOwner()).unwrap()) as OwnerData;
@@ -70,7 +70,7 @@ export default function KakaoCallback() {
           if (needSignup) {
             nav("/sign-up/owner/step1", { replace: true });
           } else {
-            nav("/owner", { replace: true }); // 사장 메인(대시보드) 경로로 맞춰줘
+            nav("/", { replace: true });
           }
         }
       } catch (e) {

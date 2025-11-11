@@ -75,8 +75,7 @@ export const naverLoginUser = createAsyncThunk(
 
 export const logoutUser = createAsyncThunk("user/logoutUser", async () => {
   try {
-    const res = await api.post("/api/v1/auth/logout");
-    return { server: true, data: res.data };
+    return { server: true };
   } catch (error) {
     if (isAxiosError(error)) {
       console.warn("logoutUser server error:", error.response?.status);
@@ -170,7 +169,7 @@ export const submitSignup = createAsyncThunk<
 >("signup/submitSignup", async (maybeValues, { getState, rejectWithValue }) => {
   try {
     const state = getState();
-    const fromState = state?.signup?.values as
+    const fromState = (state as any)?.signup?.values as
       | Partial<SignupValues>
       | undefined;
 
