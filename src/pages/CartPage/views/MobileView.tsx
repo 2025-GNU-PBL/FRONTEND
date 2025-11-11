@@ -241,7 +241,7 @@ const MobileView = () => {
               <button className="popup-cart-button">
                 <span className="popup-cart-button-text">장바구니</span>
               </button> 
-              <button className="popup-purchase-button">
+              <button className="popup-purchase-button" onClick={() => navigate('/inquiry')}> {/* Navigate to inquiry page */}
                 <span className="popup-purchase-button-text">구매하기</span>
               </button>
             </div>
