@@ -54,13 +54,20 @@ const WebView = () => {
     setIsPopupOpen(!isPopupOpen);
   };
 
-  const toggleAllCheckboxes = () => {
+  const toggleAllCheckboxes = async () => {
     if (!cartData) return;
     const newCheckedState = !isAllChecked;
-    const updatedItems = cartData.items.map(item => ({ ...item, selected: newCheckedState }));
-    // TODO: 백엔드에 모든 아이템의 선택 상태 변경 요청 (필요 시)
-    setCartData({ ...cartData, items: updatedItems });
-    setIsAllChecked(newCheckedState);
+
+    try {
+      setLoading(true);
+      await api.post(`/api/v1/cart/select-all?selected=${newCheckedState}`);
+      await fetchCartData(); // 장바구니 데이터 새로고침
+    } catch (err) {
+      console.error("Failed to update all item selection:", err);
+      setError("상품 전체 선택/해제에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleItemCheckbox = (cartItemId: number) => {
@@ -94,6 +101,32 @@ const WebView = () => {
     } catch (err) {
       console.error("Failed to delete selected items:", err);
       setError("선택된 상품 삭제에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePurchase = async () => {
+    if (!cartData || cartData.items.filter(item => item.selected).length === 0) {
+      alert("구매할 상품을 선택해주세요.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await api.post<{ draftIds: number[] }>('/api/v1/cart/checkout/inquiry-drafts');
+      const { draftIds } = response.data;
+
+      // 선택된 장바구니 아이템의 ID를 수집
+      const selectedCartItemIds = cartData.items
+        .filter(item => item.selected)
+        .map(item => item.cartItemId);
+
+      togglePopup(); // 팝업 닫기
+      navigate('/inquiry', { state: { draftIds, cartItemIds: selectedCartItemIds } });
+    } catch (err) {
+      console.error("Failed to create inquiry drafts:", err);
+      setError("문의 초안 생성에 실패했습니다.");
     } finally {
       setLoading(false);
     }
@@ -249,7 +282,7 @@ const WebView = () => {
               <button className="popup-cart-button">
                 <span className="popup-cart-button-text">장바구니</span>
               </button>
-              <button className="popup-purchase-button" onClick={() => navigate('/inquiry')}> {/* Navigate to inquiry page */}
+              <button className="popup-purchase-button" onClick={handlePurchase}>
                 <span className="popup-purchase-button-text">구매하기</span>
               </button>
             </div>

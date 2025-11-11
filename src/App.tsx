@@ -49,6 +49,7 @@ function Layout() {
     "/sign-up/step1",
     "/log-in/client",
     "/log-in/owner",
+    "/inquiry", // InquiryPage에 Navbar 숨김
   ];
 
   // 푸터 숨길 경로 (정적 + 동적)
@@ -57,6 +58,7 @@ function Layout() {
     "/log-in/client",
     "/log-in/owner",
     "/test",
+    "/inquiry", // InquiryPage에 Footer 숨김
   ];
 
   const showNavbar = !hideNavOnPaths.includes(location.pathname);
