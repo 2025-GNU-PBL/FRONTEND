@@ -5,9 +5,9 @@ import { useNavigate } from "react-router-dom";
 import SideMenu from "../../../components/SideMenu";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
-// ⚠️ 프로젝트 경로에 맞게 수정
 import api from "../../../lib/api/axios";
 import type { Product } from "../../../type/product";
+import { useAppSelector } from "../../../store/hooks";
 
 // ===== 타입 선언 =====
 type CategoryKey = "hall" | "studio" | "dress" | "makeup";
@@ -23,25 +23,23 @@ type PageMeta = {
 
 type PageResponse<T> = {
   content: T[];
-  page?: PageMeta; // 서버가 줄 수도, 안 줄 수도 있다고 가정
+  page?: PageMeta;
 };
 
 type Props = {
   active: CategoryKey;
   setActive: (key: CategoryKey) => void;
   categories: Category[];
-  products: Product[]; // MainPage가 내려주는 첫 페이지(선택)
-  pageMeta: PageMeta | null; // 첫 페이지 메타(선택)
+  products: Product[];
+  pageMeta: PageMeta | null;
   isMenuOpen: boolean;
   openMenu: () => void;
   closeMenu: () => void;
 };
 // =====================
 
-// ✅ 문자열 ease 대신 cubic-bezier 사용 (TS 안전)
 const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-// ✅ Variants 타입 명시
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 8 },
   show: {
@@ -75,6 +73,17 @@ const ENDPOINT_BY_CATEGORY: Record<CategoryKey, string> = {
   makeup: "/api/v1/makeup/filter",
 };
 
+// ✅ 카테고리별 상세 페이지 경로 매핑
+const DETAIL_PATH_BY_CATEGORY: Record<
+  CategoryKey,
+  (id: number | string) => string
+> = {
+  hall: (id) => `/wedding/${id}`,
+  studio: (id) => `/studio/${id}`,
+  dress: (id) => `/dress/${id}`,
+  makeup: (id) => `/makeup/${id}`,
+};
+
 export default function MobileView({
   active,
   setActive,
@@ -86,41 +95,35 @@ export default function MobileView({
   closeMenu,
 }: Props) {
   const navigate = useNavigate();
+  const isAuthenticated = useAppSelector((s) => s.user.isAuth);
 
   // ====== 무한 스크롤 상태 ======
   const [items, setItems] = useState<Product[]>(products ?? []);
 
-  // 서버 파라미터 규격: pageNumber(1부터), pageSize(기본 6)
   const DEFAULT_PAGE_SIZE = 6;
 
-  // 현재까지 로드한 페이지 번호(서버 기준 1-base)
   const [pageNumber, setPageNumber] = useState<number>(
     (products?.length ?? 0) > 0 ? 1 : 0
   );
-  // 요청에 사용할 페이지 크기
   const [pageSize, setPageSize] = useState<number>(
     pageMeta?.size ?? DEFAULT_PAGE_SIZE
   );
-  // 더 가져오는 중/에러/끝 여부
   const [loadingMore, setLoadingMore] = useState(false);
   const [errorMore, setErrorMore] = useState<string | null>(null);
-  const [reachedEnd, setReachedEnd] = useState<boolean>(false); // 마지막 페이지 도달 여부(메타 없을 때도 동작)
+  const [reachedEnd, setReachedEnd] = useState<boolean>(false);
 
-  // 카테고리/초기 데이터 바뀔 때 리셋
+  // 카테고리/초기 데이터 변경 시 초기화
   useEffect(() => {
     setItems(products ?? []);
-    // 첫 페이지를 이미 갖고 있으면 현재 pageNumber=1로 간주
     setPageNumber((products?.length ?? 0) > 0 ? 1 : 0);
     setPageSize(pageMeta?.size ?? DEFAULT_PAGE_SIZE);
     setErrorMore(null);
     setReachedEnd(false);
   }, [active, products, pageMeta]);
 
-  // 다음 페이지가 있는지: 메타가 있으면 메타로, 없으면 reachedEnd로 판단
+  // 다음 페이지 여부 판단
   const hasNext = useMemo(() => {
     if (pageMeta?.totalPages && pageMeta?.number !== undefined) {
-      // pageMeta.number가 0-base일 가능성이 있으므로 방어적으로 처리
-      // 0-base로 왔다면 number+1이 현재 페이지의 1-base 대체값
       const currentByMetaOneBase =
         pageMeta.number >= 1 ? pageMeta.number : pageMeta.number + 1;
       return currentByMetaOneBase < pageMeta.totalPages && !reachedEnd;
@@ -128,7 +131,6 @@ export default function MobileView({
     return !reachedEnd;
   }, [pageMeta, reachedEnd]);
 
-  // 가로 스크롤 컨테이너 & sentinel
   const listRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -139,7 +141,6 @@ export default function MobileView({
       setLoadingMore(true);
       setErrorMore(null);
 
-      // 현재까지 1페이지를 읽은 상태라면 다음 호출은 pageNumber+1
       const nextPage = (pageNumber || 0) + 1;
       const endpoint = ENDPOINT_BY_CATEGORY[active];
 
@@ -150,7 +151,6 @@ export default function MobileView({
       const data = res.data;
       const next = Array.isArray(data?.content) ? data.content : [];
 
-      // 중복 방지 (id 기준)
       setItems((prev) => {
         const seen = new Set(prev.map((p) => p.id));
         const merged = [...prev];
@@ -158,18 +158,14 @@ export default function MobileView({
         return merged;
       });
 
-      // 다음 페이지 번호로 갱신
       setPageNumber(nextPage);
 
-      // 서버가 메타를 준다면 반영
       if (data?.page?.size) setPageSize(data.page.size);
 
-      // 메타가 없더라도, 받아온 아이템 수가 pageSize보다 작으면 마지막 페이지로 간주
       if (next.length < (data?.page?.size ?? pageSize)) {
         setReachedEnd(true);
       }
 
-      // 메타가 있다면 totalPages 기준으로도 종료 판단 (안전망)
       if (
         data?.page?.totalPages !== undefined &&
         data?.page?.number !== undefined
@@ -186,7 +182,7 @@ export default function MobileView({
     }
   }, [active, hasNext, loadingMore, pageNumber, pageSize]);
 
-  // IntersectionObserver: 가로 스크롤 끝에 가까워지면 로드
+  // IntersectionObserver로 가로 끝에서 추가 로드
   useEffect(() => {
     const rootEl = listRef.current;
     const targetEl = sentinelRef.current;
@@ -202,7 +198,6 @@ export default function MobileView({
       },
       {
         root: rootEl,
-        // 오른쪽 300px 여유 줘서 미리 로드
         rootMargin: "0px 300px 0px 0px",
         threshold: 0.01,
       }
@@ -212,7 +207,7 @@ export default function MobileView({
     return () => observer.disconnect();
   }, [loadNextPage, items.length, active]);
 
-  // 컨테이너 너비가 아이템 총 너비보다 넓어 처음에 스크롤이 안 생기면 자동으로 더 로드 (초기 보정)
+  // 컨테이너가 넓어서 스크롤 안 생기면 자동 추가 로드
   useEffect(() => {
     const rootEl = listRef.current;
     if (!rootEl) return;
@@ -238,7 +233,7 @@ export default function MobileView({
       initial="hidden"
       animate="show"
     >
-      {/* 헤더 (로고 + 메뉴) */}
+      {/* 헤더 */}
       <motion.div
         className="flex justify-between items-center m-5"
         variants={fadeUp}
@@ -246,14 +241,44 @@ export default function MobileView({
         <h1 className="font-allimjang text-[#FF2233] text-2xl font-bold ">
           웨딩PICK
         </h1>
-        <motion.button
-          className="flex items-center justify-center hover:opacity-80 active:scale-95"
-          aria-label="메뉴 열기"
-          onClick={openMenu}
-          whileTap={{ scale: 0.94 }}
-        >
-          <Icon icon="mynaui:menu" className="w-6 h-6 text-black/80" />
-        </motion.button>
+        <div className="flex gap-3">
+          {isAuthenticated && (
+            <motion.button
+              className="flex items-center justify-center hover:opacity-80 active:scale-95"
+              onClick={() => {
+                navigate("/notification");
+              }}
+              whileTap={{ scale: 0.94 }}
+            >
+              <Icon
+                icon="solar:bell-linear"
+                className="w-6 h-6 text-black/80"
+              />
+            </motion.button>
+          )}
+          {isAuthenticated && (
+            <motion.button
+              className="flex items-center justify-center hover:opacity-80 active:scale-95"
+              onClick={() => {
+                navigate("/cart");
+              }}
+              whileTap={{ scale: 0.94 }}
+            >
+              <Icon
+                icon="solar:cart-large-minimalistic-linear"
+                className="w-6 h-6 text-black/80"
+              />
+            </motion.button>
+          )}
+          <motion.button
+            className="flex items-center justify-center hover:opacity-80 active:scale-95"
+            aria-label="메뉴 열기"
+            onClick={openMenu}
+            whileTap={{ scale: 0.94 }}
+          >
+            <Icon icon="mynaui:menu" className="w-6 h-6 text-black/80" />
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* 바디 */}
@@ -325,7 +350,7 @@ export default function MobileView({
           <span className="text-black/80">PICK</span>
         </motion.div>
 
-        {/* 토글 버튼들 */}
+        {/* 카테고리 토글 */}
         <motion.div className="flex gap-2 mb-4" variants={stagger(0.02)}>
           {categories.map((c) => {
             const isActive = active === c.key;
@@ -352,7 +377,6 @@ export default function MobileView({
 
         {/* 카테고리 상품 리스트 (가로 스크롤) */}
         <div className="-mx-5 px-5">
-          {/* ✅ key 전환 + fade로 유지 */}
           <motion.div
             key={active}
             ref={listRef}
@@ -374,6 +398,10 @@ export default function MobileView({
                 ? p.address.split(" ").slice(0, 2).join(" ")
                 : "";
 
+              // ✅ 현재 활성 카테고리에 따라 상세 경로 결정
+              const detailPath =
+                DETAIL_PATH_BY_CATEGORY[active]?.(p.id) ?? `/wedding/${p.id}`;
+
               return (
                 <motion.article
                   key={p.id}
@@ -383,7 +411,7 @@ export default function MobileView({
                   whileInView="show"
                   viewport={{ once: true, amount: 0.2 }}
                   whileHover={{ y: -2 }}
-                  onClick={() => navigate(`/product/${p.id}`)}
+                  onClick={() => navigate(detailPath)}
                 >
                   <div className="w-full h-[144px] bg-[#F3F4F5]">
                     <img
@@ -419,7 +447,7 @@ export default function MobileView({
               );
             })}
 
-            {/* ➜ 가로 무한스크롤 sentinel (flex 아이템으로 끝에 고정) */}
+            {/* sentinel */}
             <div
               ref={sentinelRef}
               className="flex-none w-px h-[1px]"
@@ -428,7 +456,7 @@ export default function MobileView({
           </motion.div>
         </div>
 
-        {/* 로딩/에러 표시 (하단 토스트 느낌) */}
+        {/* 로딩/에러/끝 표시 */}
         <div className="relative">
           {loadingMore && (
             <div className="mt-3 inline-flex items-center gap-2 rounded bg-black text-white text-xs px-2 py-1">
