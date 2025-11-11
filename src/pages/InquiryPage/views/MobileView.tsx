@@ -26,6 +26,19 @@ const MobileView: React.FC = () => {
   const [productImageUrl, setProductImageUrl] = useState('/images/makeup.png'); // public 제거
   const maxContentLength = 200;
 
+  const [hasDraftIds, setHasDraftIds] = useState(false); // 새로운 상태 추가
+
+  // draftIds가 없을 경우 /cart로 리다이렉트
+  useEffect(() => {
+    if (!location.state || !(location.state as { draftIds?: number[] }).draftIds) {
+      alert("문의할 상품 정보가 없습니다.");
+      navigate('/cart');
+      setHasDraftIds(false); // draftIds 없음을 표시
+      return;
+    }
+    setHasDraftIds(true); // draftIds 있음을 표시
+  }, [location.state, navigate]);
+
   useEffect(() => {
     const fetchDraftData = async (draftId: number) => {
       try {
@@ -113,6 +126,11 @@ const MobileView: React.FC = () => {
   };
 
   const isSubmitButtonEnabled = title.trim() !== '' && content.trim() !== '';
+
+  // draftIds가 없을 경우 렌더링하지 않음
+  if (!hasDraftIds) {
+    return null;
+  }
 
   return (
     <div className="inquiry-page-container">
