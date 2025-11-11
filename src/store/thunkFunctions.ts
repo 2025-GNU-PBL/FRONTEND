@@ -170,7 +170,7 @@ export const submitSignup = createAsyncThunk<
 >("signup/submitSignup", async (maybeValues, { getState, rejectWithValue }) => {
   try {
     const state = getState();
-    const fromState = (state as any)?.signup?.values as
+    const fromState = state?.signup?.values as
       | Partial<SignupValues>
       | undefined;
 

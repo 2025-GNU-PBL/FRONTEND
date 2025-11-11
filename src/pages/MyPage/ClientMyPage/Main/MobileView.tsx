@@ -1,10 +1,9 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Icon } from "@iconify/react";
 import MyPageHeader from "../../../../components/MyPageHeader";
+import { Icon } from "@iconify/react";
 import { useAppDispatch, useAppSelector } from "../../../../store/hooks";
 import { logoutUser } from "../../../../store/thunkFunctions";
-import { forceLogout } from "../../../../store/userSlice";
 
 export default function MobileView() {
   const nav = useNavigate();
@@ -16,20 +15,13 @@ export default function MobileView() {
   const onBack = useCallback(() => nav(-1), [nav]);
   const onMenu = useCallback(() => go("/settings"), [go]);
 
-  /** 로그아웃 처리 */
-  const onLogout = useCallback(async () => {
+  const handleLogout = async () => {
     try {
-      // 서버 로그아웃 요청 (userSlice.logoutUser)
       await dispatch(logoutUser()).unwrap();
-    } catch (e) {
-      // 실패 시 프론트 강제 로그아웃 (token + Redux 초기화)
-      console.error("logoutUser 실패, forceLogout 실행:", e);
-      dispatch(forceLogout());
     } finally {
-      // 로그인 페이지로 이동
-      nav("/log-in");
+      nav("/");
     }
-  }, [dispatch, nav]);
+  };
 
   return (
     <div className="w-full bg-white">
@@ -120,7 +112,7 @@ export default function MobileView() {
             </button>
             <div className="w-6 h-px bg-black/80 rotate-90" />
             <button
-              onClick={onLogout}
+              onClick={handleLogout}
               className="text-[16px] tracking-[-0.2px] hover:opacity-80"
             >
               로그아웃

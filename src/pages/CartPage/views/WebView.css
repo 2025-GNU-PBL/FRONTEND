@@ -1,0 +1,558 @@
+/* src/pages/CartPage/views/WebView.css */
+
+.web-cart-container {
+  position: relative;
+  width: 100%;
+  max-width: 1200px; /* 웹뷰의 최대 너비 */
+  margin: 0 auto; /* 중앙 정렬 */
+  min-height: 100vh;
+  background: #FFFFFF;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 96px;
+  box-sizing: border-box;
+}
+
+.web-cart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0px 40px; /* 웹뷰에 맞게 패딩 조정 */
+  height: 70px; /* 웹뷰에 맞게 높이 조정 */
+  background: #FFFFFF;
+  border-bottom: 1px solid #F3F4F5;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.web-main-content {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 40px; /* 웹뷰에 맞게 패딩 조정 */
+  gap: 40px; /* 섹션 간 간격 */
+}
+
+.web-product-items-section {
+  flex: 3; /* 상품 목록 섹션이 더 넓은 공간을 차지 */
+}
+
+.web-summary-purchase-section {
+  flex: 1; /* 요약 및 구매 섹션 */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.web-select-delete-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0px;
+  border-bottom: 1px solid #F3F4F5;
+}
+
+.web-select-all-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.web-product-item-wrapper {
+  display: flex;
+  padding: 20px 0px;
+  gap: 12px;
+  border-bottom: 1px solid #F3F4F5;
+  align-items: flex-start;
+}
+
+/* MobileView.css와 공유하는 스타일은 그대로 사용 */
+.separator-gray-8px {
+  width: 100%;
+  height: 8px;
+  background: #F7F9FA;
+}
+
+.header-back-arrow {
+  width: 24px;
+  height: 24px;
+  color: #1E2124;
+  cursor: pointer;
+}
+
+.header-title {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 160%;
+  text-align: center;
+  letter-spacing: -0.2px;
+  color: #1E2124;
+  flex-grow: 1;
+}
+
+.header-menu-icon {
+  width: 24px;
+  height: 24px;
+  visibility: hidden;
+}
+
+.product-item-checkbox {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 5px;
+  background: #FF2233;
+  cursor: pointer;
+}
+
+.product-item-checkbox-unchecked {
+  border: 1px solid #E8E8E8;
+  border-radius: 4px;
+  background: #FFFFFF;
+}
+
+.product-item-checkbox-checked {
+  background: #FF2233;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #FFFFFF;
+}
+
+.select-all-text {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 150%;
+  letter-spacing: -0.2px;
+  color: #1E2124;
+}
+
+.delete-selected-text {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 150%;
+  letter-spacing: -0.2px;
+  color: #1E2124;
+  cursor: pointer;
+}
+
+.product-item-image {
+  box-sizing: border-box;
+  width: 80px;
+  height: 80px;
+  background: url("image.png");
+  border: 1px solid #F5F5F5;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.product-details {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.product-item-shop-name {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 150%;
+  letter-spacing: -0.2px;
+  color: rgba(0, 0, 0, 0.4);
+  text-align: left;
+}
+
+.product-item-description {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 150%;
+  letter-spacing: -0.2px;
+  color: #1E2124;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.product-price-section {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.product-item-original-price {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 150%;
+  letter-spacing: -0.1px;
+  text-decoration-line: line-through;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.product-item-discounted-price {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 160%;
+  letter-spacing: -0.2px;
+  color: #1E2124;
+}
+
+.product-item-quantity-control {
+  box-sizing: border-box;
+  width: 81px;
+  height: 31px;
+  border: 1px solid #EAEDEF;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin-top: 8px;
+  margin-left: auto;
+}
+
+.quantity-minus-icon,
+.quantity-plus-icon {
+  width: 16px;
+  height: 16px;
+  color: #1E2124;
+  cursor: pointer;
+}
+
+.quantity-display {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 150%;
+  letter-spacing: -0.2px;
+  color: #1E2124;
+}
+
+.summary-section {
+  padding: 20px;
+  background: #FFFFFF;
+  border-top: 8px solid #F7F9FA;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.summary-item-label {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 160%;
+  letter-spacing: -0.2px;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.summary-item-value {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 160%;
+  letter-spacing: -0.2px;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.summary-item-payment-amount {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 160%;
+  letter-spacing: -0.2px;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.summary-payment-value {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 160%;
+  letter-spacing: -0.2px;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.summary-line-separator {
+  width: 100%;
+  height: 1px;
+  background: #EEEEEE;
+  margin: 10px 0;
+}
+
+.purchase-bar-container {
+  position: relative; /* Fixed 대신 relative로 변경 */
+  padding: 20px;
+  background: #FFFFFF;
+  box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.purchase-button {
+  width: 100%;
+  max-width: 350px;
+  height: 56px;
+  background: #FF2233;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  border: none;
+}
+
+.purchase-button-text {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 150%;
+  text-align: center;
+  letter-spacing: -0.2px;
+  color: #FFFFFF;
+}
+
+.dimmed-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  z-index: 200;
+}
+
+.popup-container {
+  width: 100%;
+  max-width: 390px;
+  background: #FFFFFF;
+  border-radius: 24px 24px 0px 0px;
+  padding: 20px;
+  box-sizing: border-box;
+  transform: translateY(0);
+  transition: transform 0.3s ease-out;
+}
+
+.popup-container.hidden {
+  transform: translateY(100%);
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.popup-product-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.popup-product-image {
+  box-sizing: border-box;
+  width: 80px;
+  height: 80px;
+  background: url("image.png");
+  border: 1px solid #F5F5F5;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.popup-product-text-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.popup-product-shop-name {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 150%;
+  letter-spacing: -0.2px;
+  color: rgba(0, 0, 0, 0.4);
+  text-align: left;
+}
+
+.popup-product-description {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 150%;
+  letter-spacing: -0.2px;
+  color: #1E2124;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.popup-close-icon {
+  width: 20px;
+  height: 20px;
+  color: #999999;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.popup-summary-section {
+  padding-top: 10px;
+}
+
+.popup-summary-line {
+  width: 100%;
+  height: 1px;
+  background: #EEEEEE;
+  margin: 20px 0;
+}
+
+.popup-total-price-row,
+.popup-coupon-discount-row,
+.popup-expected-payment-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.popup-total-price-label,
+.popup-coupon-discount-label {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 150%;
+  letter-spacing: -0.1px;
+  color: #999999;
+}
+
+.popup-total-price-value,
+.popup-coupon-discount-value {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 150%;
+  text-align: right;
+  letter-spacing: -0.1px;
+  color: #1E2124;
+}
+
+.popup-expected-payment-label {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 160%;
+  letter-spacing: -0.2px;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.popup-expected-payment-value {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 160%;
+  letter-spacing: -0.2px;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.popup-buttons-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.popup-cart-button {
+  box-sizing: border-box;
+  flex-basis: 50%;
+  height: 56px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  background: #FFFFFF;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.popup-cart-button-text {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 19px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.popup-purchase-button {
+  flex-basis: 50%;
+  height: 56px;
+  background: #FF2233;
+  border-radius: 12px;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.popup-purchase-button-text {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 150%;
+  text-align: center;
+  letter-spacing: -0.2px;
+  color: #FFFFFF;
+}
+
+/* Home Indicator - Removed based on previous instruction */
+.home-indicator-container, .home-indicator-bar {
+  display: none;
+}
+
+.web-empty-cart-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 70px - 96px); /* 웹뷰 헤더 및 푸터 높이 고려 */
+  text-align: center;
+  padding: 20px;
+}

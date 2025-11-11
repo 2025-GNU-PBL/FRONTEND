@@ -27,7 +27,7 @@ export default function MobileView() {
       dispatch(forceLogout());
     } finally {
       // 로그인 페이지로 이동
-      nav("/log-in");
+      nav("/");
     }
   }, [dispatch, nav]);
 

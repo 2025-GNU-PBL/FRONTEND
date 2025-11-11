@@ -57,7 +57,7 @@ export default function WebView() {
               />
               <ActionCard
                 title="매출관리"
-                description="사용 가능 쿠폰과 혜택을 확인해요."
+                description="매출을 확인해요."
                 icon="mdi:ticket-percent-outline"
                 cta="바로가기"
                 onClick={() => go("/my-page/owner/payments")}
