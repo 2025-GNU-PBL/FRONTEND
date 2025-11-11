@@ -1,32 +1,24 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { Icon } from "@iconify/react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
+import { useAppDispatch, useAppSelector } from "../../../../store/hooks";
+import { logoutUser } from "../../../../store/thunkFunctions";
 
 export default function WebView() {
   const nav = useNavigate();
+  const dispatch = useAppDispatch();
 
-  const userName = localStorage.getItem("userName") || "홍종민";
+  const userName = useAppSelector((state) => state.user.userData?.name ?? "");
 
   const go = useCallback((to: string) => nav(to), [nav]);
 
-  const onLogout = useCallback(async () => {
+  const handleLogout = async () => {
     try {
-      if (API_BASE) {
-        await axios.post(`${API_BASE}/auth/logout`, null, {
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-    } catch {
-      // ignore
+      await dispatch(logoutUser()).unwrap();
     } finally {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      nav("/log-in");
+      nav("/");
     }
-  }, [nav]);
+  };
 
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
@@ -100,7 +92,11 @@ export default function WebView() {
                 icon="mdi:lifetime-support"
                 onClick={() => go("/support")}
               />
-              <MenuTile label="로그아웃" icon="mdi:logout" onClick={onLogout} />
+              <MenuTile
+                label="로그아웃"
+                icon="mdi:logout"
+                onClick={handleLogout}
+              />
             </div>
           </section>
         </div>

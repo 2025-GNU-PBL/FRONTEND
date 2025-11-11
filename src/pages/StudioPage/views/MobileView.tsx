@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import SideMenu from "../../../components/SideMenu";
 import type { Product } from "../../../type/product";
 import api from "../../../lib/api/axios";
+import { useAppSelector } from "../../../store/hooks";
+import ProductCard from "../../../components/ProductCard";
 
 /* ========================= 애니메이션 유틸 ========================= */
 
@@ -46,125 +48,53 @@ const regions: RegionItem[] = [
   { key: "부산", label: "부산", image: "/images/busan.png" },
 ];
 
-/* ========================= 유틸 ========================= */
-
-const formatPrice = (price: number | string) => {
-  const num =
-    typeof price === "number"
-      ? price
-      : Number(String(price).replace(/[^0-9.-]/g, ""));
-  if (Number.isNaN(num)) return String(price);
-  return `${num.toLocaleString("ko-KR")}원`;
-};
-
-const getThumb = (p: Product) => p.thumbnail || "/images/placeholder.jpg";
-
 /* ========================= API 응답 타입 ========================= */
-/** 서버 메타 정보(페이지네이션) */
+
 type PageMeta = {
   size: number;
-  number: number; // 현재 페이지(0-base 가정)
+  number: number; // 현재 페이지 (0-base)
   totalElements: number;
   totalPages: number;
 };
 
-/** 페이지형 응답 */
 type PagedResponse = {
   content: Product[];
   page: PageMeta;
 };
 
-/* ========================= 카드 ========================= */
-
-type CardProps = {
-  product: Product;
-  liked: boolean;
-  onToggleLike: (id: number) => void;
-};
-
-const Card: React.FC<CardProps> = ({ product, liked, onToggleLike }) => (
-  <motion.div
-    className="relative w-full flex flex-col gap-2"
-    variants={fadeUp}
-    whileHover={{ y: -2 }}
-  >
-    <div className="relative w-full aspect-[176/170] rounded-lg border border-[#F5F5F5] overflow-hidden">
-      <img
-        src={getThumb(product)}
-        alt={product.name}
-        className="w-full h-full object-cover"
-        loading="lazy"
-      />
-      <motion.button
-        type="button"
-        aria-label={liked ? "찜 해제" : "찜하기"}
-        aria-pressed={liked}
-        onClick={(e) => {
-          e.preventDefault();
-          onToggleLike(product.id);
-        }}
-        className="absolute right-2 top-2 grid place-items-center w-[8%] aspect-square"
-        whileTap={{ scale: 0.9 }}
-      >
-        <motion.span
-          key={liked ? "liked" : "unliked"}
-          initial={{ scale: 0.8, rotate: -8, opacity: 0 }}
-          animate={{ scale: 1, rotate: 0, opacity: 1 }}
-          transition={{ duration: 0.18, ease: EASE_OUT }}
-          className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] w-full h-full"
-        >
-          <Icon
-            icon={liked ? "solar:heart-bold" : "solar:heart-linear"}
-            className={`w-full h-full ${liked ? "text-red-500" : "text-white"}`}
-          />
-        </motion.span>
-      </motion.button>
-    </div>
-
-    <div className="flex flex-col gap-1">
-      <p className="text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
-        {product.ownerName}
-      </p>
-      <p className="text-[14px] leading-[21px] tracking-[-0.2px] text-black line-clamp-2">
-        {product.name}
-      </p>
-      <div className="mt-1 flex items-center gap-1">
-        <img
-          src="/images/star2.png"
-          alt="평점"
-          className="h-3 inline-block mb-[2px]"
-          loading="lazy"
-        />
-        <span className="text-[12px] text-[#595F63]">
-          {Number(product.starCount || 0).toFixed(1)}
-        </span>
-      </div>
-      <p className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-black">
-        {formatPrice(product.price)}
-      </p>
-    </div>
-  </motion.div>
-);
-
 /* ========================= 메인 뷰 ========================= */
 
 const MobileView: React.FC = () => {
   const navigate = useNavigate();
+  const isAuth = useAppSelector((s) => s.user.isAuth);
 
   // 데이터 상태
   const [items, setItems] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(true); // ★ 초기 로딩
+  const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string>("");
 
-  // 찜(로컬)
+  // 찜
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
   const toggleLike = useCallback((id: number) => {
     setLikedIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }, []);
+
+  // 상세 페이지 이동
+  const goDetail = useCallback(
+    (id: number) => {
+      // 스튜디오 상세: /studio/:id
+      navigate(`/studio/${id}`);
+    },
+    [navigate]
+  );
 
   // 메뉴
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -185,106 +115,92 @@ const MobileView: React.FC = () => {
     };
   }, [isMenuOpen]);
 
-  /* ===== (수정) 무한 스크롤 로직 ===== */
+  /* ===== 무한 스크롤 ===== */
 
-  // 1-based API에 맞춰 1로 시작
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true); // 더 불러올 데이터가 있는지
-  const [totalCount, setTotalCount] = useState(0); // API에서 받아올 전체 개수
-  const [isLoadingMore, setIsLoadingMore] = useState(false); // ★ 추가 로딩 중 상태
+  const [pageNumber, setPageNumber] = useState(1); // 1-base
+  const pageSize = 6;
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const fetchingRef = useRef(false);
+  const elementRef = useRef<HTMLDivElement | null>(null);
 
-  const elementRef = useRef<HTMLDivElement | null>(null); // 감지할 요소
+  const fetchMoreItems = useCallback(
+    async (page: number) => {
+      if (fetchingRef.current || !hasMore) return;
+      fetchingRef.current = true;
 
-  // ★★★ StrictMode 중복 실행 방지
-  const initialFetchRef = useRef(false);
+      const isInitial = page === 1;
+      if (isInitial) setLoadingInitial(true);
+      else setIsLoadingMore(true);
 
-  // --- 데이터 페칭 함수 ---
-  const fetchMoreItems = useCallback(async () => {
-    if (isLoadingMore) return;
+      setErrorMsg("");
 
-    const isInitialLoad = page === 1;
-    if (isInitialLoad) {
-      setLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-    setErrorMsg("");
+      try {
+        const { data }: { data: PagedResponse } = await api.get(
+          `/api/v1/studio?pageNumber=${page}&pageSize=${pageSize}`
+        );
 
-    try {
-      const { data }: { data: PagedResponse } = await api.get(
-        `/api/v1/studio?pageNumber=${page}&pageSize=6`
-      );
+        setTotalCount(data.page.totalElements);
 
-      const pageMeta = data.page;
+        setItems((prev) => {
+          const map = new Map<number, Product>();
+          prev.forEach((p) => map.set(p.id, p));
+          data.content.forEach((p) => map.set(p.id, p));
+          return Array.from(map.values());
+        });
 
-      // ✅ 기존 items와 신규 content를 id로 중복 제거 후 병합
-      setItems((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        const dedupedNew = data.content.filter((p) => !seen.has(p.id));
-        // 신규 추가 개수에 따라 이후 로직에서 분기할 수 있도록 길이를 리턴용 변수에 보관
-        (setItems as any)._lastAddedCount = dedupedNew.length; // 내부 전달용(아래에서 사용)
-        return dedupedNew.length ? [...prev, ...dedupedNew] : prev;
-      });
-
-      setTotalCount(pageMeta.totalElements);
-
-      // ✅ 신규가 0개면 페이지 증가/추가 로딩 중단 (중복만 왔거나 더 없음)
-      const lastAddedCount: number = (setItems as any)._lastAddedCount ?? 0;
-
-      if (lastAddedCount > 0) {
         const nextPage = page + 1;
-        if (page < pageMeta.totalPages) {
-          setPage(nextPage);
-          setHasMore(true);
-        } else {
-          setHasMore(false);
-        }
-      } else {
-        // 신규가 없으면 더 이상 불러오지 않도록 차단
-        // (서버 중복 응답/정렬 변동 등의 경우에도 key 충돌 방지)
-        if (page >= pageMeta.totalPages) {
-          setHasMore(false);
-        }
+        const more = nextPage <= data.page.totalPages;
+        setHasMore(more);
+      } catch (err) {
+        console.error(err);
+        setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setLoadingInitial(false);
+        setIsLoadingMore(false);
+        fetchingRef.current = false;
       }
-    } catch (err) {
-      console.error("데이터 로드 실패:", err);
-      setErrorMsg("데이터를 불러오는 데 실패했습니다.");
-      setHasMore(false);
-    } finally {
-      setLoading(false);
-      setIsLoadingMore(false);
-    }
-  }, [page, isLoadingMore]);
+    },
+    [hasMore]
+  );
 
-  // --- 1. 초기 데이터 로드 ---
+  // 초기 및 pageNumber 변경 시 데이터 로드
   useEffect(() => {
-    if (initialFetchRef.current) return;
-    initialFetchRef.current = true;
-    fetchMoreItems();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchMoreItems(pageNumber);
+  }, [pageNumber, fetchMoreItems]);
 
-  // --- 2. Intersection Observer 설정 ---
+  // 인터섹션 옵저버 (하단 감지 시 다음 페이지 요청)
   useEffect(() => {
+    const target = elementRef.current;
+    if (!target) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         const firstEntry = entries[0];
-        if (firstEntry.isIntersecting && hasMore && !isLoadingMore) {
-          fetchMoreItems();
+        if (
+          firstEntry.isIntersecting &&
+          hasMore &&
+          !loadingInitial &&
+          !isLoadingMore &&
+          !fetchingRef.current
+        ) {
+          setPageNumber((prev) => prev + 1);
         }
       },
-      { threshold: 1.0 }
+      {
+        threshold: 0.2,
+        rootMargin: "200px 0px",
+      }
     );
 
-    const currentElement = elementRef.current;
-    if (currentElement) observer.observe(currentElement);
-
+    observer.observe(target);
     return () => {
-      if (currentElement) observer.unobserve(currentElement);
+      observer.unobserve(target);
     };
-  }, [hasMore, isLoadingMore, fetchMoreItems]);
+  }, [hasMore, loadingInitial, isLoadingMore]);
 
-  /* ===== (끝) ===== */
+  /* ===== 렌더 ===== */
 
   return (
     <motion.div
@@ -328,17 +244,19 @@ const MobileView: React.FC = () => {
               className="w-6 h-6 text-black/80"
             />
           </motion.button>
-          <motion.button
-            aria-label="cart"
-            className="grid place-items-center w-6 h-6 rounded hover:bg-black/5 active:scale-95"
-            onClick={goCart}
-            whileTap={{ scale: 0.94 }}
-          >
-            <Icon
-              icon="solar:cart-large-minimalistic-linear"
-              className="w-6 h-6 text-black/80"
-            />
-          </motion.button>
+          {isAuth && (
+            <motion.button
+              aria-label="cart"
+              className="grid place-items-center w-6 h-6 rounded hover:bg-black/5 active:scale-95"
+              onClick={goCart}
+              whileTap={{ scale: 0.94 }}
+            >
+              <Icon
+                icon="solar:cart-large-minimalistic-linear"
+                className="w-6 h-6 text-black/80"
+              />
+            </motion.button>
+          )}
           <motion.button
             aria-label="menu"
             className="grid place-items-center w-6 h-6 rounded hover:bg-black/5 active:scale-95"
@@ -394,10 +312,7 @@ const MobileView: React.FC = () => {
           <p className="text-[14px] text-[#999999]">총</p>&nbsp;
           <p className="text-[14px] text-black">{totalCount}개</p>
         </div>
-        <button
-          className="flex items-center gap-1 active:scale-95"
-          onClick={() => {}}
-        >
+        <button className="flex items-center gap-1 active:scale-95">
           <span className="text-[14px] text-black">최신순</span>
           <Icon
             icon="solar:alt-arrow-down-linear"
@@ -406,8 +321,8 @@ const MobileView: React.FC = () => {
         </button>
       </motion.div>
 
-      {/* 상태 (에러) */}
-      {!!errorMsg && !loading && (
+      {/* 상태 */}
+      {!!errorMsg && !loadingInitial && (
         <motion.div className="px-5 mt-2" variants={fadeUp}>
           <p className="text-sm text-red-500">{errorMsg}</p>
         </motion.div>
@@ -420,18 +335,17 @@ const MobileView: React.FC = () => {
             className="grid grid-cols-2 gap-y-5 gap-x-2.5 px-5 mt-4 pb-12"
             variants={stagger(0.03)}
           >
-            {/* 1. 불러온 아이템들 */}
             {items.map((product) => (
-              <Card
-                key={product.id} // ✅ 중복 방지는 위에서 id 기반 dedupe로 해결
+              <ProductCard
+                key={`p-${product.id}`}
                 product={product}
                 liked={likedIds.has(product.id)}
                 onToggleLike={toggleLike}
+                onClick={() => goDetail(product.id)} // ✅ 카드 클릭 시 상세 이동
               />
             ))}
 
-            {/* 2. 로딩 스켈레톤 (초기 로딩 시 + 아이템이 0개일 때만) */}
-            {loading &&
+            {loadingInitial &&
               items.length === 0 &&
               Array.from({ length: 4 }).map((_, i) => (
                 <div
@@ -446,17 +360,14 @@ const MobileView: React.FC = () => {
               ))}
           </motion.div>
 
-          {/* 3. Intersection Observer 타겟 + 추가 로딩 스피너 */}
           <div ref={elementRef} className="h-1" />
 
-          {/* 추가 로딩 중일 때 */}
           {isLoadingMore && (
             <motion.div className="pb-24 text-center" variants={fade}>
               <p className="text-sm text-[#595F63]">불러오는 중…</p>
             </motion.div>
           )}
 
-          {/* 더 이상 아이템이 없을 때 */}
           {!hasMore && items.length > 0 && !isLoadingMore && (
             <motion.div className="pb-24 text-center" variants={fade}>
               <p className="text-sm text-[#999999]">마지막 상품입니다.</p>

@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import SideMenu from "../../../components/SideMenu";
 import type { Product } from "../../../type/product";
 import api from "../../../lib/api/axios";
+import { useAppSelector } from "../../../store/hooks";
+import ProductCard from "../../../components/ProductCard";
 
 /* ========================= 애니메이션 유틸 ========================= */
 
@@ -46,20 +48,8 @@ const regions: RegionItem[] = [
   { key: "부산", label: "부산", image: "/images/busan.png" },
 ];
 
-/* ========================= 유틸 ========================= */
-
-const formatPrice = (price: number | string) => {
-  const num =
-    typeof price === "number"
-      ? price
-      : Number(String(price).replace(/[^0-9.-]/g, ""));
-  if (Number.isNaN(num)) return String(price);
-  return `${num.toLocaleString("ko-KR")}원`;
-};
-
-const getThumb = (p: Product) => p.thumbnail || "/images/placeholder.jpg";
-
 /* ========================= API 응답 타입 ========================= */
+
 type PageMeta = {
   size: number;
   number: number; // 현재 페이지 (0-base)
@@ -72,82 +62,11 @@ type PagedResponse = {
   page: PageMeta;
 };
 
-/* ========================= 카드 ========================= */
-
-type CardProps = {
-  product: Product;
-  liked: boolean;
-  onToggleLike: (id: number) => void;
-};
-
-const Card: React.FC<CardProps> = ({ product, liked, onToggleLike }) => (
-  <motion.div
-    className="relative w-full flex flex-col gap-2"
-    variants={fadeUp}
-    whileHover={{ y: -2 }}
-  >
-    <div className="relative w-full aspect-[176/170] rounded-lg border border-[#F5F5F5] overflow-hidden">
-      <img
-        src={getThumb(product)}
-        alt={product.name}
-        className="w-full h-full object-cover"
-        loading="lazy"
-      />
-      <motion.button
-        type="button"
-        aria-label={liked ? "찜 해제" : "찜하기"}
-        aria-pressed={liked}
-        onClick={(e) => {
-          e.preventDefault();
-          onToggleLike(product.id);
-        }}
-        className="absolute right-2 top-2 grid place-items-center w-[8%] aspect-square"
-        whileTap={{ scale: 0.9 }}
-      >
-        <motion.span
-          key={liked ? "liked" : "unliked"}
-          initial={{ scale: 0.8, rotate: -8, opacity: 0 }}
-          animate={{ scale: 1, rotate: 0, opacity: 1 }}
-          transition={{ duration: 0.18, ease: EASE_OUT }}
-          className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] w-full h-full"
-        >
-          <Icon
-            icon={liked ? "solar:heart-bold" : "solar:heart-linear"}
-            className={`w-full h-full ${liked ? "text-red-500" : "text-white"}`}
-          />
-        </motion.span>
-      </motion.button>
-    </div>
-
-    <div className="flex flex-col gap-1">
-      <p className="text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
-        {product.ownerName}
-      </p>
-      <p className="text-[14px] leading-[21px] tracking-[-0.2px] text-black line-clamp-2">
-        {product.name}
-      </p>
-      <div className="mt-1 flex items-center gap-1">
-        <img
-          src="/images/star2.png"
-          alt="평점"
-          className="h-3 inline-block mb-[2px]"
-          loading="lazy"
-        />
-        <span className="text-[12px] text-[#595F63]">
-          {Number(product.starCount || 0).toFixed(1)}
-        </span>
-      </div>
-      <p className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-black">
-        {formatPrice(product.price)}
-      </p>
-    </div>
-  </motion.div>
-);
-
 /* ========================= 메인 뷰 ========================= */
 
 const MobileView: React.FC = () => {
   const navigate = useNavigate();
+  const isAuth = useAppSelector((s) => s.user.isAuth);
 
   // 데이터 상태
   const [items, setItems] = useState<Product[]>([]);
@@ -163,6 +82,16 @@ const MobileView: React.FC = () => {
       return next;
     });
   }, []);
+
+  // 상세 페이지 이동
+  const goDetail = useCallback(
+    (id: number) => {
+      // 라우트 규칙에 맞게 경로만 맞춰주면 됨
+      // 예: /wedding-hall/:id
+      navigate(`/wedding/${id}`);
+    },
+    [navigate]
+  );
 
   // 메뉴
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -183,7 +112,7 @@ const MobileView: React.FC = () => {
     };
   }, [isMenuOpen]);
 
-  /* ===== 무한 스크롤 ===== */
+  /* ===== 페이지네이션 & 무한 스크롤 ===== */
 
   const [pageNumber, setPageNumber] = useState(1); // 1-base
   const pageSize = 6;
@@ -193,48 +122,52 @@ const MobileView: React.FC = () => {
   const fetchingRef = useRef(false);
   const elementRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchMoreItems = useCallback(async () => {
-    if (fetchingRef.current || !hasMore) return;
-    fetchingRef.current = true;
+  const fetchMoreItems = useCallback(
+    async (page: number) => {
+      if (fetchingRef.current || !hasMore) return;
+      fetchingRef.current = true;
 
-    const isInitial = pageNumber === 1;
-    if (isInitial) setLoadingInitial(true);
-    else setIsLoadingMore(true);
+      const isInitial = page === 1;
+      if (isInitial) setLoadingInitial(true);
+      else setIsLoadingMore(true);
 
-    setErrorMsg("");
+      setErrorMsg("");
 
-    try {
-      const { data }: { data: PagedResponse } = await api.get(
-        `/api/v1/wedding-hall/filter?pageNumber=${pageNumber}&pageSize=${pageSize}`
-      );
+      try {
+        const { data }: { data: PagedResponse } = await api.get(
+          `/api/v1/wedding-hall/filter?pageNumber=${page}&pageSize=${pageSize}`
+        );
 
-      setTotalCount(data.page.totalElements);
+        setTotalCount(data.page.totalElements);
 
-      setItems((prev) => {
-        const map = new Map<number, Product>();
-        prev.forEach((p) => map.set(p.id, p));
-        data.content.forEach((p) => map.set(p.id, p));
-        return Array.from(map.values());
-      });
+        setItems((prev) => {
+          const map = new Map<number, Product>();
+          prev.forEach((p) => map.set(p.id, p));
+          data.content.forEach((p) => map.set(p.id, p));
+          return Array.from(map.values());
+        });
 
-      const nextPage = pageNumber + 1;
-      const more = nextPage <= data.page.totalPages;
-      setPageNumber(nextPage);
-      setHasMore(more);
-    } catch (err) {
-      console.log(err);
-      setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
-    } finally {
-      setLoadingInitial(false);
-      setIsLoadingMore(false);
-      fetchingRef.current = false;
-    }
-  }, [pageNumber, hasMore]);
+        const nextPage = page + 1;
+        const more = nextPage <= data.page.totalPages;
+        setHasMore(more);
+      } catch (err) {
+        console.log(err);
+        setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setLoadingInitial(false);
+        setIsLoadingMore(false);
+        fetchingRef.current = false;
+      }
+    },
+    [hasMore]
+  );
 
+  // 초기 및 pageNumber 변경 시 데이터 로드
   useEffect(() => {
-    fetchMoreItems();
-  }, []);
+    fetchMoreItems(pageNumber);
+  }, [pageNumber, fetchMoreItems]);
 
+  // 인터섹션 옵저버
   useEffect(() => {
     const target = elementRef.current;
     if (!target) return;
@@ -249,7 +182,7 @@ const MobileView: React.FC = () => {
           !isLoadingMore &&
           !fetchingRef.current
         ) {
-          fetchMoreItems();
+          setPageNumber((prev) => prev + 1);
         }
       },
       {
@@ -260,7 +193,7 @@ const MobileView: React.FC = () => {
 
     observer.observe(target);
     return () => observer.unobserve(target);
-  }, [hasMore, loadingInitial, isLoadingMore, fetchMoreItems]);
+  }, [hasMore, loadingInitial, isLoadingMore]);
 
   /* ===== 렌더 ===== */
 
@@ -306,17 +239,19 @@ const MobileView: React.FC = () => {
               className="w-6 h-6 text-black/80"
             />
           </motion.button>
-          <motion.button
-            aria-label="cart"
-            className="grid place-items-center w-6 h-6 rounded hover:bg-black/5 active:scale-95"
-            onClick={goCart}
-            whileTap={{ scale: 0.94 }}
-          >
-            <Icon
-              icon="solar:cart-large-minimalistic-linear"
-              className="w-6 h-6 text-black/80"
-            />
-          </motion.button>
+          {isAuth && (
+            <motion.button
+              aria-label="cart"
+              className="grid place-items-center w-6 h-6 rounded hover:bg-black/5 active:scale-95"
+              onClick={goCart}
+              whileTap={{ scale: 0.94 }}
+            >
+              <Icon
+                icon="solar:cart-large-minimalistic-linear"
+                className="w-6 h-6 text-black/80"
+              />
+            </motion.button>
+          )}
           <motion.button
             aria-label="menu"
             className="grid place-items-center w-6 h-6 rounded hover:bg-black/5 active:scale-95"
@@ -396,11 +331,12 @@ const MobileView: React.FC = () => {
             variants={stagger(0.03)}
           >
             {items.map((product) => (
-              <Card
+              <ProductCard
                 key={`p-${product.id}`}
                 product={product}
                 liked={likedIds.has(product.id)}
                 onToggleLike={toggleLike}
+                onClick={() => goDetail(product.id)} // ✅ 클릭 시 상세 이동
               />
             ))}
 
