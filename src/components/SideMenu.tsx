@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { logoutUser } from "../store/thunkFunctions";
-// ✅ 형님 프로젝트의 커스텀 훅/Thunk 기준으로 import
 
 type Props = {
   isOpen: boolean;
@@ -15,11 +14,9 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  // ✅ 형님 store 기준: state.user.isAuth / state.user.userData?.name
   const isAuthenticated = useAppSelector((s) => s.user.isAuth);
   const userName = useAppSelector((s) => s.user.userData?.name ?? "");
 
-  // 상단 메뉴(웨딩/스튜디오/메이크업/드레스)
   const menuItems = useMemo(
     () => [
       { label: "웨딩홀", paths: ["/wedding"] },
@@ -30,7 +27,6 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
     []
   );
 
-  // 하단 메뉴(FAQ/이벤트/MY PAGE)
   const bottomMenus = useMemo(
     () => [
       { label: "FAQ", path: "/faq" },
@@ -40,22 +36,18 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
     []
   );
 
-  // 공통 스타일
   const listBase =
     "flex flex-row items-center w-[217px] h-10 px-6 py-3 gap-[10px] rounded-[12px] text-[14px] font-medium leading-[140%] transition select-none";
   const activeCls = "bg-[#FAF8FB] text-black";
   const inactiveCls =
     "bg-white text-[#595F63] hover:bg-[#FAF8FB] hover:text-black active:bg-[#FAF8FB] active:text-black";
 
-  // 하단 메뉴는 패딩/라운드 값만 다름 (디자인 동일)
   const bottomListBase =
     "flex flex-row items-center w-[217px] h-10 px-0 py-3 gap-[10px] rounded-[10px] text-[14px] font-medium leading-[140%] transition select-none";
 
-  // ✅ 로그인 상태에 따라 레이아웃 위치 변경 (형님이 준 CSS 반영)
   const sectionTitleTop = isAuthenticated ? "top-[162px]" : "top-[225px]";
   const menuListTop = isAuthenticated ? "top-[198px]" : "top-[261px]";
 
-  // ✅ 로그아웃 thunk 사용
   const handleLogout = async () => {
     try {
       await dispatch(logoutUser()).unwrap();
@@ -67,7 +59,7 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
 
   return (
     <>
-      {/* dimmed */}
+      {/* Dimmed */}
       <div
         className={[
           "fixed inset-0 z-40 bg-[rgba(0,0,0,0.6)] transition-opacity duration-300",
@@ -76,10 +68,11 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
             : "opacity-0 pointer-events-none",
         ].join(" ")}
         onClick={onClose}
+        // dimmed는 단순 배경이니 aria-hidden 사용 가능
         aria-hidden={!isOpen}
       />
 
-      {/* drawer panel */}
+      {/* Drawer panel */}
       <aside
         className={[
           "fixed inset-y-0 left-0 z-50 w-[265px] bg-white shadow-xl",
@@ -88,11 +81,8 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
         ].join(" ")}
         role="dialog"
         aria-modal="true"
-        aria-hidden={!isOpen}
       >
-        {/* ✅ 로그인 상태: 인사 / 미로그인 상태: 기존 버튼들 */}
         {isAuthenticated ? (
-          // --- 로그인 UI ---
           <div
             className="absolute left-6 top-20 w-[157px] h-14 font-semibold text-[18px] leading-[138%] text-[#202325]"
             style={{ fontFamily: "Pretendard" }}
@@ -109,9 +99,7 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
             )}
           </div>
         ) : (
-          // --- 미로그인 UI ---
           <>
-            {/* 카피 */}
             <div
               className="absolute left-6 top-20 w-[157px] h-14 font-semibold text-[20px] leading-[138%] text-[#202325]"
               style={{ fontFamily: "Pretendard" }}
@@ -121,7 +109,6 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
               웨딩PICK
             </div>
 
-            {/* 버튼: 로그인 (레드) */}
             <button
               aria-label="로그인"
               className="absolute left-6 top-[156px] w-[105px] h-[37px] flex items-center justify-center 
@@ -140,7 +127,6 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
               로그인
             </button>
 
-            {/* 버튼: 회원가입 (아웃라인) */}
             <button
               aria-label="회원가입"
               className="absolute left-[136px] top-[156px] w-[105px] h-[37px] box-border flex items-center justify-center 
@@ -153,7 +139,7 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
               }}
               onClick={() => {
                 onClose();
-                navigate("/log-in"); //
+                navigate("/log-in");
               }}
             >
               회원가입
@@ -173,7 +159,7 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
           </span>
         </div>
 
-        {/* 메뉴 리스트 영역 */}
+        {/* 상단 메뉴 리스트 */}
         <div
           className={`absolute left-6 ${menuListTop} w-[217px] flex flex-col items-start p-0 space-y-1.5`}
         >
@@ -182,6 +168,7 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
               (p) => pathname === p || pathname.startsWith(p + "/")
             );
             const to = paths[0];
+
             return (
               <Link
                 key={label}
@@ -225,7 +212,7 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
           })}
         </div>
 
-        {/* ✅ 로그인 상태에서만 하단 로그아웃 버튼 표시 */}
+        {/* 로그인 상태에서만 로그아웃 */}
         {isAuthenticated && (
           <button
             aria-label="로그아웃"

@@ -13,6 +13,7 @@ const menuItems = [
 const Navbar = () => {
   // ✅ Redux에서 로그인 여부 확인
   const isAuth = useAppSelector((s) => s.user.isAuth);
+  const userRole = useAppSelector((state) => state.user.role); // ✅ Redux에서 role 가져오기
 
   return (
     // 데스크톱 전용 네비게이션
@@ -56,8 +57,27 @@ const Navbar = () => {
           </Link>
 
           {isAuth ? (
-            // ✅ 로그인 시: 4개 아이콘 모두 표시
             <>
+              {/* 알림 */}
+              <Link
+                to="/notification"
+                aria-label="채팅"
+                className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
+              >
+                <Icon icon="solar:bell-linear" className="h-6 w-6" />
+              </Link>
+              {/* ❤️ 카트 */}
+              <Link
+                to="/cart"
+                aria-label="장바구니"
+                className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
+              >
+                <Icon
+                  icon="solar:cart-large-minimalistic-linear"
+                  className="w-6 h-6"
+                />
+              </Link>
+
               {/* ❤️ 찜하기 */}
               <Link
                 to="/favorites"
@@ -67,18 +87,9 @@ const Navbar = () => {
                 <Icon icon="solar:heart-linear" className="h-6 w-6" />
               </Link>
 
-              {/* 💬 채팅 */}
-              <Link
-                to="/chat"
-                aria-label="채팅"
-                className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
-              >
-                <Icon icon="solar:chat-square-outline" className="h-6 w-6" />
-              </Link>
-
               {/* 👤 마이페이지 */}
               <Link
-                to="/my-page"
+                to={userRole === "OWNER" ? "/my-page/owner" : "/my-page/client"}
                 aria-label="마이페이지"
                 className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
               >
@@ -86,7 +97,6 @@ const Navbar = () => {
               </Link>
             </>
           ) : (
-            // 🚪 비로그인 시: 검색 + 로그인 아이콘만 표시
             <Link
               to="/log-in"
               aria-label="로그인"

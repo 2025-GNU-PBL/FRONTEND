@@ -5,7 +5,6 @@ import NaverLoginButton from "../../../../components/social/NaverLoginButton";
 const WebView = () => {
   return (
     <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col justify-center">
-      {/* ✅ 수정: md 구간에서는 1열, lg 이상에서만 2열 */}
       <main className="mx-auto max-w-6xl w-full px-4 py-12 md:py-20 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
         {/* Left: Hero / Marketing */}
         <section className="flex flex-col justify-center order-1 lg:order-none">
@@ -16,7 +15,6 @@ const WebView = () => {
             스드메, 한 번에 비교
           </h1>
 
-          {/* ✅ p/div 구조 수정 유지 */}
           <div className="font-pretendard text-lg md:text-xl lg:text-2xl text-gray-700 mb-8 space-y-1 text-center lg:text-left">
             <p>후기·가격·혜택을 한눈에.</p>
             <div>
@@ -63,7 +61,6 @@ const WebView = () => {
         </section>
 
         {/* Right: Auth Card */}
-        {/* ✅ md~lg 사이에서는 아래로 내려오게 */}
         <section className="flex justify-center lg:justify-end order-2 lg:order-none">
           <div className="relative w-full max-w-[440px]">
             {/* subtle offset layer */}

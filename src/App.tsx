@@ -2,16 +2,19 @@ import { useEffect } from "react";
 import { Outlet, Route, Routes, useLocation, useMatch } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
 import ClientLoginPage from "./pages/LoginPage/client/ClientLoginPage";
 import OwnerLoginPage from "./pages/LoginPage/owner/OwnerLoginPage";
 import KakaoCallback from "./pages/LoginPage/callbacks/KakaoCallback";
 import NaverCallback from "./pages/LoginPage/callbacks/NaverCallback";
+
 import WeddingPage from "./pages/WeddingPage/WeddingPage";
 import FaqPage from "./pages/FaqPage/FaqPage";
 import EventPage from "./pages/EventPage/EventPage";
 import CartPage from "./pages/CartPage/CartPage";
 import ChatPage from "./pages/ChatPage/ChatPage";
 import ScrollToTop from "./components/ScrollToTop";
+
 import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain";
 import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
 import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/CouponPage";
@@ -21,48 +24,101 @@ import MakeupPage from "./pages/MakeupPage/MakeupPage";
 import QuotationPage from "./pages/QuotationPage/QuotationPage";
 import CalendarPage from "./pages/CalendarPage/CalendarPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
+
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import NotAuthRoutes from "./components/NotAuthRoutes";
+
 import { useAppDispatch, useAppSelector } from "./store/hooks";
 import LoginPage from "./pages/LoginPage/RoleSelection/SelectRolePage";
+
 import Navbar from "./layout/Navbar/Navbar";
 import Footer from "./layout/Footer/Footer";
 import FavoritesPage from "./pages/FavoritesPage/FavoritesPage";
 import DressPage from "./pages/DressPage/DressPage";
-import JoinAddressPage from "./pages/SignupPage/step2/JoinAddressPage";
-import WeddingInfoPage from "./pages/SignupPage/step3/WeddingInfoPage";
-import SignupCompletePage from "./pages/SignupPage/step4/SignupCompletePage";
-import SignupPage from "./pages/SignupPage/step1/SignupPage";
+import JoinAddressPage from "./pages/SignupPage/client/step2/JoinAddressPage";
+import WeddingInfoPage from "./pages/SignupPage/client/step3/WeddingInfoPage";
+import SignupClientCompletePage from "./pages/SignupPage/client/step4/SignupCompletePage";
+import ClientSignupPage from "./pages/SignupPage/client/step1/ClientSignupPage";
 import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
 import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
 import { authCustomer, authOwner } from "./store/thunkFunctions";
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
 import PaymentListPage from "./pages/MyPage/ClientMyPage/Payments/PaymentListPage";
 import PaymentDetailPage from "./pages/MyPage/ClientMyPage/Payments/PaymentDetailPage";
+import OwnerMyPageMain from "./pages/MyPage/OwnerMyPage/Main/OwnerMyPageMain";
+import OwnerSignupPage from "./pages/SignupPage/owner/step1/OwnerSignupPage";
+import BusinessAddressPage from "./pages/SignupPage/owner/step2/BusinessAddressPage";
+import BusinessInfoPage from "./pages/SignupPage/owner/step3/BusinessInfoPage";
+import SignupOwnerCompletePage from "./pages/SignupPage/owner/step4/SignupCompletePage";
+import FloatingChatButton from "./components/chat/FloatingChatButton";
+import NotificationPage from "./pages/NotificationPage/NotificationPage";
+import ProductDetailPage from "./pages/ProductDetailPage/ProductDetailPage";
+import ProductManagementPage from "./pages/MyPage/OwnerMyPage/ProductManagement/Main/ProductMangement";
 
 function Layout() {
   const location = useLocation();
-  const isChatDetail = !!useMatch("/chat/:id");
 
-  // 네비바 숨길 경로
+  // 채팅 디테일 여부
+  const isChatDetail = !!useMatch("/chat/:id");
+  // 채팅 페이지 여부 (/chat 또는 /chat/:id)
+  const isChatPage = !!useMatch("/chat") || isChatDetail;
+
+  // 디테일 페이지 매칭 (푸터 숨김용)
+  const isWeddingDetail = !!useMatch("/wedding/:id");
+  const isStudioDetail = !!useMatch("/studio/:id");
+  const isDressDetail = !!useMatch("/dress/:id");
+  const isMakeupDetail = !!useMatch("/makeup/:id");
+
+  // 네비바 숨길 경로 (정적)
   const hideNavOnPaths = [
     "/log-in",
     "/sign-up/step1",
     "/log-in/client",
     "/log-in/owner",
+    "/inquiry", // InquiryPage에 Navbar 숨김
   ];
 
-  // 푸터 숨길 경로 (정적 + 동적)
+  // 푸터 숨길 경로 (정적)
   const hideFooterOnPaths = [
     "/log-in",
     "/log-in/client",
     "/log-in/owner",
+    "/my-page/owner/product/create",
+    "/my-page/owner/product/edit",
+    "/my-page/owner/product/list",
     "/test",
+    "/inquiry", // InquiryPage에 Footer 숨김
   ];
 
+  // 채팅 버튼 숨길 경로 (정적 prefix 포함)
+  const hideChatButtonOnPaths = [
+    "/log-in",
+    "/log-in/client",
+    "/log-in/owner",
+    "/sign-up/step1",
+    "/sign-up/step2",
+    "/sign-up/step3",
+    "/sign-up/step4",
+  ];
+
+  // 네비바 노출 여부
   const showNavbar = !hideNavOnPaths.includes(location.pathname);
-  const showFooter =
-    !hideFooterOnPaths.includes(location.pathname) && !isChatDetail;
+
+  // 푸터 숨김 조건: 정적 + 채팅 디테일 + 디테일 페이지들
+  const hideFooter =
+    hideFooterOnPaths.includes(location.pathname) ||
+    isChatDetail ||
+    isWeddingDetail ||
+    isStudioDetail ||
+    isDressDetail ||
+    isMakeupDetail;
+
+  const showFooter = !hideFooter;
+
+  // 채팅 버튼 노출 여부
+  const showChatButton =
+    !isChatPage &&
+    !hideChatButtonOnPaths.some((path) => location.pathname.startsWith(path));
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -77,6 +133,11 @@ function Layout() {
       <main>
         <Outlet />
       </main>
+
+      <div className="hidden md:block">
+        {showChatButton && <FloatingChatButton />}
+      </div>
+
       {showFooter && <Footer />}
     </div>
   );
@@ -88,12 +149,6 @@ const App = () => {
   const { isAuth, role } = useAppSelector((state) => state.user);
   const rehydrated = useAppSelector((state) => state._persist?.rehydrated);
 
-  /**
-   *  앱이 복원되고 로그인된 상태라면, 역할(role)에 따라 프로필/권한을 서버에서 동기화
-   * - CUSTOMER → authCustomer()
-   * - OWNER    → authOwner()
-   * - (선택) role이 없는 특이 케이스 대비: 필요 시 순차 조회 로직을 추가할 수 있음
-   */
   useEffect(() => {
     if (!rehydrated || !isAuth) return;
 
@@ -109,7 +164,7 @@ const App = () => {
     }
   }, [rehydrated, isAuth, role, dispatch]);
 
-  // 리덕스 퍼시스트가 완료될 때까지만 기다림 (깜빡임 방지)
+  // 리덕스 퍼시스트 완료 전까지 렌더링 지연
   if (!rehydrated) return null;
 
   return (
@@ -124,16 +179,40 @@ const App = () => {
         <Route path="/makeup" element={<MakeupPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/quotation" element={<QuotationPage />} />
-        <Route path="/test" element={<ProductCreate />} />
+        <Route path="/notification" element={<NotificationPage />} />
+        <Route path="/test" element={<ProductDetailPage />} />
+        <Route path="/wedding/:id" element={<ProductDetailPage />} />
+        <Route path="/studio/:id" element={<ProductDetailPage />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/cart" element={<CartPage />} />
-          <Route path="/my-page" element={<ClientMyPageMain />} />
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/:id" element={<ChatPage />} />
+          <Route path="/inquiry" element={<InquiryPage />} />{" "}
+          {/* New InquiryPage route */}
+          {/* 고객 마이페이지 */}
+          <Route path="/my-page/client" element={<ClientMyPageMain />} />
+          <Route
+            path="/my-page/client/profile"
+            element={<ClientProfilePage />}
+          />
+          <Route
+            path="/my-page/client/coupons"
+            element={<ClientCouponPage />}
+          />
+          {/* 사장 마이페이지 */}
+          <Route path="/my-page/owner" element={<OwnerMyPageMain />} />
+          <Route
+            path="/my-page/owner/product"
+            element={<ProductManagementPage />}
+          />
+          <Route
+            path="/my-page/owner/product/create"
+            element={<ProductCreate />}
+          />
         </Route>
 
         {/* 로그인한 사람은 접근 불가 */}
@@ -155,10 +234,32 @@ const App = () => {
           path="/my-page/client/payments/detail"
           element={<PaymentDetailPage />}
         />
-        <Route path="/sign-up/step1" element={<SignupPage />} />
-        <Route path="/sign-up/step2" element={<JoinAddressPage />} />
-        <Route path="/sign-up/step3" element={<WeddingInfoPage />} />
-        <Route path="/sign-up/step4" element={<SignupCompletePage />} />
+
+        <Route path="/sign-up/client/step1" element={<ClientSignupPage />} />
+        <Route path="/sign-up/client/step2" element={<JoinAddressPage />} />
+        <Route path="/sign-up/client/step3" element={<WeddingInfoPage />} />
+        <Route
+          path="/sign-up/client/step4"
+          element={<SignupClientCompletePage />}
+        />
+
+        <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/profile" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/schedules" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/coupons" element={<OwnerMyPageMain />} />
+        <Route
+          path="/my-page/owner/reservtions"
+          element={<OwnerMyPageMain />}
+        />
+        <Route path="/my-page/owner/products" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/payments" element={<OwnerMyPageMain />} />
+        <Route path="/sign-up/owner/step1" element={<OwnerSignupPage />} />
+        <Route path="/sign-up/owner/step2" element={<BusinessAddressPage />} />
+        <Route path="/sign-up/owner/step3" element={<BusinessInfoPage />} />
+        <Route
+          path="/sign-up/owner/step4"
+          element={<SignupOwnerCompletePage />}
+        />
       </Route>
     </Routes>
   );
