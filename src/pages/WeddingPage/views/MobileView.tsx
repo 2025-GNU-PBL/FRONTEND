@@ -248,13 +248,18 @@ const MobileView: React.FC = () => {
     setPageNumber(1);
   }, []);
 
-  const handleChangeSort = useCallback((opt: SortOption) => {
-    setSortOption(opt);
-    setItems([]);
-    setHasMore(true);
-    setTotalCount(0);
-    setPageNumber(1);
-  }, []);
+  // ✅ 정렬 옵션 선택 시 정렬 시트 닫기
+  const handleChangeSort = useCallback(
+    (opt: SortOption) => {
+      setSortOption(opt);
+      setItems([]);
+      setHasMore(true);
+      setTotalCount(0);
+      setPageNumber(1);
+      closeSort(); // 정렬 변경 후 시트 닫기
+    },
+    [closeSort]
+  );
 
   const toggleTag = useCallback((tag: WeddingTag) => {
     setSelectedTags((prev) => {

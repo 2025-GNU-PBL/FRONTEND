@@ -386,13 +386,17 @@ const MobileView: React.FC = () => {
     closeFilter();
   }, [selectedStyle, selectedShootable, closeFilter]);
 
-  const handleChangeSort = useCallback((opt: SortOption) => {
-    setSortOption(opt);
-    setItems([]);
-    setHasMore(true);
-    setTotalCount(0);
-    setPageNumber(1);
-  }, []);
+  const handleChangeSort = useCallback(
+    (opt: SortOption) => {
+      setSortOption(opt);
+      setItems([]);
+      setHasMore(true);
+      setTotalCount(0);
+      setPageNumber(1);
+      closeSort(); // ✅ 정렬 옵션 선택 후 시트 닫기 추가
+    },
+    [closeSort]
+  );
 
   const handleRegionSelect = useCallback((key: RegionKey) => {
     setSelectedRegion(key);

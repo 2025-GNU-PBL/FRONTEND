@@ -54,6 +54,7 @@ import ProductDetailPage from "./pages/ProductDetailPage/ProductDetailPage";
 
 function Layout() {
   const location = useLocation();
+  const isAuth = useAppSelector((state) => state.user.isAuth);
 
   // 채팅 디테일 여부
   const isChatDetail = !!useMatch("/chat/:id");
@@ -91,10 +92,14 @@ function Layout() {
     "/log-in",
     "/log-in/client",
     "/log-in/owner",
-    "/sign-up/step1",
-    "/sign-up/step2",
-    "/sign-up/step3",
-    "/sign-up/step4",
+    "/sign-up/client/step1",
+    "/sign-up/client/step2",
+    "/sign-up/client/step3",
+    "/sign-up/client/step4",
+    "/sign-up/owner/step1",
+    "/sign-up/owner/step2",
+    "/sign-up/owner/step3",
+    "/sign-up/owner/step4",
   ];
 
   // 네비바 노출 여부
@@ -130,9 +135,11 @@ function Layout() {
         <Outlet />
       </main>
 
-      <div className="hidden md:block">
-        {showChatButton && <FloatingChatButton />}
-      </div>
+      {isAuth && (
+        <div className="hidden md:block">
+          {showChatButton && <FloatingChatButton />}
+        </div>
+      )}
 
       {showFooter && <Footer />}
     </div>
