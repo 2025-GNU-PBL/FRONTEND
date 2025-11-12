@@ -40,6 +40,7 @@ import WeddingInfoPage from "./pages/SignupPage/client/step3/WeddingInfoPage";
 import SignupClientCompletePage from "./pages/SignupPage/client/step4/SignupCompletePage";
 import ClientSignupPage from "./pages/SignupPage/client/step1/ClientSignupPage";
 import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
+import ProductInquiryPage from "./pages/ProductInquiryPage/InquiryPage";
 import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
 import { authCustomer, authOwner } from "./store/thunkFunctions";
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
@@ -79,6 +80,7 @@ function Layout() {
     "/log-in/client",
     "/log-in/owner",
     "/inquiry", // InquiryPage에 Navbar 숨김
+    "/product-inquiry", // ProductInquiryPage에 Navbar 숨김
   ];
 
   // 푸터 숨길 경로 (정적)
@@ -91,6 +93,7 @@ function Layout() {
     "/my-page/owner/product/list",
     "/test",
     "/inquiry", // InquiryPage에 Footer 숨김
+    "/product-inquiry", // ProductInquiryPage에 Footer 숨김
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)
@@ -194,7 +197,7 @@ const App = () => {
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/:id" element={<ChatPage />} />
-          <Route path="/inquiry" element={<InquiryPage />} />{" "}
+          <Route path="/product-inquiry" element={<ProductInquiryPage />} />{" "}
           {/* 고객 마이페이지 */}
           <Route path="/my-page/client" element={<ClientMyPageMain />} />
           <Route

@@ -70,15 +70,31 @@ const MobileView = () => {
     }
   };
 
-  const toggleItemCheckbox = (cartItemId: number) => {
-    if (!cartData) return;
-    const updatedItems = cartData.items.map(item =>
-      item.cartItemId === cartItemId ? { ...item, selected: !item.selected } : item
-    );
-    const allSelected = updatedItems.every(item => item.selected);
-    // TODO: 백엔드에 특정 아이템의 선택 상태 변경 요청 (필요 시)
-    setCartData({ ...cartData, items: updatedItems });
-    setIsAllChecked(allSelected);
+  const updateCartItem = async (cartItemId: number, quantity: number, selected: boolean) => {
+    try {
+      setLoading(true);
+      await api.patch(`/api/v1/cart/items/${cartItemId}`, { quantity, selected });
+      await fetchCartData(); // Refresh cart data
+    } catch (err) {
+      console.error("Failed to update cart item:", err);
+      setError("장바구니 아이템 업데이트에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleItemCheckbox = async (cartItemId: number, currentSelected: boolean) => {
+    await updateCartItem(cartItemId, -1, !currentSelected); // Quantity -1 indicates no change
+  };
+
+  const increaseQuantity = async (cartItemId: number, currentQuantity: number, selected: boolean) => {
+    await updateCartItem(cartItemId, currentQuantity + 1, selected);
+  };
+
+  const decreaseQuantity = async (cartItemId: number, currentQuantity: number, selected: boolean) => {
+    if (currentQuantity > 1) {
+      await updateCartItem(cartItemId, currentQuantity - 1, selected);
+    }
   };
 
   const handleDeleteSelected = async () => {
@@ -123,7 +139,7 @@ const MobileView = () => {
         .map(item => item.cartItemId);
 
       togglePopup(); // 팝업 닫기
-      navigate('/inquiry', { state: { draftIds, cartItemIds: selectedCartItemIds } });
+      navigate('/product-inquiry', { state: { draftIds, cartItemIds: selectedCartItemIds } });
     } catch (err) {
       console.error("Failed to create inquiry drafts:", err);
       setError("문의 초안 생성에 실패했습니다.");
@@ -191,7 +207,7 @@ const MobileView = () => {
         <div className="product-item-wrapper" key={item.cartItemId}>
           <button
             className={`product-item-checkbox ${item.selected ? 'product-item-checkbox-checked' : 'product-item-checkbox-unchecked'}`}
-            onClick={() => toggleItemCheckbox(item.cartItemId)}
+            onClick={() => toggleItemCheckbox(item.cartItemId, item.selected)}
             aria-checked={item.selected}
             role="checkbox"
           >
@@ -206,9 +222,9 @@ const MobileView = () => {
               <p className="product-item-discounted-price">{(item.price * item.quantity).toLocaleString()}원</p> {/* TODO: 할인 금액 계산 */}
             </div>
             <div className="product-item-quantity-control">
-              <Icon icon="mynaui:minus" className="quantity-minus-icon" />
+              <Icon icon="mynaui:minus" className="quantity-minus-icon" onClick={() => decreaseQuantity(item.cartItemId, item.quantity, item.selected)} />
               <span className="quantity-display">{item.quantity}</span>
-              <Icon icon="mynaui:plus" className="quantity-plus-icon" />
+              <Icon icon="mynaui:plus" className="quantity-plus-icon" onClick={() => increaseQuantity(item.cartItemId, item.quantity, item.selected)} />
             </div>
           </div>
         </div>
