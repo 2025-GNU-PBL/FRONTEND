@@ -1,0 +1,133 @@
+/* 전체 페이지 */
+.inform-page {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    background: #f8f8f8;
+    margin: 0;
+    padding: 0 20px; /* 좌우 여백 */
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+  
+  /* 헤더 */
+  .inform-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0;
+    height: 60px;
+    margin-top: 59px;
+    background: #f8f8f8;
+  }
+  
+  /* 중앙 제목 */
+  .inform-title {
+    font-family: 'Pretendard';
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 160%;
+    color: #000;
+    text-align: center;
+    flex-grow: 1;
+  }
+  
+  /* 뒤로가기 / 빈 공간 */
+  .back-arrow, .empty-space {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+  }
+  
+  /* 필터 버튼 */
+  .filter-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+  
+  .filter-button {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 20px;
+    font-size: 14px;
+  }
+  
+  .filter-button.active {
+    background: #000;
+    color: #fff;
+  }
+  
+  /* 알림 개수 */
+  .notification-count {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #000;
+  }
+  
+  /* 알림 리스트 */
+  .notification-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 10px;
+  }
+  
+  /* 알림 카드 */
+  .notification-card {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    width: 100%;
+    background: #fff;
+    border-radius: 12px;
+    position: relative;
+    box-sizing: border-box;
+  }
+  
+  .notification-icon {
+    width: 44px;
+    height: 44px;
+    margin-right: 18px;
+    flex-shrink: 0;
+  }
+  
+  .notification-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex-grow: 1;
+  }
+  
+  .notification-message {
+    font-weight: 600;
+    font-size: 14px;
+    color: rgba(0,0,0,0.8);
+  }
+  
+  .notification-time {
+    font-size: 12px;
+    color: #999;
+  }
+  
+  .notification-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    right: 20px;
+    top: 20px;
+    background: #f11f2f;
+    border-radius: 50%;
+  }
+  
+  .no-notifications {
+    text-align: center;
+    padding: 40px 0;
+    color: #888;
+    font-size: 16px;
+  }
+  
