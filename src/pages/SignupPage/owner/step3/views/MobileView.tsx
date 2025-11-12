@@ -103,7 +103,7 @@ export default function MobileView({
               type="text"
               value={bzNumber}
               onChange={(e) => setBzNumber(e.target.value)}
-              placeholder="1215-4548-4554"
+              placeholder="000-00-00000"
               className="w-full h-full outline-none bg-transparent text-[14px] leading-[22px] -tracking-[0.2px] text-[#1E2124] placeholder:text-[#9D9D9D]"
             />
           </div>
@@ -119,7 +119,7 @@ export default function MobileView({
               type="text"
               value={bankAccount}
               onChange={(e) => setBankAccount(e.target.value)}
-              placeholder="1215-4548-4554"
+              placeholder="은행명 + 계좌번호"
               className="w-full h-full outline-none bg-transparent text-[14px] leading-[22px] -tracking-[0.2px] text-[#1E2124] placeholder:text-[#9D9D9D]"
             />
           </div>
