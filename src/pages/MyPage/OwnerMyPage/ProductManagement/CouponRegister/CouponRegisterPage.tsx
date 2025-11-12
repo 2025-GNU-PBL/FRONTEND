@@ -1,8 +1,8 @@
 import React from "react";
-import MobileView from "./views/ListMoblieView";
-import WebView from "./views/ListWebView";
+import MobileView from "./views/RegisterMobile";
+import WebView from "./views/RegisterWeb";
 
-export default function ReservationManagementPage() {
+export default function CouponRegisterPage() {
   return (
     <div className="w-full bg-white">
       {/* Mobile */}
