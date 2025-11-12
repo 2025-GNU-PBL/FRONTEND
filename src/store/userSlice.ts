@@ -1,4 +1,3 @@
-// userSlice.ts
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import {
   kakaoLoginUser,
@@ -9,9 +8,6 @@ import {
 } from "./thunkFunctions";
 import { toast } from "react-toastify";
 
-/** =========================
- *  1) 공통 타입 / 역할
- * ========================= */
 export type UserRole = "CUSTOMER" | "OWNER";
 
 export type AccessTokenPayload = {
@@ -19,15 +15,10 @@ export type AccessTokenPayload = {
   // 서버가 role을 곧바로 내려주면 여기에 포함 가능: role?: UserRole;
 };
 
-/** =========================
- *  2) 서버 응답 타입 (원본)
- *     - 서버 스펙 그대로 반영 (예시)
- * ========================= */
-// OWNER 응답 예시
+// OWNER 응답
 export type OwnerApiResponse = {
   id: number;
   profileImage: string;
-  age: number;
   phoneNumber: string;
   bzNumber: string;
   bankAccount: string;
@@ -36,11 +27,11 @@ export type OwnerApiResponse = {
   name: string;
   socialId: string;
   socialProvider: "KAKAO" | "NAVER" | string;
-  createdAt: string; // ISO
-  updatedAt: string; // ISO
+  createdAt: string;
+  updatedAt: string;
 };
 
-// CUSTOMER 응답 예시
+// CUSTOMER 응답
 export type CustomerApiResponse = {
   id: number;
   name: string;
@@ -62,16 +53,11 @@ export type CustomerApiResponse = {
   weddingDate: string; // YYYY-MM-DD
 };
 
-/** =========================
- *  3) 프론트 표준화 타입 (Discriminated Union)
- *     - userRole 로 구분
- * ========================= */
 type UserBase = {
   id: number;
   name: string;
   email: string;
   socialId: string;
-  age: number;
   phoneNumber: string;
 };
 
@@ -82,8 +68,8 @@ export type OwnerData = UserBase & {
   bzNumber: string;
   bankAccount: string;
   socialProvider: string;
-  createdAt: string; // ISO
-  updatedAt: string; // ISO
+  createdAt: string;
+  updatedAt: string;
 };
 
 // 고객 데이터(프론트 표준)
@@ -105,17 +91,12 @@ export type CustomerData = UserBase & {
 // 최종 UserData: 역할로 타입이 자동 분기됨
 export type UserData = OwnerData | CustomerData;
 
-/** =========================
- *  4) 매핑 함수
- *     - 서버 응답 → 프론트 표준 UserData
- * ========================= */
 function mapOwner(resp: OwnerApiResponse): OwnerData {
   return {
     id: resp.id,
     name: resp.name,
     email: resp.email,
     socialId: resp.socialId,
-    age: resp.age,
     phoneNumber: resp.phoneNumber,
     profileImage: resp.profileImage,
     bzNumber: resp.bzNumber,
@@ -133,7 +114,6 @@ function mapCustomer(resp: CustomerApiResponse): CustomerData {
     name: resp.name,
     email: resp.email,
     socialId: resp.socialId,
-    age: resp.age,
     phoneNumber: resp.phoneNumber,
     address: resp.address,
     zipCode: resp.zipCode,
@@ -208,7 +188,7 @@ const userSlice = createSlice({
         state.jwt = action.payload;
         state.isAuth = true;
 
-        // 임시 역할(페이지에서 요청한 역할) — 이후 auth*로 최종 확정
+        // 임시 역할 — 이후 auth*로 최종 확정
         state.role = action.meta.arg.role;
 
         if (action.payload?.accessToken) {

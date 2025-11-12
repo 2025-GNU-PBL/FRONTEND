@@ -398,7 +398,7 @@ export default function MobileView({
                 ? p.address.split(" ").slice(0, 2).join(" ")
                 : "";
 
-              // ✅ 현재 활성 카테고리에 따라 상세 경로 결정
+              // 현재 활성 카테고리에 따라 상세 경로 결정
               const detailPath =
                 DETAIL_PATH_BY_CATEGORY[active]?.(p.id) ?? `/wedding/${p.id}`;
 
