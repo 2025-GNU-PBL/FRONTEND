@@ -86,8 +86,6 @@ const MobileView: React.FC = () => {
   // 상세 페이지 이동
   const goDetail = useCallback(
     (id: number) => {
-      // 라우트 규칙에 맞게 경로만 맞춰주면 됨
-      // 예: /wedding-hall/:id
       navigate(`/wedding/${id}`);
     },
     [navigate]
@@ -97,10 +95,12 @@ const MobileView: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const openMenu = useCallback(() => setIsMenuOpen(true), []);
   const closeMenu = useCallback(() => setIsMenuOpen(false), []);
+
   const onBack = useCallback(() => {
     if (window.history.length > 1) navigate(-1);
     else navigate("/");
   }, [navigate]);
+
   const goSearch = useCallback(() => navigate("/search"), [navigate]);
   const goCart = useCallback(() => navigate("/cart"), [navigate]);
 
@@ -199,7 +199,7 @@ const MobileView: React.FC = () => {
 
   return (
     <motion.div
-      className="relative w-full min-h-screen bg-white mx-auto overflow-x-hidden font-['Pretendard'] max-w-screen-sm"
+      className="relative w-full min-h-screen bg-white overflow-x-hidden font-['Pretendard']"
       variants={stagger()}
       initial="hidden"
       animate="show"
@@ -336,7 +336,7 @@ const MobileView: React.FC = () => {
                 product={product}
                 liked={likedIds.has(product.id)}
                 onToggleLike={toggleLike}
-                onClick={() => goDetail(product.id)} // ✅ 클릭 시 상세 이동
+                onClick={() => goDetail(product.id)}
               />
             ))}
 
@@ -355,6 +355,7 @@ const MobileView: React.FC = () => {
               ))}
           </motion.div>
 
+          {/* 무한스크롤 트리거 */}
           <div ref={elementRef} className="h-1" />
 
           {isLoadingMore && (

@@ -83,6 +83,7 @@ function Layout() {
     "/my-page/owner/product/edit",
     "/my-page/owner/product/list",
     "/test",
+    "/notification",
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)

@@ -6,6 +6,7 @@ import api from "../../../lib/api/axios";
 import { BasicInfoContent } from "../sections/BasicInfoContent";
 import { DetailContent } from "../sections/DetailContent";
 import { ReviewContent } from "../sections/ReviewContent";
+import { useAppSelector } from "../../../store/hooks";
 
 /* ========================= 타입 정의 ========================= */
 
@@ -46,7 +47,7 @@ export type WeddingHallDetail = {
   ownerName: string;
   images: CommonImage[];
   options: CommonOption[];
-  tags: string[]; // 문자열 배열
+  tags: string[];
 };
 
 /** 스튜디오 태그 타입 */
@@ -66,10 +67,10 @@ export type StudioDetail = {
   region: string;
   images: CommonImage[];
   options: CommonOption[];
-  tags: StudioTag[]; // 객체 배열
+  tags: StudioTag[];
 };
 
-/** 이 페이지에서 하위 컴포넌트에 내려줄 공통 형태 (탭에서 쓰기 쉽게 정규화) */
+/** 공통 형태 */
 export type NormalizedDetail =
   | (WeddingHallDetail & { _category: "wedding" })
   | (StudioDetail & { _category: "studio" });
@@ -80,6 +81,7 @@ const MobileView = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
+  const isAuth = useAppSelector((s) => s.user.isAuth);
 
   const [activeTab, setActiveTab] = useState<"basic" | "detail" | "review">(
     "basic"
@@ -95,7 +97,8 @@ const MobileView = () => {
   /* ========================= 네비게이션 ========================= */
 
   const handleGoBack = () => {
-    navigate(-1);
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/");
   };
 
   const handleGoHome = () => {
@@ -129,10 +132,8 @@ const MobileView = () => {
   };
 
   /* ========================= 카테고리 판별 ========================= */
-  // URL: /wedding/:id -> wedding
-  //      /studio/:id  -> studio
   useEffect(() => {
-    const [, first] = location.pathname.split("/"); // "" / "wedding" / "studio" / ...
+    const [, first] = location.pathname.split("/");
     if (first === "wedding") {
       setCategory("wedding");
     } else if (first === "studio") {
@@ -156,10 +157,8 @@ const MobileView = () => {
 
         let url = "";
         if (category === "wedding") {
-          // 웨딩홀 상세
           url = `/api/v1/wedding-hall/${id}`;
         } else if (category === "studio") {
-          // 스튜디오 상세
           url = `/api/v1/studio/${id}`;
         }
 
@@ -193,10 +192,11 @@ const MobileView = () => {
   /* ========================= 렌더 ========================= */
 
   return (
-    <div className="w-full min-h-screen bg-white flex justify-center">
-      <div className="relative w-full max-w-[390px] min-h-screen bg-white text-[#1E2124]">
+    <div className="w-full min-h-screen bg-white text-[#1E2124]">
+      {/* 전체를 모바일 폭에 맞춰 꽉 채움 (상위에서 md:hidden 처리) */}
+      <div className="relative w-full min-h-screen">
         {/* 상단 네비게이션 */}
-        <header className="w-full h-[60px] px-5 flex items-center justify-between gap-4">
+        <header className="w-full h-[60px] px-4 flex items-center justify-between gap-4">
           {/* 뒤로가기 */}
           <button
             type="button"
@@ -205,12 +205,12 @@ const MobileView = () => {
           >
             <Icon
               icon="solar:alt-arrow-left-linear"
-              className="w-6 h-6 text-[#1E2124]"
+              className="w-7 h-7 text-[#1E2124]"
             />
           </button>
 
           {/* 홈 / 검색 / 카트 */}
-          <div className="flex items-center justify-center gap-3 w-[96px] h-6">
+          <div className="flex items-center justify-center gap-3">
             {/* 홈 */}
             <button
               type="button"
@@ -235,25 +235,27 @@ const MobileView = () => {
               />
             </button>
 
-            {/* 카트 */}
-            <button
-              type="button"
-              className="relative w-6 h-6 flex items-center justify-center"
-              onClick={handleGoCart}
-            >
-              <Icon
-                icon="solar:cart-large-minimalistic-linear"
-                className="w-6 h-6 text-[#1E2124]"
-              />
-              <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-[3px] bg-[#FF2233] text-[9px] text-white rounded-full flex items-center justify-center">
-                3
-              </span>
-            </button>
+            {/* 카트 (로그인 시) */}
+            {isAuth && (
+              <button
+                type="button"
+                className="relative w-6 h-6 flex items-center justify-center"
+                onClick={handleGoCart}
+              >
+                <Icon
+                  icon="solar:cart-large-minimalistic-linear"
+                  className="w-6 h-6 text-[#1E2124]"
+                />
+                <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-[3px] bg-[#FF2233] text-[9px] text-white rounded-full flex items-center justify-center">
+                  3
+                </span>
+              </button>
+            )}
           </div>
         </header>
 
         {/* 탭 바 */}
-        <div className="w-full h-[48px] flex bg-white border-b border-[#E0E5EB]">
+        <div className="w-full h-12 flex bg-white border-b border-[#E0E5EB]">
           <button
             type="button"
             onClick={() => setActiveTab("basic")}
@@ -289,18 +291,18 @@ const MobileView = () => {
           </button>
         </div>
 
-        {/* 로딩 / 에러 상태 */}
+        {/* 로딩 / 에러 */}
         {loading && !errorMsg && (
-          <div className="px-5 py-10 text-[14px] text-[#999999]">
+          <div className="px-4 py-10 text-[14px] text-[#999999]">
             상세 정보를 불러오는 중입니다...
           </div>
         )}
 
         {errorMsg && (
-          <div className="px-5 py-10 text-[14px] text-red-500">{errorMsg}</div>
+          <div className="px-4 py-10 text-[14px] text-red-500">{errorMsg}</div>
         )}
 
-        {/* 메인 컨텐츠 (탭별 교체, 디자인 그대로 / 데이터만 주입) */}
+        {/* 메인 컨텐츠 */}
         <main className="pb-[140px]">
           {!loading && !errorMsg && detailData && (
             <>
@@ -329,19 +331,19 @@ const MobileView = () => {
           )}
         </main>
 
-        {/* 하단 고정 버튼 */}
-        <div className="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-[390px] bg-white px-5 pt-3 pb-5 z-30">
+        {/* 하단 고정 버튼: 항상 전체 폭 */}
+        <div className="fixed left-0 bottom-0 w-full bg-white px-4 pt-3 pb-5 z-30">
           <div className="flex gap-3">
             <button
               type="button"
-              className="flex-1 h-[56px] border border-black/20 rounded-[12px] flex items-center justify-center text-[16px] font-semibold text-black/80"
+              className="flex-1 min-h-[52px] border border-black/20 rounded-[12px] flex items-center justify-center text-[16px] font-semibold text-black/80"
               onClick={handleGoCart}
             >
               장바구니
             </button>
             <button
               type="button"
-              className="flex-1 h-[56px] rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold flex items-center justify-center"
+              className="flex-1 min-h-[52px] rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold flex items-center justify-center"
             >
               상품예약
             </button>
@@ -358,11 +360,11 @@ const MobileView = () => {
           onClick={handleCloseCoupon}
         />
 
-        {/* 쿠폰 바텀시트 */}
+        {/* 쿠폰 바텀시트: 전체 폭 사용 */}
         <div
           className={`
-            fixed left-1/2 -translate-x-1/2 bottom-0
-            w-full max-w-[390px]
+            fixed left-0 bottom-0
+            w-full
             bg-white rounded-t-[20px]
             shadow-[0_-4px_20px_rgba(0,0,0,0.18)]
             z-50
@@ -386,7 +388,7 @@ const MobileView = () => {
             </button>
           </div>
 
-          <div className="px-5 pb-6 max-h-[390px] overflow-y-auto">
+          <div className="px-5 pb-6 max-h-[60vh] overflow-y-auto">
             {/* 쿠폰 1 */}
             <div className="w-full flex items-stretch mt-5">
               <div className="flex-1 border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-2">
@@ -477,11 +479,12 @@ const MobileView = () => {
         <div
           className={`
             fixed left-1/2 -translate-x-1/2
-            bottom-[58px]
-            w-[350px] h-[72px]
+            bottom-[72px]
+            w-[92%]
+            max-w-[480px]
             bg-[#4D4D4D]
             rounded-[8px]
-            px-5
+            px-5 py-3
             flex items-center
             gap-[18px]
             z-[60]
@@ -494,17 +497,15 @@ const MobileView = () => {
             }
           `}
         >
-          <div className="flex flex-row items-center gap-2">
-            <Icon
-              icon="solar:check-circle-bold"
-              className="w-6 h-6 text-white"
-            />
-            <p className="w-[234px] h-[48px] text-[16px] font-semibold leading-[150%] tracking-[-0.2px] text-white">
-              다운로드가 완료 되었어요.
-              <br />
-              마이페이지 쿠폰함에서 확인 가능해요.
-            </p>
-          </div>
+          <Icon
+            icon="solar:check-circle-bold"
+            className="w-6 h-6 text-white shrink-0"
+          />
+          <p className="flex-1 text-[14px] font-semibold leading-[150%] tracking-[-0.2px] text-white">
+            다운로드가 완료 되었어요.
+            <br />
+            마이페이지 쿠폰함에서 확인 가능해요.
+          </p>
         </div>
       </div>
     </div>
