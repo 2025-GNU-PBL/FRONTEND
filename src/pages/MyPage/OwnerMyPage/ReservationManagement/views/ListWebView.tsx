@@ -35,7 +35,7 @@ type Inquiry = {
   createdAt: string; // YYYY-MM-DD
 };
 
-export default function WebView() {
+export default function ListWebView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
 

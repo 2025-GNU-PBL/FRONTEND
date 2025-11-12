@@ -35,7 +35,7 @@ type Reservation = {
   createdAt: string; // YYYY-MM-DD
 };
 
-export default function MobileView() {
+export default function ListMoblieView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
 

@@ -57,6 +57,7 @@ import ProductDetailPage from "./pages/ProductDetailPage/ProductDetailPage";
 import ProductManagementPage from "./pages/MyPage/OwnerMyPage/ProductManagement/Main/ProductMangement";
 import OwnerProfilePage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfilePage";
 import ReservationManagementPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationManagementPage";
+import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/ProductManagement/CouponRegister/CouponRegisterPage";
 
 function Layout() {
   const location = useLocation();
@@ -263,7 +264,11 @@ const App = () => {
         <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
         <Route path="/my-page/owner/profile" element={<OwnerProfilePage />} />
         <Route path="/my-page/owner/schedules" element={<OwnerMyPageMain />} />
-        <Route path="/my-page/owner/coupons" element={<OwnerMyPageMain />} />
+        <Route
+          path="/my-page/owner/coupons/register"
+          element={<CouponRegisterPage />}
+        />
+
         <Route
           path="/my-page/owner/reservtions"
           element={<ReservationManagementPage />}
