@@ -80,8 +80,10 @@ function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
   };
 }
 
-/** 개별 결제 카드 (Web 레이아웃) */
+/** 개별 결제 카드 */
 function PaymentCard({ item }: { item: PaymentItem }) {
+  const nav = useNavigate();
+
   return (
     <div className="w-full border border-[#E5E7EB] rounded-xl bg-white px-5 py-4 flex flex-col gap-3">
       <div className="flex items-center gap-4">
@@ -128,7 +130,7 @@ function PaymentCard({ item }: { item: PaymentItem }) {
           type="button"
           className="px-3 py-2 border border-[#E4E4E4] rounded-lg text-[13px] text-[#333333] tracking-[-0.2px]"
           onClick={() => {
-            // TODO: 결제 상세 페이지로 이동
+            nav(`/my-page/client/payments/detail/${item.id}`);
           }}
         >
           결제 상세

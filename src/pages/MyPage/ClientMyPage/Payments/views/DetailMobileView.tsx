@@ -41,7 +41,7 @@ interface Accessor {
   customer: boolean;
 }
 
-/** 개발용 더미 상세 (API 200인데 비어있을 때만, DEV에서만 사용) */
+/** 개발용 더미 상세 */
 const DEV_MOCK_DETAIL: PaymentDetailResponse = {
   orderCode: "TEST-ORDER-DETAIL-001",
   shopName: "제이바이로이스타",

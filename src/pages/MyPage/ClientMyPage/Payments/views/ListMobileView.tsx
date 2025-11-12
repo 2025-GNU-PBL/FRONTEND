@@ -12,7 +12,7 @@ export interface PaymentMeItem {
   productName: string; // 상품명
   amount: number; // 결제 금액
   status: string; // READY / PAID / COMPLETED ...
-  approvedAt: string; // 결제 승인 일시 (ISO)
+  approvedAt: string; // 결제 승인 일시
   shopName: string; // 업체명
   thumbnail?: string; // 썸네일 URL
 }
@@ -54,7 +54,7 @@ function mapStatusToLabel(status: string): PaymentStatus {
   }
 }
 
-/** ISO → YYYY.MM.DD */
+/** YYYY.MM.DD */
 function formatDate(iso?: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -80,6 +80,8 @@ function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
 
 /** 개별 카드 */
 function PaymentCard({ item }: { item: PaymentItem }) {
+  const nav = useNavigate();
+
   return (
     <div className="w-full">
       <div className="flex">
@@ -122,8 +124,7 @@ function PaymentCard({ item }: { item: PaymentItem }) {
           type="button"
           className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333] tracking-[-0.2px]"
           onClick={() => {
-            // TODO: 결제 상세 페이지로 이동
-            // e.g. nav(`/mypage/payment/${item.id}`)
+            nav(`/my-page/client/payments/detail/${item.id}`);
           }}
         >
           결제 상세
@@ -178,7 +179,7 @@ function PaymentSection({
   );
 }
 
-/** 고객 마이페이지 결제내역 (Mobile) */
+/** 고객 마이페이지 결제내역 */
 export default function ListMobileView() {
   const nav = useNavigate();
 
@@ -202,7 +203,6 @@ export default function ListMobileView() {
       : null;
 
   React.useEffect(() => {
-    // CUSTOMER가 아니면 호출 안 함
     if (!accessor || !accessor.customer) {
       setPayments([]);
       return;
@@ -221,7 +221,6 @@ export default function ListMobileView() {
 
         let mapped = (data || []).map(mapToPaymentItem);
 
-        // 개발 모드 & 실제 데이터가 없을 때: 더미 데이터 주입
         if (mapped.length === 0 && import.meta.env.DEV) {
           mapped = [
             mapToPaymentItem({
@@ -247,7 +246,6 @@ export default function ListMobileView() {
 
         setPayments(mapped);
       } catch (e) {
-        // 에러 시에도 개발모드라면 더미데이터로 UI 확인 가능하게 처리
         if (import.meta.env.DEV) {
           const fallback = [
             mapToPaymentItem({
@@ -303,7 +301,7 @@ export default function ListMobileView() {
         </div>
 
         {/* 본문 */}
-        <div className="flex-1 overflow-y-auto px-5 pt-4 pb-0">
+        <div className="flex-1 overflow-y-auto px-5 pt-8 pb-0">
           <div className="w-[390px] h-2 bg-[#F7F9FA] -mx-5 mb-5" />
 
           {isNotCustomer && (
