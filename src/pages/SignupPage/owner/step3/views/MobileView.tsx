@@ -127,7 +127,7 @@ export default function MobileView({
       </div>
 
       {/* 하단 버튼 영역 */}
-      <div className="absolute left-1/2 -translate-x-1/2 bottom-[34px] w-[350px] flex flex-col gap-[12px]">
+      <div className="absolute left-1/2 -translate-x-1/2 bottom-[80px] w-[350px] flex flex-col gap-[12px]">
         <button
           onClick={handleNext}
           disabled={!isComplete}

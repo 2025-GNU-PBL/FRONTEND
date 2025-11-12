@@ -55,6 +55,7 @@ import FloatingChatButton from "./components/chat/FloatingChatButton";
 import NotificationPage from "./pages/NotificationPage/NotificationPage";
 import ProductDetailPage from "./pages/ProductDetailPage/ProductDetailPage";
 import ProductManagementPage from "./pages/MyPage/OwnerMyPage/ProductManagement/Main/ProductMangement";
+import OwnerProfilePage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfilePage";
 
 function Layout() {
   const location = useLocation();
@@ -259,7 +260,7 @@ const App = () => {
         />
 
         <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
-        <Route path="/my-page/owner/profile" element={<OwnerMyPageMain />} />
+        <Route path="/my-page/owner/profile" element={<OwnerProfilePage />} />
         <Route path="/my-page/owner/schedules" element={<OwnerMyPageMain />} />
         <Route path="/my-page/owner/coupons" element={<OwnerMyPageMain />} />
         <Route
