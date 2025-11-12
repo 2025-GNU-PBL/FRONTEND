@@ -104,7 +104,7 @@ const WebView: React.FC = () => {
       const remainingDraftIds = draftIds.slice(1);
       if (remainingDraftIds.length > 0) {
         // 남아있는 draftIds가 있으면 다음 문의 페이지로 이동
-        navigate('/inquiry', { state: { draftIds: remainingDraftIds, cartItemIds } });
+        navigate('/product-inquiry', { state: { draftIds: remainingDraftIds, cartItemIds } });
       } else {
         // 모든 draftIds가 처리되었으면 장바구니 아이템 삭제 후 장바구니 페이지로 이동
         alert('모든 문의가 완료되었습니다.');
