@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import SideMenu from "../../../components/SideMenu";
@@ -34,6 +34,24 @@ const stagger = (delay = 0): Variants => ({
   },
 });
 
+const dimVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 0.7, transition: { duration: 0.25, ease: EASE_OUT } },
+  exit: { opacity: 0, transition: { duration: 0.2, ease: EASE_OUT } },
+};
+
+const bottomSheetVariants: Variants = {
+  hidden: { y: "100%" },
+  show: {
+    y: 0,
+    transition: { duration: 0.32, ease: EASE_OUT },
+  },
+  exit: {
+    y: "100%",
+    transition: { duration: 0.26, ease: EASE_OUT },
+  },
+};
+
 /* ========================= 지역 데이터 ========================= */
 
 type RegionItem =
@@ -47,6 +65,21 @@ const regions: RegionItem[] = [
   { key: "인천", label: "인천", image: "/images/incheon.png" },
   { key: "부산", label: "부산", image: "/images/busan.png" },
 ];
+
+/* ========================= 필터 옵션 ========================= */
+
+const STYLE_OPTIONS = ["인물중심", "배경다양", "인물+배경"] as const;
+const SHOOTABLE_OPTIONS = [
+  "한옥",
+  "가든",
+  "야간",
+  "로드",
+  "수중",
+  "반려동물",
+] as const;
+
+type StyleOption = (typeof STYLE_OPTIONS)[number];
+type ShootableOption = (typeof SHOOTABLE_OPTIONS)[number];
 
 /* ========================= API 응답 타입 ========================= */
 
@@ -96,6 +129,37 @@ const MobileView: React.FC = () => {
   const openMenu = useCallback(() => setIsMenuOpen(true), []);
   const closeMenu = useCallback(() => setIsMenuOpen(false), []);
 
+  // 필터 Bottom Sheet
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [styleFilter, setStyleFilter] = useState<StyleOption | null>(null);
+  const [shootableFilter, setShootableFilter] = useState<ShootableOption[]>([]);
+
+  const openFilter = useCallback(() => setIsFilterOpen(true), []);
+  const closeFilter = useCallback(() => setIsFilterOpen(false), []);
+
+  const handleToggleStyle = useCallback((opt: StyleOption) => {
+    setStyleFilter((prev) => (prev === opt ? null : opt));
+  }, []);
+
+  const handleToggleShootable = useCallback((opt: ShootableOption) => {
+    setShootableFilter((prev) =>
+      prev.includes(opt) ? prev.filter((v) => v !== opt) : [...prev, opt]
+    );
+  }, []);
+
+  const handleResetFilter = useCallback(() => {
+    setStyleFilter(null);
+    setShootableFilter([]);
+  }, []);
+
+  // 필터 적용 (API 파라미터는 실제 스펙에 맞게 조정하면 됨)
+  const handleApplyFilter = useCallback(() => {
+    setItems([]);
+    setHasMore(true);
+    setPageNumber(1);
+    closeFilter();
+  }, [closeFilter]);
+
   const onBack = useCallback(() => {
     if (window.history.length > 1) navigate(-1);
     else navigate("/");
@@ -104,13 +168,18 @@ const MobileView: React.FC = () => {
   const goSearch = useCallback(() => navigate("/search"), [navigate]);
   const goCart = useCallback(() => navigate("/cart"), [navigate]);
 
+  // 메뉴/필터 열릴 때 바디 스크롤 잠금
   useEffect(() => {
     const original = document.body.style.overflow;
-    document.body.style.overflow = isMenuOpen ? "hidden" : original || "";
+    if (isMenuOpen || isFilterOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = original || "";
+    }
     return () => {
       document.body.style.overflow = original || "";
     };
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isFilterOpen]);
 
   /* ===== 페이지네이션 & 무한 스크롤 ===== */
 
@@ -135,7 +204,18 @@ const MobileView: React.FC = () => {
 
       try {
         const { data }: { data: PagedResponse } = await api.get(
-          `/api/v1/wedding-hall/filter?pageNumber=${page}&pageSize=${pageSize}`
+          "/api/v1/wedding-hall/filter",
+          {
+            params: {
+              pageNumber: page,
+              pageSize,
+              style: styleFilter || undefined,
+              shootable:
+                shootableFilter.length > 0
+                  ? shootableFilter.join(",")
+                  : undefined,
+            },
+          }
         );
 
         setTotalCount(data.page.totalElements);
@@ -159,10 +239,9 @@ const MobileView: React.FC = () => {
         fetchingRef.current = false;
       }
     },
-    [hasMore]
+    [hasMore, pageSize, styleFilter, shootableFilter]
   );
 
-  // 초기 및 pageNumber 변경 시 데이터 로드
   useEffect(() => {
     fetchMoreItems(pageNumber);
   }, [pageNumber, fetchMoreItems]);
@@ -194,6 +273,11 @@ const MobileView: React.FC = () => {
     observer.observe(target);
     return () => observer.unobserve(target);
   }, [hasMore, loadingInitial, isLoadingMore]);
+
+  const activeFilterCount = (styleFilter ? 1 : 0) + shootableFilter.length;
+
+  const applyButtonLabel =
+    activeFilterCount > 0 ? `${totalCount || ""}개 결과 보기` : "결과 보기";
 
   /* ===== 렌더 ===== */
 
@@ -298,7 +382,7 @@ const MobileView: React.FC = () => {
         ))}
       </motion.div>
 
-      {/* 총 개수 & 정렬 */}
+      {/* 총 개수 & 정렬/필터 */}
       <motion.div
         className="px-5 my-7 flex items-center justify-between"
         variants={fadeUp}
@@ -307,13 +391,32 @@ const MobileView: React.FC = () => {
           <p className="text-[14px] text-[#999999]">총</p>&nbsp;
           <p className="text-[14px] text-black">{totalCount}개</p>
         </div>
-        <button className="flex items-center gap-1 active:scale-95">
-          <span className="text-[14px] text-black">최신순</span>
-          <Icon
-            icon="solar:alt-arrow-down-linear"
-            className="w-4 h-4 text-[#999999]"
-          />
-        </button>
+        <div className="flex gap-3">
+          <button
+            className="flex items-center gap-1 active:scale-95"
+            onClick={openFilter}
+          >
+            <span className="text-[14px] text-black">
+              필터
+              {activeFilterCount > 0 && (
+                <span className="ml-1 text-[11px] px-1.5 py-0.5 rounded-full bg-[#FF2233]/10 text-[#FF2233] align-middle">
+                  {activeFilterCount}
+                </span>
+              )}
+            </span>
+            <Icon
+              icon="solar:tuning-2-linear"
+              className="w-4 h-4 text-[#1E2124]"
+            />
+          </button>
+          <button className="flex items-center gap-1 active:scale-95">
+            <span className="text-[14px] text-black">최신순</span>
+            <Icon
+              icon="solar:alt-arrow-down-linear"
+              className="w-4 h-4 text-[#1E2124]"
+            />
+          </button>
+        </div>
       </motion.div>
 
       {/* 상태 */}
@@ -371,6 +474,124 @@ const MobileView: React.FC = () => {
           )}
         </>
       )}
+
+      {/* 필터 Bottom Sheet */}
+      <AnimatePresence>
+        {isFilterOpen && (
+          <>
+            {/* Dimmed */}
+            <motion.div
+              className="fixed inset-0 z-40 bg-black/70"
+              variants={dimVariants}
+              initial="hidden"
+              animate="show"
+              exit="exit"
+              onClick={closeFilter}
+            />
+            {/* Sheet: 반응형 전체 너비 */}
+            <motion.div
+              className="fixed inset-x-0 bottom-0 z-50 w-full bg-white rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.18)]"
+              variants={bottomSheetVariants}
+              initial="hidden"
+              animate="show"
+              exit="exit"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* 헤더 */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <span className="text-[18px] font-semibold text-[#1E2124]">
+                  필터
+                </span>
+                <button
+                  className="w-6 h-6 grid place-items-center rounded-full active:scale-95"
+                  onClick={closeFilter}
+                >
+                  <Icon icon="mdi:close" className="w-5 h-5 text-[#1E2124]" />
+                </button>
+              </div>
+
+              {/* 필터 내용: 높이 고정 380px + 내부 스크롤 */}
+              <div className="px-5 pb-4 border-t border-[#F3F3F3] h-[380px] overflow-y-auto space-y-6">
+                {/* 스타일 */}
+                <div className="space-y-3">
+                  <p className="text-[16px] font-semibold text-[#1E2124]">
+                    스타일
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {STYLE_OPTIONS.map((label) => {
+                      const active = styleFilter === label;
+                      return (
+                        <button
+                          key={label}
+                          className={`px-3 py-2 rounded-full text-[14px] border transition-all ${
+                            active
+                              ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
+                              : "bg-white border-[#D9D9D9] text-[#999999]"
+                          }`}
+                          onClick={() => handleToggleStyle(label)}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="w-full h-px bg-[#F3F3F3]" />
+
+                {/* 촬영 가능 */}
+                <div className="space-y-3">
+                  <p className="text-[16px] font-semibold text-[#1E2124]">
+                    촬영 가능
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {SHOOTABLE_OPTIONS.map((label) => {
+                      const active = shootableFilter.includes(label);
+                      return (
+                        <button
+                          key={label}
+                          className={`px-3 py-2 rounded-full text-[14px] border transition-all ${
+                            active
+                              ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
+                              : "bg-white border-[#D9D9D9] text-[#999999]"
+                          }`}
+                          onClick={() => handleToggleShootable(label)}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* 하단 버튼 */}
+              <div className="flex items-center gap-3 px-5 py-4 border-t border-[#E8E8E8] bg-white">
+                <button
+                  className="flex-1 h-14 flex items-center justify-center gap-2 rounded-xl border border-[#E8E8E8] bg-white active:scale-95"
+                  onClick={handleResetFilter}
+                >
+                  <Icon
+                    icon="ri:reset-left-fill"
+                    className="w-5 h-5 text-[#1E2124]"
+                  />
+                  <span className="text-[16px] font-semibold text-[#1E2124]">
+                    초기화
+                  </span>
+                </button>
+                <button
+                  className="flex-[2] h-14 flex items-center justify-center rounded-xl bg-[#FF2233] active:scale-95"
+                  onClick={handleApplyFilter}
+                >
+                  <span className="text-[16px] font-semibold text-white">
+                    {applyButtonLabel}
+                  </span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <SideMenu isOpen={isMenuOpen} onClose={closeMenu} />
     </motion.div>
