@@ -1,0 +1,19 @@
+import React from "react";
+import MobileView from "./views/MoblieView";
+import WebView from "./views/WebView";
+
+export default function ReservationManagementPage() {
+  return (
+    <div className="w-full bg-white">
+      {/* Mobile */}
+      <div className="md:hidden">
+        <MobileView />
+      </div>
+
+      {/* Web */}
+      <div className="hidden md:block">
+        <WebView />
+      </div>
+    </div>
+  );
+}
