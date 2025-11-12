@@ -10,6 +10,7 @@ export type Product = {
   thumbnail: string | null;
   region: string;
   ownerName: string;
+  category: string;
   tags: {
     id: number;
     tagName: string;

@@ -27,11 +27,11 @@ const bottomSheetVariants: Variants = {
 
 /* ========================= 정렬 타입/옵션 ========================= */
 
-export type SortOption = "최신순" | "리뷰많은순" | "높은가격순" | "낮은가격순";
+export type SortOption = "최신순" | "인기순" | "높은가격순" | "낮은가격순";
 
 const SORT_OPTIONS: SortOption[] = [
   "최신순",
-  "리뷰많은순",
+  "인기순",
   "높은가격순",
   "낮은가격순",
 ];
