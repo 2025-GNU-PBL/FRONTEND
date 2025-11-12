@@ -60,7 +60,6 @@ import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/ProductManagement/Cou
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
 import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEditPage";
 import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
-import DetailMobileView from "./pages/MyPage/OwnerMyPage/ReservationManagement/views/DetailMobileView";
 
 function Layout() {
   const location = useLocation();
