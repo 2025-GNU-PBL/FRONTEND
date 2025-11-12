@@ -129,6 +129,15 @@ function PaymentCard({ item }: { item: PaymentItem }) {
         >
           결제 상세
         </button>
+        <button
+          type="button"
+          className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333] tracking-[-0.2px]"
+          onClick={() => {
+            nav(`/my-page/client/payments/detail/${item.id}`); //추후 수정
+          }}
+        >
+          리뷰 작성
+        </button>
       </div>
     </div>
   );
