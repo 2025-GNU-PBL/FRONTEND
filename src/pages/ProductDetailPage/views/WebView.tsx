@@ -104,6 +104,22 @@ const WebView = () => {
     } catch (error) {
       console.error("장바구니 추가 실패:", error);
       alert("장바구니 추가에 실패했습니다.");
+      throw error; // Re-throw to propagate error to handleProductReservation
+    }
+  };
+
+  const handleProductReservation = async () => {
+    if (!detailData || !id) {
+      alert("상품 정보를 불러올 수 없습니다.");
+      return;
+    }
+
+    try {
+      await addToCart(); // Add to cart first
+      navigate('/product-inquiry', { state: { productId: id, category: category } });
+    } catch (error) {
+      // addToCart에서 이미 에러 처리됨
+      console.error("상품 예약 진행 실패:", error);
     }
   };
 
@@ -383,6 +399,7 @@ const WebView = () => {
             <button
               type="button"
               className="flex-1 h-12 rounded-xl bg-[#FF2233] text-white text-[15px] font-semibold flex items-center justify-center"
+              onClick={handleProductReservation}
             >
               상품예약
             </button>

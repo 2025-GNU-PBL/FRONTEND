@@ -123,7 +123,7 @@ const WebView = () => {
         .map(item => item.cartItemId);
 
       togglePopup(); // 팝업 닫기
-      navigate('/inquiry', { state: { draftIds, cartItemIds: selectedCartItemIds } });
+      navigate('/product-inquiry', { state: { draftIds, cartItemIds: selectedCartItemIds } });
     } catch (err) {
       console.error("Failed to create inquiry drafts:", err);
       setError("문의 초안 생성에 실패했습니다.");
