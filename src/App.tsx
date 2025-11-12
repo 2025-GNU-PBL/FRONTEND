@@ -192,7 +192,6 @@ const App = () => {
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/:id" element={<ChatPage />} />
           <Route path="/inquiry" element={<InquiryPage />} />{" "}
-          {/* New InquiryPage route */}
           {/* 고객 마이페이지 */}
           <Route path="/my-page/client" element={<ClientMyPageMain />} />
           <Route
