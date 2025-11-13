@@ -63,7 +63,7 @@ const WebView: React.FC = () => {
   const filtered = filterByTab(activeTab, NOTIFICATIONS);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex justify-center">
+    <div className="min-h-screen bg-[#F5F5F5] flex justify-center mt-15">
       <div className="w-full max-w-5xl flex gap-8 px-8 py-10">
         {/* 좌측 영역 */}
         <aside className="w-[220px]">

@@ -186,6 +186,8 @@ const App = () => {
         <Route path="/test" element={<ProductDetailPage />} />
         <Route path="/wedding/:id" element={<ProductDetailPage />} />
         <Route path="/studio/:id" element={<ProductDetailPage />} />
+        <Route path="/dress/:id" element={<ProductDetailPage />} />
+        <Route path="/makeup/:id" element={<ProductDetailPage />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>

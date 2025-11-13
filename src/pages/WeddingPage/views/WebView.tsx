@@ -9,6 +9,7 @@ import React, {
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import type { Product } from "../../../type/product";
 import api from "../../../lib/api/axios";
 
@@ -178,9 +179,15 @@ type CardProps = {
   product: ProductExt;
   liked: boolean;
   onToggleLike: (id: number) => void;
+  onClick: () => void;
 };
 
-const Card: React.FC<CardProps> = ({ product, liked, onToggleLike }) => {
+const Card: React.FC<CardProps> = ({
+  product,
+  liked,
+  onToggleLike,
+  onClick,
+}) => {
   const ratingText = Number(product.starCount ?? 0).toFixed(1);
   const displayPrice = formatPrice(product.price);
   const tagList: ProductTag[] = product.tags ?? [];
@@ -189,7 +196,10 @@ const Card: React.FC<CardProps> = ({ product, liked, onToggleLike }) => {
     <motion.article
       variants={fadeUp}
       whileHover={{ y: -2 }}
-      className="group relative w-full overflow-hidden rounded-2xl border border-[#F1F1F1] bg-white"
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      className="group relative w-full overflow-hidden rounded-2xl border border-[#F1F1F1] bg-white cursor-pointer"
     >
       {/* 이미지 */}
       <div className="relative w-full aspect-[4/3] overflow-hidden">
@@ -208,6 +218,7 @@ const Card: React.FC<CardProps> = ({ product, liked, onToggleLike }) => {
           aria-pressed={liked}
           onClick={(e) => {
             e.preventDefault();
+            e.stopPropagation(); // 카드 클릭으로 디테일 이동 방지
             onToggleLike(product.id);
           }}
           className="absolute right-3 top-3 grid aspect-square w-9 place-items-center rounded-full bg-black/45 backdrop-blur text-white transition hover:bg-black/60"
@@ -256,13 +267,10 @@ const Card: React.FC<CardProps> = ({ product, liked, onToggleLike }) => {
 };
 
 /* ========================= 웹 뷰 ========================= */
-/** ✅ 변경 사항 요약
- *  1) 지역 선택 UI를 좌측 '필터' 패널에서 분리 → 상단에 독립 섹션(가로 스크롤 칩 + 아이콘)로 배치, 선택 즉시 API 반영.
- *  2) 태그는 모바일과 동일하게 selectedTags(임시) ↔ appliedTags(실제) 구조 + '적용' 버튼으로 확정.
- *  3) 정렬 변경 시 즉시 반영.
- */
 
 const WebView: React.FC = () => {
+  const navigate = useNavigate();
+
   // 서버 데이터
   const [items, setItems] = useState<ProductExt[]>([]);
   const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
@@ -294,17 +302,6 @@ const WebView: React.FC = () => {
   /** ✅ 태그: 시트/패널 내 선택값과 실제 적용값 분리 */
   const [selectedTags, setSelectedTags] = useState<Set<WeddingTag>>(new Set());
   const [appliedTags, setAppliedTags] = useState<Set<WeddingTag>>(new Set());
-
-  // 그룹 더보기(필터 길이 단축)
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const toggleGroupExpand = useCallback((title: string) => {
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(title)) next.delete(title);
-      else next.add(title);
-      return next;
-    });
-  }, []);
 
   // 서버 파라미터
   const regionParam = useMemo(
@@ -517,6 +514,13 @@ const WebView: React.FC = () => {
     });
   }, []);
 
+  const goDetail = useCallback(
+    (id: number) => {
+      navigate(`/wedding/${id}`);
+    },
+    [navigate]
+  );
+
   const activeFilterCount = appliedTags.size;
 
   /* ========================= 렌더 ========================= */
@@ -645,80 +649,53 @@ const WebView: React.FC = () => {
                 )}
               </div>
 
-              {/* 스크롤 영역: 지역 섹션 제거, 태그만 유지 */}
+              {/* 스크롤 영역: 태그만 유지 (더보기 제거) */}
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-5">
-                {/* 필터 그룹 (접힘 기본값 + 더보기) */}
+                {/* 필터 그룹 */}
                 <section>
                   <h3 className="mb-2 text-[13px] font-semibold text-[#111827]">
                     필터
                   </h3>
 
                   <div className="space-y-3">
-                    {TAG_GROUPS.map((group) => {
-                      const isExpanded = expandedGroups.has(group.title);
-                      const items = isExpanded
-                        ? group.items
-                        : group.items.slice(0, 6);
+                    {TAG_GROUPS.map((group) => (
+                      <div
+                        key={group.title}
+                        className="rounded-xl border border-[#F1F1F1] bg-[#FBFBFB]"
+                      >
+                        <div className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-[13px] font-semibold text-[#1E2124]">
+                          <span>{group.title}</span>
+                        </div>
 
-                      return (
-                        <div
-                          key={group.title}
-                          className="rounded-xl border border-[#F1F1F1] bg-[#FBFBFB]"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => toggleGroupExpand(group.title)}
-                            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-[13px] font-semibold text-[#1E2124]"
-                          >
-                            <span>{group.title}</span>
-                            <Icon
-                              icon={
-                                isExpanded
-                                  ? "solar:alt-arrow-up-linear"
-                                  : "solar:alt-arrow-down-linear"
-                              }
-                              className="h-4 w-4 text-[#999]"
-                            />
-                          </button>
-
-                          {/* 내용: 선택은 임시 selectedTags에 반영 */}
-                          <div className="px-3 pb-2">
-                            <div className="flex flex-wrap gap-1.5">
-                              {items.map((tag) => {
-                                const active = selectedTags.has(tag);
-                                return (
-                                  <button
-                                    key={tag}
-                                    onClick={() => toggleTag(tag)}
-                                    className={`h-8 rounded-full border px-2.5 text-[12px] transition ${
-                                      active
-                                        ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
-                                        : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB]"
-                                    }`}
-                                  >
-                                    {TAG_LABEL[tag]}
-                                  </button>
-                                );
-                              })}
-                              {group.items.length > 6 && (
+                        {/* 내용: 모든 태그를 한 번에 노출 */}
+                        <div className="px-3 pb-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            {group.items.map((tag) => {
+                              const active = selectedTags.has(tag);
+                              return (
                                 <button
-                                  onClick={() => toggleGroupExpand(group.title)}
-                                  className="h-8 rounded-full border border-dashed border-[#E5E7EB] bg-white px-2.5 text-[12px] text-[#6B7280] hover:border-[#D1D5DB]"
+                                  key={tag}
+                                  onClick={() => toggleTag(tag)}
+                                  className={`h-8 rounded-full border px-2.5 text-[12px] transition ${
+                                    active
+                                      ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
+                                      : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB]"
+                                  }`}
                                 >
-                                  {isExpanded ? "간단히" : "더보기"}
+                                  {TAG_LABEL[tag]}
                                 </button>
-                              )}
-                            </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 </section>
               </div>
 
               {/* 패널 푸터(압축) */}
-              <div className="sticky bottom-0 border-t border-[#EDEDED] bg-white px-4 py-3">
+              <div className="sticky bottom-0 border-t border-[#EDEDED] bg:white px-4 py-3 bg-white">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -820,6 +797,7 @@ const WebView: React.FC = () => {
                     product={p}
                     liked={likedIds.has(p.id)}
                     onToggleLike={toggleLike}
+                    onClick={() => goDetail(p.id)}
                   />
                 ))}
 

@@ -7,73 +7,14 @@ import { BasicInfoContent } from "../sections/BasicInfoContent";
 import { DetailContent } from "../sections/DetailContent";
 import { ReviewContent } from "../sections/ReviewContent";
 import { useAppSelector } from "../../../store/hooks";
-
-/* ========================= 타입 정의 ========================= */
-
-type Category = "wedding" | "studio";
-
-/** 공통 이미지 타입 */
-type CommonImage = {
-  id: number;
-  url: string;
-  s3Key: string;
-  displayOrder: number;
-};
-
-/** 공통 옵션 타입 */
-type CommonOption = {
-  name: string;
-  detail: string;
-  price: number;
-};
-
-/** 웨딩홀 상세 타입 */
-export type WeddingHallDetail = {
-  id: number;
-  name: string;
-  price: number;
-  address: string;
-  detail: string;
-  availableTimes: string;
-  starCount: number;
-  averageRating: number;
-  capacity: number;
-  minGuest: number;
-  maxGuest: number;
-  parkingCapacity: number;
-  cateringType: string;
-  reservationPolicy: string;
-  region: string;
-  ownerName: string;
-  images: CommonImage[];
-  options: CommonOption[];
-  tags: string[];
-};
-
-/** 스튜디오 태그 타입 */
-type StudioTag = {
-  id: number;
-  tagName: string;
-};
-
-/** 스튜디오 상세 타입 */
-export type StudioDetail = {
-  id: number;
-  name: string;
-  address: string;
-  detail: string;
-  price: number;
-  availableTimes: string;
-  region: string;
-  images: CommonImage[];
-  options: CommonOption[];
-  tags: StudioTag[];
-};
-
-/** 공통 형태 */
-export type NormalizedDetail =
-  | (WeddingHallDetail & { _category: "wedding" })
-  | (StudioDetail & { _category: "studio" });
+import type {
+  Category,
+  NormalizedDetail,
+  WeddingHallDetail,
+  StudioDetail,
+  DressDetail,
+  MakeupDetail,
+} from "../../../type/product";
 
 /* ========================= 컴포넌트 ========================= */
 
@@ -134,10 +75,15 @@ const MobileView = () => {
   /* ========================= 카테고리 판별 ========================= */
   useEffect(() => {
     const [, first] = location.pathname.split("/");
+
     if (first === "wedding") {
       setCategory("wedding");
     } else if (first === "studio") {
       setCategory("studio");
+    } else if (first === "dress") {
+      setCategory("dress");
+    } else if (first === "makeup") {
+      setCategory("makeup");
     } else {
       setCategory(null);
       setErrorMsg("유효하지 않은 카테고리 경로입니다.");
@@ -160,6 +106,10 @@ const MobileView = () => {
           url = `/api/v1/wedding-hall/${id}`;
         } else if (category === "studio") {
           url = `/api/v1/studio/${id}`;
+        } else if (category === "dress") {
+          url = `/api/v1/dress/${id}`;
+        } else if (category === "makeup") {
+          url = `/api/v1/makeup/${id}`;
         }
 
         const { data } = await api.get(url);
@@ -174,6 +124,18 @@ const MobileView = () => {
           const normalized: NormalizedDetail = {
             ...(data as StudioDetail),
             _category: "studio",
+          };
+          setDetailData(normalized);
+        } else if (category === "dress") {
+          const normalized: NormalizedDetail = {
+            ...(data as DressDetail),
+            _category: "dress",
+          };
+          setDetailData(normalized);
+        } else if (category === "makeup") {
+          const normalized: NormalizedDetail = {
+            ...(data as MakeupDetail),
+            _category: "makeup",
           };
           setDetailData(normalized);
         }
@@ -331,7 +293,7 @@ const MobileView = () => {
           )}
         </main>
 
-        {/* 하단 고정 버튼: 항상 전체 폭 */}
+        {/* 하단 고정 버튼 */}
         <div className="fixed left-0 bottom-0 w-full bg-white px-4 pt-3 pb-5 z-30">
           <div className="flex gap-3">
             <button
@@ -360,7 +322,7 @@ const MobileView = () => {
           onClick={handleCloseCoupon}
         />
 
-        {/* 쿠폰 바텀시트: 전체 폭 사용 */}
+        {/* 쿠폰 바텀시트 */}
         <div
           className={`
             fixed left-0 bottom-0

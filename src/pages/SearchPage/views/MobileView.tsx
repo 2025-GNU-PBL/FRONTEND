@@ -7,6 +7,7 @@ import type { Variants } from "framer-motion";
 import ResultsMobile from "../sections/ResultsMobile";
 import api from "../../../lib/api/axios";
 import { useAppSelector } from "../../../store/hooks";
+import axios from "axios";
 
 const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
@@ -63,11 +64,20 @@ export default function MobileView() {
         "/api/v1/search/recent"
       );
       setRecentKeywords(res.data?.keywords ?? []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
 
-      const status = err?.response?.status;
-      const message = err?.response?.data?.message;
+      if (!axios.isAxiosError(err)) {
+        // axios 에러가 아닌 경우: 공통 에러 처리
+        setRecentKeywords([]);
+        setRecentError("최근 검색어를 불러오지 못했어요.");
+        setRecentLoading(false);
+        return;
+      }
+
+      const status = err.response?.status;
+      const message = (err.response?.data as { message?: string } | undefined)
+        ?.message;
 
       if (
         status === 400 ||
@@ -123,8 +133,9 @@ export default function MobileView() {
         }
 
         lastSavedKeywordRef.current = keyword;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
+        // 저장 API는 에러를 UI에 꼭 노출할 필요는 없으니 로깅만
       }
     },
     [fetchRecentKeywords, isAuth]

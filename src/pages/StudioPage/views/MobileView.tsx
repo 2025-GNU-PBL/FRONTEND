@@ -16,6 +16,7 @@ import { useAppSelector } from "../../../store/hooks";
 import ProductCard from "../../../components/ProductCard";
 import type { SortOption } from "../../../components/SortBottomSheet";
 import SortBottomSheet from "../../../components/SortBottomSheet";
+import axios from "axios";
 
 /* ========================= 애니메이션 유틸 ========================= */
 
@@ -131,7 +132,7 @@ const MobileView: React.FC = () => {
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // ✅ 필터 상태 분리: 시트 내 임시 선택 vs 실제 적용값
+  // 필터 상태 분리: 시트 내 임시 선택 vs 실제 적용값
   const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(null);
   const [selectedShootable, setSelectedShootable] = useState<
     Set<ShootableOption>
@@ -219,7 +220,7 @@ const MobileView: React.FC = () => {
     return tags.length > 0 ? tags.join(",") : undefined;
   }, [appliedStyle, appliedShootable]);
 
-  // ✅ 현재 파라미터 스냅샷(요청/응답 가드 & 리셋 트리거)
+  // 현재 파라미터 스냅샷(요청/응답 가드 & 리셋 트리거)
   const paramsKey = useMemo(
     () =>
       JSON.stringify({
@@ -300,9 +301,14 @@ const MobileView: React.FC = () => {
 
         const nextPage = page + 1;
         setHasMore(nextPage <= data.page.totalPages);
-      } catch (err: any) {
-        if (err?.name === "CanceledError" || err?.code === "ERR_CANCELED") {
-          // 의도적 취소는 무시
+      } catch (err: unknown) {
+        // 취소된 요청(axios / AbortController)은 무시
+        if (
+          (axios.isAxiosError(err) && err.code === "ERR_CANCELED") ||
+          (err instanceof Error &&
+            (err.name === "CanceledError" || err.name === "AbortError"))
+        ) {
+          // no-op
         } else {
           console.error(err);
           setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
@@ -318,12 +324,12 @@ const MobileView: React.FC = () => {
     [hasMore, pageSize, selectedRegion, sortParam, tagsParam, paramsKey]
   );
 
-  // ✅ 이펙트 가드: paramsKey가 바뀌었는데 pageNumber가 1이 아니면 먼저 1로 맞춘 뒤, 다음 렌더에서만 fetch 수행
+  // paramsKey 변경 시 페이지 리셋 & fetch
   useEffect(() => {
     if (prevParamsKeyRef.current !== paramsKey && pageNumber !== 1) {
       prevParamsKeyRef.current = paramsKey;
       setPageNumber(1);
-      return; // 여기서는 fetch 하지 않음
+      return;
     }
     prevParamsKeyRef.current = paramsKey;
     fetchMoreItems(pageNumber);
@@ -393,7 +399,7 @@ const MobileView: React.FC = () => {
       setHasMore(true);
       setTotalCount(0);
       setPageNumber(1);
-      closeSort(); // ✅ 정렬 옵션 선택 후 시트 닫기 추가
+      closeSort();
     },
     [closeSort]
   );
@@ -459,13 +465,13 @@ const MobileView: React.FC = () => {
             >
               <Icon
                 icon="solar:cart-large-minimalistic-linear"
-                className="w-6 h-6 text-black/80"
+                className="w-6 h-6 text:black/80"
               />
             </motion.button>
           )}
           <motion.button
             aria-label="menu"
-            className="grid place-items-center w-6 h-6 rounded hover:bg-black/5 active:scale-95"
+            className="grid place-items-center w-6 h-6 rounded hover:bg:black/5 active:scale-95"
             onClick={openMenu}
             whileTap={{ scale: 0.94 }}
           >

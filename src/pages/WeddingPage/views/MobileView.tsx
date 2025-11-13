@@ -16,6 +16,7 @@ import { useAppSelector } from "../../../store/hooks";
 import ProductCard from "../../../components/ProductCard";
 import type { SortOption } from "../../../components/SortBottomSheet";
 import SortBottomSheet from "../../../components/SortBottomSheet";
+import axios from "axios";
 
 /* ========================= 애니메이션 유틸 ========================= */
 
@@ -248,7 +249,7 @@ const MobileView: React.FC = () => {
     setPageNumber(1);
   }, []);
 
-  // ✅ 정렬 옵션 선택 시 정렬 시트 닫기
+  // 정렬 옵션 선택 시 정렬 시트 닫기
   const handleChangeSort = useCallback(
     (opt: SortOption) => {
       setSortOption(opt);
@@ -256,7 +257,7 @@ const MobileView: React.FC = () => {
       setHasMore(true);
       setTotalCount(0);
       setPageNumber(1);
-      closeSort(); // 정렬 변경 후 시트 닫기
+      closeSort();
     },
     [closeSort]
   );
@@ -366,9 +367,13 @@ const MobileView: React.FC = () => {
         const nextPage = page + 1;
         const more = nextPage <= data.page.totalPages;
         setHasMore(more);
-      } catch (err: any) {
-        if (err?.name === "CanceledError" || err?.code === "ERR_CANCELED") {
-          // 의도적 취소는 무시
+      } catch (err: unknown) {
+        // 의도적인 취소(axios 또는 AbortController)는 무시
+        if (
+          (axios.isAxiosError(err) && err.code === "ERR_CANCELED") ||
+          (err instanceof Error && err.name === "CanceledError")
+        ) {
+          // 취소된 요청이므로 메시지 표시 안 함
         } else {
           console.error(err);
           setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
@@ -384,12 +389,12 @@ const MobileView: React.FC = () => {
     [hasMore, pageSize, selectedRegion, sortParam, tagsParam, paramsKey]
   );
 
-  // ✅ 이펙트 가드: paramsKey가 바뀌었는데 pageNumber가 1이 아니면 먼저 1로 맞춘 뒤, 다음 렌더에서만 fetch 수행
+  // paramsKey 변경 시 페이지 리셋 & fetch
   useEffect(() => {
     if (prevParamsKeyRef.current !== paramsKey && pageNumber !== 1) {
       prevParamsKeyRef.current = paramsKey;
       setPageNumber(1);
-      return; // 여기서는 fetch 하지 않음
+      return;
     }
     prevParamsKeyRef.current = paramsKey;
     fetchMoreItems(pageNumber);

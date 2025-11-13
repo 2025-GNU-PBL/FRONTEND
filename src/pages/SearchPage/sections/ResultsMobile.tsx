@@ -3,6 +3,10 @@ import { Icon } from "@iconify/react";
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../../lib/api/axios";
+import ProductCard, { type CardProduct } from "../../../components/ProductCard";
+import SortBottomSheet, {
+  type SortOption,
+} from "../../../components/SortBottomSheet";
 
 type ResultsProps = {
   query?: string;
@@ -31,6 +35,9 @@ type SearchItem = {
   isWished?: boolean;
   badges?: string[];
   tags?: Tag[];
+  category?: string; // "WEDDING_HALL" | "DRESS" | "MAKEUP" | "STUDIO" 등
+  rating?: number;
+  starCount?: number;
 };
 
 type SearchResponse = {
@@ -43,10 +50,10 @@ type Card = {
   img: string;
   brand: string;
   title: string;
-  price: string;
-  views: string;
-  badges?: { label: string; bg: string; color: string }[];
+  price: number;
   heart?: boolean;
+  category?: string;
+  rating: number;
 };
 
 const PAGE_SIZE = 6;
@@ -68,6 +75,43 @@ export default function ResultsMobile({ query }: ResultsProps) {
   const [error, setError] = useState<string | null>(null);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // 정렬 상태
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const [sortOption, setSortOption] = useState<SortOption>("최신순");
+
+  // 정렬 옵션 → API sortType 매핑
+  const sortParam = useMemo(() => {
+    if (sortOption === "최신순") return "LATEST";
+    if (sortOption === "인기순") return "POPULAR";
+    if (sortOption === "높은가격순") return "PRICE_DESC";
+    if (sortOption === "낮은가격순") return "PRICE_ASC";
+    return DEFAULT_SORT;
+  }, [sortOption]);
+
+  const openSort = useCallback(() => {
+    setIsSortOpen(true);
+  }, []);
+
+  const closeSort = useCallback(() => {
+    setIsSortOpen(false);
+  }, []);
+
+  // 정렬 변경 핸들러 (예시 코드 로직 그대로 차용)
+  const handleChangeSort = useCallback(
+    (opt: SortOption) => {
+      setSortOption(opt);
+      // 목록 리셋 후 1페이지부터 다시 호출
+      setItems([]);
+      setHasMore(false);
+      setTotalCount(null);
+      setPageNumber(1);
+      setInitialLoaded(false);
+      setError(null);
+      closeSort();
+    },
+    [closeSort]
+  );
 
   // 키워드 변경 시 상태 초기화
   useEffect(() => {
@@ -94,21 +138,9 @@ export default function ResultsMobile({ query }: ResultsProps) {
     const brand = raw.brandName || "브랜드명";
     const title = raw.name || "상품명";
 
-    // 가격
     const priceNumber =
       typeof raw.price === "number" ? raw.price : Number(raw.price || 0);
-    const price =
-      priceNumber > 0 ? `${priceNumber.toLocaleString()}원` : "가격 정보 없음";
 
-    // 조회수
-    const viewCount =
-      typeof raw.viewCount === "number"
-        ? raw.viewCount
-        : Number(raw.viewCount || 0);
-    const views =
-      viewCount > 0 ? `${viewCount.toLocaleString()}명이 봤어요` : "";
-
-    // 이미지
     const img =
       (raw.thumbnailUrl &&
         raw.thumbnailUrl.trim().length > 0 &&
@@ -116,41 +148,22 @@ export default function ResultsMobile({ query }: ResultsProps) {
       (raw.thumbnail && raw.thumbnail.trim().length > 0 && raw.thumbnail) ||
       "/images/placeholder.png";
 
-    // 배지: badges(string[]) 우선, 없으면 tags 사용
-    const badgesFromBadges =
-      raw.badges && raw.badges.length > 0
-        ? raw.badges.map((label) => ({
-            label,
-            bg: "#EFEBFF",
-            color: "#803BFF",
-          }))
-        : [];
-
-    const badgesFromTags =
-      raw.tags && raw.tags.length > 0
-        ? raw.tags.map((tag) => ({
-            label: tag.tagName,
-            bg: "#EFEBFF",
-            color: "#803BFF",
-          }))
-        : [];
-
-    const badges =
-      badgesFromBadges.length > 0
-        ? badgesFromBadges
-        : badgesFromTags.length > 0
-        ? badgesFromTags
-        : undefined;
+    const ratingRaw =
+      typeof raw.rating === "number"
+        ? raw.rating
+        : typeof raw.starCount === "number"
+        ? raw.starCount
+        : 0;
 
     return {
       id,
       img,
       brand,
       title,
-      price,
-      views,
-      badges,
+      price: Number.isNaN(priceNumber) ? 0 : priceNumber,
       heart: !!raw.isWished,
+      category: raw.category,
+      rating: Number.isNaN(ratingRaw) ? 0 : ratingRaw,
     };
   };
 
@@ -164,7 +177,7 @@ export default function ResultsMobile({ query }: ResultsProps) {
         const res = await api.get<SearchResponse>("/api/v1/search", {
           params: {
             keyword,
-            sortType: DEFAULT_SORT,
+            sortType: sortParam, // ✅ 선택된 정렬값 사용
             pageNumber: page,
             pageSize: PAGE_SIZE,
           },
@@ -182,7 +195,6 @@ export default function ResultsMobile({ query }: ResultsProps) {
           setTotalCount(mapped.length);
         }
 
-        // 다음 페이지 여부
         setHasMore(content.length === PAGE_SIZE);
         setInitialLoaded(true);
       } catch (err) {
@@ -192,7 +204,7 @@ export default function ResultsMobile({ query }: ResultsProps) {
         setLoading(false);
       }
     },
-    [keyword]
+    [keyword, sortParam]
   );
 
   // 첫 페이지 및 페이지 변경 시 fetch
@@ -232,27 +244,47 @@ export default function ResultsMobile({ query }: ResultsProps) {
     return items.length;
   }, [items.length, totalCount]);
 
-  // 상세 페이지 이동 (웨딩홀 모바일뷰 패턴 참고)
+  const getDetailPath = (category: string | undefined, id: string) => {
+    switch (category) {
+      case "DRESS":
+        return `/dress/${id}`;
+      case "WEDDING_HALL":
+        return `/wedding/${id}`;
+      case "MAKEUP":
+        return `/makeup/${id}`;
+      case "STUDIO":
+        return `/studio/${id}`;
+      default:
+        return `/product/${id}`;
+    }
+  };
+
   const handleCardClick = useCallback(
-    (id: string) => {
-      // 실제 상세페이지 경로에 맞게 수정
-      navigate(`/product/${id}`);
+    (id: string, category?: string) => {
+      const path = getDetailPath(category, id);
+      navigate(path);
     },
     [navigate]
   );
+
+  const handleToggleLike = useCallback((id: number) => {
+    console.log("toggle like from search result:", id);
+  }, []);
 
   if (!keyword) return null;
 
   return (
     <div className="relative w-full min-h-screen bg-white">
-      {/* 상단 결과 개수 */}
+      {/* 상단 결과 개수 & 정렬 버튼 */}
       <div className="pt-1 px-5 flex items-center justify-between">
         <div className="text-[14px] leading-[150%] tracking-[-0.2px] text-[#999999]">
           {initialLoaded && displayCount === 0 ? "" : `총 ${displayCount}개`}
         </div>
-        {/* 정렬 영역 (웨딩홀 페이지 스타일 맞춤용, 실제 정렬 추가 가능) */}
-        <button className="flex items-center gap-1 active:scale-95">
-          <span className="text-[14px] text-black">최신순</span>
+        <button
+          className="flex items-center gap-1 active:scale-95"
+          onClick={openSort}
+        >
+          <span className="text-[14px] text-black">{sortOption}</span>
           <Icon
             icon="solar:alt-arrow-down-linear"
             className="w-4 h-4 text-[#999999]"
@@ -265,92 +297,33 @@ export default function ResultsMobile({ query }: ResultsProps) {
         <div className="mt-4 px-5 text-[13px] text-red-500">{error}</div>
       )}
 
-      {/* 카드 그리드 (웨딩홀 MobileView 스타일 참고 적용) */}
+      {/* 카드 그리드 - ProductCard 재사용 */}
       {!error && (
         <>
-          <div className="mt-6 px-5 grid grid-cols-2 gap-y-5 gap-x-2.5 w-full">
+          <div className="mt-6 px-2 grid grid-cols-2 gap-y-5 gap-x-2.5 w-full">
             {items.map((it) => {
-              const hasBadges = !!it.badges?.length;
+              const product: CardProduct = {
+                id: Number(it.id),
+                name: it.title,
+                ownerName: it.brand,
+                price: it.price,
+                thumbnail: it.img,
+                starCount: it.rating ?? 0,
+              };
 
               return (
-                <div
-                  key={it.id}
-                  className="w-full flex flex-col gap-2 cursor-pointer"
-                  onClick={() => handleCardClick(it.id)}
-                >
-                  {/* 썸네일 영역 */}
-                  <div className="relative w-full aspect-[176/170] overflow-hidden rounded-[12px] bg-[#F3F4F5]">
-                    <img
-                      src={it.img}
-                      alt={it.title}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                    {it.heart && (
-                      <button
-                        aria-label="wish"
-                        className="absolute right-2 top-2 w-5 h-5 flex items-center justify-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
-                        <Icon
-                          icon="solar:heart-bold"
-                          className="w-5 h-5 text-[#FF4D6A] drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]"
-                        />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* 텍스트 영역 */}
-                  <div className="flex flex-col gap-[3px] w-full">
-                    {/* 브랜드 */}
-                    <div className="text-[12px] leading-[150%] tracking-[-0.2px] text-[#999999] truncate">
-                      {it.brand}
-                    </div>
-
-                    {/* 제목 */}
-                    <div className="text-[14px] leading-[150%] tracking-[-0.2px] text-[#1E2124] line-clamp-2">
-                      {it.title}
-                    </div>
-
-                    {/* 배지 */}
-                    {hasBadges && (
-                      <div className="flex flex-row flex-wrap items-start gap-1 mt-[2px]">
-                        {it.badges!.map((b, i) => (
-                          <div
-                            key={i}
-                            className="flex flex-row items-center px-2 py-[2px] rounded-[4px]"
-                            style={{ background: b.bg }}
-                          >
-                            <span
-                              className="text-[10px] font-semibold leading-[150%] tracking-[-0.2px]"
-                              style={{ color: b.color }}
-                            >
-                              {b.label}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* 가격 */}
-                    <div className="text-[15px] font-semibold leading-[160%] tracking-[-0.2px] text-[#000000]">
-                      {it.price}
-                    </div>
-                  </div>
-
-                  {/* 조회수 */}
-                  {it.views && (
-                    <div className="text-[11px] leading-[150%] tracking-[-0.1px] text-[#999999]">
-                      {it.views}
-                    </div>
-                  )}
-                </div>
+                <ProductCard
+                  key={`p-${product.id}`}
+                  product={product}
+                  liked={it.heart ?? false}
+                  onToggleLike={handleToggleLike}
+                  onClick={() =>
+                    handleCardClick(String(product.id), it.category)
+                  }
+                />
               );
             })}
 
-            {/* 스켈레톤: 초기 로딩 시 */}
             {loading &&
               items.length === 0 &&
               Array.from({ length: 4 }).map((_, i) => (
@@ -366,24 +339,20 @@ export default function ResultsMobile({ query }: ResultsProps) {
               ))}
           </div>
 
-          {/* 인피니트 스크롤 센티넬 */}
           <div ref={sentinelRef} className="w-full h-4" />
 
-          {/* 로딩 표시 (추가 페이지) */}
           {loading && items.length > 0 && (
             <div className="pb-8 pt-2 text-center">
               <p className="text-[12px] text-[#595F63]">불러오는 중…</p>
             </div>
           )}
 
-          {/* 마지막 안내 */}
           {!loading && !hasMore && items.length > 0 && (
             <div className="pb-8 pt-2 text-center">
               <p className="text-[12px] text-[#999999]">마지막 상품입니다.</p>
             </div>
           )}
 
-          {/* 결과 없음 */}
           {initialLoaded && !loading && items.length === 0 && !error && (
             <div className="mt-8 px-5 text-[13px] text-[#999999] text-center">
               검색 조건에 맞는 상품이 없습니다.
@@ -391,6 +360,14 @@ export default function ResultsMobile({ query }: ResultsProps) {
           )}
         </>
       )}
+
+      {/* 정렬 Bottom Sheet */}
+      <SortBottomSheet
+        isOpen={isSortOpen}
+        sortOption={sortOption}
+        onClose={closeSort}
+        onChange={handleChangeSort}
+      />
     </div>
   );
 }
