@@ -91,7 +91,7 @@ export default function MobileView() {
           }
         );
 
-        // 👉 백엔드 실제 응답을 화면용 OwnerProduct 로 매핑
+        // 백엔드 실제 응답을 화면용 OwnerProduct 로 매핑
         const mapped: OwnerProduct[] = (data?.content ?? []).map((p) => ({
           id: p.id,
           name: p.detail, // detail = 상품명(카드 타이틀)
@@ -277,6 +277,11 @@ export default function MobileView() {
               ))}
             </div>
           )}
+
+          {/* pageMeta 디버깅 필요하면 아래 주석 해제 */}
+          {/* <pre className="px-5 py-4 text-xs text-gray-400">
+            {JSON.stringify(pageMeta, null, 2)}
+          </pre> */}
         </div>
 
         {/* 오른쪽 아래 플로팅 상품 등록 버튼 */}
