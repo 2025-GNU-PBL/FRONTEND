@@ -1,13 +1,14 @@
-// /sections/ResultsWeb.tsx
+// sections/ResultsMobile.tsx
 import { Icon } from "@iconify/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../../lib/api/axios";
 import ProductCard, { type CardProduct } from "../../../components/ProductCard";
-import type { SortOption } from "../../../components/SortBottomSheet";
+import SortBottomSheet, {
+  type SortOption,
+} from "../../../components/SortBottomSheet";
 
 type ResultsProps = {
-  /** 부모에서 넘기면 이 값을 우선 사용, 안 넘기면 URL ?q= 사용 */
   query?: string;
 };
 
@@ -58,7 +59,7 @@ type Card = {
 const PAGE_SIZE = 6;
 const DEFAULT_SORT = "LATEST";
 
-export default function ResultsWeb({ query }: ResultsProps) {
+export default function ResultsMobile({ query }: ResultsProps) {
   const [sp] = useSearchParams();
   const navigate = useNavigate();
 
@@ -75,7 +76,8 @@ export default function ResultsWeb({ query }: ResultsProps) {
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // 정렬 상태 (모바일과 동일)
+  // 정렬 상태
+  const [isSortOpen, setIsSortOpen] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>("최신순");
 
   // 정렬 옵션 → API sortType 매핑
@@ -86,6 +88,30 @@ export default function ResultsWeb({ query }: ResultsProps) {
     if (sortOption === "낮은가격순") return "PRICE_ASC";
     return DEFAULT_SORT;
   }, [sortOption]);
+
+  const openSort = useCallback(() => {
+    setIsSortOpen(true);
+  }, []);
+
+  const closeSort = useCallback(() => {
+    setIsSortOpen(false);
+  }, []);
+
+  // 정렬 변경 핸들러 (예시 코드 로직 그대로 차용)
+  const handleChangeSort = useCallback(
+    (opt: SortOption) => {
+      setSortOption(opt);
+      // 목록 리셋 후 1페이지부터 다시 호출
+      setItems([]);
+      setHasMore(false);
+      setTotalCount(null);
+      setPageNumber(1);
+      setInitialLoaded(false);
+      setError(null);
+      closeSort();
+    },
+    [closeSort]
+  );
 
   // 키워드 변경 시 상태 초기화
   useEffect(() => {
@@ -151,7 +177,7 @@ export default function ResultsWeb({ query }: ResultsProps) {
         const res = await api.get<SearchResponse>("/api/v1/search", {
           params: {
             keyword,
-            sortType: sortParam,
+            sortType: sortParam, // ✅ 선택된 정렬값 사용
             pageNumber: page,
             pageSize: PAGE_SIZE,
           },
@@ -201,7 +227,7 @@ export default function ResultsWeb({ query }: ResultsProps) {
       },
       {
         root: null,
-        rootMargin: "200px",
+        rootMargin: "150px",
         threshold: 0.1,
       }
     );
@@ -242,76 +268,39 @@ export default function ResultsWeb({ query }: ResultsProps) {
   );
 
   const handleToggleLike = useCallback((id: number) => {
-    console.log("toggle like from search result (web):", id);
-  }, []);
-
-  const handleChangeSort = useCallback((opt: SortOption) => {
-    setSortOption(opt);
-    // 목록 리셋 후 1페이지부터 다시 호출
-    setItems([]);
-    setHasMore(false);
-    setTotalCount(null);
-    setPageNumber(1);
-    setInitialLoaded(false);
-    setError(null);
+    console.log("toggle like from search result:", id);
   }, []);
 
   if (!keyword) return null;
 
-  const sortButtons: { label: SortOption; icon: string }[] = [
-    { label: "최신순", icon: "solar:clock-circle-outline" },
-    { label: "인기순", icon: "tabler:flame" },
-    { label: "높은가격순", icon: "tabler:currency-won" },
-    { label: "낮은가격순", icon: "tabler:currency-won" },
-  ];
-
   return (
-    <div className="relative w-full min-h-[400px]">
+    <div className="relative w-full min-h-screen bg-white">
       {/* 상단 결과 개수 & 정렬 버튼 */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="text-[14px] leading-[150%] tracking-[-0.2px] text-[#595F63]">
+      <div className="pt-1 px-5 flex items-center justify-between">
+        <div className="text-[14px] leading-[150%] tracking-[-0.2px] text-[#999999]">
           {initialLoaded && displayCount === 0 ? "" : `총 ${displayCount}개`}
         </div>
-
-        <div className="flex items-center gap-2">
-          {sortButtons.map((btn) => {
-            const active = sortOption === btn.label;
-            const isPriceDown = btn.label === "낮은가격순";
-
-            return (
-              <button
-                key={btn.label}
-                type="button"
-                onClick={() => handleChangeSort(btn.label)}
-                className={[
-                  "inline-flex items-center gap-1 h-8 px-3 rounded-full border text-xs transition",
-                  active
-                    ? "border-black bg-black text-white"
-                    : "border-[#D0D4DA] bg-white text-[#555B65] hover:border-black/50 hover:bg-[#F3F4F5]",
-                ].join(" ")}
-              >
-                <Icon
-                  icon={btn.icon}
-                  className={[
-                    "w-4 h-4",
-                    btn.label === "높은가격순" ? "rotate-180" : "",
-                    isPriceDown ? "" : "",
-                  ].join(" ")}
-                />
-                <span>{btn.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        <button
+          className="flex items-center gap-1 active:scale-95"
+          onClick={openSort}
+        >
+          <span className="text-[14px] text-black">{sortOption}</span>
+          <Icon
+            icon="solar:alt-arrow-down-linear"
+            className="w-4 h-4 text-[#999999]"
+          />
+        </button>
       </div>
 
       {/* 에러 메시지 */}
-      {error && <div className="mb-4 text-[13px] text-red-500">{error}</div>}
+      {error && (
+        <div className="mt-4 px-5 text-[13px] text-red-500">{error}</div>
+      )}
 
-      {/* 카드 그리드 - ProductCard 재사용 (데스크톱 레이아웃) */}
+      {/* 카드 그리드 - ProductCard 재사용 */}
       {!error && (
         <>
-          <div className="grid gap-6 grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-6 px-2 grid grid-cols-2 gap-y-5 gap-x-2.5 w-full">
             {items.map((it) => {
               const product: CardProduct = {
                 id: Number(it.id),
@@ -335,15 +324,14 @@ export default function ResultsWeb({ query }: ResultsProps) {
               );
             })}
 
-            {/* 로딩 스켈레톤 (첫 로딩 시) */}
             {loading &&
               items.length === 0 &&
-              Array.from({ length: 8 }).map((_, i) => (
+              Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={`skeleton-${i}`}
-                  className="animate-pulse w-full flex flex-col gap-3"
+                  className="animate-pulse w-full flex flex-col gap-2"
                 >
-                  <div className="w-full aspect-[4/3] rounded-[12px] bg-gray-100" />
+                  <div className="w-full aspect-[176/170] rounded-[12px] bg-gray-100" />
                   <div className="h-3 w-2/5 rounded bg-gray-100" />
                   <div className="h-3 w-4/5 rounded bg-gray-100" />
                   <div className="h-4 w-1/2 rounded bg-gray-100" />
@@ -351,28 +339,35 @@ export default function ResultsWeb({ query }: ResultsProps) {
               ))}
           </div>
 
-          {/* 인피니트 스크롤 sentinel */}
           <div ref={sentinelRef} className="w-full h-4" />
 
           {loading && items.length > 0 && (
-            <div className="py-4 text-center">
+            <div className="pb-8 pt-2 text-center">
               <p className="text-[12px] text-[#595F63]">불러오는 중…</p>
             </div>
           )}
 
           {!loading && !hasMore && items.length > 0 && (
-            <div className="py-4 text-center">
+            <div className="pb-8 pt-2 text-center">
               <p className="text-[12px] text-[#999999]">마지막 상품입니다.</p>
             </div>
           )}
 
           {initialLoaded && !loading && items.length === 0 && !error && (
-            <div className="mt-10 rounded-xl border border-dashed border-gray-200 p-6 text-center text-[#8B9199] text-[13px]">
+            <div className="mt-8 px-5 text-[13px] text-[#999999] text-center">
               검색 조건에 맞는 상품이 없습니다.
             </div>
           )}
         </>
       )}
+
+      {/* 정렬 Bottom Sheet */}
+      <SortBottomSheet
+        isOpen={isSortOpen}
+        sortOption={sortOption}
+        onClose={closeSort}
+        onChange={handleChangeSort}
+      />
     </div>
   );
 }

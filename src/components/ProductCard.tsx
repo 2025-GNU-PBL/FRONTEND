@@ -2,7 +2,6 @@ import React from "react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
-import type { Product } from "../type/product";
 
 /* ========================= 애니메이션 ========================= */
 
@@ -28,12 +27,23 @@ const formatPrice = (price: number | string) => {
   return `${num.toLocaleString("ko-KR")}원`;
 };
 
-const getThumb = (p: Product) => p.thumbnail || "/images/placeholder.jpg";
+/* ========================= 카드 전용 타입 ========================= */
 
-/* ========================= 타입 ========================= */
+export type CardProduct = {
+  id: number;
+  name: string;
+  ownerName: string;
+  price: number | string;
+  thumbnail?: string | null;
+  starCount?: number;
+};
+
+const getThumb = (p: CardProduct) => p.thumbnail || "/images/placeholder.jpg";
+
+/* ========================= Props ========================= */
 
 export type WeddingHallCardProps = {
-  product: Product;
+  product: CardProduct;
   liked: boolean;
   onToggleLike: (id: number) => void;
   onClick?: () => void;

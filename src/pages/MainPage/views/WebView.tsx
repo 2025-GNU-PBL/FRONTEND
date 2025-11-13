@@ -1,5 +1,6 @@
 // src/pages/MainPage/views/WebView.tsx
 import { Icon } from "@iconify/react";
+import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SideMenu from "../../../components/SideMenu";
@@ -44,6 +45,17 @@ const ENDPOINT_BY_CATEGORY: Record<CategoryKey, string> = {
   studio: "/api/v1/studio/filter",
   dress: "/api/v1/dress/filter",
   makeup: "/api/v1/makeup/filter",
+};
+
+// ✅ 카테고리별 상세 페이지 경로 매핑 (모바일과 동일하게)
+const DETAIL_PATH_BY_CATEGORY: Record<
+  CategoryKey,
+  (id: number | string) => string
+> = {
+  hall: (id) => `/wedding/${id}`,
+  studio: (id) => `/studio/${id}`,
+  dress: (id) => `/dress/${id}`,
+  makeup: (id) => `/makeup/${id}`,
 };
 
 // 서버 규격: pageNumber(1-base), pageSize(기본 6)
@@ -309,15 +321,22 @@ export default function WebView({
               }
             >
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-3">
-                {items.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    onClick={() => navigate(`/product/${p.id}`)}
-                    formatPrice={formatPrice}
-                    shortAddress={shortAddress}
-                  />
-                ))}
+                {items.map((p) => {
+                  // ✅ 현재 활성 카테고리에 따라 상세 경로 결정 (모바일과 동일)
+                  const detailPath =
+                    DETAIL_PATH_BY_CATEGORY[active]?.(p.id) ??
+                    `/wedding/${p.id}`;
+
+                  return (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      onClick={() => navigate(detailPath)}
+                      formatPrice={formatPrice}
+                      shortAddress={shortAddress}
+                    />
+                  );
+                })}
               </div>
 
               {/* 무한 스크롤 sentinel */}
@@ -359,7 +378,7 @@ export default function WebView({
           <aside className="col-span-12 lg:col-span-4">
             <button
               className={`w-full rounded-2xl ${PRIMARY_COLOR} p-5 text-white shadow-md transition duration-300 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]`}
-              onClick={() => navigate("/card-discount")}
+              onClick={() => navigate("/event")}
             >
               <div className="flex items-center justify-between text-left">
                 <div className="flex items-center">

@@ -73,7 +73,7 @@ const ENDPOINT_BY_CATEGORY: Record<CategoryKey, string> = {
   makeup: "/api/v1/makeup/filter",
 };
 
-// ✅ 카테고리별 상세 페이지 경로 매핑
+// 상세 페이지 매핑
 const DETAIL_PATH_BY_CATEGORY: Record<
   CategoryKey,
   (id: number | string) => string
@@ -112,7 +112,6 @@ export default function MobileView({
   const [errorMore, setErrorMore] = useState<string | null>(null);
   const [reachedEnd, setReachedEnd] = useState<boolean>(false);
 
-  // 카테고리/초기 데이터 변경 시 초기화
   useEffect(() => {
     setItems(products ?? []);
     setPageNumber((products?.length ?? 0) > 0 ? 1 : 0);
@@ -121,7 +120,6 @@ export default function MobileView({
     setReachedEnd(false);
   }, [active, products, pageMeta]);
 
-  // 다음 페이지 여부 판단
   const hasNext = useMemo(() => {
     if (pageMeta?.totalPages && pageMeta?.number !== undefined) {
       const currentByMetaOneBase =
@@ -182,7 +180,6 @@ export default function MobileView({
     }
   }, [active, hasNext, loadingMore, pageNumber, pageSize]);
 
-  // IntersectionObserver로 가로 끝에서 추가 로드
   useEffect(() => {
     const rootEl = listRef.current;
     const targetEl = sentinelRef.current;
@@ -191,9 +188,7 @@ export default function MobileView({
     const observer = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
-          if (e.isIntersecting) {
-            loadNextPage();
-          }
+          if (e.isIntersecting) loadNextPage();
         }
       },
       {
@@ -207,15 +202,12 @@ export default function MobileView({
     return () => observer.disconnect();
   }, [loadNextPage, items.length, active]);
 
-  // 컨테이너가 넓어서 스크롤 안 생기면 자동 추가 로드
   useEffect(() => {
     const rootEl = listRef.current;
     if (!rootEl) return;
     const needsMore =
       rootEl.scrollWidth <= rootEl.clientWidth && hasNext && !loadingMore;
-    if (needsMore) {
-      loadNextPage();
-    }
+    if (needsMore) loadNextPage();
   }, [items, hasNext, loadingMore, loadNextPage]);
 
   const icons = [
@@ -245,9 +237,7 @@ export default function MobileView({
           {isAuthenticated && (
             <motion.button
               className="flex items-center justify-center hover:opacity-80 active:scale-95"
-              onClick={() => {
-                navigate("/notification");
-              }}
+              onClick={() => navigate("/notification")}
               whileTap={{ scale: 0.94 }}
             >
               <Icon
@@ -259,9 +249,7 @@ export default function MobileView({
           {isAuthenticated && (
             <motion.button
               className="flex items-center justify-center hover:opacity-80 active:scale-95"
-              onClick={() => {
-                navigate("/cart");
-              }}
+              onClick={() => navigate("/cart")}
               whileTap={{ scale: 0.94 }}
             >
               <Icon
@@ -375,7 +363,7 @@ export default function MobileView({
           })}
         </motion.div>
 
-        {/* 카테고리 상품 리스트 (가로 스크롤) */}
+        {/* 가로 리스트 */}
         <div className="-mx-5 px-5">
           <motion.div
             key={active}
@@ -447,16 +435,11 @@ export default function MobileView({
               );
             })}
 
-            {/* sentinel */}
-            <div
-              ref={sentinelRef}
-              className="flex-none w-px h-[1px]"
-              aria-hidden
-            />
+            <div ref={sentinelRef} className="flex-none w-px h-[1px]" />
           </motion.div>
         </div>
 
-        {/* 로딩/에러/끝 표시 */}
+        {/* 로딩/에러/끝 */}
         <div className="relative">
           {loadingMore && (
             <div className="mt-3 inline-flex items-center gap-2 rounded bg-black text-white text-xs px-2 py-1">
@@ -478,10 +461,11 @@ export default function MobileView({
           )}
         </div>
 
-        {/* 할인 배너 */}
+        {/* 할인 배너 — ★ 여기만 수정 ★ */}
         <motion.div
           variants={fadeUp}
-          className="text-white flex items-center justify-between mt-3 p-4 rounded-[16px] bg-[#A06CFF] hover:outline focus-within:outline hover:outline-blue-500 focus-within:outline-gray-600"
+          onClick={() => navigate("/event")}
+          className="text-white flex items-center justify-between mt-3 p-4 rounded-[16px] bg-[#A06CFF] hover:outline focus-within:outline hover:outline-blue-500 focus-within:outline-gray-600 cursor-pointer"
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
         >
@@ -545,7 +529,7 @@ export default function MobileView({
         </div>
       </div>
 
-      {/* 왼쪽 슬라이드 메뉴 */}
+      {/* 사이드 메뉴 */}
       <SideMenu isOpen={isMenuOpen} onClose={closeMenu} />
     </motion.div>
   );

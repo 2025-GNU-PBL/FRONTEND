@@ -16,6 +16,7 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
 
   const isAuthenticated = useAppSelector((s) => s.user.isAuth);
   const userName = useAppSelector((s) => s.user.userData?.name ?? "");
+  const userRole = useAppSelector((s) => s.user.role); // ✅ 역할 가져오기
 
   const menuItems = useMemo(
     () => [
@@ -31,9 +32,12 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
     () => [
       { label: "FAQ", path: "/faq" },
       { label: "이벤트", path: "/event" },
-      { label: "MY PAGE", path: "/my-page" },
+      {
+        label: "MY PAGE",
+        path: userRole === "OWNER" ? "/my-page/owner" : "/my-page/client", // ✅ 역할에 따라 경로 분기
+      },
     ],
-    []
+    [userRole]
   );
 
   const listBase =
