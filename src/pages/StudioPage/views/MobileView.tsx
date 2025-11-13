@@ -1,6 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Icon } from "@iconify/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import SideMenu from "../../../components/SideMenu";
@@ -8,6 +14,9 @@ import type { Product } from "../../../type/product";
 import api from "../../../lib/api/axios";
 import { useAppSelector } from "../../../store/hooks";
 import ProductCard from "../../../components/ProductCard";
+import type { SortOption } from "../../../components/SortBottomSheet";
+import SortBottomSheet from "../../../components/SortBottomSheet";
+import axios from "axios";
 
 /* ========================= 애니메이션 유틸 ========================= */
 
@@ -34,11 +43,25 @@ const stagger = (delay = 0): Variants => ({
   },
 });
 
+const dimVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 0.7, transition: { duration: 0.25, ease: EASE_OUT } },
+  exit: { opacity: 0, transition: { duration: 0.2, ease: EASE_OUT } },
+};
+
+const bottomSheetVariants: Variants = {
+  hidden: { y: "100%" },
+  show: { y: 0, transition: { duration: 0.32, ease: EASE_OUT } },
+  exit: { y: "100%", transition: { duration: 0.26, ease: EASE_OUT } },
+};
+
 /* ========================= 지역 데이터 ========================= */
+
+type RegionKey = "전체" | "서울" | "경기" | "인천" | "부산";
 
 type RegionItem =
   | { key: "전체"; label: "전체"; image?: undefined }
-  | { key: string; label: string; image: string };
+  | { key: Exclude<RegionKey, "전체">; label: string; image: string };
 
 const regions: RegionItem[] = [
   { key: "전체", label: "전체" },
@@ -48,11 +71,41 @@ const regions: RegionItem[] = [
   { key: "부산", label: "부산", image: "/images/busan.png" },
 ];
 
+/* ========================= 스튜디오 전용 필터 ========================= */
+
+const STYLE_OPTIONS = ["인물중심", "배경다양", "인물+배경"] as const;
+const SHOOTABLE_OPTIONS = [
+  "한옥",
+  "가든",
+  "야간",
+  "로드",
+  "수중",
+  "반려동물",
+] as const;
+
+type StyleOption = (typeof STYLE_OPTIONS)[number];
+type ShootableOption = (typeof SHOOTABLE_OPTIONS)[number];
+
+const STYLE_TO_TAG: Record<StyleOption, string> = {
+  인물중심: "PORTRAIT_FOCUSED",
+  배경다양: "VARIED_BACKGROUND",
+  "인물+배경": "PORTRAIT_AND_BACKGROUND",
+};
+
+const SHOOTABLE_TO_TAG: Record<ShootableOption, string> = {
+  한옥: "HANOK",
+  가든: "GARDEN",
+  야간: "NIGHT",
+  로드: "ROAD",
+  수중: "UNDERWATER",
+  반려동물: "PET_FRIENDLY",
+};
+
 /* ========================= API 응답 타입 ========================= */
 
 type PageMeta = {
   size: number;
-  number: number; // 현재 페이지 (0-base)
+  number: number;
   totalElements: number;
   totalPages: number;
 };
@@ -73,61 +126,138 @@ const MobileView: React.FC = () => {
   const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string>("");
 
+  // 지역 / 정렬 / 시트
+  const [selectedRegion, setSelectedRegion] = useState<RegionKey>("전체");
+  const [sortOption, setSortOption] = useState<SortOption>("최신순");
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // 필터 상태 분리: 시트 내 임시 선택 vs 실제 적용값
+  const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(null);
+  const [selectedShootable, setSelectedShootable] = useState<
+    Set<ShootableOption>
+  >(new Set());
+
+  const [appliedStyle, setAppliedStyle] = useState<StyleOption | null>(null);
+  const [appliedShootable, setAppliedShootable] = useState<
+    Set<ShootableOption>
+  >(new Set());
+
   // 찜
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
   const toggleLike = useCallback((id: number) => {
     setLikedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }, []);
 
-  // 상세 페이지 이동
+  // 네비게이션
   const goDetail = useCallback(
-    (id: number) => {
-      // 스튜디오 상세: /studio/:id
-      navigate(`/studio/${id}`);
-    },
+    (id: number) => navigate(`/studio/${id}`),
     [navigate]
   );
-
-  // 메뉴
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const openMenu = useCallback(() => setIsMenuOpen(true), []);
-  const closeMenu = useCallback(() => setIsMenuOpen(false), []);
+  const goSearch = useCallback(() => navigate("/search"), [navigate]);
+  const goCart = useCallback(() => navigate("/cart"), [navigate]);
   const onBack = useCallback(() => {
     if (window.history.length > 1) navigate(-1);
     else navigate("/");
   }, [navigate]);
-  const goSearch = useCallback(() => navigate("/search"), [navigate]);
-  const goCart = useCallback(() => navigate("/cart"), [navigate]);
 
+  // 메뉴 & 시트 오픈/클로즈
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const openMenu = useCallback(() => setIsMenuOpen(true), []);
+  const closeMenu = useCallback(() => setIsMenuOpen(false), []);
+
+  const openFilter = useCallback(() => {
+    // 시트 열 때 현재 적용값을 편집용으로 복사
+    setSelectedStyle(appliedStyle);
+    setSelectedShootable(new Set(appliedShootable));
+    setIsFilterOpen(true);
+  }, [appliedStyle, appliedShootable]);
+
+  const closeFilter = useCallback(() => setIsFilterOpen(false), []);
+  const openSort = useCallback(() => setIsSortOpen(true), []);
+  const closeSort = useCallback(() => setIsSortOpen(false), []);
+
+  // 스크롤 잠금
   useEffect(() => {
     const original = document.body.style.overflow;
-    document.body.style.overflow = isMenuOpen ? "hidden" : original || "";
+    if (isMenuOpen || isFilterOpen || isSortOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = original || "";
+    }
     return () => {
       document.body.style.overflow = original || "";
     };
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isFilterOpen, isSortOpen]);
 
-  /* ===== 무한 스크롤 ===== */
+  /* ========================= API 파라미터 ========================= */
+
+  const getRegionQueryValue = (region: RegionKey): string | undefined => {
+    if (region === "전체") return undefined;
+    if (region === "서울") return "SEOUL";
+    if (region === "경기") return "GYEONGGI";
+    if (region === "부산") return "BUSAN";
+    if (region === "인천") return "ETC";
+    return undefined;
+  };
+
+  const sortParam = useMemo(() => {
+    if (sortOption === "최신순") return "LATEST";
+    if (sortOption === "인기순") return "POPULAR";
+    if (sortOption === "높은가격순") return "PRICE_DESC";
+    return "PRICE_ASC";
+  }, [sortOption]);
+
+  const tagsParam = useMemo(() => {
+    const tags: string[] = [];
+    if (appliedStyle) tags.push(STYLE_TO_TAG[appliedStyle]);
+    appliedShootable.forEach((s) => tags.push(SHOOTABLE_TO_TAG[s]));
+    return tags.length > 0 ? tags.join(",") : undefined;
+  }, [appliedStyle, appliedShootable]);
+
+  // 현재 파라미터 스냅샷(요청/응답 가드 & 리셋 트리거)
+  const paramsKey = useMemo(
+    () =>
+      JSON.stringify({
+        region: getRegionQueryValue(selectedRegion) ?? null,
+        sort: sortParam,
+        tags: tagsParam ?? null,
+      }),
+    [selectedRegion, sortParam, tagsParam]
+  );
+
+  /* ========================= 페이지네이션 & 무한스크롤 ========================= */
 
   const [pageNumber, setPageNumber] = useState(1); // 1-base
   const pageSize = 6;
   const [hasMore, setHasMore] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const fetchingRef = useRef(false);
+  const [totalCount, setTotalCount] = useState(0);
   const elementRef = useRef<HTMLDivElement | null>(null);
+
+  // 진행 중 요청 제어(취소/가드/중복방지)
+  const controllerRef = useRef<AbortController | null>(null);
+  const inFlightKeyRef = useRef<string | null>(null);
+  const fetchingRef = useRef(false);
+  const prevParamsKeyRef = useRef<string>(paramsKey);
 
   const fetchMoreItems = useCallback(
     async (page: number) => {
       if (fetchingRef.current || !hasMore) return;
+
+      // 이전 요청 취소
+      controllerRef.current?.abort();
+      const controller = new AbortController();
+      controllerRef.current = controller;
+
+      // 현재 파라미터 키 고정
+      const myKey = paramsKey;
+      inFlightKeyRef.current = myKey;
       fetchingRef.current = true;
 
       const isInitial = page === 1;
@@ -137,49 +267,85 @@ const MobileView: React.FC = () => {
       setErrorMsg("");
 
       try {
+        const regionValue = getRegionQueryValue(selectedRegion);
         const { data }: { data: PagedResponse } = await api.get(
-          `/api/v1/studio?pageNumber=${page}&pageSize=${pageSize}`
+          "/api/v1/studio/filter",
+          {
+            params: {
+              pageNumber: page,
+              pageSize,
+              region: regionValue,
+              sortType: sortParam,
+              tags: tagsParam,
+            },
+            signal: controller.signal,
+          }
         );
 
+        // 파라미터 변경 후 늦게 도착한 응답은 폐기
+        if (inFlightKeyRef.current !== myKey || myKey !== paramsKey) {
+          return;
+        }
+
+        const nextContent = data.content ?? [];
         setTotalCount(data.page.totalElements);
 
         setItems((prev) => {
+          if (isInitial) return nextContent; // 1페이지: 교체
+          // 2페이지+: 이어 붙이되 중복 제거
           const map = new Map<number, Product>();
           prev.forEach((p) => map.set(p.id, p));
-          data.content.forEach((p) => map.set(p.id, p));
+          nextContent.forEach((p) => map.set(p.id, p));
           return Array.from(map.values());
         });
 
         const nextPage = page + 1;
-        const more = nextPage <= data.page.totalPages;
-        setHasMore(more);
-      } catch (err) {
-        console.error(err);
-        setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
+        setHasMore(nextPage <= data.page.totalPages);
+      } catch (err: unknown) {
+        // 취소된 요청(axios / AbortController)은 무시
+        if (
+          (axios.isAxiosError(err) && err.code === "ERR_CANCELED") ||
+          (err instanceof Error &&
+            (err.name === "CanceledError" || err.name === "AbortError"))
+        ) {
+          // no-op
+        } else {
+          console.error(err);
+          setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
+        }
       } finally {
-        setLoadingInitial(false);
-        setIsLoadingMore(false);
-        fetchingRef.current = false;
+        if (inFlightKeyRef.current === myKey) {
+          setLoadingInitial(false);
+          setIsLoadingMore(false);
+          fetchingRef.current = false;
+        }
       }
     },
-    [hasMore]
+    [hasMore, pageSize, selectedRegion, sortParam, tagsParam, paramsKey]
   );
 
-  // 초기 및 pageNumber 변경 시 데이터 로드
+  // paramsKey 변경 시 페이지 리셋 & fetch
   useEffect(() => {
+    if (prevParamsKeyRef.current !== paramsKey && pageNumber !== 1) {
+      prevParamsKeyRef.current = paramsKey;
+      setPageNumber(1);
+      return;
+    }
+    prevParamsKeyRef.current = paramsKey;
     fetchMoreItems(pageNumber);
-  }, [pageNumber, fetchMoreItems]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey, pageNumber]);
 
-  // 인터섹션 옵저버 (하단 감지 시 다음 페이지 요청)
+  // 인터섹션 옵저버
   useEffect(() => {
     const target = elementRef.current;
     if (!target) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        const firstEntry = entries[0];
+        const first = entries[0];
         if (
-          firstEntry.isIntersecting &&
+          first.isIntersecting &&
           hasMore &&
           !loadingInitial &&
           !isLoadingMore &&
@@ -188,23 +354,69 @@ const MobileView: React.FC = () => {
           setPageNumber((prev) => prev + 1);
         }
       },
-      {
-        threshold: 0.2,
-        rootMargin: "200px 0px",
-      }
+      { threshold: 0.1, rootMargin: "300px 0px" }
     );
 
     observer.observe(target);
-    return () => {
-      observer.unobserve(target);
-    };
+    return () => observer.unobserve(target);
   }, [hasMore, loadingInitial, isLoadingMore]);
 
-  /* ===== 렌더 ===== */
+  /* ========================= 필터/정렬/지역 변경 핸들러 ========================= */
+
+  const activeFilterCount = (appliedStyle ? 1 : 0) + appliedShootable.size; // 뱃지는 적용값 기준
+
+  const toggleShootableSelected = useCallback((opt: ShootableOption) => {
+    setSelectedShootable((prev) => {
+      const next = new Set(prev);
+      if (next.has(opt)) next.delete(opt);
+      else next.add(opt);
+      return next;
+    });
+  }, []);
+
+  const resetFilter = useCallback(() => {
+    setSelectedStyle(null);
+    setSelectedShootable(new Set());
+  }, []);
+
+  const applyFilter = useCallback(() => {
+    // 시트 내 선택을 실제 적용값으로 반영
+    setAppliedStyle(selectedStyle);
+    setAppliedShootable(new Set(selectedShootable));
+
+    // 목록 리셋 및 1페이지부터 다시
+    setItems([]);
+    setHasMore(true);
+    setTotalCount(0);
+    setPageNumber(1);
+    closeFilter();
+  }, [selectedStyle, selectedShootable, closeFilter]);
+
+  const handleChangeSort = useCallback(
+    (opt: SortOption) => {
+      setSortOption(opt);
+      setItems([]);
+      setHasMore(true);
+      setTotalCount(0);
+      setPageNumber(1);
+      closeSort();
+    },
+    [closeSort]
+  );
+
+  const handleRegionSelect = useCallback((key: RegionKey) => {
+    setSelectedRegion(key);
+    setItems([]);
+    setHasMore(true);
+    setTotalCount(0);
+    setPageNumber(1);
+  }, []);
+
+  /* ========================= 렌더 ========================= */
 
   return (
     <motion.div
-      className="relative w-full min-h-screen bg-white mx-auto overflow-x-hidden font-['Pretendard'] max-w-screen-sm"
+      className="relative w-full min-h-screen bg-white overflow-x-hidden font-['Pretendard']"
       variants={stagger()}
       initial="hidden"
       animate="show"
@@ -227,7 +439,7 @@ const MobileView: React.FC = () => {
           />
         </motion.button>
         <motion.h1
-          className="absolute left-1/2 -translate-x-1/2 top-[15.5px] text-center text-[18px] font-semibold leading-[29px] tracking-[-0.2px] text-[#1E2124]"
+          className="absolute left-1/2 -translate-x-1/2 top-[15.5px] text-center text-[18px] font-semibold text-[#1E2124]"
           variants={fade}
         >
           스튜디오
@@ -253,13 +465,13 @@ const MobileView: React.FC = () => {
             >
               <Icon
                 icon="solar:cart-large-minimalistic-linear"
-                className="w-6 h-6 text-black/80"
+                className="w-6 h-6 text:black/80"
               />
             </motion.button>
           )}
           <motion.button
             aria-label="menu"
-            className="grid place-items-center w-6 h-6 rounded hover:bg-black/5 active:scale-95"
+            className="grid place-items-center w-6 h-6 rounded hover:bg:black/5 active:scale-95"
             onClick={openMenu}
             whileTap={{ scale: 0.94 }}
           >
@@ -268,60 +480,97 @@ const MobileView: React.FC = () => {
         </div>
       </motion.header>
 
-      {/* 지역 */}
+      {/* 지역 필터 */}
       <motion.div
         className="grid grid-cols-5 gap-4 px-5 mt-4 justify-items-center"
         variants={stagger(0.05)}
       >
-        {regions.map((r) => (
-          <motion.div
-            key={r.key}
-            className="flex flex-col items-center gap-3 isolate"
-            variants={fadeUp}
-          >
-            <div className="w-[60px] h-[60px] rounded-full border border-[#F2F2F2] bg-white relative overflow-hidden grid place-items-center">
-              {r.label === "전체" ? (
-                <div className="grid grid-cols-2 gap-[6px]">
-                  <span className="w-2 h-2 rounded-full bg-[#595F63]" />
-                  <span className="w-2 h-2 rounded-full bg-[#D9D9D9]" />
-                  <span className="w-2 h-2 rounded-full bg-[#D9D9D9]" />
-                  <span className="w-2 h-2 rounded-full bg-[#595F63]" />
-                </div>
-              ) : (
-                <img
-                  src={r.image}
-                  alt={`${r.label} 대표 이미지`}
-                  className="w-full h-full object-cover rounded-full"
-                  loading="lazy"
-                />
-              )}
-            </div>
-            <p className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-              {r.label}
-            </p>
-          </motion.div>
-        ))}
+        {regions.map((r) => {
+          const isActive = selectedRegion === r.key;
+          return (
+            <motion.button
+              key={r.key}
+              type="button"
+              onClick={() => handleRegionSelect(r.key)}
+              className="flex flex-col items-center gap-3 isolate"
+              variants={fadeUp}
+            >
+              <div
+                className={`w-[60px] h-[60px] rounded-full border grid place-items-center overflow-hidden transition-all ${
+                  isActive
+                    ? "border-[#FF2233] shadow-[0_4px_10px_rgba(0,0,0,0.08)]"
+                    : "border-[#F2F2F2]"
+                }`}
+              >
+                {r.image ? (
+                  <img
+                    src={r.image}
+                    alt={r.label}
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                ) : (
+                  <div className="grid grid-cols-2 gap-[6px]">
+                    <span className="w-2 h-2 rounded-full bg-[#595F63]" />
+                    <span className="w-2 h-2 rounded-full bg-[#D9D9D9]" />
+                    <span className="w-2 h-2 rounded-full bg-[#D9D9D9]" />
+                    <span className="w-2 h-2 rounded-full bg-[#595F63]" />
+                  </div>
+                )}
+              </div>
+              <p
+                className={`text-[14px] ${
+                  isActive ? "text-[#FF2233] font-semibold" : "text-black"
+                }`}
+              >
+                {r.label}
+              </p>
+            </motion.button>
+          );
+        })}
       </motion.div>
 
-      {/* 총 개수 & 정렬 */}
+      {/* 총 개수 & 정렬/필터 */}
       <motion.div
         className="px-5 my-7 flex items-center justify-between"
         variants={fadeUp}
       >
         <div className="flex">
-          <p className="text-[14px] text-[#999999]">총</p>&nbsp;
+          <p className="text-[14px] text-[#999]">총</p>&nbsp;
           <p className="text-[14px] text-black">{totalCount}개</p>
         </div>
-        <button className="flex items-center gap-1 active:scale-95">
-          <span className="text-[14px] text-black">최신순</span>
-          <Icon
-            icon="solar:alt-arrow-down-linear"
-            className="w-4 h-4 text-[#999999]"
-          />
-        </button>
+        <div className="flex gap-3">
+          <button
+            className="flex items-center gap-1 active:scale-95"
+            onClick={openFilter}
+          >
+            <span className="text-[14px]">
+              필터
+              {activeFilterCount > 0 && (
+                <span className="ml-1 text-[11px] px-1.5 py-0.5 rounded-full bg-[#FF2233]/10 text-[#FF2233]">
+                  {activeFilterCount}
+                </span>
+              )}
+            </span>
+            <Icon
+              icon="solar:tuning-2-linear"
+              className="w-4 h-4 text-[#1E2124]"
+            />
+          </button>
+
+          <button
+            className="flex items-center gap-1 active:scale-95"
+            onClick={openSort}
+          >
+            <span className="text-[14px] text-[#000]">{sortOption}</span>
+            <Icon
+              icon="solar:alt-arrow-down-linear"
+              className="w-4 h-4 text-[#999]"
+            />
+          </button>
+        </div>
       </motion.div>
 
-      {/* 상태 */}
+      {/* 오류 메시지 */}
       {!!errorMsg && !loadingInitial && (
         <motion.div className="px-5 mt-2" variants={fadeUp}>
           <p className="text-sm text-red-500">{errorMsg}</p>
@@ -329,52 +578,170 @@ const MobileView: React.FC = () => {
       )}
 
       {/* 리스트 */}
-      {!errorMsg && (
-        <>
-          <motion.div
-            className="grid grid-cols-2 gap-y-5 gap-x-2.5 px-5 mt-4 pb-12"
-            variants={stagger(0.03)}
-          >
-            {items.map((product) => (
-              <ProductCard
-                key={`p-${product.id}`}
-                product={product}
-                liked={likedIds.has(product.id)}
-                onToggleLike={toggleLike}
-                onClick={() => goDetail(product.id)} // ✅ 카드 클릭 시 상세 이동
-              />
-            ))}
+      <motion.div
+        className="grid grid-cols-2 gap-y-5 gap-x-2.5 px-5 mt-4 pb-12"
+        variants={stagger(0.03)}
+      >
+        {items.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            liked={likedIds.has(product.id)}
+            onToggleLike={toggleLike}
+            onClick={() => goDetail(product.id)}
+          />
+        ))}
 
-            {loadingInitial &&
-              items.length === 0 &&
-              Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={`skeleton-${i}`}
-                  className="animate-pulse w-full flex flex-col gap-2"
-                >
-                  <div className="w-full aspect-[176/170] rounded-lg bg-gray-100" />
-                  <div className="h-3 w-2/5 rounded bg-gray-100" />
-                  <div className="h-3 w-4/5 rounded bg-gray-100" />
-                  <div className="h-4 w-1/2 rounded bg-gray-100" />
-                </div>
-              ))}
-          </motion.div>
+        {loadingInitial &&
+          items.length === 0 &&
+          Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={`skeleton-${i}`}
+              className="animate-pulse w-full flex flex-col gap-2"
+            >
+              <div className="w-full aspect-[176/170] rounded-lg bg-gray-100" />
+              <div className="h-3 w-2/5 rounded bg-gray-100" />
+              <div className="h-3 w-4/5 rounded bg-gray-100" />
+              <div className="h-4 w-1/2 rounded bg-gray-100" />
+            </div>
+          ))}
+      </motion.div>
 
-          <div ref={elementRef} className="h-1" />
+      {/* 무한스크롤 트리거 */}
+      <div ref={elementRef} className="h-1" />
 
-          {isLoadingMore && (
-            <motion.div className="pb-24 text-center" variants={fade}>
-              <p className="text-sm text-[#595F63]">불러오는 중…</p>
-            </motion.div>
-          )}
-
-          {!hasMore && items.length > 0 && !isLoadingMore && (
-            <motion.div className="pb-24 text-center" variants={fade}>
-              <p className="text-sm text-[#999999]">마지막 상품입니다.</p>
-            </motion.div>
-          )}
-        </>
+      {isLoadingMore && (
+        <motion.div className="pb-24 text-center" variants={fade}>
+          <p className="text-sm text-[#595F63]">불러오는 중…</p>
+        </motion.div>
       )}
+
+      {!hasMore && items.length > 0 && !isLoadingMore && (
+        <motion.div className="pb-24 text-center" variants={fade}>
+          <p className="text-sm text-[#999]">마지막 상품입니다.</p>
+        </motion.div>
+      )}
+
+      {/* 필터 Bottom Sheet */}
+      <AnimatePresence>
+        {isFilterOpen && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-40 bg-black/70"
+              variants={dimVariants}
+              initial="hidden"
+              animate="show"
+              exit="exit"
+              onClick={closeFilter}
+            />
+            <motion.div
+              className="fixed left-1/2 bottom-0 z-50 w-full max-w-screen-sm -translate-x-1/2 bg-white rounded-t-[20px]"
+              variants={bottomSheetVariants}
+              initial="hidden"
+              animate="show"
+              exit="exit"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-6">
+                <span className="text-[18px] font-semibold">필터</span>
+                <button
+                  className="w-6 h-6 grid place-items-center rounded-full active:scale-95"
+                  onClick={closeFilter}
+                >
+                  <Icon icon="mdi:close" className="w-5 h-5 text-[#1E2124]" />
+                </button>
+              </div>
+
+              <div className="pt-5 px-5 pb-4 border-t border-[#F3F3F3] max-h-[380px] overflow-y-auto space-y-8">
+                {/* 스타일 */}
+                <div className="space-y-3">
+                  <p className="text-[16px] font-semibold text-[#1E2124]">
+                    스타일
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {STYLE_OPTIONS.map((opt) => {
+                      const active = selectedStyle === opt;
+                      return (
+                        <button
+                          key={opt}
+                          onClick={() =>
+                            setSelectedStyle((prev) =>
+                              prev === opt ? null : opt
+                            )
+                          }
+                          className={`h-[37px] px-3 rounded-full text-[14px] border transition-all ${
+                            active
+                              ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
+                              : "bg-white border-[#D9D9D9] text-[#999]"
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 촬영 가능 */}
+                <div className="space-y-3">
+                  <p className="text-[16px] font-semibold text-[#1E2124]">
+                    촬영 가능
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {SHOOTABLE_OPTIONS.map((opt) => {
+                      const active = selectedShootable.has(opt);
+                      return (
+                        <button
+                          key={opt}
+                          onClick={() => toggleShootableSelected(opt)}
+                          className={`h-[37px] px-3 rounded-full text-[14px] border transition-all ${
+                            active
+                              ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
+                              : "bg-white border-[#D9D9D9] text-[#999]"
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 px-5 py-4 border-t border-[#E8E8E8] bg-white">
+                <button
+                  className="flex-1 h-14 flex items-center justify-center gap-2 rounded-xl border border-[#E8E8E8]"
+                  onClick={resetFilter}
+                >
+                  <Icon
+                    icon="ri:reset-left-fill"
+                    className="w-5 h-5 text-[#1E2124]"
+                  />
+                  <span className="text-[16px] font-semibold text-[#1E2124]">
+                    초기화
+                  </span>
+                </button>
+                <button
+                  className="flex-[2] h-14 flex items-center justify-center rounded-xl bg-[#FF2233]"
+                  onClick={applyFilter}
+                >
+                  <span className="text-[16px] font-semibold text-white">
+                    결과 보기
+                  </span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* 정렬 시트 */}
+      <SortBottomSheet
+        isOpen={isSortOpen}
+        sortOption={sortOption}
+        onClose={closeSort}
+        onChange={handleChangeSort}
+      />
 
       <SideMenu isOpen={isMenuOpen} onClose={closeMenu} />
     </motion.div>

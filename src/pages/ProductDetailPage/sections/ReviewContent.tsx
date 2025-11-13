@@ -1,5 +1,19 @@
-// 3) 평점후기 탭: 완전 다른 레이아웃 예시
-export const ReviewContent = () => {
+// sections/ReviewContent.tsx
+import type { Category } from "../../../type/product";
+
+/* ========================= Props ========================= */
+
+type ReviewContentProps = {
+  targetId: number;
+  category: Category;
+};
+
+/* ========================= 컴포넌트 ========================= */
+
+export const ReviewContent = ({ targetId, category }: ReviewContentProps) => {
+  // 추후 실제 리뷰 API 연동 시
+  // category, targetId를 사용해서 엔드포인트 분기하면 됨.
+
   return (
     <>
       {/* 평점 상단 영역 */}
