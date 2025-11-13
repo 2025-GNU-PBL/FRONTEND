@@ -1,15 +1,17 @@
-// src/pages/Owner/Coupon/Register/WebView.tsx
+// src/pages/mypage/owner/coupon/RegisterWebView.tsx
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import MyPageHeader from "../../../../../../components/MyPageHeader";
 import api from "../../../../../../lib/api/axios";
 
-/** ====== 타입 / DTO ====== */
+/** ====== DTO ====== */
 type DiscountType = "AMOUNT" | "RATE";
-type Category = "WEDDING" | "STUDIO" | "DRESS" | "MAKEUP";
+type Category = "WEDDING" | "STUDIO" | "DRESS" | "MAKEUP" | "WEDDING_HALL";
 
 type CouponCreateRequest = {
-  productId: number; // 없으면 0 (카테고리 쿠폰)
+  productId: number; // 없으면 0으로 처리 (카테고리 쿠폰)
   couponCode: string; // 자동 생성, 비활성화
   couponName: string;
   couponDetail: string;
@@ -61,21 +63,39 @@ const generateCouponCode = (len = 16) => {
   return out;
 };
 
-/** ====== 웹뷰 컴포넌트 (예약 WebView 디자인 가이드 반영) ====== */
+const CATEGORY_LABEL: Record<Category, string> = {
+  WEDDING: "웨딩홀",
+  WEDDING_HALL: "웨딩홀",
+  STUDIO: "스튜디오",
+  DRESS: "드레스",
+  MAKEUP: "메이크업",
+};
+
+/** ====== 웹뷰 컴포넌트 ====== */
 export default function RegisterWebView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
+  const [searchParams] = useSearchParams();
+
+  /** ✅ URL 쿼리에서 productId, category 가져오기 */
+  const productIdFromUrl = searchParams.get("productId");
+  const categoryFromUrl = searchParams.get("category") as Category | null;
 
   // 폼 상태
   const [couponCode, setCouponCode] = useState(generateCouponCode());
   const [couponName, setCouponName] = useState("");
   const [couponDetail, setCouponDetail] = useState("");
-  const [category, setCategory] = useState<Category>("DRESS");
+
+  // 👉 category, productId 는 URL 기준으로만, UI에서는 읽기 전용 표시
+  const [category] = useState<Category>(
+    categoryFromUrl ?? ("DRESS" as Category)
+  );
+  const [productId] = useState<string>(productIdFromUrl ?? "0");
+
   const [discountType, setDiscountType] = useState<DiscountType>("AMOUNT");
   const [discountValue, setDiscountValue] = useState<string>("");
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>("");
   const [minPurchaseAmount, setMinPurchaseAmount] = useState<string>("");
-  const [productId, setProductId] = useState<string>("0");
 
   const [startDate, setStartDate] = useState<string>(() => toYMD(today()));
   const [expirationDate, setExpirationDate] = useState<string>(() =>
@@ -85,11 +105,12 @@ export default function RegisterWebView() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // 페이지 진입 시 쿠폰 코드 리프레시
+  // 화면 진입 시 코드 새로 생성
   useEffect(() => {
     setCouponCode(generateCouponCode());
   }, []);
 
+  // accessor (localStorage)
   const accessorParam = useMemo(() => {
     try {
       const raw = localStorage.getItem("accessor");
@@ -166,15 +187,23 @@ export default function RegisterWebView() {
 
     try {
       setSubmitting(true);
+
+      const config = {
+        params: {
+          accessor: accessorParam ?? {},
+        },
+      };
+
       const res = await api.post<CouponCreateResponse>(
         "/api/v1/owner/coupon",
         body,
-        accessorParam ? { params: { accessor: accessorParam } } : undefined
+        config
       );
+
       alert("쿠폰이 등록되었습니다.");
       nav(-1);
       return res.data;
-    } catch (e) {
+    } catch (e: any) {
       console.error("[Coupon/RegisterWebView] create error:", e);
       alert("쿠폰 등록 중 오류가 발생했습니다. 입력값을 확인해 주세요.");
     } finally {
@@ -182,128 +211,88 @@ export default function RegisterWebView() {
     }
   };
 
-  /** ====== 뷰  ====== */
+  /** 뷰 */
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 콘텐츠 영역 */}
-      <main className="max-w-[1200px] mx-auto px-6 pt-22 pb-10">
-        {/* 상단 타이틀 바 (좌측 제목/건수 영역 톤 들고 오되, 여기선 설명으로 대체) */}
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[18px] font-semibold text-black">
-              쿠폰 정보 입력
-            </span>
-            <span className="text-[13px] text-[#999999]">
-              필수 항목을 모두 입력해 주세요
-            </span>
-          </div>
+      {/* 상단 공통 헤더 영역 (ListWebView 참고) */}
+      <div className="w-full bg-white border-b border-[#E5E7EB]">
+        <div className="max-w-[1040px] mx-auto">
+          <MyPageHeader title="쿠폰 등록" onBack={onBack} showMenu={false} />
+        </div>
+      </div>
+
+      {/* 본문 */}
+      <div className="max-w-[1040px] mt-20 mx-auto px-6 py-8">
+        {/* 상단 타이틀/설명 (ListWebView 톤 앤 매너) */}
+        <div className="mb-6">
+          <h1 className="text-[22px] font-semibold text-[#111827] tracking-[-0.3px]">
+            신규 쿠폰을 등록해 보세요
+          </h1>
+          <p className="mt-1 text-[13px] text-[#6B7280] tracking-[-0.2px]">
+            특정 상품 또는 카테고리에 적용할 할인 쿠폰을 생성할 수 있어요.
+          </p>
         </div>
 
-        {/* 폼 카드 */}
-        <section className="bg-white rounded-2xl shadow-sm border border-[#E5E6EB]">
-          {/* 섹션 헤더 */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[#F3F4F5]">
-            <div className="flex items-center gap-2">
-              <Icon
-                icon="solar:document-linear"
-                className="w-5 h-5 text-[#9CA3AF]"
-              />
-              <span className="text-[15px] font-semibold text-[#111827]">
-                기본 정보
-              </span>
-            </div>
-            <span className="text-[12px] text-[#9CA3AF]">* 은 필수</span>
-          </div>
+        {/* 메인 카드 영역 */}
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8">
+          <div className="grid grid-cols-2 gap-8">
+            {/* 왼쪽 컬럼: 기본 정보 */}
+            <div>
+              <Field label="쿠폰 코드">
+                <input
+                  className="w-full h-[44px] px-3 rounded-[10px] border border-[#E8E8E8] bg-[#F6F7FB] text-[14px] text-[#999999] outline-none"
+                  value={couponCode}
+                  disabled
+                  readOnly
+                />
+              </Field>
 
-          {/* 폼 바디: 2열 그리드 */}
-          <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* 쿠폰 코드 (비활성) */}
-            <FieldWeb label="쿠폰 코드">
-              <input
-                className={inputClsDisabled()}
-                value={couponCode}
-                disabled
-                readOnly
-              />
-            </FieldWeb>
+              <Field label="쿠폰 이름" error={errors.couponName}>
+                <input
+                  className={inputCls()}
+                  placeholder="쿠폰 이름을 입력해 주세요"
+                  value={couponName}
+                  onChange={(e) => setCouponName(e.target.value)}
+                />
+              </Field>
 
-            {/* 카테고리 */}
-            <FieldWeb label="카테고리 *">
-              <div className="flex flex-wrap gap-2">
-                <Chip
-                  active={category === "WEDDING"}
-                  onClick={() => setCategory("WEDDING")}
-                >
-                  웨딩홀
-                </Chip>
-                <Chip
-                  active={category === "STUDIO"}
-                  onClick={() => setCategory("STUDIO")}
-                >
-                  스튜디오
-                </Chip>
-                <Chip
-                  active={category === "DRESS"}
-                  onClick={() => setCategory("DRESS")}
-                >
-                  드레스
-                </Chip>
-                <Chip
-                  active={category === "MAKEUP"}
-                  onClick={() => setCategory("MAKEUP")}
-                >
-                  메이크업
-                </Chip>
+              <Field label="쿠폰 상세 설명" error={errors.couponDetail}>
+                <input
+                  className={inputCls()}
+                  placeholder="설명을 입력해 주세요"
+                  value={couponDetail}
+                  onChange={(e) => setCouponDetail(e.target.value)}
+                />
+              </Field>
+
+              {/* 할인 유형 */}
+              <div className="mb-4">
+                <div className="mb-2 text-[14px] font-medium text-[#1E2124]">
+                  할인 유형
+                </div>
+                <div className="flex gap-2">
+                  <Segment
+                    active={discountType === "AMOUNT"}
+                    onClick={() => setDiscountType("AMOUNT")}
+                  >
+                    정액
+                  </Segment>
+                  <Segment
+                    active={discountType === "RATE"}
+                    onClick={() => setDiscountType("RATE")}
+                  >
+                    정률
+                  </Segment>
+                </div>
               </div>
-            </FieldWeb>
 
-            {/* 쿠폰 이름 */}
-            <FieldWeb label="쿠폰 이름 *" error={errors.couponName}>
-              <input
-                className={inputCls()}
-                placeholder="예) 11월 신규회원 1만 원 할인"
-                value={couponName}
-                onChange={(e) => setCouponName(e.target.value)}
-              />
-            </FieldWeb>
-
-            {/* 쿠폰 상세 설명 */}
-            <FieldWeb label="쿠폰 상세 설명 *" error={errors.couponDetail}>
-              <input
-                className={inputCls()}
-                placeholder="예) 드레스 대여 시 사용 가능"
-                value={couponDetail}
-                onChange={(e) => setCouponDetail(e.target.value)}
-              />
-            </FieldWeb>
-
-            {/* 할인 유형 */}
-            <FieldWeb label="할인 유형 *">
-              <div className="flex gap-2">
-                <Chip
-                  active={discountType === "AMOUNT"}
-                  onClick={() => setDiscountType("AMOUNT")}
-                >
-                  정액
-                </Chip>
-                <Chip
-                  active={discountType === "RATE"}
-                  onClick={() => setDiscountType("RATE")}
-                >
-                  정률
-                </Chip>
-              </div>
-            </FieldWeb>
-
-            {/* 할인 값 */}
-            <FieldWeb label="할인 값 *" error={errors.discountValue}>
-              <div className="flex items-center gap-2">
+              <Field label="할인 값" error={errors.discountValue}>
                 <input
                   className={inputCls()}
                   placeholder={
                     discountType === "RATE"
-                      ? "예) 10 (% 단위)"
-                      : "예) 10000 (원 단위)"
+                      ? "ex) 10 (퍼센트)"
+                      : "ex) 10000 (원)"
                   }
                   inputMode="numeric"
                   value={discountValue}
@@ -311,47 +300,58 @@ export default function RegisterWebView() {
                     setDiscountValue(e.target.value.replace(/[^0-9]/g, ""))
                   }
                 />
+              </Field>
+            </div>
+
+            {/* 오른쪽 컬럼: 조건/기간/요약 */}
+            <div>
+              <Field
+                label="최대 할인 금액"
+                error={errors.maxDiscountAmount}
+                hint={
+                  discountType === "RATE"
+                    ? "정률 쿠폰에 권장됩니다."
+                    : undefined
+                }
+              >
+                <input
+                  className={inputCls()}
+                  placeholder="ex) 10000"
+                  inputMode="numeric"
+                  value={maxDiscountAmount}
+                  onChange={(e) =>
+                    setMaxDiscountAmount(e.target.value.replace(/[^0-9]/g, ""))
+                  }
+                />
+              </Field>
+
+              <Field label="최소 구매 금액" error={errors.minPurchaseAmount}>
+                <input
+                  className={inputCls()}
+                  placeholder="ex) 30000"
+                  inputMode="numeric"
+                  value={minPurchaseAmount}
+                  onChange={(e) =>
+                    setMinPurchaseAmount(e.target.value.replace(/[^0-9]/g, ""))
+                  }
+                />
+              </Field>
+
+              {/* 카테고리 (읽기 전용) */}
+              <Field label="카테고리">
+                <input
+                  className="w-full h-[44px] px-3 rounded-[10px] border border-[#E8E8E8] bg-[#F6F7FB] text-[14px] text-[#555555] outline-none"
+                  value={CATEGORY_LABEL[category] ?? category}
+                  readOnly
+                  disabled
+                />
+              </Field>
+
+              {/* 쿠폰 기간 */}
+              <div className="mb-2 text-[14px] font-medium text-[#1E2124]">
+                쿠폰 기간
               </div>
-            </FieldWeb>
-
-            {/* 최대 할인 금액 (정률 시 권장) */}
-            <FieldWeb
-              label="최대 할인 금액"
-              hint={
-                discountType === "RATE" ? "정률 쿠폰에 권장됩니다." : undefined
-              }
-              error={errors.maxDiscountAmount}
-            >
-              <input
-                className={inputCls()}
-                placeholder="예) 10000"
-                inputMode="numeric"
-                value={maxDiscountAmount}
-                onChange={(e) =>
-                  setMaxDiscountAmount(e.target.value.replace(/[^0-9]/g, ""))
-                }
-              />
-            </FieldWeb>
-
-            {/* 최소 구매 금액 */}
-            <FieldWeb label="최소 구매 금액" error={errors.minPurchaseAmount}>
-              <input
-                className={inputCls()}
-                placeholder="예) 30000"
-                inputMode="numeric"
-                value={minPurchaseAmount}
-                onChange={(e) =>
-                  setMinPurchaseAmount(e.target.value.replace(/[^0-9]/g, ""))
-                }
-              />
-            </FieldWeb>
-
-            {/* 쿠폰 기간 */}
-            <FieldWeb
-              label="쿠폰 기간 *"
-              error={errors.startDate || errors.expirationDate}
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 mb-1">
                 <DateInput
                   value={startDate}
                   onChange={setStartDate}
@@ -363,38 +363,82 @@ export default function RegisterWebView() {
                   placeholder="종료일"
                 />
               </div>
-            </FieldWeb>
+              {(errors.startDate || errors.expirationDate) && (
+                <p className="text-[12px] text-[#EB5147] mt-1">
+                  {errors.startDate || errors.expirationDate}
+                </p>
+              )}
+
+              {/* 우측 하단 요약 박스 (옵션) */}
+              <div className="mt-6 p-4 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
+                <p className="text-[13px] font-semibold text-[#111827] mb-2">
+                  쿠폰 요약
+                </p>
+                <ul className="text-[12px] text-[#6B7280] space-y-1">
+                  <li>
+                    적용 카테고리:{" "}
+                    <span className="font-medium text-[#111827]">
+                      {CATEGORY_LABEL[category] ?? category}
+                    </span>
+                  </li>
+                  <li>
+                    할인 유형:{" "}
+                    <span className="font-medium text-[#111827]">
+                      {discountType === "AMOUNT" ? "정액 할인" : "정률 할인"}
+                    </span>
+                  </li>
+                  {discountValue && (
+                    <li>
+                      할인 값:{" "}
+                      <span className="font-medium text-[#111827]">
+                        {discountType === "AMOUNT"
+                          ? `${Number(discountValue).toLocaleString()}원`
+                          : `${discountValue}%`}
+                      </span>
+                    </li>
+                  )}
+                  <li>
+                    사용 기간:{" "}
+                    <span className="font-medium text-[#111827]">
+                      {startDate} ~ {expirationDate}
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
 
-          {/* 섹션 푸터: 우측 정렬 버튼 (예약 WebView의 툴바 톤) */}
-          <div className="px-6 py-4 border-t border-[#F3F4F5] flex items-center justify-end">
+          {/* 하단 버튼 영역 */}
+          <div className="mt-8 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              className="h-[44px] px-5 rounded-[12px] border border-[#E5E7EB] bg-white text-[14px] text-[#4B5563] tracking-[-0.2px]"
+              disabled={submitting}
+            >
+              취소
+            </button>
             <button
               type="button"
               onClick={onSubmit}
               disabled={submitting}
               className={[
-                "inline-flex items-center gap-2 px-5 h-[44px] rounded-[12px] text-white text-[14px] font-semibold",
-                submitting
-                  ? "bg-[#FF8891] cursor-not-allowed"
-                  : "bg-[#FF2233] hover:opacity-90 active:scale-95",
+                "h-[44px] px-6 rounded-[12px] text-white text-[14px] font-semibold tracking-[-0.2px]",
+                submitting ? "bg-[#FF8891]" : "bg-[#FF2233] active:scale-95",
               ].join(" ")}
             >
-              <Icon
-                icon="solar:checklist-minimalistic-linear"
-                className="w-5 h-5"
-              />
-              {submitting ? "등록 중..." : "등록하기"}
+              {submitting ? "등록 중..." : "쿠폰 등록하기"}
             </button>
           </div>
-        </section>
-      </main>
+        </div>
+      </div>
     </div>
   );
 }
 
-/** ====== 공통 서브 컴포넌트 (웹 디자인 컴포넌트화) ====== */
+/** ====== 공통 서브 컴포넌트 ====== */
 
-function FieldWeb({
+function Field({
   label,
   children,
   error,
@@ -406,8 +450,8 @@ function FieldWeb({
   hint?: string;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
+    <div className="mb-4">
+      <div className="mb-2 flex items-center justify-between">
         <div className="text-[14px] font-medium text-[#1E2124]">{label}</div>
         {hint && (
           <div className="text-[12px] text-[#999999] leading-[18px]">
@@ -417,13 +461,15 @@ function FieldWeb({
       </div>
       {children}
       {error && (
-        <p className="text-[12px] leading-[18px] text-[#EB5147]">{error}</p>
+        <p className="mt-1 text-[12px] leading-[18px] text-[#EB5147]">
+          {error}
+        </p>
       )}
     </div>
   );
 }
 
-function Chip({
+function Segment({
   active,
   onClick,
   children,
@@ -437,10 +483,11 @@ function Chip({
       type="button"
       onClick={onClick}
       className={[
-        "h-[36px] px-4 rounded-[999px] text-[14px] transition border",
+        "h-[40px] px-4 rounded-[12px] text-[14px]",
+        "border",
         active
           ? "border-black bg-white font-semibold"
-          : "border-[#E5E6EB] bg-white text-[#333333] hover:bg-[#F9FAFB]",
+          : "border-[#E8E8E8] bg-white text-[#333333]",
       ].join(" ")}
     >
       {children}
@@ -458,7 +505,7 @@ function DateInput({
   placeholder?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 h-[44px] px-3 rounded-[10px] border border-[#E5E6EB] bg-white">
+    <div className="flex items-center gap-2 h-[44px] px-3 rounded-[10px] border border-[#E8E8E8] bg-white">
       <input
         type="date"
         value={value}
@@ -472,8 +519,5 @@ function DateInput({
 }
 
 function inputCls() {
-  return "w-full h-[44px] px-3 rounded-[10px] border border-[#E5E6EB] bg-white text-[14px] outline-none placeholder:text-[#C1C1C1]";
-}
-function inputClsDisabled() {
-  return "w-full h-[44px] px-3 rounded-[10px] border border-[#E5E6EB] bg-[#F6F7FB] text-[14px] text-[#999999] outline-none";
+  return "w-full h-[44px] px-3 rounded-[10px] border border-[#E8E8E8] bg-white text-[14px] outline-none placeholder:text-[#C1C1C1]";
 }

@@ -1,4 +1,3 @@
-// src/pages/Owner/Product/Manage/MobileView.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";

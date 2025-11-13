@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import MyPageHeader from "../../../../../../components/MyPageHeader";
 import api from "../../../../../../lib/api/axios";
 
 /** ====== DTO ====== */
 type DiscountType = "AMOUNT" | "RATE";
-type Category = "WEDDING" | "STUDIO" | "DRESS" | "MAKEUP";
+type Category = "WEDDING" | "STUDIO" | "DRESS" | "MAKEUP" | "WEDDING_HALL";
 
 type CouponCreateRequest = {
   productId: number; // 없으면 0으로 처리 (카테고리 쿠폰)
@@ -61,21 +61,39 @@ const generateCouponCode = (len = 16) => {
   return out;
 };
 
+const CATEGORY_LABEL: Record<Category, string> = {
+  WEDDING: "웨딩홀",
+  WEDDING_HALL: "웨딩홀",
+  STUDIO: "스튜디오",
+  DRESS: "드레스",
+  MAKEUP: "메이크업",
+};
+
 /** ====== 컴포넌트 ====== */
 export default function RegisterMobile() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
+  const [searchParams] = useSearchParams();
+
+  /** ✅ URL 쿼리에서 productId, category 가져오기 */
+  const productIdFromUrl = searchParams.get("productId");
+  const categoryFromUrl = searchParams.get("category") as Category | null;
 
   // 폼 상태
   const [couponCode, setCouponCode] = useState(generateCouponCode());
   const [couponName, setCouponName] = useState("");
   const [couponDetail, setCouponDetail] = useState("");
-  const [category, setCategory] = useState<Category>("DRESS");
+
+  // 👉 이제 category, productId 는 URL 기준으로만 정해지고, 화면에서 수정 안 함
+  const [category] = useState<Category>(
+    categoryFromUrl ?? ("DRESS" as Category)
+  );
+  const [productId] = useState<string>(productIdFromUrl ?? "0");
+
   const [discountType, setDiscountType] = useState<DiscountType>("AMOUNT");
   const [discountValue, setDiscountValue] = useState<string>("");
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>("");
   const [minPurchaseAmount, setMinPurchaseAmount] = useState<string>("");
-  const [productId, setProductId] = useState<string>("0");
 
   const [startDate, setStartDate] = useState<string>(() => toYMD(today()));
   const [expirationDate, setExpirationDate] = useState<string>(() =>
@@ -150,6 +168,7 @@ export default function RegisterMobile() {
     if (submitting) return;
     if (!validate()) return;
 
+    /** ✅ productId, category 를 URL 기반 값으로 body 에 넣어서 전송 */
     const body: CouponCreateRequest = {
       productId: Number(productId || "0") || 0,
       couponCode,
@@ -166,14 +185,20 @@ export default function RegisterMobile() {
 
     try {
       setSubmitting(true);
+
+      const config = {
+        params: {
+          accessor: accessorParam ?? {},
+        },
+      };
+
       const res = await api.post<CouponCreateResponse>(
         "/api/v1/owner/coupon",
         body,
-        accessorParam ? { params: { accessor: accessorParam } } : undefined
+        config
       );
 
       alert("쿠폰이 등록되었습니다.");
-      // 필요 시 상세 페이지로 이동하거나 목록으로 이동
       nav(-1);
       return res.data;
     } catch (e: any) {
@@ -211,7 +236,7 @@ export default function RegisterMobile() {
             <Field label="쿠폰 이름" error={errors.couponName}>
               <input
                 className={inputCls()}
-                placeholder="상품명을 입력해 주세요"
+                placeholder="쿠폰 이름을 입력해 주세요"
                 value={couponName}
                 onChange={(e) => setCouponName(e.target.value)}
               />
@@ -295,38 +320,15 @@ export default function RegisterMobile() {
               />
             </Field>
 
-            {/* 카테고리 */}
-            <div className="mb-4">
-              <div className="mb-2 text-[14px] font-medium text-[#1E2124]">
-                카테고리
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Segment
-                  active={category === "WEDDING"}
-                  onClick={() => setCategory("WEDDING")}
-                >
-                  웨딩홀
-                </Segment>
-                <Segment
-                  active={category === "STUDIO"}
-                  onClick={() => setCategory("STUDIO")}
-                >
-                  스튜디오
-                </Segment>
-                <Segment
-                  active={category === "DRESS"}
-                  onClick={() => setCategory("DRESS")}
-                >
-                  드레스
-                </Segment>
-                <Segment
-                  active={category === "MAKEUP"}
-                  onClick={() => setCategory("MAKEUP")}
-                >
-                  메이크업
-                </Segment>
-              </div>
-            </div>
+            {/* ✅ 카테고리(선택 UI 제거, 읽기 전용 표시만) */}
+            <Field label="카테고리">
+              <input
+                className="w-full h-[48px] px-3 rounded-[10px] border border-[#E8E8E8] bg-[#F6F7FB] text-[14px] text-[#555555] outline-none"
+                value={CATEGORY_LABEL[category] ?? category}
+                readOnly
+                disabled
+              />
+            </Field>
 
             {/* 쿠폰 기간 */}
             <div className="mb-2 text-[14px] font-medium text-[#1E2124]">
