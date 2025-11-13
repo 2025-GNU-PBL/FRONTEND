@@ -58,6 +58,7 @@ import ProductManagementPage from "./pages/MyPage/OwnerMyPage/ProductManagement/
 import OwnerProfilePage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfilePage";
 import ReservationManagementPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationManagementPage";
 import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/ProductManagement/CouponRegister/CouponRegisterPage";
+import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
 
 function Layout() {
   const location = useLocation();
@@ -197,7 +198,10 @@ const App = () => {
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/:id" element={<ChatPage />} />
-          <Route path="/product-inquiry" element={<ProductInquiryPage />} />{" "}
+          <Route
+            path="/product-inquiry"
+            element={<ProductInquiryPage />}
+          />{" "}
           {/* 고객 마이페이지 */}
           <Route path="/my-page/client" element={<ClientMyPageMain />} />
           <Route
@@ -261,6 +265,10 @@ const App = () => {
           element={<ReservationManagementPage />}
         />
         <Route path="/my-page/owner/products" element={<OwnerMyPageMain />} />
+        <Route
+          path="/my-page/owner/products/management"
+          element={<ProductList />}
+        />
         <Route path="/my-page/owner/payments" element={<OwnerMyPageMain />} />
         <Route path="/sign-up/owner/step1" element={<OwnerSignupPage />} />
         <Route path="/sign-up/owner/step2" element={<BusinessAddressPage />} />
