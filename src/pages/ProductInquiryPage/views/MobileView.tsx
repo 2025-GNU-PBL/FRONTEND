@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Icon } from '@iconify/react';
 import { useNavigate, useLocation } from 'react-router-dom'; // useLocation 임포트
 import api from '../../../lib/api/axios'; // axios 인스턴스 임포트
-import '../InquiryPage.css'; // Updated CSS import path
+import './MobileView.css'; // Updated CSS import path
 
 interface InquiryDraft {
   prefillId: number;
@@ -28,11 +28,22 @@ const MobileView: React.FC = () => {
 
   const [hasDraftIds, setHasDraftIds] = useState(false); // 새로운 상태 추가
 
+  // 문의 관련 상태 초기화 함수
+  const resetInquiryState = () => {
+    setTitle('');
+    setContent('');
+    setShopName('루이즈블랑'); // 기본값
+    setProductName('[촬영] 신부신랑 헤어메이크업 (부원장)'); // 기본값
+    setShopImageUrl('/images/dress.png'); // 기본값
+    setProductImageUrl('/images/makeup.png'); // 기본값
+  };
+
   // draftIds가 없을 경우 /cart로 리다이렉트
   useEffect(() => {
     if (!location.state || !(location.state as { draftIds?: number[] }).draftIds) {
-      alert("문의할 상품 정보가 없습니다.");
-      navigate('/cart');
+      console.warn("문의할 상품 정보가 없습니다.");
+      resetInquiryState(); // 상태 초기화
+      navigate('/cart', { replace: true, state: null }); // 히스토리 스택 정리 및 상태 초기화
       setHasDraftIds(false); // draftIds 없음을 표시
       return;
     }
@@ -80,7 +91,7 @@ const MobileView: React.FC = () => {
 
   const handleSubmitInquiry = async () => {
     if (!title.trim() || !content.trim()) {
-      alert("제목과 내용을 모두 입력해주세요.");
+      console.warn("제목과 내용을 모두 입력해주세요.");
       return;
     }
 
@@ -99,7 +110,7 @@ const MobileView: React.FC = () => {
         title,
         content,
       });
-      alert('문의가 성공적으로 접수되었습니다.');
+      console.info('문의가 성공적으로 접수되었습니다.');
 
       const remainingDraftIds = draftIds.slice(1);
       if (remainingDraftIds.length > 0) {
@@ -107,21 +118,21 @@ const MobileView: React.FC = () => {
         navigate('/product-inquiry', { state: { draftIds: remainingDraftIds, cartItemIds } });
       } else {
         // 모든 draftIds가 처리되었으면 장바구니 아이템 삭제 후 장바구니 페이지로 이동
-        alert('모든 문의가 완료되었습니다.');
+        console.info('모든 문의가 완료되었습니다.');
         if (cartItemIds && cartItemIds.length > 0) {
           try {
             await api.post('/api/v1/cart/items/bulk-delete', { cartItemIds });
-            alert("장바구니에서 모든 구매 상품이 삭제되었습니다.");
+            console.info("장바구니에서 모든 구매 상품이 삭제되었습니다.");
           } catch (deleteError) {
             console.error("장바구니 아이템 삭제 실패:", deleteError);
-            alert("장바구니 아이템 삭제에 실패했습니다.");
+            console.error("장바구니 아이템 삭제에 실패했습니다.");
           }
         }
-        navigate('/cart');
+        navigate('/cart', { state: null }); // location.state 초기화
       }
     } catch (error) {
       console.error("문의 접수 중 오류:", error);
-      alert('문의 접수에 실패했습니다.');
+      console.error('문의 접수에 실패했습니다.');
     }
   };
 
@@ -139,7 +150,7 @@ const MobileView: React.FC = () => {
         <Icon
           icon="solar:alt-arrow-left-linear"
           className="inquiry-header-back-arrow"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/cart', { replace: true, state: null })} // 뒤로가기 시 장바구니로 이동 및 상태 초기화
         />
         <h1 className="inquiry-header-title">문의하기</h1>
         {/* Placeholder for right-side icon if any */}
@@ -198,13 +209,11 @@ const MobileView: React.FC = () => {
       {/* Inquiry Button Section */}
       <div className="inquiry-button-section">
         <button
-          className="inquiry-submit-button"
+          className={`inquiry-submit-button ${isSubmitButtonEnabled ? 'inquiry-submit-button-active' : ''}`}
           onClick={handleSubmitInquiry}
           disabled={!isSubmitButtonEnabled}
-          style={isSubmitButtonEnabled ? { backgroundColor: '#1E2124', cursor: 'pointer' } : {}}
         >
-          <span className="inquiry-submit-button-text"
-                style={isSubmitButtonEnabled ? { color: '#FFFFFF' } : {}}>
+          <span className="inquiry-submit-button-text">
             문의하기
           </span>
         </button>
