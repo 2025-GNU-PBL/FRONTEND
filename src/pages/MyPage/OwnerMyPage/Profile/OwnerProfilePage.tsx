@@ -1,15 +1,12 @@
 import MobileView from "./views/MobileView";
 import WebView from "./views/WebView";
 
-export default function OwnerMyPageMain() {
+export default function OwnerProfilePage() {
   return (
-    <div className="min-h-screen bg-white">
-      {/* 모바일 */}
+    <div className="w-full bg-[#F6F7FB]">
       <div className="md:hidden">
         <MobileView />
       </div>
-
-      {/* 데스크톱 */}
       <div className="hidden md:block">
         <WebView />
       </div>

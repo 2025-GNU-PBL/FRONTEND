@@ -1,4 +1,3 @@
-// src/pages/SignupPage/step2/MobileView.tsx
 import React, {
   useCallback,
   useEffect,
@@ -8,7 +7,7 @@ import React, {
   useId,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../components/MyPageHeader";
+import MyPageHeader from "../../../../../components/MyPageHeader";
 
 declare global {
   interface Window {
@@ -94,7 +93,7 @@ export default function MobileView({
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { phone } = location.state || {};
+  const { phoneNumber } = location.state || {};
 
   // 우편번호 레이어 오픈 상태
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
@@ -203,9 +202,9 @@ export default function MobileView({
     }
     onNext?.({ zipcode, address, detailAddress, extraAddress });
 
-    navigate("/sign-up/client/step3", {
+    navigate("/sign-up/owner/step3", {
       state: {
-        phone,
+        phoneNumber,
         zipcode,
         address,
         detailAddress,
@@ -227,7 +226,7 @@ export default function MobileView({
           </div>
 
           <h2 className="mt-[8px] text-[24px] font-bold leading-[36px] text-[#1E2124]">
-            회원님의{"\n"}주소를 알려주세요
+            사업장{"\n"}주소를 알려주세요
           </h2>
 
           <div className="mt-[50px] space-y-[12px]">

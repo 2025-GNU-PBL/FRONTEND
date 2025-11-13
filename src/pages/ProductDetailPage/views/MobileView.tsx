@@ -54,6 +54,44 @@ const MobileView = () => {
     navigate("/cart");
   };
 
+  const addToCart = async () => {
+    if (!detailData || !id) {
+      alert("상품 정보를 불러올 수 없습니다.");
+      return;
+    }
+
+    try {
+      // 수량은 기본 1로 설정. 필요시 UI 추가하여 변경
+      const quantity = 1;
+      await api.post("/api/v1/cart", {
+        productId: Number(id),
+        quantity,
+      });
+      alert("상품이 장바구니에 담겼습니다.");
+    } catch (error) {
+      console.error("장바구니 추가 실패:", error);
+      alert("장바구니 추가에 실패했습니다.");
+      throw error; // Re-throw to propagate error to handleProductReservation
+    }
+  };
+
+  const handleProductReservation = async () => {
+    if (!detailData || !id) {
+      alert("상품 정보를 불러올 수 없습니다.");
+      return;
+    }
+
+    try {
+      await addToCart(); // Add to cart first
+      navigate("/product-inquiry", {
+        state: { productId: id, category: category },
+      });
+    } catch (error) {
+      // addToCart에서 이미 에러 처리됨
+      console.error("상품 예약 진행 실패:", error);
+    }
+  };
+
   /* ========================= 쿠폰 ========================= */
 
   const handleOpenCoupon = () => {
@@ -298,14 +336,15 @@ const MobileView = () => {
           <div className="flex gap-3">
             <button
               type="button"
-              className="flex-1 min-h-[52px] border border-black/20 rounded-[12px] flex items-center justify-center text-[16px] font-semibold text-black/80"
-              onClick={handleGoCart}
+              className="flex-1 h-[56px] border border-black/20 rounded-[12px] flex items-center justify-center text-[16px] font-semibold text-black/80"
+              onClick={addToCart} // handleGoCart 대신 addToCart 호출
             >
               장바구니
             </button>
             <button
               type="button"
-              className="flex-1 min-h-[52px] rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold flex items-center justify-center"
+              className="flex-1 h-[56px] rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold flex items-center justify-center"
+              onClick={handleProductReservation}
             >
               상품예약
             </button>
