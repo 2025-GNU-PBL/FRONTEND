@@ -1,0 +1,26 @@
+.web-inform-page {
+  /* Add your web view specific styles here */
+  padding: 20px;
+}
+
+.web-notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.web-notification-card {
+  border: 1px solid #eee;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.web-notification-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: #f11f2f;
+  border-radius: 50%;
+  margin-left: 8px;
+}
