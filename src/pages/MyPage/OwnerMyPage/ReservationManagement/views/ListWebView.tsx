@@ -1,4 +1,3 @@
-// src/pages/MyPage/ClientMyPage/Reservation/WebView.tsx
 import React, {
   useMemo,
   useState,
@@ -136,6 +135,11 @@ export default function ListWebView() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [statusOpen, sortOpen]);
+
+  /** 한 건 선택 시 예약 상세 페이지로 이동 */
+  const onSelectInquiry = (reservationId: string) => {
+    nav(`/my-page/owner/reservations/${reservationId}`);
+  };
 
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
@@ -307,6 +311,7 @@ export default function ListWebView() {
                   key={q.id}
                   q={q}
                   withSoftBackground={index === 1}
+                  onClick={() => onSelectInquiry(q.id)}
                 />
               ))}
             </div>
@@ -366,30 +371,38 @@ function StatusBadge({ status }: { status: InquiryStatus }) {
 function WebInquiryRow({
   q,
   withSoftBackground,
+  onClick,
 }: {
   q: Inquiry;
   withSoftBackground?: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div
-      className={[
-        "grid grid-cols-[1.5fr_3fr_1.2fr_1.2fr] gap-3 px-6 py-4 border-t border-[#F3F4F5] items-center",
-        withSoftBackground ? "bg-[#F6F7FB]" : "bg-white",
-      ].join(" ")}
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left hover:bg-[#F9FAFB] transition"
     >
-      <div className="text-[14px] font-semibold text-[#111827]">
-        {q.partner}
+      <div
+        className={[
+          "grid grid-cols-[1.5fr_3fr_1.2fr_1.2fr] gap-3 px-6 py-4 border-t border-[#F3F4F5] items-center",
+          withSoftBackground ? "bg-[#F6F7FB]" : "bg-white",
+        ].join(" ")}
+      >
+        <div className="text-[14px] font-semibold text-[#111827]">
+          {q.partner}
+        </div>
+        <div className="flex flex-col gap-1">
+          <div className="text-[15px] text-[#111827]">{q.title}</div>
+        </div>
+        <div className="text-[13px] text-[#6B7280]">
+          {formatDate(q.createdAt)}
+        </div>
+        <div className="flex justify-center">
+          <StatusBadge status={q.status} />
+        </div>
       </div>
-      <div className="flex flex-col gap-1">
-        <div className="text-[15px] text-[#111827]">{q.title}</div>
-      </div>
-      <div className="text-[13px] text-[#6B7280]">
-        {formatDate(q.createdAt)}
-      </div>
-      <div className="flex justify-center">
-        <StatusBadge status={q.status} />
-      </div>
-    </div>
+    </button>
   );
 }
 
@@ -402,7 +415,7 @@ function WebEmptyState() {
         className="w-[80px] h-[80px] text-[#E5E6EB]"
       />
       <div className="flex flex-col items-center gap-1">
-        <p className="text-[18px] font-semibold text-black">
+        <p className="text-[18px] font-semibold text:black">
           1개월 내 문의 내역이 없어요
         </p>
         <p className="text-[13px] text-[#9CA3AF]">
