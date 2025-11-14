@@ -3,12 +3,6 @@ import { Icon } from "@iconify/react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { multipartApi } from "../../../../../../lib/api/multipartApi";
 
-/**
- * 멀티파트 전송 규약
- * - 파일 파트: "images" (key)
- * - JSON 파트: "request" (key)  👉 Blob(application/json) + filename("request.json")
- */
-
 type ImageItem = { src: string; file?: File };
 
 type Region =
@@ -48,7 +42,7 @@ type FormValues = {
   starCount: string; // 숫자 텍스트 입력 → number 변환
   subwayAccessible: boolean;
   diningAvailable: boolean;
-  thumbnail: string; // URL (선택)
+  thumbnail: string; // URL
 
   // 태그 (백엔드 전송 형식: string[])
   tags: string[];
@@ -56,7 +50,7 @@ type FormValues = {
 
 const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"] as const;
 
-// ---------- 태그 그룹 정의 (표시는 한글, 전송값은 영문 코드) ----------
+// ---------- 태그 그룹 정의  ----------
 type TagOption = { ko: string; en: string };
 type TagGroup = { groupLabel: string; options: TagOption[] };
 
@@ -169,7 +163,7 @@ const TAG_GROUPS_BY_CATEGORY: Record<(typeof categories)[number], TagGroup[]> =
     메이크업: MAKEUP_TAG_GROUPS,
   };
 
-// ko ↔ en 매핑 빠른 조회용 (표시: ko, 저장/전송: en)
+// ko ↔ en 매핑 빠른 조회용
 const KO_TO_EN: Record<string, string> = [
   ...HALL_TAG_GROUPS,
   ...STUDIO_TAG_GROUPS,
@@ -196,8 +190,8 @@ const FILE_PART_KEY = "images";
 const JSON_PART_KEY = "request";
 
 type Props = {
-  vendorName?: string; // 백엔드에서 전달
-  address?: string; // 백엔드에서 전달
+  vendorName?: string;
+  address?: string;
 };
 
 const regions: Region[] = ["SEOUL", "GYEONGGI", "INCHEON", "BUSAN"];
@@ -338,20 +332,20 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
         endpoint = "/api/v1/wedding-hall";
         break;
       case "스튜디오":
-        endpoint = "/api/v1/studio"; // TODO: 실제 엔드포인트 확인
+        endpoint = "/api/v1/studio";
         break;
       case "드레스":
-        endpoint = "/api/v1/dress"; // TODO: 실제 엔드포인트 확인
+        endpoint = "/api/v1/dress";
         break;
       case "메이크업":
-        endpoint = "/api/v1/makeup"; // TODO: 실제 엔드포인트 확인
+        endpoint = "/api/v1/makeup";
         break;
       default:
         alert("카테고리를 선택해주세요.");
         return;
     }
 
-    // 🔥 전송용 JSON — tags는 string[] 평면 배열
+    // 전송용 JSON — tags는 string[] 평면 배열
     const body: Record<string, unknown> = {
       name: values.name.trim(),
       address: values.address?.trim() ?? "",
@@ -360,7 +354,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
       availableTime: values.availableTime.trim(),
       thumbnail: values.thumbnail.trim() || undefined,
       region: values.region,
-      tags: (values.tags || []).map((t) => ({ tagName: t })), // ✅ 이 부분 유지
+      tags: (values.tags || []).map((t) => ({ tagName: t })),
     };
 
     const jsonBlob = new Blob([JSON.stringify(body)], {
@@ -370,7 +364,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
     const formData = new FormData();
     formData.append(JSON_PART_KEY, jsonBlob, "request.json");
 
-    // 🔎 디버그: FormData 상세 출력
+    // 디버그: FormData 상세 출력
     console.groupCollapsed("[DEBUG] FormData");
 
     for (const [k, v] of formData.entries()) {
@@ -763,7 +757,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
               </div>
             </div>
 
-            {/* 🔁 태그 그룹 (칩 토글, 여러 개 선택 가능) */}
+            {/*  태그 그룹 (칩 토글, 여러 개 선택 가능) */}
             <div className="flex flex-col gap-3">
               <label className="text-[14px] leading-[21px] text-black">
                 태그 선택

@@ -99,7 +99,7 @@ export default function MobileView() {
               />
               <MidLink
                 label="상품관리"
-                onClick={() => go("/my-page/owner/products")}
+                onClick={() => go("/my-page/owner/products/management")}
               />
               <MidLink
                 label="예약관리"
