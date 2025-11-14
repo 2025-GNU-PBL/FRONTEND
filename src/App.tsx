@@ -54,7 +54,12 @@ import SignupOwnerCompletePage from "./pages/SignupPage/owner/step4/SignupComple
 import FloatingChatButton from "./components/chat/FloatingChatButton";
 import NotificationPage from "./pages/NotificationPage/NotificationPage";
 import ProductDetailPage from "./pages/ProductDetailPage/ProductDetailPage";
-import ProductManagementPage from "./pages/MyPage/OwnerMyPage/ProductManagement/Main/ProductMangement";
+import OwnerProfilePage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfilePage";
+import ReservationManagementPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationManagementPage";
+import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/ProductManagement/CouponRegister/CouponRegisterPage";
+import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
+import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEditPage";
+import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
 
 function Layout() {
   const location = useLocation();
@@ -209,7 +214,7 @@ const App = () => {
             element={<ProductInquiryPage />}
           />{" "}
           {/* 고객 마이페이지 */}
-          <Route path="/my-page/client" element={<ClientMyPageMain />} />
+          <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
           <Route
             path="/my-page/client/profile"
             element={<ClientProfilePage />}
@@ -218,11 +223,60 @@ const App = () => {
             path="/my-page/client/coupons"
             element={<ClientCouponPage />}
           />
-          {/* 사장 마이페이지 */}
-          <Route path="/my-page/owner" element={<OwnerMyPageMain />} />
+          <Route path="/my-page/client/inquiries" element={<InquiryPage />} />
+          <Route path="/my-page/client/reviews" element={<ReviewPage />} />
           <Route
-            path="/my-page/owner/product"
-            element={<ProductManagementPage />}
+            path="/my-page/client/payments"
+            element={<PaymentListPage />}
+          />
+          <Route
+            path="/my-page/client/payments/detail"
+            element={<PaymentDetailPage />}
+          />
+          <Route path="/sign-up/client/step1" element={<ClientSignupPage />} />
+          <Route path="/sign-up/client/step2" element={<JoinAddressPage />} />
+          <Route path="/sign-up/client/step3" element={<WeddingInfoPage />} />
+          <Route
+            path="/sign-up/client/step4"
+            element={<SignupClientCompletePage />}
+          />
+          {/* 사장 마이페이지 */}
+          <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
+          <Route path="/my-page/owner/profile" element={<OwnerProfilePage />} />
+          <Route
+            path="/my-page/owner/schedules"
+            element={<OwnerMyPageMain />}
+          />
+          <Route
+            path="/my-page/owner/coupons/register"
+            element={<CouponRegisterPage />}
+          />
+          <Route
+            path="/my-page/owner/coupons/edit"
+            element={<CouponEditPage />}
+          />
+          <Route
+            path="/my-page/owner/reservations"
+            element={<ReservationManagementPage />}
+          />
+          <Route
+            path="/my-page/owner/reservations/:reservationId"
+            element={<ReservationDetailPage />}
+          />
+          <Route
+            path="/my-page/owner/products/management"
+            element={<ProductList />}
+          />
+          <Route path="/my-page/owner/payments" element={<OwnerMyPageMain />} />
+          <Route path="/sign-up/owner/step1" element={<OwnerSignupPage />} />
+          <Route
+            path="/sign-up/owner/step2"
+            element={<BusinessAddressPage />}
+          />
+          <Route path="/sign-up/owner/step3" element={<BusinessInfoPage />} />
+          <Route
+            path="/sign-up/owner/step4"
+            element={<SignupOwnerCompletePage />}
           />
           <Route
             path="/my-page/owner/product/create"
@@ -238,43 +292,6 @@ const App = () => {
           <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
           <Route path="/auth/naver/callback" element={<NaverCallback />} />
         </Route>
-
-        <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
-        <Route path="/my-page/client/profile" element={<ClientProfilePage />} />
-        <Route path="/my-page/client/coupons" element={<ClientCouponPage />} />
-        <Route path="/my-page/client/inquiries" element={<InquiryPage />} />
-        <Route path="/my-page/client/reviews" element={<ReviewPage />} />
-        <Route path="/my-page/client/payments" element={<PaymentListPage />} />
-        <Route
-          path="/my-page/client/payments/detail"
-          element={<PaymentDetailPage />}
-        />
-
-        <Route path="/sign-up/client/step1" element={<ClientSignupPage />} />
-        <Route path="/sign-up/client/step2" element={<JoinAddressPage />} />
-        <Route path="/sign-up/client/step3" element={<WeddingInfoPage />} />
-        <Route
-          path="/sign-up/client/step4"
-          element={<SignupClientCompletePage />}
-        />
-
-        <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
-        <Route path="/my-page/owner/profile" element={<OwnerMyPageMain />} />
-        <Route path="/my-page/owner/schedules" element={<OwnerMyPageMain />} />
-        <Route path="/my-page/owner/coupons" element={<OwnerMyPageMain />} />
-        <Route
-          path="/my-page/owner/reservtions"
-          element={<OwnerMyPageMain />}
-        />
-        <Route path="/my-page/owner/products" element={<OwnerMyPageMain />} />
-        <Route path="/my-page/owner/payments" element={<OwnerMyPageMain />} />
-        <Route path="/sign-up/owner/step1" element={<OwnerSignupPage />} />
-        <Route path="/sign-up/owner/step2" element={<BusinessAddressPage />} />
-        <Route path="/sign-up/owner/step3" element={<BusinessInfoPage />} />
-        <Route
-          path="/sign-up/owner/step4"
-          element={<SignupOwnerCompletePage />}
-        />
       </Route>
     </Routes>
   );
