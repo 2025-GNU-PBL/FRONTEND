@@ -8,6 +8,7 @@ import type { Variants } from "framer-motion";
 import api from "../../../lib/api/axios";
 import type { Product } from "../../../type/product";
 import { useAppSelector } from "../../../store/hooks";
+import { getUnreadNotificationCount } from "../../../lib/api/notification";
 
 // ===== 타입 선언 =====
 type CategoryKey = "hall" | "studio" | "dress" | "makeup";
@@ -96,6 +97,22 @@ export default function MobileView({
 }: Props) {
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector((s) => s.user.isAuth);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const fetchUnreadCount = async () => {
+        try {
+          const count = await getUnreadNotificationCount();
+          setUnreadCount(count);
+        } catch (error) {
+          console.error("Failed to fetch unread notification count:", error);
+        }
+      };
+
+      fetchUnreadCount();
+    }
+  }, [isAuthenticated]);
 
   // ====== 무한 스크롤 상태 ======
   const [items, setItems] = useState<Product[]>(products ?? []);
@@ -236,7 +253,7 @@ export default function MobileView({
         <div className="flex gap-3">
           {isAuthenticated && (
             <motion.button
-              className="flex items-center justify-center hover:opacity-80 active:scale-95"
+              className="relative flex items-center justify-center hover:opacity-80 active:scale-95"
               onClick={() => navigate("/notification")}
               whileTap={{ scale: 0.94 }}
             >
@@ -244,6 +261,11 @@ export default function MobileView({
                 icon="solar:bell-linear"
                 className="w-6 h-6 text-black/80"
               />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </motion.button>
           )}
           {isAuthenticated && (
