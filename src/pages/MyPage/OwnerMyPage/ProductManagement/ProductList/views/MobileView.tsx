@@ -1,3 +1,4 @@
+// src/pages/Owner/Product/Manage/MobileView.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
@@ -276,11 +277,6 @@ export default function MobileView() {
               ))}
             </div>
           )}
-
-          {/* pageMeta 디버깅 필요하면 아래 주석 해제 */}
-          {/* <pre className="px-5 py-4 text-xs text-gray-400">
-            {JSON.stringify(pageMeta, null, 2)}
-          </pre> */}
         </div>
 
         {/* 오른쪽 아래 플로팅 상품 등록 버튼 */}
