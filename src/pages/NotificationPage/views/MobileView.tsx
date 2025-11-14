@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './MobileView.css';
 import { getAllNotifications } from '../../../lib/api/axios';
+import { markNotificationAsRead } from '../../../lib/api/notification';
 import type { Notification } from '../../../type/notification';
 
 interface MobileViewProps {
@@ -42,6 +43,23 @@ const MobileView: React.FC<MobileViewProps> = ({ liveNotifications }) => {
     return false;
   });
 
+  const handleNotificationClick = async (notificationId: number) => {
+    try {
+      await markNotificationAsRead(notificationId);
+      // Update the local state to reflect the change
+      setNotifications(prev =>
+        prev.map(n =>
+          n.id === notificationId ? { ...n, isRead: true } : n
+        )
+      );
+      // Also update liveNotifications if necessary, assuming it's managed externally or needs similar update
+      // For now, we'll assume liveNotifications are refreshed by parent or are short-lived.
+      // If liveNotifications also needs to be updated here, a prop or context would be needed.
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  };
+
   if (loading) {
     return <div className='inform-page'>Loading notifications...</div>;
   }
@@ -77,7 +95,11 @@ const MobileView: React.FC<MobileViewProps> = ({ liveNotifications }) => {
           <div className='no-notifications'>알림이 없습니다.</div>
         ) : (
           filteredNotifications.map((notification) => (
-            <div className='notification-card' key={notification.id}>
+            <div
+              className='notification-card'
+              key={notification.id}
+              onClick={() => handleNotificationClick(notification.id)}
+            >
               <div className={`notification-icon`}>
                 {notification.type === 'RESERVATION_APPROVED' ? (
                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">

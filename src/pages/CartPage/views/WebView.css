@@ -1,76 +1,30 @@
-/* src/pages/CartPage/views/WebView.css */
+/* WebView.css */
 
 .web-cart-container {
   position: relative;
-  width: 100%;
-  max-width: 1200px; /* 웹뷰의 최대 너비 */
+  width: 100%; /* 너비를 100%로 설정 */
+  /* max-width: 390px; */ /* 웹뷰에서는 최대 너비 제한 제거 */
   margin: 0 auto; /* 중앙 정렬 */
-  min-height: 100vh;
+  min-height: 100vh; /* 뷰포트 높이에 맞게 설정 */
   background: #FFFFFF;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding-bottom: 96px;
-  box-sizing: border-box;
+  overflow-x: hidden; /* 가로 스크롤 방지 */
+  overflow-y: auto; /* 내용이 넘칠 경우 세로 스크롤 가능하도록 */
+  padding-bottom: 96px; /* 하단 구매 바 높이만큼 패딩 추가 */
+  box-sizing: border-box; /* 패딩이 너비에 포함되도록 */
 }
 
-.web-cart-header {
+/* Header */
+.cart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0px 40px; /* 웹뷰에 맞게 패딩 조정 */
-  height: 70px; /* 웹뷰에 맞게 높이 조정 */
+  padding: 0px 20px;
+  height: 60px;
   background: #FFFFFF;
   border-bottom: 1px solid #F3F4F5;
   position: sticky;
   top: 0;
   z-index: 100;
-}
-
-.web-main-content {
-  display: flex;
-  justify-content: space-between;
-  padding: 20px 40px; /* 웹뷰에 맞게 패딩 조정 */
-  gap: 40px; /* 섹션 간 간격 */
-}
-
-.web-product-items-section {
-  flex: 3; /* 상품 목록 섹션이 더 넓은 공간을 차지 */
-}
-
-.web-summary-purchase-section {
-  flex: 1; /* 요약 및 구매 섹션 */
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.web-select-delete-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 0px;
-  border-bottom: 1px solid #F3F4F5;
-}
-
-.web-select-all-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.web-product-item-wrapper {
-  display: flex;
-  padding: 20px 0px;
-  gap: 12px;
-  border-bottom: 1px solid #F3F4F5;
-  align-items: flex-start;
-}
-
-/* MobileView.css와 공유하는 스타일은 그대로 사용 */
-.separator-gray-8px {
-  width: 100%;
-  height: 8px;
-  background: #F7F9FA;
 }
 
 .header-back-arrow {
@@ -98,28 +52,32 @@
   visibility: hidden;
 }
 
-.product-item-checkbox {
+/* Separator */
+.separator-gray-8px {
+  width: 100%;
+  height: 8px;
+  background: #F7F9FA;
+}
+
+/* Select all / Delete selected */
+.select-delete-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F3F4F5;
+}
+
+.select-all-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.select-all-checkbox-vector {
   width: 20px;
   height: 20px;
-  flex-shrink: 0;
-  margin-top: 5px;
   background: #FF2233;
-  cursor: pointer;
-}
-
-.product-item-checkbox-unchecked {
-  border: 1px solid #E8E8E8;
-  border-radius: 4px;
-  background: #FFFFFF;
-}
-
-.product-item-checkbox-checked {
-  background: #FF2233;
-  border-radius: 4px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #FFFFFF;
 }
 
 .select-all-text {
@@ -141,6 +99,39 @@
   letter-spacing: -0.2px;
   color: #1E2124;
   cursor: pointer;
+}
+
+/* Product Item */
+.product-item-wrapper {
+  display: flex;
+  padding: 20px;
+  gap: 12px;
+  border-bottom: 1px solid #F3F4F5;
+  align-items: flex-start;
+}
+
+.product-item-checkbox {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 5px;
+  background: #FF2233;
+  cursor: pointer; /* 체크박스 클릭 가능 */
+}
+
+.product-item-checkbox-unchecked {
+  border: 1px solid #E8E8E8;
+  border-radius: 4px;
+  background: #FFFFFF;
+}
+
+.product-item-checkbox-checked {
+  background: #FF2233;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #FFFFFF;
 }
 
 .product-item-image {
@@ -242,6 +233,7 @@
   color: #1E2124;
 }
 
+/* Summary Section */
 .summary-section {
   padding: 20px;
   background: #FFFFFF;
@@ -302,10 +294,16 @@
   margin: 10px 0;
 }
 
+/* Bottom Purchase Bar */
 .purchase-bar-container {
-  position: relative; /* Fixed 대신 relative로 변경 */
-  padding: 20px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
   background: #FFFFFF;
+  display: flex;
+  justify-content: center;
+  padding: 20px;
   box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1);
   z-index: 100;
 }
@@ -334,6 +332,7 @@
   color: #FFFFFF;
 }
 
+/* Dimmed Overlay and Pop-up */
 .dimmed-overlay {
   position: fixed;
   top: 0;
@@ -544,15 +543,57 @@
 
 /* Home Indicator - Removed based on previous instruction */
 .home-indicator-container, .home-indicator-bar {
-  display: none;
+  display: none; /* Hide all home indicator related elements */
 }
 
-.web-empty-cart-view {
+.empty-cart-view {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 70px - 96px); /* 웹뷰 헤더 및 푸터 높이 고려 */
+  height: calc(100vh - 60px - 96px); /* Header와 Purchase Bar 높이를 제외한 영역 */
   text-align: center;
   padding: 20px;
+}
+
+.empty-cart-icon-wrapper {
+  background-color: #F7F9FA;
+  border-radius: 50%;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.empty-cart-icon {
+  width: 48px;
+  height: 48px;
+  color: #B0B0B0;
+}
+
+.empty-cart-text {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 160%;
+  letter-spacing: -0.2px;
+  color: #999999;
+  margin-bottom: 30px;
+}
+
+.go-to-products-button {
+  width: 100%;
+  max-width: 200px; /* 버튼 너비 제한 */
+  height: 48px;
+  background: #FF2233;
+  border-radius: 12px;
+  border: none;
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 150%;
+  text-align: center;
+  letter-spacing: -0.2px;
+  color: #FFFFFF;
+  cursor: pointer;
 }

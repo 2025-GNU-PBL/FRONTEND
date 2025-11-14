@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useAppSelector } from "../../store/hooks";
+import { useEffect, useState } from "react";
+import { getUnreadNotificationCount } from "../../lib/api/notification";
 
 const menuItems = [
   { name: "웨딩홀", path: "/wedding" },
@@ -14,6 +16,22 @@ const Navbar = () => {
   // ✅ Redux에서 로그인 여부 확인
   const isAuth = useAppSelector((s) => s.user.isAuth);
   const userRole = useAppSelector((state) => state.user.role); // ✅ Redux에서 role 가져오기
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (isAuth) {
+      const fetchUnreadCount = async () => {
+        try {
+          const count = await getUnreadNotificationCount();
+          setUnreadCount(count);
+        } catch (error) {
+          console.error("Failed to fetch unread notification count:", error);
+        }
+      };
+
+      fetchUnreadCount();
+    }
+  }, [isAuth]);
 
   return (
     // 데스크톱 전용 네비게이션
@@ -62,9 +80,14 @@ const Navbar = () => {
               <Link
                 to="/notification"
                 aria-label="채팅"
-                className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
+                className="relative p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
               >
                 <Icon icon="solar:bell-linear" className="h-6 w-6" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
               {/* ❤️ 카트 */}
               <Link

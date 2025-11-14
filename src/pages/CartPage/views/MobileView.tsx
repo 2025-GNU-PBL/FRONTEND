@@ -83,8 +83,8 @@ const MobileView = () => {
     }
   };
 
-  const toggleItemCheckbox = async (cartItemId: number, currentSelected: boolean) => {
-    await updateCartItem(cartItemId, -1, !currentSelected); // Quantity -1 indicates no change
+  const toggleItemCheckbox = async (cartItemId: number, currentQuantity: number, currentSelected: boolean) => {
+    await updateCartItem(cartItemId, currentQuantity, !currentSelected); // 수량은 현재 값을 유지하고 selected 상태만 변경
   };
 
   const increaseQuantity = async (cartItemId: number, currentQuantity: number, selected: boolean) => {
@@ -207,7 +207,7 @@ const MobileView = () => {
         <div className="product-item-wrapper" key={item.cartItemId}>
           <button
             className={`product-item-checkbox ${item.selected ? 'product-item-checkbox-checked' : 'product-item-checkbox-unchecked'}`}
-            onClick={() => toggleItemCheckbox(item.cartItemId, item.selected)}
+            onClick={() => toggleItemCheckbox(item.cartItemId, item.quantity, item.selected)}
             aria-checked={item.selected}
             role="checkbox"
           >

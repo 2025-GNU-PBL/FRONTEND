@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import './WebView.css'; // WebView 전용 CSS 파일 임포트
+import './WebView.css'; // Changed CSS import path
 import { Icon } from '@iconify/react';
 import api from '../../../lib/api/axios'; // axios 인스턴스 임포트
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'; // useNavigate 임포트
 
-// API 응답 데이터 타입 정의 (MobileView와 동일)
+// API 응답 데이터 타입 정의
 interface CartItem {
   cartItemId: number;
   productId: number;
@@ -28,8 +28,8 @@ const WebView = () => {
   const [cartData, setCartData] = useState<CartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAllChecked, setIsAllChecked] = useState(false);
-  const navigate = useNavigate();
+  const [isAllChecked, setIsAllChecked] = useState(false); // All items checked
+  const navigate = useNavigate(); // useNavigate 훅 초기화
 
   const fetchCartData = async () => {
     try {
@@ -70,15 +70,31 @@ const WebView = () => {
     }
   };
 
-  const toggleItemCheckbox = (cartItemId: number) => {
-    if (!cartData) return;
-    const updatedItems = cartData.items.map(item =>
-      item.cartItemId === cartItemId ? { ...item, selected: !item.selected } : item
-    );
-    const allSelected = updatedItems.every(item => item.selected);
-    // TODO: 백엔드에 특정 아이템의 선택 상태 변경 요청 (필요 시)
-    setCartData({ ...cartData, items: updatedItems });
-    setIsAllChecked(allSelected);
+  const updateCartItem = async (cartItemId: number, quantity: number, selected: boolean) => {
+    try {
+      setLoading(true);
+      await api.patch(`/api/v1/cart/items/${cartItemId}`, { quantity, selected });
+      await fetchCartData(); // Refresh cart data
+    } catch (err) {
+      console.error("Failed to update cart item:", err);
+      setError("장바구니 아이템 업데이트에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleItemCheckbox = async (cartItemId: number, currentQuantity: number, currentSelected: boolean) => {
+    await updateCartItem(cartItemId, currentQuantity, !currentSelected); // 수량은 현재 값을 유지하고 selected 상태만 변경
+  };
+
+  const increaseQuantity = async (cartItemId: number, currentQuantity: number, selected: boolean) => {
+    await updateCartItem(cartItemId, currentQuantity + 1, selected);
+  };
+
+  const decreaseQuantity = async (cartItemId: number, currentQuantity: number, selected: boolean) => {
+    if (currentQuantity > 1) {
+      await updateCartItem(cartItemId, currentQuantity - 1, selected);
+    }
   };
 
   const handleDeleteSelected = async () => {
@@ -89,14 +105,14 @@ const WebView = () => {
       .map(item => item.cartItemId);
 
     if (selectedCartItemIds.length === 0) {
-      alert("삭제할 상품을 선택해주세요.");
+      console.warn("삭제할 상품을 선택해주세요.");
       return;
     }
 
     try {
       setLoading(true);
       await api.post('/api/v1/cart/items/bulk-delete', { cartItemIds: selectedCartItemIds });
-      alert("선택된 상품이 삭제되었습니다.");
+      console.info("선택된 상품이 삭제되었습니다.");
       await fetchCartData(); // 장바구니 데이터 새로고침
     } catch (err) {
       console.error("Failed to delete selected items:", err);
@@ -108,7 +124,7 @@ const WebView = () => {
 
   const handlePurchase = async () => {
     if (!cartData || cartData.items.filter(item => item.selected).length === 0) {
-      alert("구매할 상품을 선택해주세요.");
+      console.warn("구매할 상품을 선택해주세요.");
       return;
     }
 
@@ -143,12 +159,12 @@ const WebView = () => {
   if (!cartData || cartData.items.length === 0) {
     return (
       <div className="web-cart-container">
-        <div className="web-cart-header">
+        <div className="cart-header">
           <Icon icon="solar:alt-arrow-left-linear" className="header-back-arrow" onClick={() => navigate(-1)} />
           <h1 className="header-title">장바구니</h1>
           <div className="header-menu-icon"></div>
         </div>
-        <div className="web-empty-cart-view">
+        <div className="empty-cart-view">
           <div className="empty-cart-icon-wrapper">
             <Icon icon="mdi:cart-outline" className="empty-cart-icon" />
           </div>
@@ -162,7 +178,7 @@ const WebView = () => {
   return (
     <div className="web-cart-container">
       {/* Header */}
-      <div className="web-cart-header">
+      <div className="cart-header">
         <Icon icon="solar:alt-arrow-left-linear" className="header-back-arrow" onClick={() => navigate(-1)} />
         <h1 className="header-title">장바구니</h1>
         <div className="header-menu-icon"></div>
@@ -170,82 +186,74 @@ const WebView = () => {
 
       <div className="separator-gray-8px"></div> {/* Separator below header */}
 
-      <div className="web-main-content">
-        {/* Left Section: Product Items */}
-        <div className="web-product-items-section">
-          {/* Select All / Delete Selected */}
-          <div className="web-select-delete-section">
-            <div className="web-select-all-group">
-              <button
-                className={`product-item-checkbox ${isAllChecked ? 'product-item-checkbox-checked' : 'product-item-checkbox-unchecked'}`}
-                onClick={toggleAllCheckboxes}
-                aria-checked={isAllChecked}
-                role="checkbox"
-              >
-                {isAllChecked && <Icon icon="ion:checkmark" />}
-              </button>
-              <span className="select-all-text">모두선택</span>
-            </div>
-            <span className="delete-selected-text" onClick={handleDeleteSelected}>선택삭제</span>
-          </div>
-
-          {/* Product Items */}
-          {cartData.items.map(item => (
-            <div className="web-product-item-wrapper" key={item.cartItemId}>
-              <button
-                className={`product-item-checkbox ${item.selected ? 'product-item-checkbox-checked' : 'product-item-checkbox-unchecked'}`}
-                onClick={() => toggleItemCheckbox(item.cartItemId)}
-                aria-checked={item.selected}
-                role="checkbox"
-              >
-                {item.selected && <Icon icon="ion:checkmark" />}
-              </button>
-              <img src={item.thumbnailUrl || "/images/placeholder.png"} alt={item.productName} className="product-item-image" />
-              <div className="product-details">
-                <p className="product-item-shop-name">제이바이로이스타</p>
-                <p className="product-item-description">{item.productName}<br />(수량: {item.quantity})</p>
-                <div className="product-price-section">
-                  <p className="product-item-original-price">{(item.price * item.quantity).toLocaleString()}원</p>
-                  <p className="product-item-discounted-price">{(item.price * item.quantity).toLocaleString()}원</p>
-                </div>
-                <div className="product-item-quantity-control">
-                  <Icon icon="mynaui:minus" className="quantity-minus-icon" />
-                  <span className="quantity-display">{item.quantity}</span>
-                  <Icon icon="mynaui:plus" className="quantity-plus-icon" />
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* Select All / Delete Selected */}
+      <div className="select-delete-section">
+        <div className="select-all-group">
+          <button
+            className={`product-item-checkbox ${isAllChecked ? 'product-item-checkbox-checked' : 'product-item-checkbox-unchecked'}`}
+            onClick={toggleAllCheckboxes}
+            aria-checked={isAllChecked}
+            role="checkbox"
+          >
+            {isAllChecked && <Icon icon="ion:checkmark" />} {/* Checkmark icon for checked state */}
+          </button>
+          <span className="select-all-text">모두선택</span>
         </div>
+        <span className="delete-selected-text" onClick={handleDeleteSelected}>선택삭제</span>
+      </div>
 
-        {/* Right Section: Summary and Purchase */}
-        <div className="web-summary-purchase-section">
-          {/* Summary Section */}
-          <div className="summary-section">
-            <div className="summary-item">
-              <p className="summary-item-label">총 상품금액</p>
-              <p className="summary-item-value">{cartData.totalProductAmount.toLocaleString()}원</p>
+      {/* Product Items */}
+      {cartData.items.map(item => (
+        <div className="product-item-wrapper" key={item.cartItemId}>
+          <button
+            className={`product-item-checkbox ${item.selected ? 'product-item-checkbox-checked' : 'product-item-checkbox-unchecked'}`}
+            onClick={() => toggleItemCheckbox(item.cartItemId, item.quantity, item.selected)}
+            aria-checked={item.selected}
+            role="checkbox"
+          >
+            {item.selected && <Icon icon="ion:checkmark" />} {/* Checkmark icon for checked state */}
+          </button>
+          <img src={item.thumbnailUrl || "/images/placeholder.png"} alt={item.productName} className="product-item-image" />
+          <div className="product-details">
+            <p className="product-item-shop-name">제이바이로이스타</p> {/* TODO: 실제 상점 이름으로 대체 */}
+            <p className="product-item-description">{item.productName}<br />(수량: {item.quantity})</p>
+            <div className="product-price-section">
+              <p className="product-item-original-price">{(item.price * item.quantity).toLocaleString()}원</p>
+              <p className="product-item-discounted-price">{(item.price * item.quantity).toLocaleString()}원</p> {/* TODO: 할인 금액 계산 */}
             </div>
-            <div className="summary-item">
-              <p className="summary-item-label">총 할인금액</p>
-              <p className="summary-item-value">{cartData.totalDiscountAmount.toLocaleString()}원</p>
-            </div>
-            <div className="summary-item">
-              <p className="summary-item-payment-amount">결제금액</p>
-              <p className="summary-payment-value">{cartData.paymentAmount.toLocaleString()}원</p>
+            <div className="product-item-quantity-control">
+              <Icon icon="mynaui:minus" className="quantity-minus-icon" onClick={() => decreaseQuantity(item.cartItemId, item.quantity, item.selected)} />
+              <span className="quantity-display">{item.quantity}</span>
+              <Icon icon="mynaui:plus" className="quantity-plus-icon" onClick={() => increaseQuantity(item.cartItemId, item.quantity, item.selected)} />
             </div>
           </div>
+        </div>
+      ))}
 
-          {/* Purchase Bar */}
-          <div className="purchase-bar-container">
-            <button className="purchase-button" onClick={togglePopup}>
-              <span className="purchase-button-text">{cartData.paymentAmount.toLocaleString()}원 구매하기</span>
-            </button>
-          </div>
+      {/* Summary Section */}
+      <div className="summary-section">
+        <div className="summary-item">
+          <p className="summary-item-label">총 상품금액</p>
+          <p className="summary-item-value">{cartData.totalProductAmount.toLocaleString()}원</p>
+        </div>
+        <div className="summary-item">
+          <p className="summary-item-label">총 할인금액</p>
+          <p className="summary-item-value">{cartData.totalDiscountAmount.toLocaleString()}원</p>
+        </div>
+        <div className="summary-item">
+          <p className="summary-item-payment-amount">결제금액</p>
+          <p className="summary-payment-value">{cartData.paymentAmount.toLocaleString()}원</p>
         </div>
       </div>
 
-      {/* Dimmed Overlay and Pop-up (MobileView와 동일) */}
+      {/* Purchase Bar */}
+      <div className="purchase-bar-container">
+        <button className="purchase-button" onClick={togglePopup}>
+          <span className="purchase-button-text">{cartData.paymentAmount.toLocaleString()}원 구매하기</span>
+        </button>
+      </div>
+
+      {/* Dimmed Overlay and Pop-up */}
       {isPopupOpen && (
         <div className="dimmed-overlay" onClick={togglePopup}>
           <div className={`popup-container ${isPopupOpen ? '' : 'hidden'}`} onClick={(e) => e.stopPropagation()}>
