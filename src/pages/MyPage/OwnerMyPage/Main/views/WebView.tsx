@@ -84,7 +84,7 @@ export default function WebView() {
               <MenuTile
                 label="상품관리"
                 icon="mdi:message-question-outline"
-                onClick={() => go("/my-page/owner/products")}
+                onClick={() => go("/my-page/owner/products/management")}
               />
               <MenuTile
                 label="예약관리"

@@ -1,16 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import MyPageHeader from "../../../../../../components/MyPageHeader";
-import api from "../../../../../../lib/api/axios";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import MyPageHeader from "../../../../../components/MyPageHeader";
+import api from "../../../../../lib/api/axios";
 
 /** ====== DTO ====== */
 type DiscountType = "AMOUNT" | "RATE";
 type Category = "WEDDING" | "STUDIO" | "DRESS" | "MAKEUP" | "WEDDING_HALL";
 
-type CouponCreateRequest = {
+type CouponUpdateRequest = {
   productId: number; // 없으면 0으로 처리 (카테고리 쿠폰)
-  couponCode: string; // 자동 생성, 비활성화
+  couponCode: string;
   couponName: string;
   couponDetail: string;
   discountType: DiscountType; // AMOUNT | RATE
@@ -22,7 +22,7 @@ type CouponCreateRequest = {
   expirationDate: string; // YYYY-MM-DD
 };
 
-type CouponCreateResponse = {
+type CouponUpdateResponse = {
   id: number;
   couponCode: string;
   discountType: DiscountType;
@@ -41,26 +41,6 @@ type CouponCreateResponse = {
 };
 
 /** ====== 유틸 ====== */
-const today = () => new Date();
-const addDays = (d: Date, days: number) => {
-  const nd = new Date(d);
-  nd.setDate(nd.getDate() + days);
-  return nd;
-};
-const toYMD = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-
-const generateCouponCode = (len = 16) => {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let out = "";
-  for (let i = 0; i < len; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return out;
-};
-
 const CATEGORY_LABEL: Record<Category, string> = {
   WEDDING: "웨딩홀",
   WEDDING_HALL: "웨딩홀",
@@ -69,44 +49,45 @@ const CATEGORY_LABEL: Record<Category, string> = {
   MAKEUP: "메이크업",
 };
 
-/** ====== 웹뷰 컴포넌트 ====== */
+/** ====== 웹뷰 컴포넌트 (쿠폰 수정) ====== */
 export default function RegisterWebView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
   const [searchParams] = useSearchParams();
+  const { couponId: couponIdFromPath } = useParams<{ couponId: string }>();
 
-  /** URL 쿼리에서 productId, category 가져오기 */
+  /** URL 쿼리에서 productId, category, couponId 가져오기 */
   const productIdFromUrl = searchParams.get("productId");
   const categoryFromUrl = searchParams.get("category") as Category | null;
+  const couponIdFromQuery = searchParams.get("couponId");
+
+  const couponId = useMemo(
+    () => couponIdFromPath || couponIdFromQuery || "",
+    [couponIdFromPath, couponIdFromQuery]
+  );
 
   // 폼 상태
-  const [couponCode, setCouponCode] = useState(generateCouponCode());
+  const [couponCode, setCouponCode] = useState("");
   const [couponName, setCouponName] = useState("");
   const [couponDetail, setCouponDetail] = useState("");
 
-  // category, productId 는 URL 기준으로만, UI에서는 읽기 전용 표시
-  const [category] = useState<Category>(
+  // category, productId 는 서버/URL 기준으로, UI에서는 읽기 전용 표시
+  const [category, setCategory] = useState<Category>(
     categoryFromUrl ?? ("DRESS" as Category)
   );
-  const [productId] = useState<string>(productIdFromUrl ?? "0");
+  const [productId, setProductId] = useState<string>(productIdFromUrl ?? "0");
 
   const [discountType, setDiscountType] = useState<DiscountType>("AMOUNT");
   const [discountValue, setDiscountValue] = useState<string>("");
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>("");
   const [minPurchaseAmount, setMinPurchaseAmount] = useState<string>("");
 
-  const [startDate, setStartDate] = useState<string>(() => toYMD(today()));
-  const [expirationDate, setExpirationDate] = useState<string>(() =>
-    toYMD(addDays(today(), 30))
-  );
+  const [startDate, setStartDate] = useState<string>("");
+  const [expirationDate, setExpirationDate] = useState<string>("");
 
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // 화면 진입 시 코드 새로 생성
-  useEffect(() => {
-    setCouponCode(generateCouponCode());
-  }, []);
 
   // accessor (localStorage)
   const accessorParam = useMemo(() => {
@@ -119,6 +100,48 @@ export default function RegisterWebView() {
       return undefined;
     }
   }, []);
+
+  /** 진입 시 기존 쿠폰 정보 조회 */
+  useEffect(() => {
+    if (!couponId) return;
+
+    const fetchCoupon = async () => {
+      try {
+        setLoading(true);
+
+        const config = {
+          params: {
+            accessor: accessorParam ?? {},
+          },
+        };
+
+        const res = await api.get<CouponUpdateResponse>(
+          `/api/v1/owner/coupon/${couponId}`,
+          config
+        );
+
+        const c = res.data;
+        setCouponCode(c.couponCode);
+        setCouponName(c.couponName);
+        setCouponDetail(c.couponDetail);
+        setDiscountType(c.discountType);
+        setDiscountValue(String(c.discountValue ?? ""));
+        setMaxDiscountAmount(String(c.maxDiscountAmount ?? ""));
+        setMinPurchaseAmount(String(c.minPurchaseAmount ?? ""));
+        setCategory(c.category);
+        setProductId(String(c.productId ?? 0));
+        setStartDate(c.startDate);
+        setExpirationDate(c.expirationDate);
+      } catch (e) {
+        console.error("[Coupon/RegisterWebView] fetch error:", e);
+        alert("쿠폰 정보를 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCoupon();
+  }, [couponId, accessorParam]);
 
   /** 유효성 검사 */
   const validate = (): boolean => {
@@ -164,12 +187,18 @@ export default function RegisterWebView() {
     return Object.keys(next).length === 0;
   };
 
-  /** 제출 */
+  /** 제출 (PATCH /api/v1/owner/coupon/{couponId}) */
   const onSubmit = async () => {
-    if (submitting) return;
+    if (submitting || loading) return;
+
+    if (!couponId) {
+      alert("쿠폰 ID가 없습니다. 다시 시도해 주세요.");
+      return;
+    }
+
     if (!validate()) return;
 
-    const body: CouponCreateRequest = {
+    const body: CouponUpdateRequest = {
       productId: Number(productId || "0") || 0,
       couponCode,
       couponName: couponName.trim(),
@@ -192,18 +221,19 @@ export default function RegisterWebView() {
         },
       };
 
-      const res = await api.post<CouponCreateResponse>(
-        "/api/v1/owner/coupon",
+      const res = await api.patch<CouponUpdateResponse>(
+        `/api/v1/owner/coupon/${couponId}`,
         body,
         config
       );
 
-      alert("쿠폰이 등록되었습니다.");
+      console.log("[Coupon/RegisterWebView] patch result:", res.data);
+      alert("쿠폰이 수정되었습니다.");
       nav(-1);
       return res.data;
     } catch (e: any) {
-      console.error("[Coupon/RegisterWebView] create error:", e);
-      alert("쿠폰 등록 중 오류가 발생했습니다. 입력값을 확인해 주세요.");
+      console.error("[Coupon/RegisterWebView] update error:", e);
+      alert("쿠폰 수정 중 오류가 발생했습니다. 입력값을 확인해 주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -212,22 +242,22 @@ export default function RegisterWebView() {
   /** 뷰 */
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 상단 공통 헤더 영역 (ListWebView 참고) */}
+      {/* 상단 공통 헤더 영역 */}
       <div className="w-full bg-white border-b border-[#E5E7EB]">
         <div className="max-w-[1040px] mx-auto">
-          <MyPageHeader title="쿠폰 등록" onBack={onBack} showMenu={false} />
+          <MyPageHeader title="쿠폰 수정" onBack={onBack} showMenu={false} />
         </div>
       </div>
 
       {/* 본문 */}
       <div className="max-w-[1040px] mt-20 mx-auto px-6 py-8">
-        {/* 상단 타이틀/설명 (ListWebView 톤 앤 매너) */}
+        {/* 상단 타이틀/설명 */}
         <div className="mb-6">
           <h1 className="text-[22px] font-semibold text-[#111827] tracking-[-0.3px]">
-            신규 쿠폰을 등록해 보세요
+            쿠폰 정보를 수정해 보세요
           </h1>
           <p className="mt-1 text-[13px] text-[#6B7280] tracking-[-0.2px]">
-            특정 상품 또는 카테고리에 적용할 할인 쿠폰을 생성할 수 있어요.
+            특정 상품 또는 카테고리에 적용된 할인 쿠폰 내용을 변경할 수 있어요.
           </p>
         </div>
 
@@ -367,7 +397,7 @@ export default function RegisterWebView() {
                 </p>
               )}
 
-              {/* 우측 하단 요약 박스 (옵션) */}
+              {/* 우측 하단 요약 박스 */}
               <div className="mt-6 p-4 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
                 <p className="text-[13px] font-semibold text-[#111827] mb-2">
                   쿠폰 요약
@@ -412,20 +442,22 @@ export default function RegisterWebView() {
               type="button"
               onClick={onBack}
               className="h-[44px] px-5 rounded-[12px] border border-[#E5E7EB] bg-white text-[14px] text-[#4B5563] tracking-[-0.2px]"
-              disabled={submitting}
+              disabled={submitting || loading}
             >
               취소
             </button>
             <button
               type="button"
               onClick={onSubmit}
-              disabled={submitting}
+              disabled={submitting || loading}
               className={[
                 "h-[44px] px-6 rounded-[12px] text-white text-[14px] font-semibold tracking-[-0.2px]",
-                submitting ? "bg-[#FF8891]" : "bg-[#FF2233] active:scale-95",
+                submitting || loading
+                  ? "bg-[#FF8891]"
+                  : "bg-[#FF2233] active:scale-95",
               ].join(" ")}
             >
-              {submitting ? "등록 중..." : "쿠폰 등록하기"}
+              {submitting || loading ? "수정 중..." : "쿠폰 수정하기"}
             </button>
           </div>
         </div>

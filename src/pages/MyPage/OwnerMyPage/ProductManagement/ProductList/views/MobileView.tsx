@@ -1,3 +1,4 @@
+// src/pages/Owner/Product/Manage/MobileView.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
@@ -5,16 +6,34 @@ import MyPageHeader from "../../../../../../components/MyPageHeader";
 import api from "../../../../../../lib/api/axios";
 
 /** ====== 타입 ====== */
-type ProductCategory = "WEDDING" | "STUDIO" | "DRESS" | "MAKEUP";
+// 백엔드 category 예시에 WEDDING_HALL 이 있어서 포함
+type ProductCategory =
+  | "WEDDING"
+  | "STUDIO"
+  | "DRESS"
+  | "MAKEUP"
+  | "WEDDING_HALL";
 
 type OwnerProduct = {
   id: number;
-  name: string; // 카드 타이틀
-  brandName: string; // 업체명
+  name: string; // 카드 타이틀 (응답 detail)
+  brandName: string; // 업체명 (응답 name)
   price: number; // 원 단위
-  thumbnailUrl?: string; // 썸네일
+  thumbnailUrl?: string; // 썸네일 (응답 thumbnail)
   category: ProductCategory;
   createdAt: string; // ISO (YYYY-MM-DDTHH:mm:ss)
+};
+
+/** 백엔드 실제 응답 DTO 타입 */
+type ApiOwnerProduct = {
+  id: number;
+  name: string; // 업체명
+  detail: string; // 상품명
+  price: number;
+  thumbnail: string | null;
+  category: string;
+  createdAt: string;
+  // 나머지 필드들 (starCount, address, availableTime, region, tags...)은 일단 생략
 };
 
 // 스웨거 예시 DTO에 맞춘 페이지 응답 타입
@@ -25,8 +44,8 @@ type PageMeta = {
   totalPages: number;
 };
 
-type OwnerProductPageResponse = {
-  content: OwnerProduct[];
+type ApiOwnerProductPageResponse = {
+  content: ApiOwnerProduct[];
   page: PageMeta;
 };
 
@@ -62,7 +81,7 @@ export default function MobileView() {
         setLoading(true);
         setError(null);
 
-        const { data } = await api.get<OwnerProductPageResponse>(
+        const { data } = await api.get<ApiOwnerProductPageResponse>(
           "/api/v1/product",
           {
             params: {
@@ -72,7 +91,18 @@ export default function MobileView() {
           }
         );
 
-        setItems(data?.content ?? []);
+        // 👉 백엔드 실제 응답을 화면용 OwnerProduct 로 매핑
+        const mapped: OwnerProduct[] = (data?.content ?? []).map((p) => ({
+          id: p.id,
+          name: p.detail, // detail = 상품명(카드 타이틀)
+          brandName: p.name, // name = 업체명
+          price: p.price,
+          thumbnailUrl: p.thumbnail ?? undefined,
+          category: p.category as ProductCategory,
+          createdAt: p.createdAt,
+        }));
+
+        setItems(mapped);
         setPageMeta(data?.page ?? null);
       } catch (e) {
         console.error("[ProductManageMobileView] fetch error:", e);
@@ -85,7 +115,7 @@ export default function MobileView() {
     fetchList();
   }, [pageNumber, pageSize]);
 
-  /** 날짜 기준 최신순 정렬 (상품 단위) */
+  /** 상품 단위로 createdAt 기준 최신순 정렬 */
   const sortedItems = useMemo(
     () =>
       [...items].sort(
@@ -94,11 +124,15 @@ export default function MobileView() {
     [items]
   );
 
-  /** 액션 */
+  /** 삭제 */
   const onDelete = async (id: number) => {
     if (!confirm("이 상품을 삭제하시겠어요?")) return;
+
     try {
-      await api.delete(`/api/v1/product/${id}`);
+      // 스웨거 DELETE /api/v1/dress/{id} 에 맞춘 삭제 호출
+      await api.delete(`/api/v1/dress/${id}`);
+
+      // 로컬 상태에서 삭제
       setItems((prev) => prev.filter((p) => p.id !== id));
       setPageMeta((prev) =>
         prev
@@ -109,7 +143,7 @@ export default function MobileView() {
           : prev
       );
     } catch (e) {
-      console.error("[delete product] error:", e);
+      console.error("[delete dress] error:", e);
       alert("삭제 중 오류가 발생했습니다.");
     }
   };
@@ -119,12 +153,14 @@ export default function MobileView() {
   };
 
   const onRegisterProduct = () => {
-    nav("/owner/product/new");
+    nav("/my-page/owner/product/create");
   };
 
   /** “쿠폰 등록” 버튼 */
   const onRegisterCoupon = (productId: number, category: ProductCategory) => {
-    nav(`/owner/coupon/new?productId=${productId}&category=${category}`);
+    nav(
+      `/my-page/owner/coupons/register?productId=${productId}&category=${category}`
+    );
   };
 
   /** 뷰 */
@@ -160,15 +196,16 @@ export default function MobileView() {
                   key={p.id}
                   className="px-5 pt-4 pb-5 border-b border-[#F3F4F5]"
                 >
-                  {/* ✅ 상품별 날짜 + X 버튼 (간격 좁게) */}
-                  <div className="flex items-center justify-between mb-3">
+                  {/* 상품별 날짜 + X 삭제 버튼 */}
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-[14px] font-semibold tracking-[-0.2px] text-[#1E2124]">
                       {formatDateYMD(p.createdAt)}
                     </span>
                     <button
                       type="button"
                       className="w-5 h-5 rounded-full flex items-center justify-center"
-                      aria-label="close-card"
+                      aria-label="delete-card"
+                      onClick={() => onDelete(p.id)}
                     >
                       <Icon
                         icon="meteor-icons:xmark"
@@ -177,7 +214,7 @@ export default function MobileView() {
                     </button>
                   </div>
 
-                  {/* 카드 본문 */}
+                  {/* 카드 본문: 썸네일 + 텍스트 + 가격 */}
                   <div className="flex gap-4">
                     {/* 썸네일 */}
                     <div className="w-[84px] h-[84px] rounded-[4px] border border-[#F5F5F5] overflow-hidden flex-shrink-0 bg-[#F6F7FB]">
@@ -201,11 +238,11 @@ export default function MobileView() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
                         <div className="min-w-0 pr-3">
-                          {/* 업체명 */}
+                          {/* 업체명 (응답 name) */}
                           <div className="text-[12px] tracking-[-0.2px] text-[rgba(0,0,0,0.45)]">
                             {p.brandName}
                           </div>
-                          {/* 상품명 (한 줄 느낌, 줄 간격 좁게) */}
+                          {/* 상품명 (응답 detail) */}
                           <div className="mt-1 text-[14px] leading-[20px] tracking-[-0.2px] text-[#1E2124] line-clamp-2 break-words">
                             {p.name}
                           </div>
@@ -218,28 +255,21 @@ export default function MobileView() {
 
                       {/* 버튼들 */}
                       <div className="mt-3 space-y-2">
-                        {/* 삭제 / 수정 */}
+                        {/* 수정 / 쿠폰 등록 */}
                         <div className="flex gap-2">
-                          <ActionButton
-                            onClick={() => onDelete(p.id)}
-                            className="flex-1"
-                          >
-                            삭제하기
-                          </ActionButton>
                           <ActionButton
                             onClick={() => onEdit(p.id)}
                             className="flex-1"
                           >
                             수정하기
                           </ActionButton>
+                          <ActionButton
+                            onClick={() => onRegisterCoupon(p.id, p.category)}
+                            className="flex-1"
+                          >
+                            쿠폰등록
+                          </ActionButton>
                         </div>
-                        {/* 쿠폰 등록 (전체 폭) */}
-                        <ActionButton
-                          onClick={() => onRegisterCoupon(p.id, p.category)}
-                          className="w-full"
-                        >
-                          쿠폰 등록
-                        </ActionButton>
                       </div>
                     </div>
                   </div>
@@ -247,21 +277,16 @@ export default function MobileView() {
               ))}
             </div>
           )}
-
-          {/* pageMeta 디버깅 필요하면 아래 주석 해제 */}
-          {/* <pre className="px-5 py-4 text-xs text-gray-400">
-            {JSON.stringify(pageMeta, null, 2)}
-          </pre> */}
         </div>
 
-        {/* ✅ 하단 중앙 플로팅 상품 등록 버튼 */}
+        {/* 오른쪽 아래 플로팅 상품 등록 버튼 */}
         <button
           type="button"
           onClick={onRegisterProduct}
-          className="absolute left-1/2 -translate-x-1/2 bottom-20 w-[56px] h-[56px] rounded-full bg-white border border-[#F3F4F5] shadow-[0_4px_4px_rgba(51,51,51,0.12)] flex items-center justify-center active:scale-95"
+          className="absolute right-5 bottom-24 w-[56px] h-[56px] rounded-full bg-white border border-[#F3F4F5] shadow-[0_4px_4px_rgba(51,51,51,0.12)] flex items-center justify-center active:scale-95 z-30"
           aria-label="add-product"
         >
-          <Icon icon="solar:plus-linear" className="w-7 h-7 text-black" />
+          <Icon icon="mdi:plus" className="w-7 h-7" />
         </button>
       </div>
     </div>
