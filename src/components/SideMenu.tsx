@@ -34,7 +34,7 @@ const SideMenu = ({ isOpen, onClose }: Props) => {
       { label: "이벤트", path: "/event" },
       {
         label: "MY PAGE",
-        path: userRole === "OWNER" ? "/my-page/owner" : "/my-page/client", // ✅ 역할에 따라 경로 분기
+        path: userRole === "OWNER" ? "/my-page/owner/main" : "/my-page/client", // ✅ 역할에 따라 경로 분기
       },
     ],
     [userRole]

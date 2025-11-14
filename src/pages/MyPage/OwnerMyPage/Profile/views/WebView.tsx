@@ -240,8 +240,6 @@ export default function WebView() {
             <div className="divide-y divide-gray-100">
               <InfoRow label="사업자번호" value={displayBz} mono />
               <InfoRow label="정산 계좌" value={displayBank} mono />
-              <InfoRow label="소셜 ID" value={socialId || "-"} mono />
-              <InfoRow label="로그인 제공자" value={socialProvider || "-"} />
             </div>
           </SectionCard>
 

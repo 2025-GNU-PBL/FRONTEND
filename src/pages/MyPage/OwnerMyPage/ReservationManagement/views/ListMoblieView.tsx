@@ -134,6 +134,11 @@ export default function ListMoblieView() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [statusOpen, sortOpen]);
 
+  /** 예약 한 건 선택 시 상세 페이지로 이동 */
+  const onSelectReservation = (reservationId: string) => {
+    nav(`/my-page/owner/reservations/${reservationId}`);
+  };
+
   return (
     <div className="w-full bg-white">
       {/* 화면 프레임(390×844) */}
@@ -267,6 +272,7 @@ export default function ListMoblieView() {
                   key={r.id}
                   r={r}
                   withSoftBackground={index === 1}
+                  onClick={() => onSelectReservation(r.id)}
                 />
               ))
             )}
@@ -326,14 +332,18 @@ function StatusBadge({ status }: { status: ReservationStatus }) {
 function ReservationRow({
   r,
   withSoftBackground,
+  onClick,
 }: {
   r: Reservation;
   withSoftBackground?: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
       className={[
-        "w-full px-5",
+        "w-full px-5 text-left",
         withSoftBackground ? "bg-[#F6F7FB]" : "bg-white",
       ].join(" ")}
     >
@@ -354,7 +364,7 @@ function ReservationRow({
         {/* 상태 배지 */}
         <StatusBadge status={r.status} />
       </div>
-    </div>
+    </button>
   );
 }
 

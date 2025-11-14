@@ -59,6 +59,8 @@ import ReservationManagementPage from "./pages/MyPage/OwnerMyPage/ReservationMan
 import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/ProductManagement/CouponRegister/CouponRegisterPage";
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
 import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEditPage";
+import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
+import DetailMobileView from "./pages/MyPage/OwnerMyPage/ReservationManagement/views/DetailMobileView";
 
 function Layout() {
   const location = useLocation();
@@ -257,6 +259,10 @@ const App = () => {
           <Route
             path="/my-page/owner/reservations"
             element={<ReservationManagementPage />}
+          />
+          <Route
+            path="/my-page/owner/reservations/:reservationId"
+            element={<ReservationDetailPage />}
           />
           <Route
             path="/my-page/owner/products/management"
