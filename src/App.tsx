@@ -247,7 +247,7 @@ const App = () => {
             element={<SignupClientCompletePage />}
           />
           {/* 사장 마이페이지 */}
-          <Route path="/my-page/owner" element={<OwnerMyPageMain />} />
+          <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
           <Route path="/my-page/owner/profile" element={<OwnerProfilePage />} />
           <Route
             path="/my-page/owner/schedules"
