@@ -1,6 +1,6 @@
 import React from "react";
-import MobileView from "./views/ScheduleMoblieView";
-import WebView from "./views/ScheduleWebView";
+import MobileView from "./views/PersonalScheduleCreateMobileView";
+import WebView from "./views/PersonalScheduleCreateWebView";
 
 export default function OwnerSchedulePage() {
   return (

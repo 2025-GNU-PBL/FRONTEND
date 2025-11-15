@@ -62,6 +62,9 @@ import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEd
 import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
 import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
+import OwnerScheduleCalendarPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerScheduleCalendarPage";
+import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleCreatePage";
+import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
 
 function Layout() {
   const location = useLocation();
@@ -251,7 +254,15 @@ const App = () => {
           <Route path="/my-page/owner/profile" element={<OwnerProfilePage />} />
           <Route
             path="/my-page/owner/schedules"
-            element={<OwnerMyPageMain />}
+            element={<OwnerScheduleCalendarPage />}
+          />
+          <Route
+            path="/my-page/owner/schedules/personal"
+            element={<OwnerPersonalScheduleCreatePage />}
+          />
+          <Route
+            path="/my-page/owner/schedules/shared"
+            element={<OwnerSharedScheduleCreatePage />}
           />
           <Route
             path="/my-page/owner/coupons/register"
