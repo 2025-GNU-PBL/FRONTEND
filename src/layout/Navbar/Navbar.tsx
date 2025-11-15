@@ -112,11 +112,7 @@ const Navbar = () => {
 
               {/* 👤 마이페이지 */}
               <Link
-                to={
-                  userRole === "OWNER"
-                    ? "/my-page/owner/main"
-                    : "/my-page/client"
-                }
+                to={userRole === "OWNER" ? "/my-page/owner" : "/my-page/client"}
                 aria-label="마이페이지"
                 className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
               >

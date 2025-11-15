@@ -214,7 +214,7 @@ const App = () => {
             element={<ProductInquiryPage />}
           />{" "}
           {/* 고객 마이페이지 */}
-          <Route path="/my-page/client/main" element={<ClientMyPageMain />} />
+          <Route path="/my-page/client" element={<ClientMyPageMain />} />
           <Route
             path="/my-page/client/profile"
             element={<ClientProfilePage />}
@@ -241,7 +241,7 @@ const App = () => {
             element={<SignupClientCompletePage />}
           />
           {/* 사장 마이페이지 */}
-          <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
+          <Route path="/my-page/owner" element={<OwnerMyPageMain />} />
           <Route path="/my-page/owner/profile" element={<OwnerProfilePage />} />
           <Route
             path="/my-page/owner/schedules"
