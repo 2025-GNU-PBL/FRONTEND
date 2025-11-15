@@ -236,14 +236,17 @@ const MobileView: React.FC = () => {
   const [pageNumber, setPageNumber] = useState(1); // 1-base
   const pageSize = 6;
   const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const elementRef = useRef<HTMLDivElement | null>(null);
 
-  // 진행 중 요청 제어(취소/가드/중복방지)
+  // 진행 중 요청 취소를 위한 AbortController
   const controllerRef = useRef<AbortController | null>(null);
+  // 현재 요청에 매긴 파라미터 키(응답 가드)
   const inFlightKeyRef = useRef<string | null>(null);
+  // 중복 요청 방지 플래그
   const fetchingRef = useRef(false);
+  // paramsKey 변경을 감지하기 위한 ref (이펙트 가드에 사용)
   const prevParamsKeyRef = useRef<string>(paramsKey);
 
   const fetchMoreItems = useCallback(
@@ -255,7 +258,7 @@ const MobileView: React.FC = () => {
       const controller = new AbortController();
       controllerRef.current = controller;
 
-      // 현재 파라미터 키 고정
+      // 현재 파라미터 스냅샷 고정
       const myKey = paramsKey;
       inFlightKeyRef.current = myKey;
       fetchingRef.current = true;
@@ -268,6 +271,7 @@ const MobileView: React.FC = () => {
 
       try {
         const regionValue = getRegionQueryValue(selectedRegion);
+
         const { data }: { data: PagedResponse } = await api.get(
           "/api/v1/studio/filter",
           {
@@ -276,13 +280,13 @@ const MobileView: React.FC = () => {
               pageSize,
               region: regionValue,
               sortType: sortParam,
-              tags: tagsParam,
+              tags: tagsParam, // 콤마 구분
             },
             signal: controller.signal,
           }
         );
 
-        // 파라미터 변경 후 늦게 도착한 응답은 폐기
+        // 파라미터가 바뀐 뒤 늦게 온 응답이면 폐기
         if (inFlightKeyRef.current !== myKey || myKey !== paramsKey) {
           return;
         }
@@ -291,8 +295,11 @@ const MobileView: React.FC = () => {
         setTotalCount(data.page.totalElements);
 
         setItems((prev) => {
-          if (isInitial) return nextContent; // 1페이지: 교체
-          // 2페이지+: 이어 붙이되 중복 제거
+          if (isInitial) {
+            // 1페이지는 새로 세팅
+            return nextContent;
+          }
+          // 2페이지 이상은 이어 붙이되 중복 제거
           const map = new Map<number, Product>();
           prev.forEach((p) => map.set(p.id, p));
           nextContent.forEach((p) => map.set(p.id, p));
@@ -300,15 +307,15 @@ const MobileView: React.FC = () => {
         });
 
         const nextPage = page + 1;
-        setHasMore(nextPage <= data.page.totalPages);
+        const more = nextPage <= data.page.totalPages;
+        setHasMore(more);
       } catch (err: unknown) {
-        // 취소된 요청(axios / AbortController)은 무시
+        // 의도적인 취소(axios 또는 AbortController)는 무시
         if (
           (axios.isAxiosError(err) && err.code === "ERR_CANCELED") ||
-          (err instanceof Error &&
-            (err.name === "CanceledError" || err.name === "AbortError"))
+          (err instanceof Error && err.name === "CanceledError")
         ) {
-          // no-op
+          // 취소된 요청이므로 메시지 표시 안 함
         } else {
           console.error(err);
           setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
@@ -336,7 +343,7 @@ const MobileView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramsKey, pageNumber]);
 
-  // 인터섹션 옵저버
+  // 인터섹션 옵저버: 초기 로딩이 끝난 뒤에만 다음 페이지 요구
   useEffect(() => {
     const target = elementRef.current;
     if (!target) return;
@@ -465,13 +472,13 @@ const MobileView: React.FC = () => {
             >
               <Icon
                 icon="solar:cart-large-minimalistic-linear"
-                className="w-6 h-6 text:black/80"
+                className="w-6 h-6 text-black/80"
               />
             </motion.button>
           )}
           <motion.button
             aria-label="menu"
-            className="grid place-items-center w-6 h-6 rounded hover:bg:black/5 active:scale-95"
+            className="grid place-items-center w-6 h-6 rounded hover:bg-black/5 active:scale-95"
             onClick={openMenu}
             whileTap={{ scale: 0.94 }}
           >
@@ -578,48 +585,52 @@ const MobileView: React.FC = () => {
       )}
 
       {/* 리스트 */}
-      <motion.div
-        className="grid grid-cols-2 gap-y-5 gap-x-2.5 px-5 mt-4 pb-12"
-        variants={stagger(0.03)}
-      >
-        {items.map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            liked={likedIds.has(product.id)}
-            onToggleLike={toggleLike}
-            onClick={() => goDetail(product.id)}
-          />
-        ))}
+      {!errorMsg && (
+        <>
+          <motion.div
+            className="grid grid-cols-2 gap-y-5 gap-x-2.5 px-5 mt-4 pb-12"
+            variants={stagger(0.03)}
+          >
+            {items.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                liked={likedIds.has(product.id)}
+                onToggleLike={toggleLike}
+                onClick={() => goDetail(product.id)}
+              />
+            ))}
 
-        {loadingInitial &&
-          items.length === 0 &&
-          Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={`skeleton-${i}`}
-              className="animate-pulse w-full flex flex-col gap-2"
-            >
-              <div className="w-full aspect-[176/170] rounded-lg bg-gray-100" />
-              <div className="h-3 w-2/5 rounded bg-gray-100" />
-              <div className="h-3 w-4/5 rounded bg-gray-100" />
-              <div className="h-4 w-1/2 rounded bg-gray-100" />
-            </div>
-          ))}
-      </motion.div>
+            {loadingInitial &&
+              items.length === 0 &&
+              Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={`skeleton-${i}`}
+                  className="animate-pulse w-full flex flex-col gap-2"
+                >
+                  <div className="w-full aspect-[176/170] rounded-lg bg-gray-100" />
+                  <div className="h-3 w-2/5 rounded bg-gray-100" />
+                  <div className="h-3 w-4/5 rounded bg-gray-100" />
+                  <div className="h-4 w-1/2 rounded bg-gray-100" />
+                </div>
+              ))}
+          </motion.div>
 
-      {/* 무한스크롤 트리거 */}
-      <div ref={elementRef} className="h-1" />
+          {/* 무한스크롤 트리거 */}
+          <div ref={elementRef} className="h-1" />
 
-      {isLoadingMore && (
-        <motion.div className="pb-24 text-center" variants={fade}>
-          <p className="text-sm text-[#595F63]">불러오는 중…</p>
-        </motion.div>
-      )}
+          {isLoadingMore && (
+            <motion.div className="pb-24 text-center" variants={fade}>
+              <p className="text-sm text-[#595F63]">불러오는 중…</p>
+            </motion.div>
+          )}
 
-      {!hasMore && items.length > 0 && !isLoadingMore && (
-        <motion.div className="pb-24 text-center" variants={fade}>
-          <p className="text-sm text-[#999]">마지막 상품입니다.</p>
-        </motion.div>
+          {!hasMore && items.length > 0 && !isLoadingMore && (
+            <motion.div className="pb-24 text-center" variants={fade}>
+              <p className="text-sm text-[#999]">마지막 상품입니다.</p>
+            </motion.div>
+          )}
+        </>
       )}
 
       {/* 필터 Bottom Sheet */}

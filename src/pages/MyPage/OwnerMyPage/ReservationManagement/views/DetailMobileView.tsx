@@ -141,6 +141,17 @@ export default function DetailMobileView() {
   /** 가격 포맷 */
   const formatPrice = (n: number) => `${(n ?? 0).toLocaleString("ko-KR")}원`;
 
+  // 버튼 클릭 핸들러 (필요 시 실제 API 연동)
+  const handleCancel = () => {
+    // TODO: 예약 취소 API 연동
+    console.log("취소하기 클릭");
+  };
+
+  const handleApprove = () => {
+    // TODO: 예약 승인 API 연동
+    console.log("승인하기 클릭");
+  };
+
   return (
     <div className="w-full bg-white">
       {/* 390 × 844 프레임 */}
@@ -278,6 +289,29 @@ export default function DetailMobileView() {
             )}
           </div>
         </div>
+
+        {/* 하단 버튼 영역 - 취소하기 / 승인하기 */}
+        {!loading && !error && detail && (
+          <div className="absolute bottom-[34px] left-1/2 -translate-x-1/2 w-[335px] h-[78px] px-[20px] pt-[10px] pb-[24px] flex flex-row items-center gap-[10px] z-20 rounded-b-[10px]">
+            {/* 취소하기 버튼 */}
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="w-[142px] h-[44px] flex flex-row items-center justify-center rounded-[10px] bg-white text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999]"
+            >
+              취소하기
+            </button>
+
+            {/* 승인하기 버튼 */}
+            <button
+              type="button"
+              onClick={handleApprove}
+              className="w-[143px] h-[44px] flex flex-row items-center justify-center rounded-[10px] bg-[#FF2233] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white"
+            >
+              승인하기
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -102,6 +102,8 @@ function Layout() {
     "/inquiry", // InquiryPage에 Footer 숨김
     "/product-inquiry", // ProductInquiryPage에 Footer 숨김
     "/notification",
+    "/checkout",
+    "/checkout/coupon",
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)
@@ -205,6 +207,8 @@ const App = () => {
         <Route path="/studio/:id" element={<ProductDetailPage />} />
         <Route path="/dress/:id" element={<ProductDetailPage />} />
         <Route path="/makeup/:id" element={<ProductDetailPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/checkout/coupon" element={<CouponPage />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>
@@ -245,7 +249,7 @@ const App = () => {
             element={<SignupClientCompletePage />}
           />
           {/* 사장 마이페이지 */}
-          <Route path="/my-page/owner" element={<OwnerMyPageMain />} />
+          <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
           <Route path="/my-page/owner/profile" element={<OwnerProfilePage />} />
           <Route
             path="/my-page/owner/schedules"
