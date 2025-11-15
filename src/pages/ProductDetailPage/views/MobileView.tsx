@@ -29,6 +29,7 @@ const MobileView = () => {
   );
   const [isCouponOpen, setIsCouponOpen] = useState(false);
   const [showCouponToast, setShowCouponToast] = useState(false);
+  const [cartCount, setCartCount] = useState<number>(0); // 장바구니 상품 개수 상태 추가
 
   const [category, setCategory] = useState<Category | null>(null);
   const [detailData, setDetailData] = useState<NormalizedDetail | null>(null);
@@ -68,6 +69,9 @@ const MobileView = () => {
         quantity,
       });
       alert("상품이 장바구니에 담겼습니다.");
+      // 장바구니에 상품이 추가되었으므로, cartCount를 업데이트
+      const response = await api.get<number>('/api/v1/cart/count');
+      setCartCount(response.data);
     } catch (error) {
       console.error("장바구니 추가 실패:", error);
       alert("장바구니 추가에 실패했습니다.");
@@ -127,7 +131,20 @@ const MobileView = () => {
       setErrorMsg("유효하지 않은 카테고리 경로입니다.");
       setLoading(false);
     }
-  }, [location.pathname]);
+
+    // 컴포넌트 마운트 시 장바구니 개수 조회
+    if (isAuth) {
+      const fetchCartCount = async () => {
+        try {
+          const response = await api.get<number>('/api/v1/cart/count');
+          setCartCount(response.data);
+        } catch (error) {
+          console.error("Failed to fetch cart count (ProductDetailPage MobileView):", error);
+        }
+      };
+      fetchCartCount();
+    }
+  }, [location.pathname, isAuth]);
 
   /* ========================= 상세 데이터 호출 ========================= */
 
@@ -246,9 +263,11 @@ const MobileView = () => {
                   icon="solar:cart-large-minimalistic-linear"
                   className="w-6 h-6 text-[#1E2124]"
                 />
-                <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-[3px] bg-[#FF2233] text-[9px] text-white rounded-full flex items-center justify-center">
-                  3
-                </span>
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-[3px] bg-[#FF2233] text-[9px] text-white rounded-full flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
               </button>
             )}
           </div>
