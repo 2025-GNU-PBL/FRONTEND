@@ -98,6 +98,7 @@ export default function MobileView({
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector((s) => s.user.isAuth);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [cartCount, setCartCount] = useState<number>(0); // 장바구니 상품 개수 상태 추가
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -111,6 +112,16 @@ export default function MobileView({
       };
 
       fetchUnreadCount();
+
+      const fetchCartCount = async () => {
+        try {
+          const response = await api.get<number>('/api/v1/cart/count');
+          setCartCount(response.data);
+        } catch (error) {
+          console.error("Failed to fetch cart count (MainPage MobileView):", error);
+        }
+      };
+      fetchCartCount();
     }
   }, [isAuthenticated]);
 
@@ -270,7 +281,7 @@ export default function MobileView({
           )}
           {isAuthenticated && (
             <motion.button
-              className="flex items-center justify-center hover:opacity-80 active:scale-95"
+              className="relative flex items-center justify-center hover:opacity-80 active:scale-95"
               onClick={() => navigate("/cart")}
               whileTap={{ scale: 0.94 }}
             >
@@ -278,6 +289,11 @@ export default function MobileView({
                 icon="solar:cart-large-minimalistic-linear"
                 className="w-6 h-6 text-black/80"
               />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
             </motion.button>
           )}
           <motion.button
