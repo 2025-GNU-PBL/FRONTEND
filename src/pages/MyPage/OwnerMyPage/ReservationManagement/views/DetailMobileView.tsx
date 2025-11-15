@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import MyPageHeader from "../../../../../components/MyPageHeader";
 import api from "../../../../../lib/api/axios";
 
-/** ====== 서버 응답 DTO (Swagger 기준) ====== */
+/** ====== 서버 응답 DTO  ====== */
 type ReservationDetailApiResponse = {
   id: number;
   ownerId: number;
