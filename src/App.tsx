@@ -292,6 +292,14 @@ const App = () => {
             path="/my-page/owner/payments"
             element={<OwnerPaymentManagementPage />}
           />
+          <Route
+            path="/my-page/owner/payments/cancel"
+            element={<CancelListPage />}
+          />
+          <Route
+            path="/my-page/owner/payments/cancel/detail"
+            element={<CancelDetailPage />}
+          />
           <Route path="/sign-up/owner/step1" element={<OwnerSignupPage />} />
           <Route
             path="/sign-up/owner/step2"
