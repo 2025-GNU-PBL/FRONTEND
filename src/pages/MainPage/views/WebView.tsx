@@ -37,7 +37,6 @@ const PRIMARY_COLOR = "bg-[#9370DB]";
 const PRIMARY_COLOR_TEXT = "text-[#7B61D1]";
 const CTA_DARK_BG = "bg-slate-900";
 const ACCENT_COLOR_HOVER = "hover:bg-[#F2EEFB]";
-const PLACEHOLDER = "/images/placeholder.png";
 
 // 카테고리별 엔드포인트
 const ENDPOINT_BY_CATEGORY: Record<CategoryKey, string> = {
@@ -441,7 +440,8 @@ export default function WebView({
                       alt={t.title}
                       className="h-[72px] w-[72px] shrink-0 rounded-xl object-cover shadow-sm"
                       onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
+                        (e.currentTarget as HTMLImageElement).style.display =
+                          "none";
                       }}
                     />
                     <div className="ml-4">
@@ -479,10 +479,11 @@ function ProductCard({
   formatPrice: (n?: number) => string | null;
   shortAddress: (s?: string) => string;
 }) {
-  const imgSrc =
-    product.thumbnail && product.thumbnail.trim()
+  const thumb =
+    product.thumbnail && product.thumbnail.trim() !== ""
       ? product.thumbnail
-      : PLACEHOLDER;
+      : null;
+
   const priceText = formatPrice(product.price);
   const addrText = shortAddress(product.address);
   const tags =
@@ -496,19 +497,27 @@ function ProductCard({
       onClick={onClick}
     >
       {/* 이미지 영역 */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden">
-        <img
-          src={imgSrc}
-          alt={product.name || "상품 이미지"}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
-          loading="lazy"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
-          }}
-        />
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F3F4F5]">
+        {thumb ? (
+          <img
+            src={thumb}
+            alt={product.name || "상품 이미지"}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+            loading="lazy"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-xs text-[#B0B0B0]">
+            이미지 없음
+          </div>
+        )}
+
         {/* 그라데이션 상·하단 오버레이 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
         {/* 우상단 퀵 아이콘 */}
         <div className="absolute right-3 top-3 flex gap-1 opacity-0 transition-all duration-300 group-hover:opacity-100">
           <span className="rounded-full bg-white/90 p-2 shadow hover:bg-white">
