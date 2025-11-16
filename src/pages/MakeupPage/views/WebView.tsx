@@ -1,4 +1,4 @@
-// src/pages/studio/WebView.tsx
+// src/pages/wedding/WebView.tsx
 import React, {
   useCallback,
   useEffect,
@@ -106,35 +106,52 @@ const sortToParam = (
   return "PRICE_ASC";
 };
 
-/* ========================= 스튜디오 전용 필터 ========================= */
+/* ========================= 메이크업 태그 필터 (모바일과 동일 규약) ========================= */
 
-const STYLE_OPTIONS = ["인물중심", "배경다양", "인물+배경"] as const;
-const SHOOTABLE_OPTIONS = [
-  "한옥",
-  "가든",
-  "야간",
-  "로드",
-  "수중",
-  "반려동물",
-] as const;
+type MakeupTag =
+  | "SHOOTING_AND_CEREMONY"
+  | "CEREMONY"
+  | "SHOOTING"
+  | "DIRECTOR_OR_CEO"
+  | "DEPUTY_DIRECTOR"
+  | "MANAGER"
+  | "TEAM_LEADER_OR_DESIGNER"
+  | "FRUITY_TONE"
+  | "CLEAN_AND_BRIGHT"
+  | "CONTOUR_AND_SHADOW";
 
-type StyleOption = (typeof STYLE_OPTIONS)[number];
-type ShootableOption = (typeof SHOOTABLE_OPTIONS)[number];
-
-const STYLE_TO_TAG: Record<StyleOption, string> = {
-  인물중심: "PORTRAIT_FOCUSED",
-  배경다양: "VARIED_BACKGROUND",
-  "인물+배경": "PORTRAIT_AND_BACKGROUND",
+const TAG_LABEL: Record<MakeupTag, string> = {
+  SHOOTING_AND_CEREMONY: "촬영+본식",
+  CEREMONY: "본식",
+  SHOOTING: "촬영",
+  DIRECTOR_OR_CEO: "원장/대표/이사",
+  DEPUTY_DIRECTOR: "부원장",
+  MANAGER: "실장",
+  TEAM_LEADER_OR_DESIGNER: "팀장/디자이너",
+  FRUITY_TONE: "과즙/색조",
+  CLEAN_AND_BRIGHT: "깨끗/화사",
+  CONTOUR_AND_SHADOW: "윤곽/음영",
 };
 
-const SHOOTABLE_TO_TAG: Record<ShootableOption, string> = {
-  한옥: "HANOK",
-  가든: "GARDEN",
-  야간: "NIGHT",
-  로드: "ROAD",
-  수중: "UNDERWATER",
-  반려동물: "PET_FRIENDLY",
-};
+const TAG_GROUPS: { title: string; items: MakeupTag[] }[] = [
+  {
+    title: "행사",
+    items: ["SHOOTING_AND_CEREMONY", "CEREMONY", "SHOOTING"],
+  },
+  {
+    title: "담당자",
+    items: [
+      "DIRECTOR_OR_CEO",
+      "DEPUTY_DIRECTOR",
+      "MANAGER",
+      "TEAM_LEADER_OR_DESIGNER",
+    ],
+  },
+  {
+    title: "메이크업 스타일",
+    items: ["FRUITY_TONE", "CLEAN_AND_BRIGHT", "CONTOUR_AND_SHADOW"],
+  },
+];
 
 /* ========================= 유틸 ========================= */
 
@@ -199,7 +216,7 @@ const Card: React.FC<CardProps> = ({
           aria-pressed={liked}
           onClick={(e) => {
             e.preventDefault();
-            e.stopPropagation(); // 카드 클릭으로 인한 디테일 이동 막기
+            e.stopPropagation();
             onToggleLike(product.id);
           }}
           className="absolute right-3 top-3 grid aspect-square w-9 place-items-center rounded-full bg-black/45 backdrop-blur text-white transition hover:bg-black/60"
@@ -274,22 +291,15 @@ const WebView: React.FC = () => {
   // 로컬 상태
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
 
-  /** ✅ 지역: 상단 칩 선택 즉시 적용 */
+  // 지역
   const [selectedRegion, setSelectedRegion] = useState<RegionKey>("전체");
 
-  /** ✅ 정렬: 변경 즉시 적용 */
+  // 정렬
   const [sortOption, setSortOption] = useState<SortOption>("최신순");
 
-  /** ✅ 필터: 시트/패널 내 임시 선택 vs 실제 적용 분리 (모바일과 동일 구조) */
-  const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(null);
-  const [selectedShootable, setSelectedShootable] = useState<
-    Set<ShootableOption>
-  >(new Set());
-
-  const [appliedStyle, setAppliedStyle] = useState<StyleOption | null>(null);
-  const [appliedShootable, setAppliedShootable] = useState<
-    Set<ShootableOption>
-  >(new Set());
+  // 태그: 패널 내 임시 선택 + 실제 적용
+  const [selectedTags, setSelectedTags] = useState<Set<MakeupTag>>(new Set());
+  const [appliedTags, setAppliedTags] = useState<Set<MakeupTag>>(new Set());
 
   // 서버 파라미터
   const regionParam = useMemo(
@@ -297,13 +307,10 @@ const WebView: React.FC = () => {
     [selectedRegion]
   );
   const sortParam = useMemo(() => sortToParam(sortOption), [sortOption]);
-
   const tagsParam = useMemo(() => {
-    const tags: string[] = [];
-    if (appliedStyle) tags.push(STYLE_TO_TAG[appliedStyle]);
-    appliedShootable.forEach((s) => tags.push(SHOOTABLE_TO_TAG[s]));
-    return tags.length > 0 ? tags.join(",") : undefined;
-  }, [appliedStyle, appliedShootable]);
+    if (appliedTags.size === 0) return undefined;
+    return Array.from(appliedTags).join(",");
+  }, [appliedTags]);
 
   // 파라미터 키(응답 가드/리셋 트리거)
   const paramsKey = useMemo(
@@ -335,7 +342,8 @@ const WebView: React.FC = () => {
       setErrorMsg("");
 
       try {
-        const { data } = await api.get<PagedResponse>("/api/v1/studio/filter", {
+        // 메이크업 필터 엔드포인트 사용
+        const { data } = await api.get<PagedResponse>("/api/v1/makeup/filter", {
           params: {
             pageNumber: page,
             pageSize,
@@ -368,7 +376,6 @@ const WebView: React.FC = () => {
           if (n === "CanceledError" || c === "ERR_CANCELED") {
             // 요청 취소는 무시
           } else {
-            // 기타 오류
             console.error(err);
             setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
           }
@@ -429,7 +436,7 @@ const WebView: React.FC = () => {
 
   /* ========================= 핸들러 ========================= */
 
-  // 지역: 상단 칩 선택 시 즉시 리스트 리셋 + 재요청
+  // 지역: 선택 즉시 리스트 리셋
   const handleRegionSelect = useCallback((key: RegionKey) => {
     setSelectedRegion(key);
     setItems([]);
@@ -447,68 +454,41 @@ const WebView: React.FC = () => {
     setPageNumber(1);
   }, []);
 
-  // 스타일 단일 선택 (토글)
-  const toggleStyleSelected = useCallback((opt: StyleOption) => {
-    setSelectedStyle((prev) => (prev === opt ? null : opt));
-  }, []);
-
-  // 촬영 가능 멀티 선택
-  const toggleShootableSelected = useCallback((opt: ShootableOption) => {
-    setSelectedShootable((prev) => {
+  // 태그: 패널 내 임시 선택 토글
+  const toggleTag = useCallback((tag: MakeupTag) => {
+    setSelectedTags((prev) => {
       const next = new Set(prev);
-      if (next.has(opt)) next.delete(opt);
-      else next.add(opt);
+      if (next.has(tag)) next.delete(tag);
+      else next.add(tag);
       return next;
     });
   }, []);
 
   const resetFilter = useCallback(() => {
-    setSelectedStyle(null);
-    setSelectedShootable(new Set());
+    setSelectedTags(new Set());
   }, []);
 
-  // 필터 적용: selected → applied 로 복사 후 리스트 리셋
+  // 태그: 적용 버튼 눌러야 실제 API 반영
   const applyFilter = useCallback(() => {
-    setAppliedStyle(selectedStyle);
-    setAppliedShootable(new Set(selectedShootable));
+    setAppliedTags(new Set(selectedTags));
     setItems([]);
     setHasMore(true);
     setTotalCount(0);
     setPageNumber(1);
-  }, [selectedStyle, selectedShootable]);
+  }, [selectedTags]);
 
-  // 필터 뱃지 제거 (적용값 기준)
-  const clearAppliedStyle = useCallback(() => {
-    setAppliedStyle(null);
-    setSelectedStyle((prev) => (prev === null ? prev : null));
-    setItems([]);
-    setHasMore(true);
-    setTotalCount(0);
-    setPageNumber(1);
-  }, []);
-
-  const clearAppliedShootable = useCallback((opt: ShootableOption) => {
-    setAppliedShootable((prev) => {
+  // 태그 뱃지 X 클릭 시 즉시 해제 + 재요청
+  const clearAppliedTag = useCallback((tag: MakeupTag) => {
+    setAppliedTags((prev) => {
       const next = new Set(prev);
-      next.delete(opt);
+      next.delete(tag);
       return next;
     });
-    setSelectedShootable((prev) => {
+    setSelectedTags((prev) => {
       const next = new Set(prev);
-      next.delete(opt);
+      next.delete(tag);
       return next;
     });
-    setItems([]);
-    setHasMore(true);
-    setTotalCount(0);
-    setPageNumber(1);
-  }, []);
-
-  const clearAllFilters = useCallback(() => {
-    setAppliedStyle(null);
-    setAppliedShootable(new Set());
-    setSelectedStyle(null);
-    setSelectedShootable(new Set());
     setItems([]);
     setHasMore(true);
     setTotalCount(0);
@@ -526,12 +506,12 @@ const WebView: React.FC = () => {
 
   const goDetail = useCallback(
     (id: number) => {
-      navigate(`/studio/${id}`);
+      navigate(`/wedding/${id}`);
     },
     [navigate]
   );
 
-  const activeFilterCount = (appliedStyle ? 1 : 0) + appliedShootable.size; // 적용된 필터 수
+  const activeFilterCount = appliedTags.size;
 
   /* ========================= 렌더 ========================= */
 
@@ -659,67 +639,52 @@ const WebView: React.FC = () => {
                 )}
               </div>
 
-              {/* 스크롤 영역: 스타일 / 촬영 가능 */}
+              {/* 스크롤 영역 */}
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-5">
-                {/* 스타일 */}
+                {/* 필터 그룹 */}
                 <section>
                   <h3 className="mb-2 text-[13px] font-semibold text-[#111827]">
-                    스타일
+                    필터
                   </h3>
-                  <div className="rounded-xl border border-[#F1F1F1] bg-[#FBFBFB] px-3 py-3">
-                    <div className="flex flex-wrap gap-1.5">
-                      {STYLE_OPTIONS.map((opt) => {
-                        const active = selectedStyle === opt;
-                        return (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => toggleStyleSelected(opt)}
-                            className={`h-8 rounded-full border px-2.5 text-[12px] transition ${
-                              active
-                                ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
-                                : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB]"
-                            }`}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </section>
 
-                {/* 촬영 가능 */}
-                <section>
-                  <h3 className="mb-2 text-[13px] font-semibold text-[#111827]">
-                    촬영 가능
-                  </h3>
-                  <div className="rounded-xl border border-[#F1F1F1] bg-[#FBFBFB] px-3 py-3">
-                    <div className="flex flex-wrap gap-1.5">
-                      {SHOOTABLE_OPTIONS.map((opt) => {
-                        const active = selectedShootable.has(opt);
-                        return (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => toggleShootableSelected(opt)}
-                            className={`h-8 rounded-full border px-2.5 text-[12px] transition ${
-                              active
-                                ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
-                                : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB]"
-                            }`}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
+                  <div className="space-y-3">
+                    {TAG_GROUPS.map((group) => (
+                      <div
+                        key={group.title}
+                        className="rounded-xl border border-[#F1F1F1] bg-[#FBFBFB]"
+                      >
+                        <div className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-[13px] font-semibold text-[#1E2124]">
+                          <span>{group.title}</span>
+                        </div>
+
+                        <div className="px-3 pb-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            {group.items.map((tag) => {
+                              const active = selectedTags.has(tag);
+                              return (
+                                <button
+                                  key={tag}
+                                  onClick={() => toggleTag(tag)}
+                                  className={`h-8 rounded-full border px-2.5 text-[12px] transition ${
+                                    active
+                                      ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
+                                      : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB]"
+                                  }`}
+                                >
+                                  {TAG_LABEL[tag]}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </section>
               </div>
 
               {/* 패널 푸터 */}
-              <div className="sticky bottom-0 border-t border-[#EDEDED] bg-white px-4 py-3">
+              <div className="sticky bottom-0 border-t border-[#EDEDED] bg:white px-4 py-3 bg-white">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -740,7 +705,14 @@ const WebView: React.FC = () => {
                 {activeFilterCount > 0 && (
                   <div className="mt-1 text-right">
                     <button
-                      onClick={clearAllFilters}
+                      onClick={() => {
+                        setSelectedTags(new Set());
+                        setAppliedTags(new Set());
+                        setItems([]);
+                        setHasMore(true);
+                        setTotalCount(0);
+                        setPageNumber(1);
+                      }}
                       className="text-[11px] text-[#9CA3AF] underline underline-offset-2 hover:text-[#6B7280]"
                     >
                       필터 전체 초기화
@@ -760,37 +732,30 @@ const WebView: React.FC = () => {
               variants={fadeUp}
               className="mb-4 flex flex-wrap items-center gap-2"
             >
-              {appliedStyle && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-[#FFE0E2] bg-[#FFF5F6] px-3 py-1 text-[12px] text-[#FF3B4A]">
-                  {appliedStyle}
-                  <button
-                    aria-label="스타일 필터 제거"
-                    onClick={clearAppliedStyle}
-                    className="grid h-4 w-4 place-items-center rounded-full hover:bg-[#ffe7ea]"
-                  >
-                    <Icon icon="mdi:close" className="h-3 w-3" />
-                  </button>
-                </span>
-              )}
-
-              {Array.from(appliedShootable).map((opt) => (
+              {Array.from(appliedTags).map((t) => (
                 <span
-                  key={opt}
+                  key={t}
                   className="inline-flex items-center gap-1 rounded-full border border-[#FFE0E2] bg-[#FFF5F6] px-3 py-1 text-[12px] text-[#FF3B4A]"
                 >
-                  {opt}
+                  {TAG_LABEL[t]}
                   <button
-                    aria-label="촬영 가능 필터 제거"
-                    onClick={() => clearAppliedShootable(opt)}
+                    aria-label="필터 제거"
+                    onClick={() => clearAppliedTag(t)}
                     className="grid h-4 w-4 place-items-center rounded-full hover:bg-[#ffe7ea]"
                   >
                     <Icon icon="mdi:close" className="h-3 w-3" />
                   </button>
                 </span>
               ))}
-
               <button
-                onClick={clearAllFilters}
+                onClick={() => {
+                  setAppliedTags(new Set());
+                  setSelectedTags(new Set());
+                  setItems([]);
+                  setHasMore(true);
+                  setTotalCount(0);
+                  setPageNumber(1);
+                }}
                 className="ml-1 text-[12px] text-[#9CA3AF] underline underline-offset-2 hover:text-[#6B7280]"
               >
                 모두 해제
@@ -807,7 +772,7 @@ const WebView: React.FC = () => {
             </motion.div>
           )}
 
-          {/* 카드 그리드: 3열 고정 */}
+          {/* 카드 그리드 */}
           {!errorMsg && (
             <>
               <motion.div
@@ -864,7 +829,7 @@ const WebView: React.FC = () => {
                     className="mb-3 h-8 w-8 text-[#9CA3AF]"
                   />
                   <p className="text-sm text-[#6B7280]">
-                    조건에 맞는 스튜디오를 찾지 못했어요.
+                    조건에 맞는 메이크업 상품을 찾지 못했어요.
                   </p>
                 </motion.div>
               )}
