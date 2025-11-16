@@ -67,6 +67,8 @@ import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/Schedule
 import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
 import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
 import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
+import CancelListPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelListPage";
+import CancelDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
 
 function Layout() {
   const location = useLocation();
@@ -293,6 +295,14 @@ const App = () => {
           <Route
             path="/my-page/owner/payments"
             element={<OwnerPaymentManagementPage />}
+          />
+          <Route
+            path="/my-page/owner/payments/cancel"
+            element={<CancelListPage />}
+          />
+          <Route
+            path="/my-page/owner/payments/cancel/detail"
+            element={<CancelDetailPage />}
           />
           <Route path="/sign-up/owner/step1" element={<OwnerSignupPage />} />
           <Route
