@@ -65,6 +65,8 @@ import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
 import OwnerScheduleCalendarPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerScheduleCalendarPage";
 import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleCreatePage";
 import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
+import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
+import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
 
 function Layout() {
   const location = useLocation();
@@ -250,8 +252,12 @@ const App = () => {
             element={<SignupClientCompletePage />}
           />
           {/* 사장 마이페이지 */}
-          <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
+          <Route path="/my-page/owner" element={<OwnerMyPageMain />} />
           <Route path="/my-page/owner/profile" element={<OwnerProfilePage />} />
+          <Route
+            path="/my-page/owner/profile/edit"
+            element={<OwnerProfileEditPage />}
+          />
           <Route
             path="/my-page/owner/schedules"
             element={<OwnerScheduleCalendarPage />}
@@ -284,7 +290,10 @@ const App = () => {
             path="/my-page/owner/products/management"
             element={<ProductList />}
           />
-          <Route path="/my-page/owner/payments" element={<OwnerMyPageMain />} />
+          <Route
+            path="/my-page/owner/payments"
+            element={<OwnerPaymentManagementPage />}
+          />
           <Route path="/sign-up/owner/step1" element={<OwnerSignupPage />} />
           <Route
             path="/sign-up/owner/step2"

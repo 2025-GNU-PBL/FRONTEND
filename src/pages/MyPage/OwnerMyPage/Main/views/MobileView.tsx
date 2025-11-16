@@ -55,7 +55,7 @@ export default function MobileView() {
               {/* 상단 2버튼 */}
               <div className="mt-7 grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => go("/my-page/client/profile")}
+                  onClick={() => go("/my-page/owner/profile")}
                   className="h-[61px] rounded-[12px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.02)] flex items-center justify-center active:opacity-80"
                 >
                   <span className="inline-flex items-center justify-center gap-2">

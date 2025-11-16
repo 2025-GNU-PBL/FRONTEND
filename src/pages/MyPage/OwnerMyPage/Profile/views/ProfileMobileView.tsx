@@ -12,7 +12,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="w-full rounded-2xl bg-white border border-gray-200 shadow-sm p-5 mb-6 last:mb-0">
+    <section className="w-full rounded-2xl bg-white border border-gray-200 shadow-sm p-5 mb-3 last:mb-0">
       <h3 className="text-[16px] font-semibold text-gray-900 tracking-[-0.2px]">
         {title}
       </h3>
@@ -27,7 +27,7 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
     <div className="flex items-center justify-between py-1.5">
       <span className="text-[14px] text-[#999] tracking-[-0.2px]">{label}</span>
       <span className="text-[14px] text-[#000] tracking-[-0.2px]">
-        {value ?? "-"}
+        {value && value.trim() !== "" ? value : "-"}
       </span>
     </div>
   );
@@ -36,11 +36,9 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
 /** OWNER 유저만 허용 */
 function ensureOwner(userData: UserData | null): OwnerData | null {
   if (!userData) return null;
-
   if ("bzNumber" in userData && userData.userRole === "OWNER") {
     return userData as OwnerData;
   }
-
   return null;
 }
 
@@ -71,7 +69,7 @@ export default function MobileView() {
     );
   }
 
-  // OwnerData (DTO) 기준 필드
+  // OwnerData 기준 필드
   const {
     name,
     email,
@@ -79,15 +77,22 @@ export default function MobileView() {
     profileImage,
     bzNumber,
     bankAccount,
-    socialId,
-    socialProvider,
+    bzName,
+    detailAddress,
     createdAt,
-  } = owner;
+  } = owner as OwnerData & {
+    bzName?: string;
+    detailAddress?: string;
+  };
 
   const displayPhone = phoneNumber || "-";
   const displayCreatedAt = createdAt
     ? new Date(createdAt).toLocaleDateString("ko-KR")
     : "-";
+
+  const handleGoEdit = () => {
+    nav("/my-page/owner/profile/edit");
+  };
 
   return (
     <div className="w-full bg-white">
@@ -103,7 +108,7 @@ export default function MobileView() {
         </div>
 
         {/* 본문 */}
-        <div className="flex-1 px-5 pt-20 pb-0 overflow-auto space-y-6">
+        <div className="flex-1 px-5 pt-20 pb-24 overflow-auto space-y-6">
           {/* 상단 프로필 카드 */}
           <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
             <div className="flex items-center gap-4">
@@ -140,17 +145,25 @@ export default function MobileView() {
           {/* 사업자 정보 */}
           <SectionCard title="사업자 정보">
             <div className="space-y-2">
-              <InfoRow label="사업자번호" value={bzNumber} />
+              <InfoRow label="사업장명" value={bzName} />
+              <InfoRow label="사업자 번호" value={bzNumber} />
+              <InfoRow label="사업장 주소" value={detailAddress} />
+              <InfoRow label="사업장 메일" value={email} />
               <InfoRow label="정산 계좌" value={bankAccount} />
-              <InfoRow label="소셜 ID" value={socialId} />
-              <InfoRow label="로그인 제공자" value={socialProvider} />
             </div>
           </SectionCard>
 
-          {/* 회원 탈퇴 */}
-          <div className="mt-4 flex">
+          {/* 하단 액션 영역 */}
+          <div className="mt-4 mb-2 flex items-center justify-between">
             <button
-              className="ml-auto text-[14px] text-[#999] hover:text-[#666]"
+              type="button"
+              className="text-[14px] text-[#FF2233] font-semibold hover:opacity-80"
+              onClick={handleGoEdit}
+            >
+              수정하기
+            </button>
+            <button
+              className="text-[14px] text-[#999] hover:text-[#666]"
               onClick={() => alert("회원 탈퇴 프로세스를 연결하세요.")}
             >
               회원 탈퇴

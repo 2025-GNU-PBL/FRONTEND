@@ -1,65 +1,119 @@
+// src/store/signupSlice.ts
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 
-// 회원가입 도중 임시 저장되는 입력 데이터 구조
-export interface SignupDraft {
-  // 기본 정보
+/* ===========================
+ *   고객(CUSTOMER) 회원가입 Draft
+ * =========================== */
+export interface ClientSignupDraft {
   phone: string;
-
-  // 주소 정보
   zipCode: string;
   roadAddress: string;
   jibunAddress: string;
-  detailAddress?: string;
-  address?: string;
-  sido?: string;
-  sigungu?: string;
-  dong?: string;
-  buildingName?: string;
-
-  // 예식 정보
-  weddingDate?: string; // YYYY-MM-DD
-  weddingSido?: string;
-  weddingSigungu?: string;
+  detailAddress: string;
+  address: string;
+  buildingName: string;
+  weddingDate: string;
+  weddingSido: string;
+  weddingSigungu: string;
 }
 
+/* ===========================
+ *   사장(OWNER) 회원가입 Draft (모두 필수값)
+ * =========================== */
+export interface OwnerSignupDraft {
+  phoneNumber: string;
+  bzName: string;
+  bzNumber: string;
+  bankAccount: string;
+  profileImage: string; // 필수
+  zipCode: string; // 필수
+  roadAddress: string; // 필수
+  jibunAddress: string; // 필수
+  detailAddress: string; // 필수
+  buildingName: string; // 필수
+}
+
+/* ===========================
+ *   Slice State
+ * =========================== */
 export interface SignupState {
-  values: SignupDraft;
+  client: ClientSignupDraft;
+  owner: OwnerSignupDraft;
 }
 
 const initialState: SignupState = {
-  values: {
+  client: {
     phone: "",
     zipCode: "",
     roadAddress: "",
     jibunAddress: "",
     detailAddress: "",
     address: "",
-    sido: "",
-    sigungu: "",
-    dong: "",
     buildingName: "",
     weddingDate: "",
     weddingSido: "",
     weddingSigungu: "",
   },
+  owner: {
+    phoneNumber: "",
+    bzName: "",
+    bzNumber: "",
+    bankAccount: "",
+    profileImage: "",
+    zipCode: "",
+    roadAddress: "",
+    jibunAddress: "",
+    detailAddress: "",
+    buildingName: "",
+  },
 };
 
+/* ===========================
+ *   Slice
+ * =========================== */
 const signupSlice = createSlice({
   name: "signup",
   initialState,
   reducers: {
-    setDraft: (state, action: PayloadAction<Partial<SignupDraft>>) => {
-      state.values = { ...state.values, ...action.payload };
+    /* 고객 */
+    setClientDraft(state, action: PayloadAction<Partial<ClientSignupDraft>>) {
+      state.client = { ...state.client, ...action.payload };
     },
-    resetDraft: (state) => {
-      state.values = { ...initialState.values };
+    resetClientDraft(state) {
+      state.client = { ...initialState.client };
+    },
+
+    /* 사장 */
+    setOwnerDraft(state, action: PayloadAction<Partial<OwnerSignupDraft>>) {
+      state.owner = { ...state.owner, ...action.payload };
+    },
+    resetOwnerDraft(state) {
+      state.owner = { ...initialState.owner };
     },
   },
 });
 
-export const { setDraft, resetDraft } = signupSlice.actions;
 export default signupSlice.reducer;
 
-export const selectSignupValues = (state: { signup: SignupState }) =>
-  state.signup.values;
+/* 액션 */
+export const {
+  setClientDraft,
+  resetClientDraft,
+  setOwnerDraft,
+  resetOwnerDraft,
+} = signupSlice.actions;
+
+/* 고객 호환용 export */
+export const setDraft = setClientDraft;
+export const resetDraft = resetClientDraft;
+
+/* 셀렉터 */
+export const selectClientSignupValues = (state: { signup: SignupState }) =>
+  state.signup.client;
+
+export const selectOwnerSignupValues = (state: { signup: SignupState }) =>
+  state.signup.owner;
+
+/* 고객 호환용 */
+export const selectSignupValues = selectClientSignupValues;
