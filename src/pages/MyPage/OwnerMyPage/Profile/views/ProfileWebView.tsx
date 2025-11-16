@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { Icon } from "@iconify/react";
+import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../store/userSlice";
 
@@ -107,6 +108,8 @@ function InfoRow({
   value?: string;
   mono?: boolean;
 }) {
+  const display = value && value.trim() !== "" ? value : "-"; // 모바일 InfoRow와 동일한 "-" 처리
+
   return (
     <div className="grid grid-cols-[140px_1fr] items-center py-3">
       <div className="text-sm text-gray-500 tracking-[-0.2px]">{label}</div>
@@ -115,7 +118,7 @@ function InfoRow({
           mono ? "font-mono" : ""
         }`}
       >
-        {value ?? "-"}
+        {display}
       </div>
     </div>
   );
@@ -123,6 +126,7 @@ function InfoRow({
 
 /** 사장(OWNER) 마이페이지 - 내 정보 조회 (Web) */
 export default function WebView() {
+  const nav = useNavigate();
   const rawUserData = useAppSelector((state) => state.user.userData);
   const owner = ensureOwner(rawUserData);
 
@@ -130,6 +134,10 @@ export default function WebView() {
     () => formatKoreanDate(owner?.createdAt),
     [owner?.createdAt]
   );
+
+  const handleGoEdit = () => {
+    nav("/my-page/owner/profile/edit");
+  };
 
   // 비로그인/권한 불일치 처리
   if (!owner) {
@@ -154,7 +162,7 @@ export default function WebView() {
     );
   }
 
-  // OwnerData 기준
+  // OwnerData 기준 (모바일과 동일 필드 포함)
   const {
     name,
     email,
@@ -162,11 +170,16 @@ export default function WebView() {
     profileImage,
     bzNumber,
     bankAccount,
-    socialId,
-    socialProvider,
-  } = owner;
+    bzName,
+    detailAddress,
+  } = owner as OwnerData & {
+    bzName?: string;
+    detailAddress?: string;
+  };
 
+  // 모바일과 동일 의미의 display 값들
   const displayPhone = formatPhone(phoneNumber);
+  const displayCreatedAt = joinedDate;
   const displayBz = formatBzNumberDisplay(bzNumber);
   const displayBank = formatBankAccountDisplay(bankAccount);
 
@@ -177,7 +190,7 @@ export default function WebView() {
 
       <div className="pt-16 pb-16">
         <div className="max-w-[960px] mx-auto px-6 space-y-8">
-          {/* 프로필 히어로 카드 */}
+          {/* 상단 프로필 카드 (모바일의 프로필 카드와 역할 동일) */}
           <section className="relative rounded-3xl border border-gray-200 bg-white/95 backdrop-blur shadow-[0_10px_30px_rgba(0,0,0,0.06)] overflow-hidden">
             <div className="absolute inset-0 -z-10 blur-xl rounded-3xl bg-gradient-to-br from-[#FF4646]/15 via-white to-[#111827]/5" />
             <div className="px-6 py-6">
@@ -217,7 +230,7 @@ export default function WebView() {
             </div>
           </section>
 
-          {/* 회원정보 카드 */}
+          {/* 회원정보 카드 (모바일 '회원정보' 섹션과 동일 구조/필드) */}
           <SectionCard
             title="회원정보"
             subtitle="계정 기본 정보"
@@ -227,24 +240,35 @@ export default function WebView() {
               <InfoRow label="이름" value={name} />
               <InfoRow label="전화번호" value={displayPhone} />
               <InfoRow label="이메일" value={email || "-"} />
-              <InfoRow label="가입일" value={joinedDate} />
+              <InfoRow label="가입일" value={displayCreatedAt} />
             </div>
           </SectionCard>
 
-          {/* 사업자 정보 카드 */}
+          {/* 사업자 정보 카드 (모바일 '사업자 정보' 섹션과 동일 필드 구성) */}
           <SectionCard
             title="사업자 정보"
             subtitle="정산 및 세무에 활용됩니다"
             icon="solar:shop-2-bold-duotone"
           >
             <div className="divide-y divide-gray-100">
-              <InfoRow label="사업자번호" value={displayBz} mono />
+              <InfoRow label="사업장명" value={bzName} />
+              <InfoRow label="사업자 번호" value={displayBz} mono />
+              <InfoRow label="사업장 주소" value={detailAddress} />
+              <InfoRow label="사업장 메일" value={email || "-"} />
               <InfoRow label="정산 계좌" value={displayBank} mono />
             </div>
           </SectionCard>
 
-          {/* 하단 액션 */}
-          <div className="flex items-center justify-end">
+          {/* 하단 액션 (모바일의 수정/탈퇴 버튼과 역할 동일) */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#FF4646] hover:text-[#FF2233] px-2 py-1"
+              onClick={handleGoEdit}
+            >
+              <Icon icon="solar:pen-bold-duotone" className="w-4 h-4" />
+              수정하기
+            </button>
             <button
               type="button"
               className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-600 px-2 py-1"

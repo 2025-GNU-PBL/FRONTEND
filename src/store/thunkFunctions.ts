@@ -304,3 +304,59 @@ export const submitOwnerSignup = createAsyncThunk<
     }
   }
 );
+
+/* ---------------------- 사장 정보 수정 (PATCH) ---------------------- */
+
+export type OwnerUpdateValues = {
+  profileImage?: string | null;
+  phoneNumber?: string;
+  bzName?: string;
+  bzNumber?: string;
+  bankAccount?: string;
+  zipCode?: string;
+  roadAddress?: string;
+  jibunAddress?: string;
+  detailAddress?: string;
+  buildingName?: string;
+};
+
+export const updateOwnerInfo = createAsyncThunk<
+  { ok: true } & Record<string, any>,
+  OwnerUpdateValues,
+  { state: RootState }
+>("owner/updateOwnerInfo", async (values, { rejectWithValue, dispatch }) => {
+  try {
+    const payload = toNullIfEmpty({
+      profileImage: (values.profileImage ?? "").toString(),
+      phoneNumber: normalizePhone(values.phoneNumber),
+      bzNumber: values.bzNumber || "",
+      bankAccount: values.bankAccount || "",
+      bzName: values.bzName || "",
+      zipCode: values.zipCode || "",
+      roadAddress: values.roadAddress || "",
+      jibunAddress: values.jibunAddress || "",
+      detailAddress: values.detailAddress || "",
+      buildingName: values.buildingName || "",
+    });
+
+    console.log("[updateOwnerInfo] payload:", payload);
+
+    const res = await api.patch("/api/v1/owner", payload);
+
+    // 수정 후 최신 정보 다시 가져와 userSlice.userData 갱신
+    await dispatch(authOwner()).unwrap();
+
+    console.log("[updateOwnerInfo] response:", res.data);
+    return { ok: true, ...res.data };
+  } catch (error) {
+    if (isAxiosError(error)) {
+      console.error(
+        "[updateOwnerInfo] axios error:",
+        error.response?.status,
+        error.response?.data
+      );
+      return rejectWithValue(error.response?.data || error.message);
+    }
+    return rejectWithValue("사장 정보 수정 실패");
+  }
+});
