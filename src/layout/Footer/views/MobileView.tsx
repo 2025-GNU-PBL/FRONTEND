@@ -14,8 +14,7 @@ const MobileView = () => {
     { icon: "solar:chat-square-outline", path: "/chat", label: "채팅" },
     {
       icon: "solar:user-rounded-linear",
-      path:
-        userRole === "OWNER" ? "/my-page/owner/main" : "/my-page/client/main", // ✅ 조건에 따라 경로 변경
+      path: userRole === "OWNER" ? "/my-page/owner" : "/my-page/client", // ✅ 조건에 따라 경로 변경
       label: "마이페이지",
     },
   ];

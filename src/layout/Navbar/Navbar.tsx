@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { useAppSelector } from "../../store/hooks";
 import { useEffect, useState } from "react";
 import { getUnreadNotificationCount } from "../../lib/api/notification";
-import api from "../../lib/api/axios"; // axios 인스턴스 임포트
+import api from '../../lib/api/axios'; // axios 인스턴스 임포트
 
 const menuItems = [
   { name: "웨딩홀", path: "/wedding" },
@@ -34,7 +34,7 @@ const Navbar = () => {
 
       const fetchCartCount = async () => {
         try {
-          const response = await api.get<number>("/api/v1/cart/count");
+          const response = await api.get<number>('/api/v1/cart/count');
           setCartCount(response.data);
         } catch (error) {
           console.error("Failed to fetch cart count:", error);
@@ -128,11 +128,7 @@ const Navbar = () => {
 
               {/* 👤 마이페이지 */}
               <Link
-                to={
-                  userRole === "OWNER"
-                    ? "/my-page/owner/main"
-                    : "/my-page/client/main"
-                }
+                to={userRole === "OWNER" ? "/my-page/owner" : "/my-page/client"}
                 aria-label="마이페이지"
                 className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
               >
