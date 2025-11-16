@@ -357,11 +357,8 @@ const MobileView: React.FC = () => {
             // 1페이지는 새로 세팅
             return nextContent;
           }
-          // 2페이지 이상은 이어 붙이되 중복 제거
-          const map = new Map<number, Product>();
-          prev.forEach((p) => map.set(p.id, p));
-          nextContent.forEach((p) => map.set(p.id, p));
-          return Array.from(map.values());
+          // 2페이지 이상은 단순 이어붙이기 (중복 제거 X)
+          return [...prev, ...nextContent];
         });
 
         const nextPage = page + 1;
@@ -479,7 +476,7 @@ const MobileView: React.FC = () => {
             >
               <Icon
                 icon="solar:cart-large-minimalistic-linear"
-                className="w-6 h-6 text-black/80"
+                className="w-6 h-6 text.black/80"
               />
             </motion.button>
           )}
@@ -661,48 +658,59 @@ const MobileView: React.FC = () => {
               exit="exit"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* 헤더 */}
-              <div className="flex items-center justify-between px-5 py-6">
-                <span className="text-[18px] font-semibold text-[#1E2124]">
-                  필터
-                </span>
-                <button
-                  className="w-6 h-6 grid place-items-center rounded-full active:scale-95"
-                  onClick={closeFilter}
-                >
-                  <Icon icon="mdi:close" className="w-5 h-5 text-[#1E2124]" />
-                </button>
-              </div>
+              {/* 헤더 + 본문 래퍼 (380px 고정, 본문만 스크롤) */}
+              <div className="h-[380px] max-h-[380px] flex flex-col">
+                {/* 헤더 */}
+                <div className="flex items-center justify-between px-5 py-6 flex-none">
+                  <span className="text-[18px] font-semibold text-[#1E2124]">
+                    필터
+                  </span>
+                  <button
+                    className="w-6 h-6 grid place-items-center rounded-full active:scale-95"
+                    onClick={closeFilter}
+                  >
+                    <Icon icon="mdi:close" className="w-5 h-5 text-[#1E2124]" />
+                  </button>
+                </div>
 
-              {/* 본문 */}
-              <div className="pt-5 px-5 pb-4 border-t border-[#F3F3F3] max-h-[380px] overflow-y-auto space-y-8">
-                {TAG_GROUPS.map((group) => (
-                  <div key={group.title} className="space-y-3">
-                    <p className="text-[16px] font-semibold text-[#1E2124]">
-                      {group.title}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {group.items.map((tag) => {
-                        const active = selectedTags.has(tag);
-                        return (
-                          <button
-                            key={tag}
-                            className={`h-[37px] px-3 rounded-full text-[14px] border transition-all
+                {/* 본문 (스크롤 영역) */}
+                <div className="pt-5 px-5 pb-4 border-t border-[#F3F3F3] overflow-y-auto space-y-8 flex-1 scrollbar-hide">
+                  {TAG_GROUPS.map((group, index) => {
+                    const isLast = index === TAG_GROUPS.length - 1;
+                    return (
+                      <div
+                        key={group.title}
+                        className={`space-y-3 ${
+                          !isLast ? "pb-5 border-b border-[#F3F3F3]" : ""
+                        }`}
+                      >
+                        <p className="text-[16px] font-semibold text-[#1E2124]">
+                          {group.title}
+                        </p>
+                        <div className="flex flex-wrap gap-2 my-4">
+                          {group.items.map((tag) => {
+                            const active = selectedTags.has(tag);
+                            return (
+                              <button
+                                key={tag}
+                                className={`h-[37px] px-3 rounded-full text-[14px] border transition-all
                               ${
                                 active
                                   ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
                                   : "bg-white border-[#D9D9D9] text-[#999999]"
                               }
                             `}
-                            onClick={() => toggleTag(tag)}
-                          >
-                            {TAG_LABEL[tag]}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                                onClick={() => toggleTag(tag)}
+                              >
+                                {TAG_LABEL[tag]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* 하단 버튼 영역 */}

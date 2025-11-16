@@ -367,10 +367,7 @@ const WebView: React.FC = () => {
 
         setItems((prev) => {
           if (isInitial) return nextContent;
-          const map = new Map<number, ProductExt>();
-          prev.forEach((p) => map.set(p.id, p));
-          nextContent.forEach((p) => map.set(p.id, p));
-          return Array.from(map.values());
+          return [...prev, ...nextContent];
         });
 
         const nextPage = page + 1;
@@ -384,12 +381,10 @@ const WebView: React.FC = () => {
             // 요청 취소는 무시
           } else {
             // 기타 오류
-            // eslint-disable-next-line no-console
             console.error(err);
             setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
           }
         } else {
-          // eslint-disable-next-line no-console
           console.error(err);
           setErrorMsg("목록을 불러오는 중 오류가 발생했습니다.");
         }

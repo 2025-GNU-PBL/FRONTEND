@@ -71,41 +71,58 @@ const regions: RegionItem[] = [
   { key: "부산", label: "부산", image: "/images/busan.png" },
 ];
 
-/* ========================= 스튜디오 전용 필터 ========================= */
+/* ========================= 메이크업 태그 필터 ========================= */
 
-const STYLE_OPTIONS = ["인물중심", "배경다양", "인물+배경"] as const;
-const SHOOTABLE_OPTIONS = [
-  "한옥",
-  "가든",
-  "야간",
-  "로드",
-  "수중",
-  "반려동물",
-] as const;
+type MakeupTag =
+  | "SHOOTING_AND_CEREMONY"
+  | "CEREMONY"
+  | "SHOOTING"
+  | "DIRECTOR_OR_CEO"
+  | "DEPUTY_DIRECTOR"
+  | "MANAGER"
+  | "TEAM_LEADER_OR_DESIGNER"
+  | "FRUITY_TONE"
+  | "CLEAN_AND_BRIGHT"
+  | "CONTOUR_AND_SHADOW";
 
-type StyleOption = (typeof STYLE_OPTIONS)[number];
-type ShootableOption = (typeof SHOOTABLE_OPTIONS)[number];
-
-const STYLE_TO_TAG: Record<StyleOption, string> = {
-  인물중심: "PORTRAIT_FOCUSED",
-  배경다양: "VARIED_BACKGROUND",
-  "인물+배경": "PORTRAIT_AND_BACKGROUND",
+const TAG_LABEL: Record<MakeupTag, string> = {
+  SHOOTING_AND_CEREMONY: "촬영+본식",
+  CEREMONY: "본식",
+  SHOOTING: "촬영",
+  DIRECTOR_OR_CEO: "원장/대표/이사",
+  DEPUTY_DIRECTOR: "부원장",
+  MANAGER: "실장",
+  TEAM_LEADER_OR_DESIGNER: "팀장/디자이너",
+  FRUITY_TONE: "과즙/색조",
+  CLEAN_AND_BRIGHT: "깨끗/화사",
+  CONTOUR_AND_SHADOW: "윤곽/음영",
 };
 
-const SHOOTABLE_TO_TAG: Record<ShootableOption, string> = {
-  한옥: "HANOK",
-  가든: "GARDEN",
-  야간: "NIGHT",
-  로드: "ROAD",
-  수중: "UNDERWATER",
-  반려동물: "PET_FRIENDLY",
-};
+const TAG_GROUPS: { title: string; items: MakeupTag[] }[] = [
+  {
+    title: "행사",
+    items: ["SHOOTING_AND_CEREMONY", "CEREMONY", "SHOOTING"],
+  },
+  {
+    title: "담당자",
+    items: [
+      "DIRECTOR_OR_CEO",
+      "DEPUTY_DIRECTOR",
+      "MANAGER",
+      "TEAM_LEADER_OR_DESIGNER",
+    ],
+  },
+  {
+    title: "메이크업 스타일",
+    items: ["FRUITY_TONE", "CLEAN_AND_BRIGHT", "CONTOUR_AND_SHADOW"],
+  },
+];
 
-/* ========================= API 응답 타입 ========================= */
+/* ========================= API 타입 ========================= */
 
 type PageMeta = {
   size: number;
-  number: number;
+  number: number; // 현재 페이지(0-base)
   totalElements: number;
   totalPages: number;
 };
@@ -126,22 +143,15 @@ const MobileView: React.FC = () => {
   const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string>("");
 
-  // 지역 / 정렬 / 시트
+  // 지역 & 정렬
   const [selectedRegion, setSelectedRegion] = useState<RegionKey>("전체");
-  const [sortOption, setSortOption] = useState<SortOption>("최신순");
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [sortOption, setSortOption] = useState<SortOption>("최신순");
+
+  // 필터(시트 내 선택과 실제 적용을 분리)
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-
-  // 필터 상태 분리: 시트 내 임시 선택 vs 실제 적용값
-  const [selectedStyle, setSelectedStyle] = useState<StyleOption | null>(null);
-  const [selectedShootable, setSelectedShootable] = useState<
-    Set<ShootableOption>
-  >(new Set());
-
-  const [appliedStyle, setAppliedStyle] = useState<StyleOption | null>(null);
-  const [appliedShootable, setAppliedShootable] = useState<
-    Set<ShootableOption>
-  >(new Set());
+  const [selectedTags, setSelectedTags] = useState<Set<MakeupTag>>(new Set()); // 시트 내 임시 선택
+  const [appliedTags, setAppliedTags] = useState<Set<MakeupTag>>(new Set()); // 실제 API에 쓰는 태그
 
   // 찜
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
@@ -156,33 +166,32 @@ const MobileView: React.FC = () => {
 
   // 네비게이션
   const goDetail = useCallback(
-    (id: number) => navigate(`/studio/${id}`),
+    (id: number) => navigate(`/wedding/${id}`),
     [navigate]
   );
-  const goSearch = useCallback(() => navigate("/search"), [navigate]);
-  const goCart = useCallback(() => navigate("/cart"), [navigate]);
   const onBack = useCallback(() => {
     if (window.history.length > 1) navigate(-1);
     else navigate("/");
   }, [navigate]);
+  const goSearch = useCallback(() => navigate("/search"), [navigate]);
+  const goCart = useCallback(() => navigate("/cart"), [navigate]);
 
-  // 메뉴 & 시트 오픈/클로즈
+  // 메뉴
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const openMenu = useCallback(() => setIsMenuOpen(true), []);
   const closeMenu = useCallback(() => setIsMenuOpen(false), []);
 
+  // 시트
   const openFilter = useCallback(() => {
-    // 시트 열 때 현재 적용값을 편집용으로 복사
-    setSelectedStyle(appliedStyle);
-    setSelectedShootable(new Set(appliedShootable));
+    // 시트 열 때 현재 적용된 태그를 편집용으로 복사
+    setSelectedTags(new Set(appliedTags));
     setIsFilterOpen(true);
-  }, [appliedStyle, appliedShootable]);
-
+  }, [appliedTags]);
   const closeFilter = useCallback(() => setIsFilterOpen(false), []);
   const openSort = useCallback(() => setIsSortOpen(true), []);
   const closeSort = useCallback(() => setIsSortOpen(false), []);
 
-  // 스크롤 잠금
+  // 바디 스크롤 잠금
   useEffect(() => {
     const original = document.body.style.overflow;
     if (isMenuOpen || isFilterOpen || isSortOpen) {
@@ -195,14 +204,14 @@ const MobileView: React.FC = () => {
     };
   }, [isMenuOpen, isFilterOpen, isSortOpen]);
 
-  /* ========================= API 파라미터 ========================= */
+  /* ========================= 쿼리 파라미터 ========================= */
 
   const getRegionQueryValue = (region: RegionKey): string | undefined => {
     if (region === "전체") return undefined;
     if (region === "서울") return "SEOUL";
     if (region === "경기") return "GYEONGGI";
     if (region === "부산") return "BUSAN";
-    if (region === "인천") return "ETC";
+    if (region === "인천") return "ETC"; // 서버 규약 유지
     return undefined;
   };
 
@@ -214,13 +223,12 @@ const MobileView: React.FC = () => {
   }, [sortOption]);
 
   const tagsParam = useMemo(() => {
-    const tags: string[] = [];
-    if (appliedStyle) tags.push(STYLE_TO_TAG[appliedStyle]);
-    appliedShootable.forEach((s) => tags.push(SHOOTABLE_TO_TAG[s]));
-    return tags.length > 0 ? tags.join(",") : undefined;
-  }, [appliedStyle, appliedShootable]);
+    if (appliedTags.size === 0) return undefined;
+    // 메이크업 태그 코드들을 콤마로 이어서 서버로 전달
+    return Array.from(appliedTags).join(",");
+  }, [appliedTags]);
 
-  // 현재 파라미터 스냅샷(요청/응답 가드 & 리셋 트리거)
+  // 현재 파라미터 스냅샷 (응답 검증 및 리셋 트리거)
   const paramsKey = useMemo(
     () =>
       JSON.stringify({
@@ -231,7 +239,57 @@ const MobileView: React.FC = () => {
     [selectedRegion, sortParam, tagsParam]
   );
 
-  /* ========================= 페이지네이션 & 무한스크롤 ========================= */
+  /* ========================= 필터/정렬/지역 변경 핸들러 ========================= */
+
+  const handleRegionSelect = useCallback((key: RegionKey) => {
+    setSelectedRegion(key);
+    setItems([]);
+    setHasMore(true);
+    setTotalCount(0);
+    setPageNumber(1);
+  }, []);
+
+  // 정렬 옵션 선택 시 정렬 시트 닫기
+  const handleChangeSort = useCallback(
+    (opt: SortOption) => {
+      setSortOption(opt);
+      setItems([]);
+      setHasMore(true);
+      setTotalCount(0);
+      setPageNumber(1);
+      closeSort();
+    },
+    [closeSort]
+  );
+
+  const toggleTag = useCallback((tag: MakeupTag) => {
+    setSelectedTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(tag)) next.delete(tag);
+      else next.add(tag);
+      return next;
+    });
+  }, []);
+
+  const resetFilter = useCallback(() => {
+    setSelectedTags(new Set());
+  }, []);
+
+  const applyFilter = useCallback(() => {
+    // 시트에서 확정된 선택을 실제 적용값으로 반영
+    setAppliedTags(new Set(selectedTags));
+
+    // 목록 리셋 및 1페이지부터 다시
+    setItems([]);
+    setHasMore(true);
+    setTotalCount(0);
+    setPageNumber(1);
+    closeFilter();
+  }, [selectedTags, closeFilter]);
+
+  const activeFilterCount = appliedTags.size;
+
+  /* ========================= 페이지네이션 & 무한 스크롤 ========================= */
 
   const [pageNumber, setPageNumber] = useState(1); // 1-base
   const pageSize = 6;
@@ -273,7 +331,7 @@ const MobileView: React.FC = () => {
         const regionValue = getRegionQueryValue(selectedRegion);
 
         const { data }: { data: PagedResponse } = await api.get(
-          "/api/v1/studio/filter",
+          "/api/v1/makeup/filter",
           {
             params: {
               pageNumber: page,
@@ -365,57 +423,6 @@ const MobileView: React.FC = () => {
     return () => observer.unobserve(target);
   }, [hasMore, loadingInitial, isLoadingMore]);
 
-  /* ========================= 필터/정렬/지역 변경 핸들러 ========================= */
-
-  const activeFilterCount = (appliedStyle ? 1 : 0) + appliedShootable.size; // 뱃지는 적용값 기준
-
-  const toggleShootableSelected = useCallback((opt: ShootableOption) => {
-    setSelectedShootable((prev) => {
-      const next = new Set(prev);
-      if (next.has(opt)) next.delete(opt);
-      else next.add(opt);
-      return next;
-    });
-  }, []);
-
-  const resetFilter = useCallback(() => {
-    setSelectedStyle(null);
-    setSelectedShootable(new Set());
-  }, []);
-
-  const applyFilter = useCallback(() => {
-    // 시트 내 선택을 실제 적용값으로 반영
-    setAppliedStyle(selectedStyle);
-    setAppliedShootable(new Set(selectedShootable));
-
-    // 목록 리셋 및 1페이지부터 다시
-    setItems([]);
-    setHasMore(true);
-    setTotalCount(0);
-    setPageNumber(1);
-    closeFilter();
-  }, [selectedStyle, selectedShootable, closeFilter]);
-
-  const handleChangeSort = useCallback(
-    (opt: SortOption) => {
-      setSortOption(opt);
-      setItems([]);
-      setHasMore(true);
-      setTotalCount(0);
-      setPageNumber(1);
-      closeSort();
-    },
-    [closeSort]
-  );
-
-  const handleRegionSelect = useCallback((key: RegionKey) => {
-    setSelectedRegion(key);
-    setItems([]);
-    setHasMore(true);
-    setTotalCount(0);
-    setPageNumber(1);
-  }, []);
-
   /* ========================= 렌더 ========================= */
 
   return (
@@ -443,10 +450,10 @@ const MobileView: React.FC = () => {
           />
         </motion.button>
         <motion.h1
-          className="absolute left-1/2 -translate-x-1/2 top-[15.5px] text-center text-[18px] font-semibold text-[#1E2124]"
+          className="absolute left-1/2 -translate-x-1/2 top-[15.5px] text-center text-[18px] font-semibold leading-[29px] tracking-[-0.2px] text-[#1E2124]"
           variants={fade}
         >
-          스튜디오
+          메이크업
         </motion.h1>
         <div className="absolute right-5 top-[18px] flex items-center gap-[12px]">
           <motion.button
@@ -484,7 +491,7 @@ const MobileView: React.FC = () => {
         </div>
       </motion.header>
 
-      {/* 지역 필터 */}
+      {/* 지역 (상단 필터) */}
       <motion.div
         className="grid grid-cols-5 gap-4 px-5 mt-4 justify-items-center"
         variants={stagger(0.05)}
@@ -495,34 +502,35 @@ const MobileView: React.FC = () => {
             <motion.button
               key={r.key}
               type="button"
-              onClick={() => handleRegionSelect(r.key)}
+              onClick={() => handleRegionSelect(r.key as RegionKey)}
               className="flex flex-col items-center gap-3 isolate"
               variants={fadeUp}
             >
               <div
-                className={`w-[60px] h-[60px] rounded-full border grid place-items-center overflow-hidden transition-all ${
+                className={`w-[60px] h-[60px] rounded-full border bg-white relative overflow-hidden grid place-items-center transition-all ${
                   isActive
                     ? "border-[#FF2233] shadow-[0_4px_10px_rgba(0,0,0,0.08)]"
                     : "border-[#F2F2F2]"
                 }`}
               >
-                {r.image ? (
-                  <img
-                    src={r.image}
-                    alt={r.label}
-                    className="w-full h-full object-cover rounded-full"
-                  />
-                ) : (
+                {r.label === "전체" ? (
                   <div className="grid grid-cols-2 gap-[6px]">
                     <span className="w-2 h-2 rounded-full bg-[#595F63]" />
                     <span className="w-2 h-2 rounded-full bg-[#D9D9D9]" />
                     <span className="w-2 h-2 rounded-full bg-[#D9D9D9]" />
                     <span className="w-2 h-2 rounded-full bg-[#595F63]" />
                   </div>
+                ) : (
+                  <img
+                    src={r.image}
+                    alt={`${r.label} 대표 이미지`}
+                    className="w-full h-full object-cover rounded-full"
+                    loading="lazy"
+                  />
                 )}
               </div>
               <p
-                className={`text-[14px] ${
+                className={`text-[14px] leading-[21px] tracking-[-0.2px] ${
                   isActive ? "text-[#FF2233] font-semibold" : "text-black"
                 }`}
               >
@@ -550,7 +558,7 @@ const MobileView: React.FC = () => {
             <span className="text-[14px] text-black">
               필터
               {activeFilterCount > 0 && (
-                <span className="ml-1 text-[11px] px-1.5 py-0.5 rounded-full bg-[#FF2233]/10 text-[#FF2233]">
+                <span className="ml-1 text-[11px] px-1.5 py-0.5 rounded-full bg-[#FF2233]/10 text-[#FF2233] align-middle">
                   {activeFilterCount}
                 </span>
               )}
@@ -574,7 +582,7 @@ const MobileView: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* 오류 메시지 */}
+      {/* 상태 */}
       {!!errorMsg && !loadingInitial && (
         <motion.div className="px-5 mt-2" variants={fadeUp}>
           <p className="text-sm text-red-500">{errorMsg}</p>
@@ -590,7 +598,7 @@ const MobileView: React.FC = () => {
           >
             {items.map((product) => (
               <ProductCard
-                key={product.id}
+                key={`p-${product.id}`}
                 product={product}
                 liked={likedIds.has(product.id)}
                 onToggleLike={toggleLike}
@@ -667,59 +675,41 @@ const MobileView: React.FC = () => {
 
                 {/* 본문 (스크롤 영역) */}
                 <div className="pt-5 px-5 pb-4 border-t border-[#F3F3F3] overflow-y-auto space-y-8 flex-1 scrollbar-hide">
-                  {/* 스타일 */}
-                  <div className="space-y-3 pb-5 border-b border-[#F3F3F3]">
-                    <p className="text-[16px] font-semibold text-[#1E2124]">
-                      스타일
-                    </p>
-                    <div className="flex flex-wrap gap-2 my-4">
-                      {STYLE_OPTIONS.map((opt) => {
-                        const active = selectedStyle === opt;
-                        return (
-                          <button
-                            key={opt}
-                            onClick={() =>
-                              setSelectedStyle((prev) =>
-                                prev === opt ? null : opt
-                              )
-                            }
-                            className={`h-[37px] px-3 rounded-full text-[14px] border transition-all ${
-                              active
-                                ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
-                                : "bg-white border-[#D9D9D9] text-[#999999]"
-                            }`}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 촬영 가능 */}
-                  <div className="space-y-3">
-                    <p className="text-[16px] font-semibold text-[#1E2124]">
-                      촬영 가능
-                    </p>
-                    <div className="flex flex-wrap gap-2 my-4">
-                      {SHOOTABLE_OPTIONS.map((opt) => {
-                        const active = selectedShootable.has(opt);
-                        return (
-                          <button
-                            key={opt}
-                            onClick={() => toggleShootableSelected(opt)}
-                            className={`h-[37px] px-3 rounded-full text-[14px] border transition-all ${
-                              active
-                                ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
-                                : "bg-white border-[#D9D9D9] text-[#999999]"
-                            }`}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  {TAG_GROUPS.map((group, index) => {
+                    const isLast = index === TAG_GROUPS.length - 1;
+                    return (
+                      <div
+                        key={group.title}
+                        className={`space-y-3 ${
+                          !isLast ? "pb-5 border-b border-[#F3F3F3]" : ""
+                        }`}
+                      >
+                        <p className="text-[16px] font-semibold text-[#1E2124]">
+                          {group.title}
+                        </p>
+                        <div className="flex flex-wrap gap-2 my-4">
+                          {group.items.map((tag) => {
+                            const active = selectedTags.has(tag);
+                            return (
+                              <button
+                                key={tag}
+                                className={`h-[37px] px-3 rounded-full text-[14px] border transition-all
+                              ${
+                                active
+                                  ? "bg-[#FFF2F2] border-[#FF4E5C] text-[#FF4E5C]"
+                                  : "bg-white border-[#D9D9D9] text-[#999999]"
+                              }
+                            `}
+                                onClick={() => toggleTag(tag)}
+                              >
+                                {TAG_LABEL[tag]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -751,7 +741,7 @@ const MobileView: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* 정렬 시트 */}
+      {/* 정렬 Bottom Sheet */}
       <SortBottomSheet
         isOpen={isSortOpen}
         sortOption={sortOption}

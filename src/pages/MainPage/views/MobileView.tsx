@@ -115,10 +115,13 @@ export default function MobileView({
 
       const fetchCartCount = async () => {
         try {
-          const response = await api.get<number>('/api/v1/cart/count');
+          const response = await api.get<number>("/api/v1/cart/count");
           setCartCount(response.data);
         } catch (error) {
-          console.error("Failed to fetch cart count (MainPage MobileView):", error);
+          console.error(
+            "Failed to fetch cart count (MainPage MobileView):",
+            error
+          );
         }
       };
       fetchCartCount();
@@ -415,7 +418,8 @@ export default function MobileView({
             }}
           >
             {items.map((p) => {
-              const thumb = p.thumbnail || "/images/placeholder.png";
+              const thumb =
+                p.thumbnail && p.thumbnail.trim() !== "" ? p.thumbnail : null;
               const rating =
                 typeof p.starCount === "number"
                   ? Number(p.starCount).toFixed(1)
@@ -440,17 +444,21 @@ export default function MobileView({
                   onClick={() => navigate(detailPath)}
                 >
                   <div className="w-full h-[144px] bg-[#F3F4F5]">
-                    <img
-                      src={thumb}
-                      alt={p.name}
-                      className="h-full w-full object-cover rounded-[16px]"
-                      onError={(e) => {
-                        const t = e.currentTarget as HTMLImageElement;
-                        if (t.src !== "/images/placeholder.png") {
-                          t.src = "/images/placeholder.png";
-                        }
-                      }}
-                    />
+                    {thumb ? (
+                      <img
+                        src={thumb}
+                        alt={p.name}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none"; // 에러나면 숨김
+                        }}
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-xs text-[#B0B0B0]">
+                        이미지 없음
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-3">
