@@ -15,10 +15,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     base: "/", // SPA 루트 (Netlify 등에서 / 경로 배포)
-    define: {
-      // sockjs-client가 브라우저 환경에서 global 변수를 사용할 수 있도록 설정
-      global: "globalThis",
-    },
     server: {
       port: 3000,
       strictPort: true,
