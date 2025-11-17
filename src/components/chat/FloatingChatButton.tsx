@@ -1,8 +1,14 @@
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
+import { useAppSelector } from "../../store/hooks";
 
 const FloatingChatButton = () => {
   const navigate = useNavigate();
+  
+  // 안읽은 메시지 총 개수 계산
+  const totalUnreadCount = useAppSelector((state) => {
+    return state.chat.rooms.reduce((sum, room) => sum + room.unread, 0);
+  });
 
   const handleClick = () => {
     navigate("/chat");
@@ -31,7 +37,7 @@ const FloatingChatButton = () => {
         duration-300
         hover:scale-105
         hover:shadow-2xl
-        active:scale-95
+        active:scale-95 
       "
       aria-label="채팅 열기"
     >

@@ -14,6 +14,7 @@ import {
 
 import userReducer from "./userSlice";
 import signupReducer from "./signupSlice";
+import chatReducer from "./chatSlice";
 
 const userPersistConfig = {
   key: "user",
@@ -27,15 +28,22 @@ const signupPersistConfig = {
   whitelist: ["values"],
 };
 
+const chatPersistConfig = {
+  key: "chat",
+  storage,
+  whitelist: ["rooms"], // 채팅방 목록만 저장 (메시지는 API에서 새로 가져옴)
+};
+
 const rootReducer = combineReducers({
   user: persistReducer(userPersistConfig, userReducer),
   signup: persistReducer(signupPersistConfig, signupReducer),
+  chat: persistReducer(chatPersistConfig, chatReducer), // 채팅방 목록 persist
 });
 
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["user", "signup"],
+  whitelist: ["user", "signup", "chat"],
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
