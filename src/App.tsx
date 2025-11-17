@@ -65,6 +65,10 @@ import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/Schedule
 import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
 import CouponPage from "./pages/MyPage/ClientMyPage/Coupons/CouponPage";
+import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
+import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
+import CancelListPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
+import CancelDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
 
 function Layout() {
   const location = useLocation();
