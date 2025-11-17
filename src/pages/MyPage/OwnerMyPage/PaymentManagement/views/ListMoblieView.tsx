@@ -18,6 +18,7 @@ interface SettlementSummary {
 
 interface SettlementItem {
   orderCode: string;
+  paymentKey: string; // ✅ 결제 상세 조회용 paymentKey 추가
   customerName: string;
   amount: number;
   status: ApiPaymentStatus;
@@ -274,12 +275,27 @@ export default function MobileView() {
                     item.status === "FAILED" ||
                     item.status === "CANCEL_REQUESTED";
 
+                  // ✅ DONE 상태일 때만 결제 상세 페이지로 이동
+                  const handleClick = () => {
+                    if (item.status !== "DONE") return;
+                    nav(
+                      `/my-page/owner/payments/detail?paymentKey=${item.paymentKey}`
+                    );
+                  };
+
                   return (
                     <div
                       key={item.orderCode}
-                      className="flex flex-col border-b border-[#F0F0F0] first:pt-4 last:border-b-0"
+                      onClick={handleClick}
+                      className={[
+                        "flex flex-col border-b border-[#F0F0F0] first:pt-4 last:border-b-0",
+                        "py-5",
+                        item.status === "DONE"
+                          ? "cursor-pointer active:bg-gray-50"
+                          : "cursor-default",
+                      ].join(" ")}
                     >
-                      <div className="flex items-start justify-between py-5">
+                      <div className="flex items-start justify-between">
                         {/* 날짜 + 이름 + 시간 */}
                         <div className="flex items-start gap-3">
                           <span className="text-[16px] font-medium text-[#1E2124] leading-[26px] tracking-[-0.2px]">
