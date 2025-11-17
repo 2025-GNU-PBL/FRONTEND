@@ -30,7 +30,7 @@ export type OwnerApiResponse = {
   createdAt: string;
   updatedAt: string;
 
-  // 🔽 서버 /api/v1/owner 스펙에 맞춘 추가 필드
+  // 서버 /api/v1/owner 스펙에 맞춘 추가 필드
   bzName: string;
   zipCode: string;
   roadAddress: string;
@@ -79,7 +79,7 @@ export type OwnerData = UserBase & {
   createdAt: string;
   updatedAt: string;
 
-  // 🔽 사업자 정보 / 주소 정보
+  // 사업자 정보 / 주소 정보
   bzName: string;
   zipCode: string;
   roadAddress: string;
@@ -122,7 +122,7 @@ function mapOwner(resp: OwnerApiResponse): OwnerData {
     updatedAt: resp.updatedAt,
     userRole: resp.userRole,
 
-    // 🔽 추가 매핑
+    // 추가 매핑
     bzName: resp.bzName,
     zipCode: resp.zipCode,
     roadAddress: resp.roadAddress,

@@ -1,66 +1,19 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../store/userSlice";
 
-/** OWNER 유저만 허용 */
+/** OWNER 유저만 허용 (모바일과 동일 조건) */
 function ensureOwner(userData: UserData | null): OwnerData | null {
   if (!userData) return null;
-  if ("bzNumber" in userData && (userData as any).userRole === "OWNER") {
+  if ("bzNumber" in userData && userData.userRole === "OWNER") {
     return userData as OwnerData;
   }
   return null;
 }
 
-/** ===== 표시용 포맷터들 ===== */
-const formatKoreanDate = (iso?: string) => {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return new Intl.DateTimeFormat("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d);
-};
-
-const formatBzNumberDisplay = (raw?: string) => {
-  if (!raw) return "-";
-  const digits = raw.replace(/\D/g, "").slice(0, 10);
-  if (!digits) return "-";
-  const part1 = digits.slice(0, 3);
-  const part2 = digits.slice(3, 5);
-  const part3 = digits.slice(5);
-  return [part1, part2, part3].filter(Boolean).join("-");
-};
-
-const formatPhone = (raw?: string) => {
-  if (!raw) return "-";
-  const d = raw.replace(/\D/g, "");
-  if (d.startsWith("02") && d.length >= 9) {
-    // 서울 국번
-    return d.replace(/(02)(\d{3,4})(\d{4})/, "$1-$2-$3");
-  }
-  if (d.length >= 10) {
-    return d.replace(/(\d{3})(\d{3,4})(\d{4})/, "$1-$2-$3");
-  }
-  return raw;
-};
-
-const formatBankAccountDisplay = (raw?: string) => {
-  if (!raw) return "-";
-  // "은행명 계좌번호" 또는 "은행명 | 계좌번호" 형태 지원
-  const matched = raw.match(/^(.+?)[|\s]+([\d-]+|\d[\d- ]+\d)$/);
-  if (!matched) return raw;
-  const bank = matched[1].trim();
-  const acctDigits = matched[2].replace(/[^\d]/g, "");
-  if (acctDigits.length < 6) return `${bank} ${matched[2].trim()}`;
-  const masked = acctDigits.slice(0, 2) + "-****-" + acctDigits.slice(-4);
-  return `${bank} ${masked}`;
-};
-
-/** 공용 카드 컴포넌트 */
+/** 공용 카드 컴포넌트 (웹 전용 스타일) */
 function SectionCard({
   title,
   subtitle,
@@ -99,6 +52,7 @@ function SectionCard({
   );
 }
 
+/** 모바일 InfoRow와 동일하게 value 없으면 "-" 처리 */
 function InfoRow({
   label,
   value,
@@ -108,7 +62,7 @@ function InfoRow({
   value?: string;
   mono?: boolean;
 }) {
-  const display = value && value.trim() !== "" ? value : "-"; // 모바일 InfoRow와 동일한 "-" 처리
+  const display = value && value.trim() !== "" ? value : "-";
 
   return (
     <div className="grid grid-cols-[140px_1fr] items-center py-3">
@@ -130,20 +84,15 @@ export default function WebView() {
   const rawUserData = useAppSelector((state) => state.user.userData);
   const owner = ensureOwner(rawUserData);
 
-  const joinedDate = useMemo(
-    () => formatKoreanDate(owner?.createdAt),
-    [owner?.createdAt]
-  );
-
   const handleGoEdit = () => {
     nav("/my-page/owner/profile/edit");
   };
 
-  // 비로그인/권한 불일치 처리
+  // 비로그인/권한 불일치 처리 (모바일 문구와 통일)
   if (!owner) {
     return (
       <main className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col">
-        {/* 상단 그라디언트 바 (디자인 통일) */}
+        {/* 상단 그라디언트 바 */}
         <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
         <div className="pt-16 pb-16">
           <div className="max-w-[960px] mx-auto px-6">
@@ -162,7 +111,7 @@ export default function WebView() {
     );
   }
 
-  // OwnerData 기준 (모바일과 동일 필드 포함)
+  // 모바일 뷰와 동일 필드 기준으로 추출
   const {
     name,
     email,
@@ -171,26 +120,51 @@ export default function WebView() {
     bzNumber,
     bankAccount,
     bzName,
+    roadAddress,
+    jibunAddress,
     detailAddress,
+    buildingName,
+    createdAt,
   } = owner as OwnerData & {
     bzName?: string;
     detailAddress?: string;
+    roadAddress?: string;
+    jibunAddress?: string;
+    buildingName?: string;
   };
 
   // 모바일과 동일 의미의 display 값들
-  const displayPhone = formatPhone(phoneNumber);
-  const displayCreatedAt = joinedDate;
-  const displayBz = formatBzNumberDisplay(bzNumber);
-  const displayBank = formatBankAccountDisplay(bankAccount);
+  const displayPhone = phoneNumber || "-";
+  const displayCreatedAt = createdAt
+    ? new Date(createdAt).toLocaleDateString("ko-KR")
+    : "-";
+
+  // 모바일과 동일한 주소 가공 로직
+  const displayBzAddress = (() => {
+    const baseAddress = roadAddress || jibunAddress || "";
+    const parts: string[] = [];
+
+    if (baseAddress) parts.push(baseAddress);
+    if (detailAddress) parts.push(detailAddress);
+    const addressStr = parts.join(" ");
+
+    if (buildingName) {
+      return addressStr
+        ? `${addressStr} (${buildingName})`
+        : `(${buildingName})`;
+    }
+
+    return addressStr;
+  })();
 
   return (
     <main className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col">
-      {/* 상단 그라디언트 바 (이전 웹뷰와 통일) */}
+      {/* 상단 그라디언트 바 */}
       <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
 
       <div className="pt-16 pb-16">
         <div className="max-w-[960px] mx-auto px-6 space-y-8">
-          {/* 상단 프로필 카드 (모바일의 프로필 카드와 역할 동일) */}
+          {/* 상단 프로필 카드  */}
           <section className="relative rounded-3xl border border-gray-200 bg-white/95 backdrop-blur shadow-[0_10px_30px_rgba(0,0,0,0.06)] overflow-hidden">
             <div className="absolute inset-0 -z-10 blur-xl rounded-3xl bg-gradient-to-br from-[#FF4646]/15 via-white to-[#111827]/5" />
             <div className="px-6 py-6">
@@ -230,7 +204,7 @@ export default function WebView() {
             </div>
           </section>
 
-          {/* 회원정보 카드 (모바일 '회원정보' 섹션과 동일 구조/필드) */}
+          {/* 회원정보 카드  */}
           <SectionCard
             title="회원정보"
             subtitle="계정 기본 정보"
@@ -239,12 +213,12 @@ export default function WebView() {
             <div className="divide-y divide-gray-100">
               <InfoRow label="이름" value={name} />
               <InfoRow label="전화번호" value={displayPhone} />
-              <InfoRow label="이메일" value={email || "-"} />
+              <InfoRow label="이메일" value={email} />
               <InfoRow label="가입일" value={displayCreatedAt} />
             </div>
           </SectionCard>
 
-          {/* 사업자 정보 카드 (모바일 '사업자 정보' 섹션과 동일 필드 구성) */}
+          {/* 사업자 정보 카드 */}
           <SectionCard
             title="사업자 정보"
             subtitle="정산 및 세무에 활용됩니다"
@@ -252,14 +226,14 @@ export default function WebView() {
           >
             <div className="divide-y divide-gray-100">
               <InfoRow label="사업장명" value={bzName} />
-              <InfoRow label="사업자 번호" value={displayBz} mono />
-              <InfoRow label="사업장 주소" value={detailAddress} />
-              <InfoRow label="사업장 메일" value={email || "-"} />
-              <InfoRow label="정산 계좌" value={displayBank} mono />
+              <InfoRow label="사업자 번호" value={bzNumber} />
+              <InfoRow label="사업장 주소" value={displayBzAddress} />
+              <InfoRow label="사업장 메일" value={email} />
+              <InfoRow label="정산 계좌" value={bankAccount} />
             </div>
           </SectionCard>
 
-          {/* 하단 액션 (모바일의 수정/탈퇴 버튼과 역할 동일) */}
+          {/* 하단 액션 */}
           <div className="flex items-center justify-between">
             <button
               type="button"

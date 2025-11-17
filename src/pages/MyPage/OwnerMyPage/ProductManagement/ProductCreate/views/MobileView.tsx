@@ -1,7 +1,10 @@
 import React, { useRef } from "react";
 import { Icon } from "@iconify/react";
 import { useForm, Controller, useWatch } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import { multipartApi } from "../../../../../../lib/api/multipartApi";
+import { useAppSelector } from "../../../../../../store/hooks";
+import type { OwnerData, UserData } from "../../../../../../store/userSlice";
 
 type ImageItem = { src: string; file?: File };
 
@@ -50,7 +53,7 @@ type FormValues = {
 
 const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"] as const;
 
-// ---------- 태그 그룹 정의  ----------
+// ---------- 태그 그룹 정의  ----------
 type TagOption = { ko: string; en: string };
 type TagGroup = { groupLabel: string; options: TagOption[] };
 
@@ -189,15 +192,39 @@ const EN_TO_KO: Record<string, string> = Object.keys(KO_TO_EN).reduce(
 const FILE_PART_KEY = "images";
 const JSON_PART_KEY = "request";
 
-type Props = {
-  vendorName?: string;
-  address?: string;
-};
-
 const regions: Region[] = ["SEOUL", "GYEONGGI", "INCHEON", "BUSAN"];
 
-const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
+// OWNER 전용 유저 판별 (다른 파일과 동일한 방식)
+function ensureOwner(userData: UserData | null): OwnerData | null {
+  if (!userData) return null;
+  if ("bzNumber" in userData && userData.userRole === "OWNER") {
+    return userData as OwnerData;
+  }
+  return null;
+}
+
+const MobileView: React.FC = () => {
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const navigate = useNavigate(); // ✨ 2. useNavigate 훅 호출
+
+  // Redux 의 userData에서 OWNER 정보 가져오기
+  const rawUserData = useAppSelector((state) => state.user.userData);
+  const owner = ensureOwner(rawUserData);
+
+  // 업체명 / 주소를 OwnerData 기준으로 구성
+  const resolvedVendorName = owner?.bzName ?? "";
+  const resolvedAddress = owner
+    ? `${owner.roadAddress || owner.jibunAddress} ${
+        owner.detailAddress || ""
+      }`.trim()
+    : "";
+
+  if (!owner) {
+    // OWNER 정보 없으면 콘솔만 경고하고, 폼은 비어있는 값으로 노출
+    console.warn(
+      "[상품 추가] OWNER 정보가 없습니다. 로그인 상태 및 권한을 확인해주세요."
+    );
+  }
 
   const {
     register,
@@ -209,8 +236,8 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
     mode: "onChange",
     defaultValues: {
       // 기존
-      vendorName,
-      address,
+      vendorName: resolvedVendorName,
+      address: resolvedAddress,
       category: null,
       name: "",
       price: "",
@@ -220,7 +247,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
       // 추가
       availableTime: "",
       region: "",
-      ownerName: vendorName || "",
+      ownerName: resolvedVendorName || "",
       starCount: "0",
       subwayAccessible: false,
       diningAvailable: false,
@@ -282,7 +309,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
     }
   };
 
-  // ✅ 카테고리 토글 시: 태그 초기화(선택 태그 전체 해제)
+  // 카테고리 토글 시: 태그 초기화(선택 태그 전체 해제)
   const handleCategoryToggle = (
     nextCategory: (typeof categories)[number] | null
   ) => {
@@ -291,7 +318,6 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
       shouldTouch: true,
     });
 
-    // 핵심 변경: resetField 대신 setValue로 즉시 비움
     setValue("tags", [], {
       shouldDirty: true,
       shouldTouch: true,
@@ -364,7 +390,6 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
     const formData = new FormData();
     formData.append(JSON_PART_KEY, jsonBlob, "request.json");
 
-    // 디버그: FormData 상세 출력
     console.groupCollapsed("[DEBUG] FormData");
 
     for (const [k, v] of formData.entries()) {
@@ -404,6 +429,8 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
       const res = await multipartApi.post(endpoint, formData);
       console.log("등록 성공:", res.data);
       alert("작성 완료!");
+      // 상품 등록 성공 후 경로 이동
+      navigate("/my-page/owner/products/management");
     } catch (err) {
       console.error("등록 실패:", err);
       alert("등록 중 오류가 발생했습니다.");
@@ -488,6 +515,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
             type="button"
             aria-label="뒤로가기"
             className="w-6 h-6 flex items-center justify-center"
+            // navigate(-1) 또는 window.history.back() 유지
             onClick={() => window.history.back()}
           >
             <Icon icon="mdi:arrow-left" className="w-6 h-6 text-[#1E2124]" />
@@ -688,7 +716,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
               <div className="h-[120px] px-4 py-2 rounded-[8px] border border-[#D9D9D9]">
                 <textarea
                   placeholder={
-                    "상품 기본 정보에 대해 작성해주세요\nex) 상품 구성 : 촬영용 드레스 3벌 + 본식 드레스 1벌\n상담 소요 시간 : 60분  가봉 소요 시 : 90분"
+                    "상품 기본 정보에 대해 작성해주세요\nex) 상품 구성 : 촬영용 드레스 3벌 + 본식 드레스 1벌\n상담 소요 시간 : 60분  가봉 소요 시 : 90분"
                   }
                   className="w-full h-full resize-none text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
                   {...register("basicInfo")}
@@ -757,7 +785,7 @@ const MobileView: React.FC<Props> = ({ vendorName = "d", address = "d" }) => {
               </div>
             </div>
 
-            {/*  태그 그룹 (칩 토글, 여러 개 선택 가능) */}
+            {/*  태그 그룹 (칩 토글, 여러 개 선택 가능) */}
             <div className="flex flex-col gap-3">
               <label className="text-[14px] leading-[21px] text-black">
                 태그 선택
