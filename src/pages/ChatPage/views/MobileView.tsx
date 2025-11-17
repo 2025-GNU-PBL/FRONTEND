@@ -1,483 +1,231 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useAppDispatch, useAppSelector } from "../../../store/hooks";
-import {
-  fetchChatRooms,
-  fetchChatMessages,
-  markRoomAsRead,
-  selectRoom,
-  setActiveCategory,
-  addMessage,
-  clearUnreadCount,
-  deleteRoom,
-} from "../../../store/chatSlice";
-import { getChatWebSocket } from "../../../lib/websocket/chatWebSocket";
-import type { ChatMessage, ChatRoom } from "../../../lib/api/chatApi";
-import { toast } from "react-toastify";
-
-/**
- * MobileView 채팅방 목록 아이템 컴포넌트
- */
-const MobileChatListItem: React.FC<{
-  room: ChatRoom;
-  formatTime: (timestamp: number) => string;
-  onNavigate: () => void;
-  onDelete: () => void;
-}> = ({ room, formatTime, onNavigate, onDelete }) => {
-  const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = React.useState({ x: 0, y: 0 });
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
-  
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenuPosition({ x: e.clientX, y: e.clientY });
-    setContextMenuOpen(true);
-  };
-  
-  React.useEffect(() => {
-    const handleClickOutside = () => {
-      setContextMenuOpen(false);
-    };
-    if (contextMenuOpen) {
-      document.addEventListener("click", handleClickOutside);
-      return () => document.removeEventListener("click", handleClickOutside);
-    }
-  }, [contextMenuOpen]);
-  
-  const handleDeleteClick = () => {
-    setContextMenuOpen(false);
-    setDeleteConfirmOpen(true);
-  };
-  
-  const handleDeleteConfirm = () => {
-    onDelete();
-    setDeleteConfirmOpen(false);
-  };
-  
-  const handleDeleteCancel = () => {
-    setDeleteConfirmOpen(false);
-  };
-  
-  return (
-    <div onContextMenu={handleContextMenu} className="relative">
-      <button
-        type="button"
-        className="flex w-full items-stretch gap-3 px-4 py-3 active:opacity-90"
-        onClick={onNavigate}
-      >
-        <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
-          {room.avatar ? (
-            <img
-              src={room.avatar}
-              alt={`${room.title} avatar`}
-              className="h-full w-full object-cover"
-              loading="lazy"
-              decoding="async"
-              onError={(e) => {
-                // 이미지 로드 실패 시 아바타 숨기고 기본 아이콘 표시
-                e.currentTarget.style.display = "none";
-                const parent = e.currentTarget.parentElement;
-                if (parent && !parent.querySelector(".default-avatar-icon")) {
-                  const iconDiv = document.createElement("div");
-                  iconDiv.className = "grid h-full w-full place-content-center default-avatar-icon";
-                  iconDiv.innerHTML = '<svg class="h-6 w-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>';
-                  parent.appendChild(iconDiv);
-                }
-              }}
-            />
-          ) : (
-            <div className="grid h-full w-full place-content-center">
-              <Icon
-                icon="mdi:store-outline"
-                className="h-6 w-6 text-gray-400"
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="min-w-0 flex flex-1 flex-col text-left">
-          <div className="flex items-center gap-2">
-            <span
-              className={[
-                "truncate text-[14px] font-semibold",
-                room.unread > 0 ? "text-gray-900" : "text-[#666666]",
-              ].join(" ")}
-            >
-              {room.title}
-            </span>
-            <span className="text-[10px] text-gray-400 opacity-70">
-              {room.category}
-            </span>
-            <span className="text-[12px] text-gray-400">
-              {formatTime(room.sentAt)}
-            </span>
-          </div>
-          <p
-            className={[
-              "mt-1 line-clamp-2 text-[12px] leading-5",
-              room.unread > 0 ? "text-black" : "text-[#999999]",
-            ].join(" ")}
-          >
-            {room.preview}
-          </p>
-        </div>
-
-        {room.unread > 0 && (
-          <div className="ml-2 grid place-items-center">
-            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#FF2233] px-1.5 text-[11px] font-semibold text-white shadow-sm">
-              {room.unread}
-            </span>
-          </div>
-        )}
-      </button>
-      {contextMenuOpen && (
-        <div
-          className="fixed z-50 min-w-[120px] rounded-lg border border-gray-200 bg-white shadow-lg"
-          style={{
-            left: `${contextMenuPosition.x}px`,
-            top: `${contextMenuPosition.y}px`,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={handleDeleteClick}
-            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-          >
-            <Icon icon="mdi:delete-outline" className="h-4 w-4" />
-            삭제
-          </button>
-        </div>
-      )}
-      
-      {/* 삭제 확인 모달 */}
-      {deleteConfirmOpen && (
-        <>
-          {/* Dimmed 배경 */}
-          <div
-            className="fixed inset-0 z-40 bg-[rgba(0,0,0,0.6)] transition-opacity duration-300"
-            onClick={handleDeleteCancel}
-            aria-hidden="true"
-          />
-          {/* 모달 */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-            <div
-              className="w-full max-w-[320px] rounded-2xl bg-white shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="delete-confirm-title"
-            >
-              <div className="px-6 py-5">
-                <h3
-                  id="delete-confirm-title"
-                  className="mb-2 text-center text-lg font-semibold text-gray-900"
-                >
-                  채팅방 삭제
-                </h3>
-                <p className="mb-6 text-center text-sm text-gray-600">
-                  정말 이 채팅방을 삭제하시겠습니까?
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleDeleteCancel}
-                    className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleDeleteConfirm}
-                    className="flex-1 rounded-lg bg-[#FF2233] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#E01E2E]"
-                  >
-                    삭제
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
 
 /**
  * MobileView
  * - /chat       : 리스트 화면
- * - /chat/:id   : 채팅방(스레드) 화면
+ * - /chat/:id   : 채팅방(스레드) 화면 — Figma 스펙 반영
  */
 const MobileView: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
 
-  // Redux 상태
-  const { rooms, messagesByRoom, activeCategory, isLoading, isSending } =
-    useAppSelector((state) => state.chat);
-  const { userData, role } = useAppSelector((state) => state.user);
-
+  // ---------------------------
+  // (A) 리스트 화면 데이터(유지) + 발송일자(sentAt) 추가
+  // ---------------------------
   const chips = ["전체", "웨딩홀", "스튜디오", "드레스", "메이크업"] as const;
+  const [active, setActive] = React.useState<(typeof chips)[number]>("전체");
 
-  // 채팅방 목록 조회 (카테고리 필터 적용)
-  React.useEffect(() => {
-    const category = activeCategory === "전체" ? null : activeCategory;
-    dispatch(fetchChatRooms({ category }));
-  }, [dispatch, activeCategory]);
+  type Item = {
+    id: string;
+    title: string;
+    category: (typeof chips)[number] | "기타";
+    /** 화면 표시는 기존 time을 그대로 사용, 실제 정렬은 sentAt으로 처리 */
+    time: string;
+    /** ERD 발송일자: 최신 순 정렬용(UNIX ms) */
+    sentAt: number;
+    preview: string;
+    unread: number;
+    muted: boolean;
+    avatar?: string;
+  };
 
-  // WebSocket 연결 및 메시지 수신
-  React.useEffect(() => {
-    if (!userData || !role) return;
+  const AVATAR =
+    "https://m.veils.co.kr/web/product/big/202212/73716dbe5a71b0860c7be0e89c5503de.jpg";
 
-    const ws = getChatWebSocket();
-    
-    // 사용자 정보 설정 (메시지 변환 시 socialId 사용하므로 일치시켜야 함)
-    const userId = userData.socialId || String(userData.id);
-    ws.setUserInfo(userId, role);
+  // 데모용 상대적 시간 -> sentAt 변환
+  const now = Date.now();
+  const min = (n: number) => now - n * 60 * 1000;
+  const day = (n: number) => now - n * 24 * 60 * 60 * 1000;
 
-    const handleMessage = (message: ChatMessage, chatRoomId: number) => {
-      console.log("[MobileView] handleMessage called:", { message, chatRoomId });
-      const roomId = String(chatRoomId);
-      dispatch(
-        addMessage({
-          roomId,
-          message,
-        })
-      );
-      console.log("[MobileView] addMessage dispatched");
-      // 현재 선택된 채팅방이면 스크롤을 맨 아래로
-      if (id === roomId) {
-        setTimeout(() => {
-          if (threadRef.current) {
-            threadRef.current.scrollTop = threadRef.current.scrollHeight;
-          }
-        }, 100);
-      }
-    };
-
-    ws.onMessage(handleMessage);
-    ws.connect();
-
-    return () => {
-      // 연결 해제하지 않음 (전역 연결 유지)
-    };
-  }, [dispatch, userData, role]);
-
-  // 채팅방 선택 시 메시지 조회 및 읽음 처리, WebSocket 구독
-  React.useEffect(() => {
-    if (id && role && userData) {
-      const chatRoomId = parseInt(id, 10);
-      if (!isNaN(chatRoomId)) {
-        console.log("[MobileView] Entering chat room:", chatRoomId);
-        dispatch(selectRoom(id));
-        
-        // 채팅방 메시지 조회 (DB에서 가져옴)
-        console.log("[MobileView] Fetching messages for room:", chatRoomId);
-        dispatch(fetchChatMessages({ chatRoomId }));
-        
-        dispatch(
-          markRoomAsRead({
-            chatRoomId,
-          })
-        );
-        dispatch(clearUnreadCount(id));
-
-        // WebSocket 구독
-        const ws = getChatWebSocket();
-        // 사용자 정보 설정 (메시지 변환 시 socialId 사용하므로 일치시켜야 함)
-        const userId = userData.socialId || String(userData.id);
-        ws.setUserInfo(userId, role);
-        if (ws.isConnected()) {
-          ws.subscribeToRoom(chatRoomId);
-        }
-      }
-    } else {
-      dispatch(selectRoom(null));
-    }
-
-    return () => {
-      // 채팅방을 떠날 때 구독 해제하지 않음 (백엔드가 자동 처리)
-    };
-  }, [dispatch, id, role, userData]);
-
-  // 카테고리 필터링된 채팅방 목록
-  const filteredItems = React.useMemo(() => {
-    let result = rooms;
-    if (activeCategory !== "전체") {
-      result = result.filter((r: typeof rooms[0]) => r.category === activeCategory);
-    }
-    // sentAt 기준 최신순 정렬
-    return [...result].sort((a: typeof rooms[0], b: typeof rooms[0]) => b.sentAt - a.sentAt);
-  }, [rooms, activeCategory]);
-
-  // 선택된 채팅방 정보
-  const selectedRoom = React.useMemo(
-    () => (id ? rooms.find((r) => r.id === id) ?? null : null),
-    [id, rooms]
+  const items = React.useMemo<Item[]>(
+    () => [
+      {
+        id: "1",
+        title: "루이즈블랑",
+        category: "드레스",
+        time: "5분 전",
+        sentAt: min(5),
+        preview:
+          "드레스 가격 문의 안내입니다~! 예약 가능 일정도 함께 안내드려요.",
+        unread: 2,
+        muted: false,
+        avatar: AVATAR,
+      },
+      {
+        id: "2",
+        title: "루и즈블랑",
+        category: "스튜디오",
+        time: "2달 전",
+        sentAt: day(60),
+        preview: "스냅/본식 패키지 구성과 원본 제공 범위를 확인해주세요.",
+        unread: 0,
+        muted: true,
+        avatar: AVATAR,
+      },
+      {
+        id: "3",
+        title: "루이즈블랑",
+        category: "드레스",
+        time: "5분 전",
+        sentAt: min(5), // 동시간 예시
+        preview: "시즌 프로모션으로 특정 라인 추가 할인 진행 중입니다.",
+        unread: 2,
+        muted: false,
+        avatar: AVATAR,
+      },
+      {
+        id: "4",
+        title: "루и즈블랑",
+        category: "드레스",
+        time: "어제",
+        sentAt: day(1),
+        preview: "피팅 일정 확정 전 체크리스트 공유드립니다.",
+        unread: 0,
+        muted: true,
+        avatar: AVATAR,
+      },
+      {
+        id: "5",
+        title: "루이즈블랑",
+        category: "메이크업",
+        time: "1주 전",
+        sentAt: day(7),
+        preview: "메이크업/헤어 리허설 포함 시 총 견적은 다음과 같습니다.",
+        unread: 0,
+        muted: true,
+        avatar: AVATAR,
+      },
+    ],
+    []
   );
 
-  // 선택된 채팅방의 메시지 목록
-  const messages = React.useMemo(() => {
-    if (!id) return [];
-    const roomMessages = messagesByRoom[id] || [];
-    console.log("[MobileView] messages useMemo:", { id, messagesCount: roomMessages.length, messages: roomMessages });
-    return roomMessages;
-  }, [id, messagesByRoom]);
+  /** 카테고리 필터 후 발송일자(sentAt) 기준 최신순 정렬 */
+  const filteredItems = React.useMemo(() => {
+    const base =
+      active === "전체" ? items : items.filter((it) => it.category === active);
+    return [...base].sort((a, b) => b.sentAt - a.sentAt);
+  }, [active, items]);
+
+  // ---------------------------
+  // (B) 스레드 더미 데이터
+  // ---------------------------
+  type Message = {
+    id: string;
+    author: "me" | "partner";
+    text: string;
+    /** 표시용 시간(문자열) */
+    time: string;
+    /** 상대가 내 메시지를 읽었는지 */
+    read?: boolean;
+  };
+
+  const makeLongThread = (tid: string, lines = 12): Message[] => {
+    const msgs: Message[] = [];
+    if (tid === "1") {
+      msgs.push(
+        {
+          id: "m0",
+          author: "partner",
+          text: "안녕하세요 프리미엄 드레스샵 루이즈 블랑 입니다.",
+          time: "16:58",
+        },
+        {
+          id: "m1",
+          author: "me",
+          text: "안녕하세요 가격 문의 드립니다.",
+          time: "17:00",
+          read: true,
+        },
+        {
+          id: "m2",
+          author: "me",
+          text: "오간자 실크 드레스 2종류 문의 드립니다",
+          time: "17:00",
+          read: true,
+        }
+      );
+    }
+    for (let i = 0; i < lines; i++) {
+      const mine = i % 2 === 1;
+      msgs.push({
+        id: `t${tid}-${i}`,
+        author: mine ? "me" : "partner",
+        text: mine
+          ? `네, 확인했습니다. (#${i + 1}) 다음 단계 진행 부탁드려요.`
+          : `안녕하세요! (#${i + 1}) 문의 주신 내용에 대해 안내드립니다.`,
+        time: `오늘 10:${(10 + (i % 50)).toString().padStart(2, "0")}`,
+        // 데모: 일부만 읽음 처리
+        read: mine ? i % 3 === 0 : undefined,
+      });
+    }
+    return msgs;
+  };
+
+  const demoThread = React.useMemo<Record<string, Message[]>>(
+    () => ({
+      "1": makeLongThread("1", 10),
+      "2": makeLongThread("2", 16),
+      "3": makeLongThread("3", 14),
+      "4": makeLongThread("4", 12),
+      "5": makeLongThread("5", 15),
+    }),
+    []
+  );
+
+  const selectedItem = React.useMemo(
+    () => (id ? items.find((x) => x.id === id) ?? null : null),
+    [id, items]
+  );
 
   // 입력 상태
   const [text, setText] = React.useState("");
   const threadRef = React.useRef<HTMLDivElement>(null);
-  
-  // 채팅방 삭제 핸들러
-  const handleDeleteRoom = (roomId: string) => {
-    const chatRoomId = parseInt(roomId, 10);
-    if (isNaN(chatRoomId)) return;
-    
-    dispatch(deleteRoom({ chatRoomId }));
-    
-    // 삭제된 채팅방이 현재 선택된 채팅방이면 목록으로 이동
-    if (id === roomId) {
-      navigate("/chat");
-    }
-  };
 
-  // 메시지 전송 (STOMP WebSocket 사용)
-  const onSend = () => {
-    if (!id || !text.trim() || isSending || !role || !userData) return;
-
-    const chatRoomId = parseInt(id, 10);
-    if (isNaN(chatRoomId)) {
-      toast.error("채팅방 정보를 찾을 수 없습니다.");
-      return;
-    }
-
-    const messageText = text.trim();
-    
-    // 메시지 길이 제한 체크 (255자)
-    if (messageText.length > 255) {
-      setText(""); // 입력값 초기화
-      toast.error("255자 이상 금지입니다");
-      // 페이지 새로고침
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000); // 1초 후 새로고침
-      return;
-    }
-    const ws = getChatWebSocket();
-    
-    if (ws.isConnected()) {
-      // Optimistic update: 메시지를 보내기 전에 즉시 UI에 추가
-      const tempMessageId = Date.now(); // 임시 ID (백엔드에서 받은 메시지로 교체됨)
-      const tempMessage: ChatMessage = {
-        id: `temp-${tempMessageId}`,
-        author: "me",
-        text: messageText,
-        time: new Date().toLocaleTimeString("ko-KR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }),
-        createdAt: Date.now(),
-        messageId: -tempMessageId, // 음수로 임시 ID 표시 (중복 체크 우회)
-      };
-
-      // 즉시 Redux에 추가
-      dispatch(
-        addMessage({
-          roomId: id,
-          message: tempMessage,
-        })
-      );
-
-      // senderId는 socialId를 사용 (백엔드가 채팅방의 ownerId/customerId에 socialId 저장)
-      const senderId = userData.socialId || String(userData.id);
-      
-      console.log("[MobileView] Sending message with:", {
-        chatRoomId,
-        senderRole: role,
-        senderId,
-        messageLength: messageText.length,
-        userDataId: userData.id,
-        userDataSocialId: userData.socialId,
-        usingSocialId: !!userData.socialId,
-      });
-      
-      // WebSocket으로 실시간 전송 (백엔드가 자동으로 DB에 저장함)
-      const wsSuccess = ws.sendMessage(chatRoomId, role, senderId, messageText);
-      
-      if (wsSuccess) {
-        // WebSocket 메시지가 성공적으로 전송되면
-        // 백엔드가 자동으로 DB에 저장하고 /sub/chatroom/{chatRoomId}를 통해
-        // 실제 메시지를 다시 보내주므로, WebSocket 핸들러에서 처리됨
-        console.log("[MobileView] Message sent via WebSocket. Waiting for server response...");
-
-        setText("");
-        // 스크롤을 맨 아래로
-        setTimeout(() => {
-          if (threadRef.current) {
-            threadRef.current.scrollTop = threadRef.current.scrollHeight;
-          }
-        }, 100);
-      } else {
-        // 전송 실패 시 임시 메시지 제거
-        toast.error("메시지 전송에 실패했습니다.");
-      }
-    } else {
-      toast.error("연결이 끊어졌습니다. 잠시 후 다시 시도해주세요.");
-    }
-  };
-
-  // 메시지 영역 스크롤
   React.useEffect(() => {
     if (id && threadRef.current) {
       threadRef.current.scrollTop = threadRef.current.scrollHeight;
     }
-  }, [id, messages]);
+  }, [id]);
 
-  // 시간 포맷팅 유틸
-  const formatTime = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return "방금 전";
-    if (minutes < 60) return `${minutes}분 전`;
-    if (hours < 24) return `${hours}시간 전`;
-    if (days < 7) return `${days}일 전`;
-    return date.toLocaleDateString("ko-KR");
+  const onSend = () => {
+    if (!id || !text.trim()) return;
+    // 실제 전송 로직은 서비스 연동 시 구현
+    setText("");
   };
 
-  // 파트너 연속 메시지 그룹의 첫 번째인지 확인
-  const isFirstOfPartnerGroup = (arr: ChatMessage[], idx: number): boolean => {
+  const isFirstOfPartnerGroup = (arr: Message[], idx: number): boolean => {
     const m = arr[idx];
     if (!m || m.author !== "partner") return false;
     const prev = arr[idx - 1];
     return !prev || prev.author !== "partner";
   };
 
-  // 읽음 표시 대상 메시지 ID 찾기
-  const getReadReceiptMessageId = (messages: ChatMessage[]): string | null => {
+  /**
+   * 읽음표시 규칙:
+   * - 스레드의 마지막 메시지가 내가 보낸 것이면 읽음 표시 없음
+   * - 그 외에는 "읽힌 내 메시지 중 가장 마지막 것"에만 1회 표시
+   */
+  const getReadReceiptMessageId = (messages: Message[]): string | null => {
     if (!messages.length) return null;
     const last = messages[messages.length - 1];
-    if (last.author === "me") return null;
+    if (last.author === "me") return null; // 마지막이 내가 보낸 메시지면 표시 없음
 
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
       if (m.author === "me" && m.read) {
-        return m.id;
+        return m.id; // 가장 마지막으로 읽힌 내 메시지
       }
     }
     return null;
   };
 
-  // 메시지 행 컴포넌트
   const MessageRow: React.FC<{
-    m: ChatMessage;
+    m: Message;
     showPartnerAvatar?: boolean;
     partnerAvatar?: string;
+    /** 읽음표시 대상인지 여부 */
     showReadReceipt?: boolean;
   }> = ({ m, showPartnerAvatar, partnerAvatar, showReadReceipt }) => {
     const mine = m.author === "me";
@@ -485,18 +233,15 @@ const MobileView: React.FC = () => {
       <div className={mine ? "flex justify-end" : "flex justify-start"}>
         {!mine && showPartnerAvatar && (
           <div className="mr-2 mt-0.5 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
-            {partnerAvatar ? (
+            {partnerAvatar && (
               <img
                 src={partnerAvatar}
                 alt=""
                 className="h-full w-full object-cover"
                 loading="lazy"
                 decoding="async"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
               />
-            ) : null}
+            )}
           </div>
         )}
         <div className="max-w-[80%]">
@@ -526,40 +271,27 @@ const MobileView: React.FC = () => {
     );
   };
 
-  // 프로필 헤더 컴포넌트
-  const ProfileHeader: React.FC<{ room: typeof selectedRoom }> = ({ room }: { room: typeof selectedRoom }) => {
-    if (!room) return null;
-
+  const ProfileHeader: React.FC<{ item: Item }> = ({ item }) => {
     return (
       <div className="fixed top-[60px] left-0 right-0 z-20 h-[84px] border-b border-[#F3F4F5] bg-white">
         <div className="relative h-full">
           <div className="absolute left-[20px] top-[12px] h-[60px] w-[60px] overflow-hidden rounded-full bg-gray-200">
-            {room.avatar ? (
+            {item.avatar && (
               <img
-                src={room.avatar}
+                src={item.avatar}
                 alt=""
                 className="h-full w-full object-cover"
                 loading="lazy"
                 decoding="async"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
               />
-            ) : (
-              <div className="grid h-full w-full place-content-center">
-                <Icon
-                  icon="mdi:store-outline"
-                  className="h-6 w-6 text-gray-400"
-                />
-              </div>
             )}
           </div>
           <div className="absolute left-[98px] top-[11px]">
             <div className="text-[16px] font-semibold leading-[1.6] tracking-[-0.2px] text-black">
-              {room.title}
+              {item.title}
             </div>
             <div className="mt-[2px] text-[14px] font-normal leading-[1.5] tracking-[-0.2px] text-[#999999]">
-              {room.category}
+              프리미엄 드레스샵
             </div>
           </div>
           <button
@@ -575,7 +307,9 @@ const MobileView: React.FC = () => {
     );
   };
 
-  // 리스트 화면
+  // ---------------------------
+  // 화면 분기
+  // ---------------------------
   if (!id) {
     return (
       <div className="mt-7">
@@ -585,11 +319,11 @@ const MobileView: React.FC = () => {
               <button
                 key={c}
                 type="button"
-                onClick={() => dispatch(setActiveCategory(c))}
-                aria-pressed={activeCategory === c}
+                onClick={() => setActive(c)}
+                aria-pressed={active === c}
                 className={[
                   "h-9 shrink-0 rounded-full px-3 text-sm transition-colors duration-150 border",
-                  activeCategory === c
+                  active === c
                     ? "border-black bg-black text-white"
                     : "border-gray-300 bg-white text-gray-900 hover:bg-gray-50",
                 ].join(" ")}
@@ -603,11 +337,7 @@ const MobileView: React.FC = () => {
         <div className="absolute inset-x-0 bottom-0 top-[80px]">
           <div className="h-full overflow-y-auto overscroll-contain">
             <div className="py-1" />
-            {isLoading ? (
-              <div className="px-4 py-10 text-center text-sm text-gray-500">
-                로딩 중...
-              </div>
-            ) : filteredItems.length === 0 ? (
+            {filteredItems.length === 0 && (
               <div className="px-4 py-10 text-center text-sm text-gray-500">
                 <div className="mx-auto mb-3 grid h-12 w-12 place-content-center rounded-full bg-gray-100">
                   <Icon
@@ -617,17 +347,73 @@ const MobileView: React.FC = () => {
                 </div>
                 선택한 카테고리에 해당하는 대화가 없습니다.
               </div>
-            ) : (
-              filteredItems.map((it: typeof rooms[0]) => (
-                <MobileChatListItem
-                  key={it.id}
-                  room={it}
-                  formatTime={formatTime}
-                  onNavigate={() => navigate(`/chat/${it.id}`)}
-                  onDelete={() => handleDeleteRoom(it.id)}
-                />
-              ))
             )}
+            {filteredItems.map((it, idx) => (
+              <React.Fragment key={`${it.title}-${idx}-${it.sentAt}`}>
+                <button
+                  type="button"
+                  className="flex w-full items-stretch gap-3 px-4 py-3 active:opacity-90"
+                  onClick={() => navigate(`/chat/${it.id}`)}
+                >
+                  {/* 아바타 (뱃지 제거) */}
+                  <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
+                    {it.avatar ? (
+                      <img
+                        src={it.avatar}
+                        alt={`${it.title} avatar`}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-content-center">
+                        <Icon
+                          icon="mdi:store-outline"
+                          className="h-6 w-6 text-gray-400"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 본문 */}
+                  <div className="min-w-0 flex flex-1 flex-col text-left">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={[
+                          "truncate text-[14px] font-semibold",
+                          it.unread > 0 ? "text-gray-900" : "text-[#666666]",
+                        ].join(" ")}
+                      >
+                        {it.title}
+                      </span>
+                      <span className="bg-white px-2 py-0.5 text-[12px] text-[#999999]">
+                        {it.category}
+                      </span>
+                      <span className="text-[12px] text-gray-400">
+                        {it.time}
+                      </span>
+                    </div>
+                    <p
+                      className={[
+                        "mt-1 line-clamp-2 text-[12px] leading-5",
+                        it.unread > 0 ? "text-black" : "text-[#999999]",
+                      ].join(" ")}
+                    >
+                      {it.preview}
+                    </p>
+                  </div>
+
+                  {/* 우측 뱃지(리스트의 가장 오른쪽) — 미읽음일 때만 노출 */}
+                  <div className="ml-2 grid place-items-center">
+                    {it.unread > 0 && (
+                      <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#FF2233] px-1.5 text-[11px] font-semibold text-white shadow-sm">
+                        {it.unread}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              </React.Fragment>
+            ))}
             <div className="h-6" />
           </div>
         </div>
@@ -635,8 +421,8 @@ const MobileView: React.FC = () => {
     );
   }
 
-  // 채팅방 상세 화면
-  if (id && selectedRoom) {
+  if (id && selectedItem) {
+    const messages = demoThread[id] ?? makeLongThread(id, 12);
     const readReceiptId = getReadReceiptMessageId(messages);
 
     return (
@@ -658,31 +444,25 @@ const MobileView: React.FC = () => {
         </div>
 
         {/* 프로필 헤더 */}
-        <ProfileHeader room={selectedRoom} />
+        <ProfileHeader item={selectedItem} />
 
         {/* 메시지 영역 */}
         <div
           ref={threadRef}
           className="absolute inset-x-0 bottom-[84px] top-[144px] space-y-4 overflow-y-auto px-4 py-3"
         >
-          {messages.length > 0 && (
-            <div className="flex w-full justify-center">
-              <span className="text-[10px] font-normal leading-[1.5] tracking-[-0.2px] text-[#999999]">
-                {new Date(messages[0].createdAt).toLocaleDateString("ko-KR", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </span>
-            </div>
-          )}
+          <div className="flex w-full justify-center">
+            <span className="text-[10px] font-normal leading-[1.5] tracking-[-0.2px] text-[#999999]">
+              2025년 10월 5일
+            </span>
+          </div>
 
-          {messages.map((m: ChatMessage, idx: number) => (
+          {messages.map((m, idx) => (
             <MessageRow
               key={m.id}
               m={m}
               showPartnerAvatar={isFirstOfPartnerGroup(messages, idx)}
-              partnerAvatar={selectedRoom.avatar}
+              partnerAvatar={selectedItem.avatar}
               showReadReceipt={m.id === readReceiptId}
             />
           ))}
@@ -690,36 +470,23 @@ const MobileView: React.FC = () => {
 
         {/* 하단 입력 영역 */}
         <div className="fixed bottom-5 left-0 right-0 bg-white">
+          {/* 전체 프레임(2085664977) 위치 보정: 좌측 여백 20px 기준 */}
           <div className="px-5 py-2">
             <div className="flex items-center gap-2">
+              {/* === Frame 2085664976 (정확 반영) === */}
               <div className="flex h-[41px] w-[318px] items-center gap-1 rounded-[20px] bg-[#F3F4F5] px-4 py-[10px]">
                 <textarea
                   rows={1}
                   placeholder="메세지 보내기"
                   value={text}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                    const newText = e.target.value;
-                    // 255자 제한
-                    if (newText.length <= 255) {
-                      setText(newText);
-                    } else {
-                      // 255자 초과 시 즉시 차단하고 알림 후 새로고침
-                      setText(""); // 먼저 입력값 초기화
-                      toast.error("255자 이상 금지입니다");
-                      // 알림을 표시한 후 즉시 새로고침
-                      setTimeout(() => {
-                        window.location.reload();
-                      }, 1000); // 1초 후 새로고침
-                    }
-                  }}
-                  disabled={isSending}
-                  className="h-[21px] max-h-[84px] w-full resize-none bg-transparent text-[14px] font-normal leading-[1.5] tracking-[-0.2px] text-[#666666] outline-none placeholder:text-[#666666] disabled:opacity-50"
-                  onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                  onChange={(e) => setText(e.target.value)}
+                  className="h-[21px] max-h-[84px] w-full resize-none bg-transparent text-[14px] font-normal leading-[1.5] tracking-[-0.2px] text-[#666666] outline-none placeholder:text-[#666666]"
+                  onInput={(e) => {
                     const t = e.currentTarget;
                     t.style.height = "21px";
                     t.style.height = `${Math.min(84, t.scrollHeight)}px`;
                   }}
-                  onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+                  onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       onSend();
@@ -728,10 +495,10 @@ const MobileView: React.FC = () => {
                 />
               </div>
 
+              {/* 전송 버튼(별도 프레임 — 스펙 외, 기존 유지) */}
               <button
                 onClick={onSend}
-                disabled={isSending || !text.trim()}
-                className="grid h-9 w-9 place-items-center rounded-md text-[#E2E2E2] active:opacity-90 disabled:opacity-50"
+                className="grid h-9 w-9 place-items-center rounded-md text-[#E2E2E2] active:opacity-90"
                 title="전송"
                 aria-label="메시지 전송"
               >
@@ -744,7 +511,6 @@ const MobileView: React.FC = () => {
     );
   }
 
-  // 채팅방을 찾을 수 없는 경우
   return (
     <div className="flex h-[100vh] flex-col items-center justify-center px-6 text-sm text-gray-500">
       <div className="mb-3 grid h-12 w-12 place-content-center rounded-full bg-gray-100">
