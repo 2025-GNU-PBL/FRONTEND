@@ -1,192 +1,24 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "../../../store/hooks";
+import {
+  fetchChatRooms,
+  fetchChatMessages,
+  markRoomAsRead,
+  selectRoom,
+  setActiveCategory,
+  addMessage,
+  clearUnreadCount,
+  deleteRoom,
+} from "../../../store/chatSlice";
+import { getChatWebSocket } from "../../../lib/websocket/chatWebSocket";
+import type { ChatMessage, ChatRoom } from "../../../lib/api/chatApi";
+import { toast } from "react-toastify";
 
-// ----------------------------------------------------------------
-// 1. 데이터 및 타입
-// ----------------------------------------------------------------
-
-type Chip = "전체" | "웨딩홀" | "스튜디오" | "드레스" | "메이크업";
-
-type Item = {
-  id: string;
-  title: string;
-  category: Chip | "기타";
-  /** 화면 표시용 상대시간 문자열 */
-  time: string;
-  preview: string;
-  /** 미읽음 개수(>0 일 때만 빨간 뱃지 노출 + 글자 진하게) */
-  unread: number;
-  muted: boolean;
-  avatar?: string;
-  /** 최신 정렬용(UNIX ms) */
-  sentAt: number;
-};
-
-type Message = {
-  id: string;
-  author: "me" | "partner";
-  text: string;
-  /** 표시용 시간(문자열) */
-  time: string;
-  /** 상대가 내 메시지를 읽었는지 */
-  read?: boolean;
-};
-
-const chips: readonly Chip[] = [
-  "전체",
-  "웨딩홀",
-  "스튜디오",
-  "드레스",
-  "메이크업",
-];
-
-// 아바타 소스 몇 개만 순환 사용
-const AVATARS = [
-  "https://m.veils.co.kr/web/product/big/202212/73716dbe5a71b0860c7be0e89c5503de.jpg",
-  "https://i.pinimg.com/564x/00/f1/e3/00f1e3391b1a8d6e3c544332f7a43e49.jpg",
-  "https://i.pinimg.com/564x/07/35/d8/0735d808dcf776f3f00a5f9175ecf918.jpg",
-  "https://i.pinimg.com/564x/3b/01/a0/3b01a0521c7d2c18f1ad47b7410886a8.jpg",
-];
-
-// 더미 아이템 대량 생성 (count 기본 120) — 표시용 time과 정렬용 sentAt 동기화
-function makeItems(count = 120): Item[] {
-  const categories: Chip[] = ["웨딩홀", "스튜디오", "드레스", "메이크업"];
-  const now = Date.now();
-  const MIN = (n: number) => now - n * 60 * 1000;
-  const DAY = (n: number) => now - n * 24 * 60 * 60 * 1000;
-
-  return Array.from({ length: count }, (_, i) => {
-    const idx = i + 1;
-    const cat = categories[i % categories.length];
-    const title = `${cat} 업체 #${idx.toString().padStart(2, "0")}`;
-    const previewPool = [
-      "상세 견적과 예약 가능 일정을 확인해주세요.",
-      "패키지 구성/원본 제공 범위를 안내드립니다.",
-      "피팅 체크리스트와 진행 플로우 공유드립니다.",
-      "리허설 포함 시 추가 금액 관련 안내입니다.",
-      "방문 상담 가능 시간대 회신 부탁드립니다.",
-    ];
-    const preview = previewPool[i % previewPool.length];
-
-    let time = "";
-    let sentAt = now;
-    if (i % 11 === 0) {
-      time = "1주 전";
-      sentAt = DAY(7) - (i % 60) * 60 * 1000;
-    } else if (i % 7 === 0) {
-      time = "어제";
-      sentAt = DAY(1) - (i % 45) * 60 * 1000;
-    } else {
-      const minsAgo = (i % 59) + 1;
-      time = `${minsAgo}분 전`;
-      sentAt = MIN(minsAgo);
-    }
-
-    const unread = i % 5 === 0 ? (i % 3) + 1 : 0;
-    const muted = i % 9 === 0;
-    const avatar = AVATARS[i % AVATARS.length];
-
-    return {
-      id: String(idx),
-      title,
-      category: cat,
-      time,
-      preview,
-      unread,
-      muted,
-      avatar,
-      sentAt,
-    };
-  });
-}
-
-// 특정 스레드에 긴 대화 생성 (기본 80줄)
-function makeLongThread(id: string, lines = 80): Message[] {
-  const msgs: Message[] = [];
-  for (let i = 0; i < lines; i++) {
-    const mine = i % 2 === 1;
-    msgs.push({
-      id: `t${id}-${i}`,
-      author: mine ? "me" : "partner",
-      text: mine
-        ? `네, 확인했습니다. (#${i + 1}) 다음 단계 진행 부탁드려요.`
-        : `안녕하세요! (#${i + 1}) 문의 주신 내용에 대해 안내드립니다.`,
-      time: `오늘 10:${(10 + (i % 50)).toString().padStart(2, "0")}`,
-      // 데모: 일부만 읽음 처리
-      read: mine ? i % 4 === 0 : undefined,
-    });
-  }
-  return msgs;
-}
-
-// 기본 스레드(짧은 것들) + 일부는 초장문 스레드
-const demoThread: Record<string, Message[]> = {
-  "1": makeLongThread("1", 88),
-  "2": [
-    {
-      id: "m1",
-      author: "partner",
-      text: "스냅/본식 패키지 견적 전달드립니다.",
-      time: "8월 1일 13:22",
-    },
-    {
-      id: "m2",
-      author: "me",
-      text: "자세한 구성표도 공유 가능할까요?",
-      time: "8월 1일 13:29",
-      read: true,
-    },
-    {
-      id: "m3",
-      author: "partner",
-      text: "네, PDF로 첨부드렸습니다.",
-      time: "8월 1일 13:33",
-    },
-    {
-      id: "m4",
-      author: "me",
-      text: "확인했어요. 주말 상담 예약할게요.",
-      time: "8월 1일 13:36",
-      read: true,
-    },
-    {
-      id: "m5",
-      author: "partner",
-      text: "토요일 2시 가능하십니다.",
-      time: "8월 1일 13:40",
-    },
-  ],
-  "3": makeLongThread("3", 60),
-  "4": [
-    {
-      id: "m1",
-      author: "partner",
-      text: "리허설 포함 시 총 견적은 80만원입니다.",
-      time: "지난주",
-    },
-    {
-      id: "m2",
-      author: "me",
-      text: "결제 방식도 알려주실 수 있을까요?",
-      time: "지난주",
-      read: true,
-    },
-    {
-      id: "m3",
-      author: "partner",
-      text: "카드/계좌 이체 모두 가능합니다 :)",
-      time: "지난주",
-    },
-  ],
-};
-
-// 실제 목록 데이터
-const items: Item[] = makeItems(120);
-
-// ----------------------------------------------------------------
-// 2. 레이아웃 고정값
-// ----------------------------------------------------------------
+// ============================================
+// 레이아웃 상수
+// ============================================
 
 const LIST_BLOCK_WIDTH = 720;
 const CATEGORY_WIDTH = 200;
@@ -198,16 +30,24 @@ const LIST_HEIGHT_VSPACE = 220;
 const PANEL_TOP = 100;
 const PANEL_BOTTOM = LIST_HEIGHT_VSPACE - PANEL_TOP;
 
-// ----------------------------------------------------------------
-// 3. 하위 컴포넌트
-// ----------------------------------------------------------------
+type Chip = "전체" | "웨딩홀" | "스튜디오" | "드레스" | "메이크업";
 
-/** 모바일뷰와 동일한 메시지 디자인/규칙 */
+const chips: readonly Chip[] = [
+  "전체",
+  "웨딩홀",
+  "스튜디오",
+  "드레스",
+  "메이크업",
+];
+
+// ============================================
+// 하위 컴포넌트
+// ============================================
+
 const MessageRow: React.FC<{
-  m: Message;
+  m: ChatMessage;
   showPartnerAvatar?: boolean;
   partnerAvatar?: string;
-  /** "읽음" 표시 대상인지 여부 */
   showReadReceipt?: boolean;
 }> = ({ m, showPartnerAvatar, partnerAvatar, showReadReceipt }) => {
   const mine = m.author === "me";
@@ -215,15 +55,18 @@ const MessageRow: React.FC<{
     <div className={mine ? "flex justify-end" : "flex justify-start"}>
       {!mine && showPartnerAvatar && (
         <div className="mr-2 mt-0.5 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
-          {partnerAvatar && (
+          {partnerAvatar ? (
             <img
               src={partnerAvatar}
               alt=""
               className="h-full w-full object-cover"
               loading="lazy"
               decoding="async"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
             />
-          )}
+          ) : null}
         </div>
       )}
       <div className="max-w-[80%]">
@@ -255,14 +98,68 @@ const MessageRow: React.FC<{
 };
 
 const ChatListItem: React.FC<{
-  item: Item;
+  room: ChatRoom;
   isActive: boolean;
   onClick: () => void;
-}> = ({ item, isActive, onClick }) => {
-  const isUnread = item.unread > 0;
+  onDelete: () => void;
+}> = ({ room, isActive, onClick, onDelete }) => {
+  const isUnread = room.unread > 0;
+  const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = React.useState({ x: 0, y: 0 });
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const itemRef = React.useRef<HTMLLIElement>(null);
+
+  // 시간 포맷팅
+  const formatTime = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "방금 전";
+    if (minutes < 60) return `${minutes}분 전`;
+    if (hours < 24) return `${hours}시간 전`;
+    if (days < 7) return `${days}일 전`;
+    return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+  };
+
+  // 우클릭 이벤트 처리
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    setContextMenuOpen(true);
+  };
+
+  // 컨텍스트 메뉴 외부 클릭 시 닫기
+  React.useEffect(() => {
+    const handleClickOutside = () => {
+      setContextMenuOpen(false);
+    };
+    if (contextMenuOpen) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [contextMenuOpen]);
+
+  const handleDeleteClick = () => {
+    setContextMenuOpen(false);
+    setDeleteConfirmOpen(true);
+  };
+  
+  const handleDeleteConfirm = () => {
+    onDelete();
+    setDeleteConfirmOpen(false);
+  };
+  
+  const handleDeleteCancel = () => {
+    setDeleteConfirmOpen(false);
+  };
 
   return (
-    <li>
+    <li ref={itemRef} onContextMenu={handleContextMenu}>
       <button
         onClick={onClick}
         className={[
@@ -270,16 +167,25 @@ const ChatListItem: React.FC<{
           isActive ? "bg-black/[.04]" : "hover:bg-gray-50",
         ].join(" ")}
       >
-        {/* 세로 중앙 정렬: 아이템 전체 높이를 기준으로 avatar/본문/우측(time+뱃지)를 모두 center */}
         <div className="flex items-center gap-3">
-          {/* 아바타 (뱃지 제거됨) */}
           <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-gray-200 ring-1 ring-black/5">
-            {item.avatar ? (
+            {room.avatar ? (
               <img
-                src={item.avatar}
-                alt={`${item.title} avatar`}
+                src={room.avatar}
+                alt={`${room.title} avatar`}
                 className="h-full w-full object-cover"
                 loading="lazy"
+                onError={(e) => {
+                  // 이미지 로드 실패 시 아바타 숨기고 기본 아이콘 표시
+                  e.currentTarget.style.display = "none";
+                  const parent = e.currentTarget.parentElement;
+                  if (parent && !parent.querySelector(".default-avatar-icon")) {
+                    const iconDiv = document.createElement("div");
+                    iconDiv.className = "grid h-full w-full place-items-center default-avatar-icon";
+                    iconDiv.innerHTML = '<svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>';
+                    parent.appendChild(iconDiv);
+                  }
+                }}
               />
             ) : (
               <div className="grid h-full w-full place-items-center">
@@ -291,7 +197,6 @@ const ChatListItem: React.FC<{
             )}
           </div>
 
-          {/* 본문 */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span
@@ -299,14 +204,14 @@ const ChatListItem: React.FC<{
                   "truncate text-[12.5px] font-semibold tracking-[-0.2px]",
                   isUnread ? "text-gray-900" : "text-[#666666]",
                 ].join(" ")}
-                title={item.title}
+                title={room.title}
               >
-                {item.title}
+                {room.title}
               </span>
-              <span className="inline-flex items-center rounded-full border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] tracking-[-0.2px] text-gray-700">
-                {item.category}
+              <span className="text-[9px] text-gray-400 opacity-70 tracking-[-0.2px]">
+                {room.category}
               </span>
-              {item.muted && (
+              {room.muted && (
                 <Icon
                   icon="mdi:bell-off-outline"
                   className="h-4 w-4 text-[#999999]"
@@ -319,79 +224,199 @@ const ChatListItem: React.FC<{
                 "mt-0.5 line-clamp-1 text-[13px] leading-[1.5] tracking-[-0.2px]",
                 isUnread ? "text-gray-800" : "text-[#999999]",
               ].join(" ")}
-              title={item.preview}
+              title={room.preview}
             >
-              {item.preview}
+              {room.preview}
             </p>
           </div>
 
-          {/* 우측: 시간 + 미읽음 뱃지 (세로 중앙정렬) */}
           <div className="ml-2 flex flex-col items-end justify-center self-stretch">
             <span className="text-[10.5px] tracking-[-0.1px] text-[#999999]">
-              {item.time}
+              {formatTime(room.sentAt)}
             </span>
             {isUnread && (
               <span className="mt-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#FF2233] px-1.5 text-[10px] font-semibold text-white shadow-sm">
-                {item.unread}
+                {room.unread}
               </span>
             )}
           </div>
         </div>
       </button>
+      {contextMenuOpen && (
+        <div
+          className="fixed z-50 min-w-[120px] rounded-lg border border-gray-200 bg-white shadow-lg"
+          style={{
+            left: `${contextMenuPosition.x}px`,
+            top: `${contextMenuPosition.y}px`,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={handleDeleteClick}
+            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+          >
+            <Icon icon="mdi:delete-outline" className="h-4 w-4" />
+            삭제
+          </button>
+        </div>
+      )}
+      
+      {/* 삭제 확인 모달 */}
+      {deleteConfirmOpen && (
+        <>
+          {/* Dimmed 배경 */}
+          <div
+            className="fixed inset-0 z-40 bg-[rgba(0,0,0,0.6)] transition-opacity duration-300"
+            onClick={handleDeleteCancel}
+            aria-hidden="true"
+          />
+          {/* 모달 */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div
+              className="w-full max-w-[320px] rounded-2xl bg-white shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-confirm-title"
+            >
+              <div className="px-6 py-5">
+                <h3
+                  id="delete-confirm-title"
+                  className="mb-2 text-center text-lg font-semibold text-gray-900"
+                >
+                  채팅방 삭제
+                </h3>
+                <p className="mb-6 text-center text-sm text-gray-600">
+                  정말 이 채팅방을 삭제하시겠습니까?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDeleteCancel}
+                    className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleDeleteConfirm}
+                    className="flex-1 rounded-lg bg-[#FF2233] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#E01E2E]"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </li>
   );
 };
 
-// ----------------------------------------------------------------
-/** 4. 메인 WebView (라우터 연동) */
-// ----------------------------------------------------------------
+// ============================================
+// 메인 WebView 컴포넌트
+// ============================================
+
 const WebView: React.FC = () => {
-  const [activeChip, setActiveChip] = React.useState<Chip>("전체");
-  const [query, setQuery] = React.useState("");
-
-  // ⬇️ 모바일과 동일한 입력 상태 및 전송 핸들러 추가
-  const [text, setText] = React.useState("");
-  const onSend = () => {
-    if (!text.trim()) return;
-    // 실제 전송 로직은 서비스 연동 시 구현
-    alert("전송(데모)");
-    setText("");
-  };
-
-  // 🔗 URL 파라미터(id)가 선택 상태의 단일 소스
+  const dispatch = useAppDispatch();
   const { id } = useParams<{ id?: string }>();
-  const selectedId = id ?? null;
   const navigate = useNavigate();
 
+  // Redux 상태
+  const { rooms, messagesByRoom, activeCategory, isLoading, isSending } =
+    useAppSelector((state) => state.chat);
+  const { userData, role } = useAppSelector((state) => state.user);
+
+  const [text, setText] = React.useState("");
+
+  const selectedId = id ?? null;
   const panelOpen = Boolean(selectedId);
 
-  // 파생 데이터 (모바일뷰처럼 sentAt 기준 최신순 정렬)
-  const filteredItems = React.useMemo(() => {
-    let result = items;
+  // 채팅방 목록 조회 (카테고리 필터 적용)
+  React.useEffect(() => {
+    const category = activeCategory === "전체" ? null : activeCategory;
+    dispatch(fetchChatRooms({ category }));
+  }, [dispatch, activeCategory]);
 
-    if (query.trim()) {
-      const k = query.trim().toLowerCase();
-      result = result.filter(
-        (it) =>
-          it.title.toLowerCase().includes(k) ||
-          it.preview.toLowerCase().includes(k) ||
-          (typeof it.category === "string" &&
-            it.category.toLowerCase().includes(k))
+  // WebSocket 연결 및 메시지 수신
+  React.useEffect(() => {
+    if (!userData || !role) return;
+
+    const ws = getChatWebSocket();
+    
+    // 사용자 정보 설정 (메시지 변환 시 socialId 사용하므로 일치시켜야 함)
+    const userId = userData.socialId || String(userData.id);
+    ws.setUserInfo(userId, role);
+
+    const handleMessage = (message: ChatMessage, chatRoomId: number) => {
+      console.log("[WebView] handleMessage called:", { message, chatRoomId });
+      const roomId = String(chatRoomId);
+      dispatch(
+        addMessage({
+          roomId,
+          message,
+        })
       );
+      console.log("[WebView] addMessage dispatched");
+    };
+
+    ws.onMessage(handleMessage);
+    ws.connect();
+
+    return () => {
+      // 연결 해제하지 않음 (전역 연결 유지)
+    };
+  }, [dispatch, userData, role]);
+
+  // 채팅방 선택 시 메시지 조회 및 읽음 처리, WebSocket 구독
+  React.useEffect(() => {
+    if (id && role && userData) {
+      const chatRoomId = parseInt(id, 10);
+      if (!isNaN(chatRoomId)) {
+        console.log("[WebView] Entering chat room:", chatRoomId);
+        dispatch(selectRoom(id));
+        
+        // 채팅방 메시지 조회 (DB에서 가져옴)
+        console.log("[WebView] Fetching messages for room:", chatRoomId);
+        dispatch(fetchChatMessages({ chatRoomId }));
+        
+        dispatch(
+          markRoomAsRead({
+            chatRoomId,
+          })
+        );
+        dispatch(clearUnreadCount(id));
+
+        // WebSocket 구독
+        const ws = getChatWebSocket();
+        if (ws.isConnected()) {
+          ws.subscribeToRoom(chatRoomId);
+        }
+      }
+    } else {
+      dispatch(selectRoom(null));
     }
 
-    if (activeChip !== "전체") {
-      result = result.filter((it) => it.category === activeChip);
-    }
+    return () => {
+      // 채팅방을 떠날 때 구독 해제하지 않음 (백엔드가 자동 처리)
+    };
+  }, [dispatch, id, role, userData]);
 
-    // 최신순 정렬 (sentAt desc)
-    return [...result].sort((a, b) => b.sentAt - a.sentAt);
-  }, [query, activeChip]);
+  // 필터링된 채팅방 목록 (백엔드에서 이미 카테고리 필터링되어 오므로 정렬만 수행)
+  const filteredItems = React.useMemo(() => {
+    return [...rooms].sort((a, b) => b.sentAt - a.sentAt);
+  }, [rooms]);
 
-  const selectedItem = React.useMemo(
-    () => (selectedId ? items.find((x) => x.id === selectedId) ?? null : null),
-    [selectedId]
+  const selectedRoom = React.useMemo(
+    () => (selectedId ? rooms.find((x) => x.id === selectedId) ?? null : null),
+    [selectedId, rooms]
   );
+
+  const messages = React.useMemo(() => {
+    if (!id) return [];
+    const roomMessages = messagesByRoom[id] || [];
+    console.log("[WebView] messages useMemo:", { id, messagesCount: roomMessages.length, messages: roomMessages });
+    return roomMessages;
+  }, [id, messagesByRoom]);
 
   const containerWidth = panelOpen
     ? LIST_BLOCK_WIDTH + PANEL_GAP + PANEL_WIDTH
@@ -399,7 +424,6 @@ const WebView: React.FC = () => {
   const listAreaHeight = `calc(100vh - ${LIST_HEIGHT_VSPACE}px)`;
 
   const handleItemClick = (clickedId: string) => {
-    // 같은 아이템 다시 누르면 패널 닫기 (/chat), 아니면 해당 스레드 열기 (/chat/:id)
     if (selectedId === clickedId) {
       navigate("/chat");
     } else {
@@ -407,20 +431,108 @@ const WebView: React.FC = () => {
     }
   };
 
-  // ---- 모바일뷰 규칙: 파트너 연속 메시지 그룹 첫 번째에만 아바타 노출
-  const isFirstOfPartnerGroup = (arr: Message[], idx: number): boolean => {
+  const handleDeleteRoom = (roomId: string) => {
+    const chatRoomId = parseInt(roomId, 10);
+    if (isNaN(chatRoomId)) return;
+    
+    dispatch(deleteRoom({ chatRoomId }));
+    
+    // 삭제된 채팅방이 현재 선택된 채팅방이면 목록으로 이동
+    if (selectedId === roomId) {
+      navigate("/chat");
+    }
+  };
+
+  // 메시지 전송 (STOMP WebSocket 사용)
+  const onSend = () => {
+    if (!id || !text.trim() || isSending || !role || !userData) return;
+
+    const chatRoomId = parseInt(id, 10);
+    if (isNaN(chatRoomId)) {
+      toast.error("채팅방 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    const messageText = text.trim();
+    
+    // 메시지 길이 제한 체크 (255자)
+    if (messageText.length > 255) {
+      setText(""); // 입력값 초기화
+      toast.error("255자 이상 금지입니다");
+      // 페이지 새로고침
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000); // 1초 후 새로고침
+      return;
+    }
+    const ws = getChatWebSocket();
+    
+    if (ws.isConnected()) {
+      // Optimistic update: 메시지를 보내기 전에 즉시 UI에 추가
+      const tempMessageId = Date.now(); // 임시 ID (백엔드에서 받은 메시지로 교체됨)
+      const tempMessage: ChatMessage = {
+        id: `temp-${tempMessageId}`,
+        author: "me",
+        text: messageText,
+        time: new Date().toLocaleTimeString("ko-KR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }),
+        createdAt: Date.now(),
+        messageId: -tempMessageId, // 음수로 임시 ID 표시 (중복 체크 우회)
+      };
+
+      // 즉시 Redux에 추가
+      dispatch(
+        addMessage({
+          roomId: id,
+          message: tempMessage,
+        })
+      );
+
+      // senderId는 socialId를 사용 (백엔드가 채팅방의 ownerId/customerId에 socialId 저장)
+      const senderId = userData.socialId || String(userData.id);
+      
+      console.log("[WebView] Sending message with:", {
+        chatRoomId,
+        senderRole: role,
+        senderId,
+        messageLength: messageText.length,
+        userDataId: userData.id,
+        userDataSocialId: userData.socialId,
+        usingSocialId: !!userData.socialId,
+      });
+      
+      // WebSocket으로 실시간 전송 (백엔드가 자동으로 DB에 저장함)
+      const wsSuccess = ws.sendMessage(chatRoomId, role, senderId, messageText);
+      
+      if (wsSuccess) {
+        // WebSocket 메시지가 성공적으로 전송되면
+        // 백엔드가 자동으로 DB에 저장하고 /sub/chatroom/{chatRoomId}를 통해
+        // 실제 메시지를 다시 보내주므로, WebSocket 핸들러에서 처리됨
+        console.log("[WebView] Message sent via WebSocket. Waiting for server response...");
+
+        setText("");
+      } else {
+        // 전송 실패 시 임시 메시지 제거 (추후 구현 가능)
+        toast.error("메시지 전송에 실패했습니다.");
+      }
+    } else {
+      toast.error("연결이 끊어졌습니다. 잠시 후 다시 시도해주세요.");
+    }
+  };
+
+  // 파트너 연속 메시지 그룹의 첫 번째인지 확인
+  const isFirstOfPartnerGroup = (arr: ChatMessage[], idx: number): boolean => {
     const m = arr[idx];
     if (!m || m.author !== "partner") return false;
     const prev = arr[idx - 1];
     return !prev || prev.author !== "partner";
   };
 
-  /**
-   * 읽음표시 규칙(모바일과 동일):
-   * - 스레드의 마지막 메시지가 내가 보낸 것이면 읽음 표시 없음
-   * - 그 외에는 "읽힌 내 메시지 중 가장 마지막 것"에만 1회 표시
-   */
-  const getReadReceiptMessageId = (messages: Message[]): string | null => {
+  // 읽음 표시 대상 메시지 ID 찾기
+  const getReadReceiptMessageId = (messages: ChatMessage[]): string | null => {
     if (!messages.length) return null;
     const last = messages[messages.length - 1];
     if (last.author === "me") return null;
@@ -444,23 +556,6 @@ const WebView: React.FC = () => {
               "width 350ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms",
           }}
         >
-          {/* 헤더 (검색) */}
-          <div className="mb-4 px-3">
-            <div className="relative">
-              <Icon
-                icon="mdi:magnify"
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#999999]"
-              />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="대화, 업체명 검색"
-                className="h-10 w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 text-[12.5px] tracking-[-0.2px] outline-none transition focus:ring-2 focus:ring-black/10 placeholder:text-[#999999]"
-              />
-            </div>
-          </div>
-
           {/* 메인 (카테고리 + 목록) */}
           <div
             className="grid gap-10"
@@ -475,11 +570,11 @@ const WebView: React.FC = () => {
             >
               <div className="space-y-2">
                 {chips.map((c) => {
-                  const active = activeChip === c;
+                  const active = activeCategory === c;
                   return (
                     <button
                       key={c}
-                      onClick={() => setActiveChip(c)}
+                      onClick={() => dispatch(setActiveCategory(c))}
                       aria-pressed={active}
                       className={[
                         "group flex w-full items-center justify-between rounded-full border px-3.5 py-2 text-[12.5px] tracking-[-0.2px] transition",
@@ -498,8 +593,8 @@ const WebView: React.FC = () => {
                         ].join(" ")}
                       >
                         {c === "전체"
-                          ? items.length
-                          : items.filter((it) => it.category === c).length}
+                          ? rooms.length
+                          : filteredItems.filter((it) => it.category === c).length}
                       </span>
                     </button>
                   );
@@ -507,19 +602,24 @@ const WebView: React.FC = () => {
               </div>
             </aside>
 
-            {/* 채팅 목록 (스크롤) */}
+            {/* 채팅 목록 */}
             <section
               className="overflow-auto rounded-xl border border-gray-200 bg-white shadow-sm scrollbar-hide"
               style={{ height: listAreaHeight }}
             >
               <ul className="divide-y divide-gray-100">
-                {filteredItems.length > 0 ? (
+                {isLoading ? (
+                  <div className="grid h-40 place-items-center text-sm text-[#999999]">
+                    로딩 중...
+                  </div>
+                ) : filteredItems.length > 0 ? (
                   filteredItems.map((it) => (
                     <ChatListItem
                       key={it.id}
-                      item={it}
+                      room={it}
                       isActive={selectedId === it.id}
                       onClick={() => handleItemClick(it.id)}
+                      onDelete={() => handleDeleteRoom(it.id)}
                     />
                   ))
                 ) : (
@@ -531,8 +631,8 @@ const WebView: React.FC = () => {
             </section>
           </div>
 
-          {/* 우측 패널 (모바일뷰 디자인으로 메시지 적용) */}
-          {panelOpen && selectedItem && (
+          {/* 우측 패널 */}
+          {panelOpen && selectedRoom && (
             <div
               className="absolute right-0 z-10 rounded-xl border border-gray-200 bg-white shadow-2xl"
               style={{
@@ -546,26 +646,35 @@ const WebView: React.FC = () => {
                 <div className="flex flex-shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 overflow-hidden rounded-full bg-gray-200 ring-1 ring-black/5">
-                      {selectedItem.avatar && (
+                      {selectedRoom.avatar ? (
                         <img
-                          src={selectedItem.avatar}
+                          src={selectedRoom.avatar}
                           alt=""
                           className="h-full w-full object-cover"
                           loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
                         />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center">
+                          <Icon
+                            icon="mdi:store-outline"
+                            className="h-5 w-5 text-gray-400"
+                          />
+                        </div>
                       )}
                     </div>
                     <div>
                       <div className="text-[15px] font-semibold tracking-[-0.2px] text-black">
-                        {selectedItem.title}
+                        {selectedRoom.title}
                       </div>
                       <div className="text-[13px] leading-[1.5] tracking-[-0.2px] text-[#999999]">
-                        프리미엄 드레스샵
+                        {selectedRoom.category}
                       </div>
                     </div>
                   </div>
 
-                  {/* 스토어 보기 배지 버튼 */}
                   <button
                     onClick={() => alert("스토어 보기 (데모)")}
                     className="inline-flex h-[30px] items-center justify-center rounded-lg bg-[#FFEEEC] px-3 text-[11.5px] font-semibold tracking-[-0.2px] text-[#FF2D9E]"
@@ -575,47 +684,64 @@ const WebView: React.FC = () => {
                   </button>
                 </div>
 
-                {/* 얇은 캡션 */}
-                <div className="px-4 pt-2 text-[10px] leading-[1.5] tracking-[-0.2px] text-[#999999] text-center">
-                  2025년 10월 5일
-                </div>
+                {/* 날짜 캡션 */}
+                {messages.length > 0 && (
+                  <div className="px-4 pt-2 text-[10px] leading-[1.5] tracking-[-0.2px] text-[#999999] text-center">
+                    {new Date(messages[0].createdAt).toLocaleDateString("ko-KR", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </div>
+                )}
 
-                {/* 메시지 영역 — 모바일뷰와 동일한 MessageRow + 읽음 규칙 */}
+                {/* 메시지 영역 */}
                 <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 scrollbar-hide">
                   {(() => {
-                    const messages =
-                      demoThread[selectedItem.id] ??
-                      makeLongThread(selectedItem.id, 40);
                     const readReceiptId = getReadReceiptMessageId(messages);
-                    return messages.map((m, idx) => (
+                    return messages.map((m: ChatMessage, idx: number) => (
                       <MessageRow
                         key={m.id}
                         m={m}
                         showPartnerAvatar={isFirstOfPartnerGroup(messages, idx)}
-                        partnerAvatar={selectedItem.avatar}
+                        partnerAvatar={selectedRoom.avatar}
                         showReadReceipt={m.id === readReceiptId}
                       />
                     ));
                   })()}
                 </div>
 
-                {/* === 하단 입력창 (모바일과 동일 디자인으로 변경) === */}
+                {/* 하단 입력창 */}
                 <div className="flex-shrink-0 p-3">
                   <div className="flex items-center gap-2">
-                    {/* 입력 프레임 */}
                     <div className="flex h-[41px] w-full items-center gap-1 rounded-[20px] bg-[#F3F4F5] px-4 py-[10px]">
                       <textarea
                         rows={1}
                         placeholder="메세지 보내기"
                         value={text}
-                        onChange={(e) => setText(e.target.value)}
-                        className="h-[21px] max-h-[84px] w-full resize-none bg-transparent text-[13px] leading-[1.5] tracking-[-0.2px] text-[#666666] outline-none placeholder:text-[#666666]"
-                        onInput={(e) => {
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                          const newText = e.target.value;
+                          // 255자 제한
+                          if (newText.length <= 255) {
+                            setText(newText);
+                          } else {
+                            // 255자 초과 시 즉시 차단하고 알림 후 새로고침
+                            setText(""); // 먼저 입력값 초기화
+                            toast.error("255자 이상 금지입니다");
+                            // 알림을 표시한 후 즉시 새로고침
+                            setTimeout(() => {
+                              window.location.reload();
+                            }, 1000); // 1초 후 새로고침
+                          }
+                        }}
+                        disabled={isSending}
+                        className="h-[21px] max-h-[84px] w-full resize-none bg-transparent text-[13px] leading-[1.5] tracking-[-0.2px] text-[#666666] outline-none placeholder:text-[#666666] disabled:opacity-50"
+                        onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
                           const t = e.currentTarget;
                           t.style.height = "21px";
                           t.style.height = `${Math.min(84, t.scrollHeight)}px`;
                         }}
-                        onKeyDown={(e) => {
+                        onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
                           if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();
                             onSend();
@@ -624,10 +750,10 @@ const WebView: React.FC = () => {
                       />
                     </div>
 
-                    {/* 전송 버튼 (모바일 동일 스타일/아이콘) */}
                     <button
                       onClick={onSend}
-                      className="grid h-9 w-9 place-items-center rounded-md text-[#E2E2E2] active:opacity-90"
+                      disabled={isSending || !text.trim()}
+                      className="grid h-9 w-9 place-items-center rounded-md text-[#E2E2E2] active:opacity-90 disabled:opacity-50"
                       title="전송"
                       aria-label="메시지 전송"
                     >
@@ -635,12 +761,11 @@ const WebView: React.FC = () => {
                     </button>
                   </div>
                 </div>
-                {/* === 입력창 끝 === */}
               </div>
             </div>
           )}
 
-          {/* 패널과 리스트 사이 여백 시각화용 spacer */}
+          {/* 패널과 리스트 사이 여백 */}
           {panelOpen && (
             <div
               className="absolute"
