@@ -11,6 +11,8 @@ export const buildKakaoAuthUrl = (role: UserRole) => {
     `?response_type=code` +
     `&client_id=${clientId}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&state=${state}`
+    `&state=${state}` +
+    // --- 이 부분이 핵심입니다 ---
+    `&prompt=login` // 기존 세션을 무시하고 사용자에게 로그인 화면을 강제 요청
   );
 };

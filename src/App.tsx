@@ -65,6 +65,9 @@ import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/Schedule
 import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
 import CouponPage from "./pages/MyPage/ClientMyPage/Coupons/CouponPage";
+import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
+import Success from "./pages/CheckoutPage/Success/Success";
+import Fail from "./pages/CheckoutPage/Fail/Fail";
 
 function Layout() {
   const location = useLocation();
@@ -210,6 +213,9 @@ const App = () => {
         <Route path="/makeup/:id" element={<ProductDetailPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/checkout/coupon" element={<CouponPage />} />
+        <Route path="/checkout/payment" element={<PaymentPage />} />
+        <Route path="/success" element={<Success />} />
+        <Route path="/fail" element={<Fail />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>

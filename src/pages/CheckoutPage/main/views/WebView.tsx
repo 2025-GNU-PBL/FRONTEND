@@ -1,293 +1,256 @@
-import React, { useState } from "react";
+// src/pages/CheckoutPage/main/views/WebView.tsx
+
+import React from "react";
 import { Icon } from "@iconify/react";
-
-interface CartItem {
-  id: number;
-  name: string;
-  options?: string;
-  price: number;
-  quantity: number;
-}
-
-const mockCartItems: CartItem[] = [
-  {
-    id: 1,
-    name: "프리미엄 티셔츠",
-    options: "화이트 / L",
-    price: 29000,
-    quantity: 1,
-  },
-  {
-    id: 2,
-    name: "데일리 팬츠",
-    options: "블랙 / M",
-    price: 39000,
-    quantity: 2,
-  },
-];
-
-const formatPrice = (value: number) =>
-  value.toLocaleString("ko-KR", { maximumFractionDigits: 0 }) + "원";
+import { useNavigate } from "react-router-dom";
 
 const WebView: React.FC = () => {
-  const [items] = useState<CartItem[]>(mockCartItems);
-  const [couponCode, setCouponCode] = useState("");
-  const [selectedPayment, setSelectedPayment] = useState<
-    "card" | "naver" | "kakao"
-  >("card");
-
-  const itemsTotal = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const shippingFee = itemsTotal > 50000 ? 0 : 3000;
-  const discount = 0;
-  const finalPrice = itemsTotal + shippingFee - discount;
+  const navigate = useNavigate();
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-5xl flex-col bg-gray-50 px-6 py-10">
-      {/* 상단 타이틀 */}
-      <header className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm">
-            <Icon icon="mdi:arrow-left" className="text-xl" />
-          </button>
-          <h1 className="text-2xl font-semibold text-gray-900">주문/결제</h1>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <Icon icon="mdi:shield-check-outline" className="text-lg" />
-          <span>안전한 결제 환경이 적용됩니다.</span>
-        </div>
-      </header>
+    <div className="min-h-screen w-full bg-[#F5F6FA] font-['Pretendard'] text-[#1E2124]">
+      {/* 네비게이션바 때문에 전체 여백 */}
+      <div className="mx-auto pt-22 flex w-full max-w-6xl flex-col gap-6 px-6 pb-10">
+        {/* 상단 헤더 영역 */}
+        <header className="flex items-center justify-between rounded-2xl bg-white/90 px-5 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] backdrop-blur">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#ECEFF3] bg-white transition-colors hover:bg-[#F3F4F6]"
+            >
+              <Icon
+                icon="solar:alt-arrow-left-linear"
+                className="h-5 w-5 text-[#1E2124]"
+              />
+            </button>
+            <div className="flex flex-col">
+              <h1 className="text-[20px] font-semibold tracking-[-0.3px] text-[#111827]">
+                결제하기
+              </h1>
+              <span className="mt-0.5 text-[12px] leading-[1.5] text-[#9CA3AF]">
+                예약 정보를 확인하고 결제를 진행해 주세요.
+              </span>
+            </div>
+          </div>
 
-      {/* 본문 레이아웃 */}
-      <div className="grid flex-1 gap-6 lg:grid-cols-[2fr,1fr]">
-        {/* 왼쪽: 정보 영역 */}
-        <div className="space-y-6">
-          {/* 배송지 정보 */}
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-gray-900">
-                  배송지 정보
-                </h2>
-                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
-                  기본 배송지
-                </span>
+          {/* 진행 단계 표시 */}
+          <div className="flex items-center gap-2 rounded-full bg-[#F9FAFB] px-3 py-1.5">
+            <span className="h-2 w-2 rounded-full bg-[#FF2233]" />
+            <span className="text-[11px] font-medium tracking-[0.06em] text-[#6B7280]">
+              STEP 2 · 결제정보
+            </span>
+          </div>
+        </header>
+
+        {/* 메인 컨텐츠 영역 */}
+        <main className="flex flex-1 flex-col gap-6 lg:flex-row">
+          {/* 좌측: 주문/예약 정보 */}
+          <section className="flex-1 space-y-6">
+            {/* 주문 상품 카드 */}
+            <div className="rounded-2xl bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+              {/* 카드 타이틀 영역 */}
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-[#FFF1F2] px-2.5 py-1 text-[11px] font-medium tracking-[-0.2px] text-[#FF2233]">
+                    주문상품
+                  </span>
+                  <span className="text-[18px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#111827]">
+                    총 주문 상품 2개
+                  </span>
+                </div>
               </div>
-              <button className="text-xs font-medium text-blue-600">
-                변경
-              </button>
-            </div>
 
-            <div className="space-y-1 text-sm text-gray-700">
-              <p className="font-semibold">홍길동</p>
-              <p>서울특별시 강남구 테헤란로 123, 101동 1001호</p>
-              <p>010-1234-5678</p>
-            </div>
-
-            <div className="mt-3 flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600">
-              <Icon icon="mdi:truck-fast-outline" className="text-lg" />
-              <span>내일(익일) 도착 예정 · 로켓배송</span>
-            </div>
-          </section>
-
-          {/* 주문 상품 */}
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">
-                주문 상품 ({items.length})
-              </h2>
-              <button className="flex items-center gap-1 text-xs text-gray-500">
-                <span>전체 접기</span>
-                <Icon icon="mdi:chevron-up" className="text-base" />
-              </button>
-            </div>
-
-            <div className="divide-y divide-gray-100">
-              {items.map((item) => (
+              {/* 첫 번째 상품 */}
+              <div className="flex gap-4 border-b border-[#F3F4F6] pb-4">
                 <div
-                  key={item.id}
-                  className="flex items-start justify-between gap-4 py-4"
-                >
-                  <div className="flex flex-1 gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gray-100">
-                      <Icon
-                        icon="mdi:image-outline"
-                        className="text-2xl text-gray-400"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {item.name}
-                      </p>
-                      {item.options && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          {item.options}
-                        </p>
-                      )}
-                      <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
-                        <span>수량 {item.quantity}개</span>
-                        <span className="h-3 w-px bg-gray-200" />
-                        <button className="flex items-center gap-1 hover:text-gray-700">
-                          <Icon icon="mdi:pencil-outline" className="text-sm" />
-                          <span>옵션 변경</span>
-                        </button>
-                      </div>
-                    </div>
+                  className="h-[92px] w-[92px] flex-shrink-0 rounded-[14px] border border-[#E5E7EB] bg-cover bg-center"
+                  style={{ backgroundImage: "url('/image.png')" }}
+                />
+                <div className="flex flex-1 flex-col justify-center">
+                  <div className="mb-1 text-[13px] leading-[1.5] tracking-[-0.2px] text-[rgba(0,0,0,0.4)]">
+                    제이바이로이스타
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {formatPrice(item.price * item.quantity)}
-                    </p>
+                  <div className="mb-2 whitespace-pre-line text-[15px] leading-[1.4] tracking-[-0.2px] text-[#111827]">
+                    [촬영] 신부신랑 헤어메이크업 (부원장)
+                  </div>
+                  <div className="mt-auto flex items-center justify-between gap-2">
+                    <span className="text-[12px] text-[#9CA3AF]">
+                      VAT 포함 금액
+                    </span>
+                    <span className="text-[16px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#111827]">
+                      323,000원
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
-
-          {/* 쿠폰 / 포인트 */}
-          <section className="grid gap-4 rounded-2xl bg-white p-5 shadow-sm lg:grid-cols-2">
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-900">쿠폰</h2>
-                <button className="text-xs text-blue-600">
-                  보유 쿠폰 보기
-                </button>
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  className="h-10 flex-1 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-blue-500"
-                  placeholder="쿠폰 코드 입력"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                />
-                <button className="h-10 rounded-xl border border-gray-200 px-3 text-xs font-medium text-gray-700">
-                  적용
-                </button>
-              </div>
-            </div>
 
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-900">포인트</h2>
-                <span className="text-xs text-gray-400">보유 0 P</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  className="h-10 flex-1 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-blue-500"
-                  placeholder="사용할 포인트 입력"
-                  disabled
-                />
-                <button className="h-10 rounded-xl bg-gray-100 px-3 text-xs font-medium text-gray-400">
-                  사용
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* 결제 수단 */}
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">결제 수단</h2>
-              <span className="text-xs text-gray-400">일시불 기준</span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 text-xs">
-              <button
-                onClick={() => setSelectedPayment("card")}
-                className={`flex flex-col items-center justify-center rounded-xl border px-3 py-4 ${
-                  selectedPayment === "card"
-                    ? "border-blue-500 bg-blue-50 text-blue-600"
-                    : "border-gray-200 bg-gray-50 text-gray-700"
-                }`}
-              >
-                <Icon
-                  icon="mdi:credit-card-outline"
-                  className="mb-1 text-2xl"
-                />
-                <span>신용/체크카드</span>
-              </button>
-              <button
-                onClick={() => setSelectedPayment("naver")}
-                className={`flex flex-col items-center justify-center rounded-xl border px-3 py-4 ${
-                  selectedPayment === "naver"
-                    ? "border-blue-500 bg-blue-50 text-blue-600"
-                    : "border-gray-200 bg-gray-50 text-gray-700"
-                }`}
-              >
-                <Icon icon="simple-icons:naver" className="mb-1 text-2xl" />
-                <span>네이버페이</span>
-              </button>
-              <button
-                onClick={() => setSelectedPayment("kakao")}
-                className={`flex flex-col items-center justify-center rounded-xl border px-3 py-4 ${
-                  selectedPayment === "kakao"
-                    ? "border-blue-500 bg-blue-50 text-blue-600"
-                    : "border-gray-200 bg-gray-50 text-gray-700"
-                }`}
-              >
-                <Icon icon="simple-icons:kakaotalk" className="mb-1 text-2xl" />
-                <span>카카오페이</span>
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-2 text-xs text-gray-500">
-              <p className="flex items-center gap-2">
-                <Icon icon="mdi:information-outline" className="text-sm" />
-                <span>
-                  결제 수단에 따라 무이자/부분 무이자 혜택이 제공될 수 있습니다.
+              {/* 첫 번째 예약 날짜 */}
+              <div className="mt-3 flex items-center justify-between rounded-[12px] bg-[#F7F9FA] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Icon
+                    icon="solar:calendar-outline"
+                    className="h-4 w-4 text-[#6B7280]"
+                  />
+                  <span className="text-[12px] leading-[1.5] tracking-[-0.1px] text-[rgba(0,0,0,0.6)]">
+                    2025년 11월 19일 예약
+                  </span>
+                </div>
+                <span className="text-[11px] font-medium text-[#9CA3AF]">
+                  촬영 당일 현장 결제 불가
                 </span>
-              </p>
+              </div>
+
+              {/* 두 번째 상품 */}
+              <div className="mt-6 flex gap-4 border-b border-[#F3F4F6] pb-4">
+                <div
+                  className="h-[92px] w-[92px] flex-shrink-0 rounded-[14px] border border-[#E5E7EB] bg-cover bg-center"
+                  style={{ backgroundImage: "url('/image.png')" }}
+                />
+                <div className="flex flex-1 flex-col justify-center">
+                  <div className="mb-1 text-[13px] leading-[1.5] tracking-[-0.2px] text-[rgba(0,0,0,0.4)]">
+                    제이바이로이스타
+                  </div>
+                  <div className="whitespace-pre-line text-[15px] leading-[1.4] tracking-[-0.2px] text-[#111827]">
+                    [촬영] 신부신랑 헤어메이크업 (실장)
+                  </div>
+                  <div className="mt-auto flex items-center justify-between gap-2">
+                    <span className="text-[12px] text-[#9CA3AF]">
+                      VAT 포함 금액
+                    </span>
+                    <span className="text-[16px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#111827]">
+                      323,000원
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 두 번째 예약 날짜 */}
+              <div className="mt-3 flex items-center justify-between rounded-[12px] bg-[#F7F9FA] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Icon
+                    icon="solar:calendar-outline"
+                    className="h-4 w-4 text-[#6B7280]"
+                  />
+                  <span className="text-[12px] leading-[1.5] tracking-[-0.1px] text-[rgba(0,0,0,0.6)]">
+                    2025년 11월 19일 예약
+                  </span>
+                </div>
+                <span className="text-[11px] font-medium text-[#9CA3AF]">
+                  촬영 일정 변경 시 매장 문의
+                </span>
+              </div>
             </div>
           </section>
-        </div>
 
-        {/* 오른쪽: 결제 요약 박스 */}
-        <aside className="sticky top-10 h-fit rounded-2xl bg-white p-5 shadow-md">
-          <h2 className="mb-4 text-sm font-semibold text-gray-900">
-            결제 금액
-          </h2>
+          {/* 우측: 쿠폰 혜택 + 결제 요약 */}
+          <aside className="w-full max-w-sm space-y-4 lg:sticky lg:top-28">
+            {/* 쿠폰 혜택 카드 (위) */}
+            <div className="rounded-2xl bg-white p-5 shadow-[0_10px_26px_rgba(15,23,42,0.07)]">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-[#EEF2FF] px-2.5 py-1 text-[11px] font-medium tracking-[-0.2px] text-[#4F46E5]">
+                      혜택
+                    </span>
+                    <span className="text-[16px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#111827]">
+                      쿠폰 혜택
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-[#9CA3AF]">
+                    보유한 쿠폰을 선택하면 결제금액에 반영돼요.
+                  </span>
+                </div>
+              </div>
 
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">상품 금액</span>
-              <span className="font-medium text-gray-900">
-                {formatPrice(itemsTotal)}
-              </span>
+              <button
+                type="button"
+                onClick={() => navigate("/checkout/coupon")}
+                className="flex h-[52px] w-full items-center justify-between rounded-[14px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-left transition-all hover:border-[#FF2233] hover:bg-[#FFF5F5]"
+              >
+                <div className="flex flex-col">
+                  <span className="text-[13px] font-medium leading-[1.6] tracking-[-0.2px] text-[#111827]">
+                    쿠폰 선택
+                  </span>
+                  <span className="text-[11px] leading-[1.5] text-[#9CA3AF]">
+                    사용 가능 0장
+                  </span>
+                </div>
+                <Icon
+                  icon="mdi:chevron-right"
+                  className="h-5 w-5 text-[#D1D5DB]"
+                />
+              </button>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">배송비</span>
-              <span className="font-medium text-gray-900">
-                {shippingFee === 0 ? "무료" : formatPrice(shippingFee)}
-              </span>
+
+            {/* 결제 요약 카드 (아래) */}
+            <div className="rounded-2xl bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-[18px] font-semibold tracking-[-0.2px] text-[#111827]">
+                  결제 요약
+                </h2>
+                <span className="rounded-full bg-[#F3F4F6] px-2.5 py-1 text-[11px] font-medium text-[#6B7280]">
+                  안전 결제
+                </span>
+              </div>
+
+              <div className="space-y-3 border-b border-[#F3F4F6] pb-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[14px] leading-[1.6] tracking-[-0.2px] text-[rgba(0,0,0,0.7)]">
+                    총 상품금액
+                  </span>
+                  <span className="text-[14px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#111827]">
+                    290,000원
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[14px] leading-[1.6] tracking-[-0.2px] text-[rgba(0,0,0,0.7)]">
+                    총 할인금액
+                  </span>
+                  <span className="text-[14px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#16A34A]">
+                    -290,000원
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 mb-3 flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-[13px] font-semibold text-[#111827]">
+                    결제금액
+                  </span>
+                  <span className="text-[11px] text-[#9CA3AF]">
+                    쿠폰 및 할인 적용 후 실제 결제되는 금액입니다.
+                  </span>
+                </div>
+                <span className="text-[20px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#111827]">
+                  290,000원
+                </span>
+              </div>
+
+              <div className="mb-4 rounded-[12px] bg-[#F9FAFB] px-3 py-2 text-[11px] text-[#6B7280]">
+                <div className="flex items-start gap-2">
+                  <Icon
+                    icon="solar:shield-check-outline"
+                    className="mt-[2px] h-4 w-4 text-[#10B981]"
+                  />
+                  <p>
+                    카드사 무이자/부분 무이자 할부가 적용될 수 있으며, 결제 완료
+                    후 마이페이지에서 상세 내역을 확인하실 수 있어요.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => navigate("/checkout/payment")}
+                className="mt-2 flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#FF2233] px-4 text-[15px] font-semibold leading-[1.5] tracking-[-0.2px] text-white shadow-[0_14px_32px_rgba(255,34,51,0.45)] transition-transform hover:scale-[1.01] active:scale-[0.99]"
+              >
+                323,000원 결제하기
+              </button>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">할인 금액</span>
-              <span className="font-medium text-blue-600">
-                {discount > 0 ? `- ${formatPrice(discount)}` : "0원"}
-              </span>
-            </div>
-          </div>
-
-          <hr className="my-4 border-dashed border-gray-200" />
-
-          <div className="mb-4 flex items-center justify-between text-base font-semibold">
-            <span>총 결제 금액</span>
-            <span className="text-blue-600">{formatPrice(finalPrice)}</span>
-          </div>
-
-          <button className="mb-2 flex h-11 w-full items-center justify-center rounded-xl bg-blue-600 text-sm font-semibold text-white">
-            {formatPrice(finalPrice)} 결제하기
-          </button>
-
-          <div className="flex items-start gap-2 text-[10px] text-gray-500">
-            <input type="checkbox" className="mt-0.5 h-3 w-3" />
-            <p>
-              주문 내용을 확인하였으며, 정보 제공 및 결제 진행에 동의합니다.
-            </p>
-          </div>
-        </aside>
+          </aside>
+        </main>
       </div>
     </div>
   );
