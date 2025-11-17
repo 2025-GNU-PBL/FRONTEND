@@ -17,6 +17,7 @@ interface SettlementSummary {
 
 interface SettlementItem {
   orderCode: string;
+  paymentKey: string; // ✅ 모바일과 동일하게 paymentKey 사용
   customerName: string;
   amount: number;
   status: ApiPaymentStatus;
@@ -32,7 +33,8 @@ interface SettlementsResponse {
 
 function ensureOwner(userData: UserData | null): OwnerData | null {
   if (!userData) return null;
-  if ("bzNumber" in userData && (userData as any).userRole === "OWNER") {
+  if ("bzNumber" in userData && userData.userRole === "OWNER") {
+    // ✅ 모바일뷰와 동일한 체크 방식
     return userData as OwnerData;
   }
   return null;
@@ -152,11 +154,13 @@ export default function WebView() {
   const [summary, setSummary] = useState<SettlementSummary | null>(null);
   const [items, setItems] = useState<SettlementItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null); // ✅ 모바일과 동일
 
   /* ------- API 호출 ------- */
   const fetchSettlements = useCallback(async () => {
     try {
       setIsLoading(true);
+      setErrorMsg(null);
 
       const res = await api.get<SettlementsResponse>(
         "/api/v1/payments/settlements/me",
@@ -165,7 +169,7 @@ export default function WebView() {
             year,
             month,
             page: 0,
-            size: 50,
+            size: 20, // ✅ 모바일과 동일한 페이지 사이즈
           },
         }
       );
@@ -174,6 +178,7 @@ export default function WebView() {
       setItems(res.data.items || []);
     } catch (err) {
       console.error("웹뷰 settlements api 에러:", err);
+      setErrorMsg("매출 데이터를 불러오는 중 오류가 발생했습니다."); // ✅ 모바일과 동일 메시지
     } finally {
       setIsLoading(false);
     }
@@ -239,7 +244,7 @@ export default function WebView() {
             </div>
           </div>
 
-          {/* 1. 매출 요약 */}
+          {/* 1. 매출 요약 + 취소 내역 버튼(모바일 맞춤) */}
           <SectionCard
             title={storeName}
             subtitle="월간 매출 요약"
@@ -247,13 +252,17 @@ export default function WebView() {
             rightSlot={
               <button
                 type="button"
+                onClick={() => nav("/my-page/owner/payments/cancel")}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#111827] text-xs text-white px-3 py-1.5 shadow-sm"
               >
                 <Icon
-                  icon="solar:download-minimalistic-bold"
-                  className="w-3.5 h-3.5"
+                  icon="solar:alt-arrow-left-linear"
+                  className="w-3.5 h-3.5 rotate-180"
                 />
-                매출 다운로드
+                취소 내역
+                <span className="ml-0.5 text-[10px] text-gray-200">
+                  {cancelCount}건
+                </span>
               </button>
             }
           >
@@ -290,32 +299,46 @@ export default function WebView() {
             subtitle="기간을 선택해 상세 매출을 확인할 수 있습니다"
             icon="solar:calendar-bold-duotone"
           >
-            <div className="flex items-center gap-4 mb-6">
-              {/* 이전 달 */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                {/* 이전 달 */}
+                <button
+                  type="button"
+                  onClick={() => moveMonth(-1)}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 hover:bg-gray-50"
+                >
+                  <Icon
+                    icon="solar:alt-arrow-left-linear"
+                    className="w-4 h-4 text-[#1E2124]"
+                  />
+                </button>
+
+                <span className="text-[20px] font-semibold">
+                  {year}년 {month}월
+                </span>
+
+                {/* 다음 달 */}
+                <button
+                  type="button"
+                  onClick={() => moveMonth(1)}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 hover:bg-gray-50"
+                >
+                  <Icon
+                    icon="solar:alt-arrow-left-linear"
+                    className="w-4 h-4 rotate-180 text-[#1E2124]"
+                  />
+                </button>
+              </div>
+
+              {/* 모바일의 '전체' 필터와 톤 맞춘 드롭다운 버튼 (동작은 아직 없음) */}
               <button
                 type="button"
-                onClick={() => moveMonth(-1)}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 hover:bg-gray-50"
+                className="flex items-center gap-1 text-[14px] text-black tracking-[-0.2px]"
               >
+                <span>전체</span>
                 <Icon
-                  icon="solar:alt-arrow-left-linear"
-                  className="w-4 h-4 text-[#1E2124]"
-                />
-              </button>
-
-              <span className="text-[20px] font-semibold">
-                {year}년 {month}월
-              </span>
-
-              {/* 다음 달 — 여기 수정: 클릭 시 moveMonth(1) 호출 */}
-              <button
-                type="button"
-                onClick={() => moveMonth(1)}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 hover:bg-gray-50"
-              >
-                <Icon
-                  icon="solar:alt-arrow-left-linear"
-                  className="w-4 h-4 rotate-180 text-[#1E2124]"
+                  icon="solar:alt-arrow-down-linear"
+                  className="w-4 h-4 text-[#999999]"
                 />
               </button>
             </div>
@@ -329,63 +352,97 @@ export default function WebView() {
                 <div className="text-right">상태</div>
               </div>
 
-              {isLoading ? (
+              {isLoading && (
                 <div className="py-8 text-center text-gray-500 text-sm">
                   매출 데이터를 불러오는 중입니다...
                 </div>
-              ) : items.length === 0 ? (
-                <div className="py-8 text-center text-gray-400 text-sm">
-                  해당 기간의 매출 내역이 없습니다.
+              )}
+
+              {errorMsg && !isLoading && (
+                <div className="py-8 text-center text-red-500 text-sm">
+                  {errorMsg}
                 </div>
-              ) : (
-                items.map((item, idx) => {
-                  const { dayLabel, fullLabel } = formatApprovedAt(
-                    item.approvedAt
-                  );
+              )}
 
-                  const isCanceled =
-                    item.status === "CANCELED" ||
-                    item.status === "FAILED" ||
-                    item.status === "CANCEL_REQUESTED";
-
-                  return (
-                    <div
-                      key={item.orderCode}
-                      className={`grid grid-cols-[90px_minmax(0,1.6fr)_minmax(0,1.2fr)_80px] px-5 py-4 text-sm items-center ${
-                        idx !== items.length - 1
-                          ? "border-b border-gray-50"
-                          : ""
-                      }`}
-                    >
-                      <div className="text-[14px] font-medium text-[#1E2124]">
-                        {dayLabel}
-                      </div>
-
-                      <div className="flex flex-col">
-                        <span className="text-[14px]">{item.customerName}</span>
-                        <span className="text-[12px] text-[#999]">
-                          {fullLabel}
-                        </span>
-                      </div>
-
-                      <div className="text-right">
-                        <span
-                          className={`text-[15px] font-semibold ${
-                            isCanceled
-                              ? "text-[#999] line-through"
-                              : "text-[#4170FF]"
-                          }`}
-                        >
-                          {formatAmount(item.amount)}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-end">
-                        <StatusBadge status={item.status} />
-                      </div>
+              {!isLoading && !errorMsg && (
+                <>
+                  {items.length === 0 ? (
+                    <div className="py-8 text-center text-gray-400 text-sm">
+                      해당 기간의 매출 내역이 없습니다.
                     </div>
-                  );
-                })
+                  ) : (
+                    items.map((item, idx) => {
+                      const { dayLabel, fullLabel } = formatApprovedAt(
+                        item.approvedAt
+                      );
+
+                      const isCanceled =
+                        item.status === "CANCELED" ||
+                        item.status === "FAILED" ||
+                        item.status === "CANCEL_REQUESTED";
+
+                      const isClickable = item.status === "DONE";
+
+                      const handleClick = () => {
+                        if (!isClickable) return;
+                        nav(
+                          `/my-page/owner/payments/detail?paymentKey=${item.paymentKey}`
+                        );
+                      };
+
+                      return (
+                        <div
+                          key={item.orderCode}
+                          onClick={handleClick}
+                          className={[
+                            "grid grid-cols-[90px_minmax(0,1.6fr)_minmax(0,1.2fr)_80px] px-5 py-4 text-sm items-center",
+                            idx !== items.length - 1
+                              ? "border-b border-gray-50"
+                              : "",
+                            isClickable
+                              ? "cursor-pointer hover:bg-gray-50"
+                              : "cursor-default",
+                          ].join(" ")}
+                        >
+                          <div className="text-[14px] font-medium text-[#1E2124]">
+                            {dayLabel}
+                          </div>
+
+                          <div className="flex flex-col">
+                            <span className="text-[14px]">
+                              {item.customerName}
+                            </span>
+                            <span className="text-[12px] text-[#999]">
+                              {fullLabel}
+                            </span>
+                          </div>
+
+                          <div className="text-right">
+                            <span
+                              className={[
+                                "text-[15px] font-semibold",
+                                isCanceled
+                                  ? "text-[#999] line-through"
+                                  : "text-[#4170FF]",
+                              ].join(" ")}
+                            >
+                              {formatAmount(item.amount)}
+                            </span>
+                            {isCanceled && (
+                              <div className="mt-0.5 text-[12px] text-[#999]">
+                                {item.status === "FAILED" ? "실패" : "취소"}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex justify-end">
+                            <StatusBadge status={item.status} />
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </>
               )}
 
               <div className="px-5 py-3 bg-gray-50 text-[11px] text-gray-400 flex items-center gap-1">
