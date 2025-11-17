@@ -6,7 +6,6 @@ import { useAppSelector } from "../../../../../store/hooks";
 import api from "../../../../../lib/api/axios";
 import type { OwnerData, UserData } from "../../../../../store/userSlice";
 
-/** 서버 결제 상태 타입 */
 type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
 
 interface SettlementSummary {
@@ -19,10 +18,11 @@ interface SettlementSummary {
 
 interface SettlementItem {
   orderCode: string;
+  paymentKey: string;
   customerName: string;
   amount: number;
   status: ApiPaymentStatus;
-  approvedAt: string; // ISO 문자열
+  approvedAt: string;
 }
 
 interface SettlementsResponse {
@@ -30,7 +30,6 @@ interface SettlementsResponse {
   items: SettlementItem[];
 }
 
-/** OWNER 유저만 허용 */
 function ensureOwner(userData: UserData | null): OwnerData | null {
   if (!userData) return null;
   if ("bzNumber" in userData && userData.userRole === "OWNER") {
@@ -39,13 +38,11 @@ function ensureOwner(userData: UserData | null): OwnerData | null {
   return null;
 }
 
-/** 금액 포맷터: 123456 -> "123,456원" */
 function formatAmount(amount?: number): string {
   if (amount == null) return "0원";
   return `${amount.toLocaleString("ko-KR")}원`;
 }
 
-/** 날짜 포맷터: ISO -> { dayLabel: "10.01", fullLabel: "2025.10.01 22:12" } */
 function formatApprovedAt(iso?: string): {
   dayLabel: string;
   fullLabel: string;
@@ -67,25 +64,21 @@ function formatApprovedAt(iso?: string): {
   };
 }
 
-/** 사장(OWNER) 마이페이지 - 매출 관리 (Mobile) */
 export default function MobileView() {
   const nav = useNavigate();
 
   const rawUserData = useAppSelector((state) => state.user.userData);
   const owner = ensureOwner(rawUserData);
 
-  // 연/월 상태 (기본: 오늘 기준)
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1); // 1~12
+  const [month, setMonth] = useState(now.getMonth() + 1);
 
-  // API 데이터 상태
   const [summary, setSummary] = useState<SettlementSummary | null>(null);
   const [items, setItems] = useState<SettlementItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // 로그인 안 됐거나 OWNER가 아니면 안내
   if (!owner) {
     return (
       <div className="w-full bg-white">
@@ -142,7 +135,6 @@ export default function MobileView() {
     fetchSettlements();
   }, [fetchSettlements]);
 
-  // 월 이동
   const moveMonth = (diff: number) => {
     const base = new Date(year, month - 1, 1);
     base.setMonth(base.getMonth() + diff);
@@ -155,9 +147,7 @@ export default function MobileView() {
 
   return (
     <div className="w-full bg-white">
-      {/* 390 x 844 디바이스 프레임 */}
       <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col">
-        {/* 헤더 (StatusBar, Dynamic Island 등은 사용하지 않고 공통 헤더만 사용) */}
         <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
           <MyPageHeader
             title="매출 관리"
@@ -166,9 +156,7 @@ export default function MobileView() {
           />
         </div>
 
-        {/* 본문 영역 */}
         <div className="flex-1 overflow-auto px-5 pt-20 pb-8 space-y-4">
-          {/* 상단 매출 요약 카드 */}
           <section className="w-full rounded-lg bg-[#F6F7FB] px-5 py-4 flex items-center justify-between">
             <div className="flex flex-col gap-2">
               <span className="text-[14px] font-bold text-[#333333] tracking-[-0.2px]">
@@ -183,15 +171,16 @@ export default function MobileView() {
                 </span>
               </div>
             </div>
-            {/* 우측 이미지 (image 3201) */}
+
             <div className="w-20 h-20 rounded-2xl bg-white/60 flex items-center justify-center">
               <div className="w-14 h-14 rounded-xl bg-[#E0ECFF]" />
             </div>
           </section>
 
-          {/* 취소 내역 카드 */}
+          {/* ✅ 여기 수정됨 */}
           <button
             type="button"
+            onClick={() => nav("/my-page/owner/payments/cancel")}
             className="w-full rounded-lg bg-[#F6F7FB] px-5 h-[50px] flex items-center justify-between"
           >
             <span className="text-[16px] font-normal text-[#333333] tracking-[-0.2px]">
@@ -208,12 +197,9 @@ export default function MobileView() {
             </div>
           </button>
 
-          {/* 상·하단 구분 라인 */}
           <div className="w-[390px] -mx-5 h-2 bg-[#F7F9FA]" />
 
-          {/* 월 선택 영역 + 필터 */}
           <div className="flex items-center justify-between mt-2">
-            {/* 왼쪽: 이전/다음 달 화살표 + 현재 월 */}
             <div className="flex items-center gap-4">
               <button type="button" onClick={() => moveMonth(-1)}>
                 <Icon
@@ -232,7 +218,6 @@ export default function MobileView() {
               </button>
             </div>
 
-            {/* 오른쪽: 필터 드롭다운 (현재는 전체만 표시, 추후 상태 필터 연동 가능) */}
             <button
               type="button"
               className="flex items-center gap-1 text-[14px] text-black tracking-[-0.2px]"
@@ -245,7 +230,6 @@ export default function MobileView() {
             </button>
           </div>
 
-          {/* 로딩 / 에러 / 리스트 */}
           {isLoading && (
             <div className="mt-6 text-center text-sm text-gray-500">
               매출 데이터를 불러오는 중입니다...
@@ -275,13 +259,26 @@ export default function MobileView() {
                     item.status === "FAILED" ||
                     item.status === "CANCEL_REQUESTED";
 
+                  const handleClick = () => {
+                    if (item.status !== "DONE") return;
+                    nav(
+                      `/my-page/owner/payments/detail?paymentKey=${item.paymentKey}`
+                    );
+                  };
+
                   return (
                     <div
                       key={item.orderCode}
-                      className="flex flex-col border-b border-[#F0F0F0] first:pt-4 last:border-b-0"
+                      onClick={handleClick}
+                      className={[
+                        "flex flex-col border-b border-[#F0F0F0] first:pt-4 last:border-b-0",
+                        "py-5",
+                        item.status === "DONE"
+                          ? "cursor-pointer active:bg-gray-50"
+                          : "cursor-default",
+                      ].join(" ")}
                     >
-                      <div className="flex items-start justify-between py-5">
-                        {/* 날짜 + 이름 + 시간 */}
+                      <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3">
                           <span className="text-[16px] font-medium text-[#1E2124] leading-[26px] tracking-[-0.2px]">
                             {dayLabel}
@@ -296,7 +293,6 @@ export default function MobileView() {
                           </div>
                         </div>
 
-                        {/* 금액/상태 */}
                         <div className="flex flex-col items-end">
                           <span
                             className={[

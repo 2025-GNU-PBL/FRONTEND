@@ -69,6 +69,8 @@ import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfil
 import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
 import CancelListPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
 import CancelDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
+import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentDetailPage";
+import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponListPage";
 
 function Layout() {
   const location = useLocation();
@@ -272,6 +274,7 @@ const App = () => {
             path="/my-page/owner/schedules/shared"
             element={<OwnerSharedScheduleCreatePage />}
           />
+          <Route path="/my-page/owner/coupons" element={<CouponListPage />} />
           <Route
             path="/my-page/owner/coupons/register"
             element={<CouponRegisterPage />}
@@ -295,6 +298,10 @@ const App = () => {
           <Route
             path="/my-page/owner/payments"
             element={<OwnerPaymentManagementPage />}
+          />
+          <Route
+            path="/my-page/owner/payments/detail"
+            element={<OwnerPaymentDetailPage />}
           />
           <Route
             path="/my-page/owner/payments/cancel"
