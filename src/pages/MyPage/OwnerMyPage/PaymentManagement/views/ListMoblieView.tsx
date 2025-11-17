@@ -6,7 +6,6 @@ import { useAppSelector } from "../../../../../store/hooks";
 import api from "../../../../../lib/api/axios";
 import type { OwnerData, UserData } from "../../../../../store/userSlice";
 
-/** 서버 결제 상태 타입 */
 type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
 
 interface SettlementSummary {
