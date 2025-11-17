@@ -1,72 +1,15 @@
 // sections/BasicInfoContent.tsx
 import { Icon } from "@iconify/react";
+import type {
+  Category,
+  NormalizedDetail,
+  WeddingHallDetail,
+  StudioDetail,
+  DressDetail,
+  MakeupDetail,
+} from "../../../type/product";
 
-/* ========================= 타입 정의 ========================= */
-/** 라우트 기준 카테고리 */
-type Category = "wedding" | "studio";
-
-/** 공통 이미지 타입 */
-type CommonImage = {
-  id: number;
-  url: string;
-  s3Key: string;
-  displayOrder: number;
-};
-
-/** 공통 옵션 타입 */
-type CommonOption = {
-  name: string;
-  detail: string;
-  price: number;
-};
-
-/** 웨딩홀 상세 타입 (백엔드 스펙 기준) */
-type WeddingHallDetail = {
-  id: number;
-  name: string;
-  price: number;
-  address: string;
-  detail: string;
-  availableTimes: string;
-  starCount: number; // 리뷰 수 or 별점 관련 숫자 (백엔드 정의에 맞게 사용)
-  averageRating: number;
-  capacity: number;
-  minGuest: number;
-  maxGuest: number;
-  parkingCapacity: number;
-  cateringType: string;
-  reservationPolicy: string;
-  region: string;
-  ownerName: string;
-  images: CommonImage[];
-  options: CommonOption[];
-  tags: string[];
-};
-
-/** 스튜디오 태그 타입 */
-type StudioTag = {
-  id: number;
-  tagName: string;
-};
-
-/** 스튜디오 상세 타입 (백엔드 스펙 기준) */
-type StudioDetail = {
-  id: number;
-  name: string;
-  address: string;
-  detail: string;
-  price: number;
-  availableTimes: string;
-  region: string;
-  images: CommonImage[];
-  options: CommonOption[];
-  tags: StudioTag[];
-};
-
-/** MobileView에서 내려주는 정규화 타입 */
-type NormalizedDetail =
-  | (WeddingHallDetail & { _category: "wedding" })
-  | (StudioDetail & { _category: "studio" });
+/* ========================= Props ========================= */
 
 type BasicInfoContentProps = {
   data: NormalizedDetail;
@@ -95,11 +38,15 @@ export const BasicInfoContent = ({
       ? `${(data as any).price.toLocaleString("ko-KR")}원`
       : "";
 
-  // 태그 정리 (웨딩: string[], 스튜디오: { tagName }[])
+  // 태그 정리
+  // - wedding: string[]
+  // - studio / dress / makeup: StudioTag[] (메이크업은 tags가 없을 수 있으므로 optional 처리)
   const tagLabels: string[] =
     data._category === "wedding"
-      ? (data.tags as string[])
-      : (data.tags as StudioTag[] | undefined)?.map((t) => t.tagName) || [];
+      ? (data as WeddingHallDetail).tags
+      : ((data as StudioDetail | DressDetail | MakeupDetail).tags ?? []).map(
+          (t) => t.tagName
+        );
 
   const primaryTag = tagLabels[0];
   const secondaryTag = tagLabels[1];
@@ -113,7 +60,6 @@ export const BasicInfoContent = ({
       ? data.averageRating.toFixed(1)
       : null;
 
-  // starCount를 리뷰 개수로 사용 (백엔드 정의에 맞게 조정 가능)
   const reviewCount =
     data._category === "wedding" && typeof data.starCount === "number"
       ? data.starCount
@@ -125,7 +71,7 @@ export const BasicInfoContent = ({
       ? data.options.map((o) => o.name).join(" + ")
       : "상품 구성 정보가 준비 중입니다.";
 
-  // 상담 소요시간 / 가봉 소요시간은 API에 명확히 없으므로 availableTimes 기반 or 더미 유지
+  // 상담 소요시간 / 가봉 소요시간은 availableTimes 기반 or 더미 유지
   const consultTime =
     (data as any).availableTimes && (data as any).availableTimes.trim().length
       ? (data as any).availableTimes
@@ -304,12 +250,12 @@ export const BasicInfoContent = ({
         </section>
       </div>
 
-      {/* 배너 (디자인 유지, 추후 필요 시 데이터 연동 가능) */}
+      {/* 배너 */}
       <div className="mt-6 w-full h-[106px] bg-[#D9D9D9] flex items-center justify-center">
         <span className="text-[16px] font-semibold text-[#000000]">Banner</span>
       </div>
 
-      {/* 리뷰 요약 (간단히 데이터 있으면 연동, 없으면 기존 스타일 유지) */}
+      {/* 리뷰 요약 */}
       <div className="px-5 pt-4 pb-6">
         <section className="mt-6">
           <div className="flex items-center justify-between">

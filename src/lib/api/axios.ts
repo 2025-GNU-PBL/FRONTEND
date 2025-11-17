@@ -1,10 +1,10 @@
 import axios, {
   AxiosError,
   AxiosHeaders,
-  type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from "axios";
 import { clearTokens, getRefreshToken, setTokens } from "../auth/tokenStorage";
+import { type Notification } from "../../type/notification";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 if (!API_BASE) {
@@ -119,7 +119,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem("accessToken");
     if (token) {
       // AxiosHeaders 또는 일반 객체 모두 대응
-      if (!config.headers) config.headers = {};
+      if (!config.headers) config.headers = new AxiosHeaders();
       const headers =
         config.headers instanceof AxiosHeaders
           ? (config.headers as AxiosHeaders)
@@ -222,6 +222,10 @@ function normalizeReject(e: AxiosError<any>) {
   const data = (e.response?.data ?? {}) as any;
   if (data?.message) message = String(data.message);
   return Promise.reject(new Error(message));
+}
+
+export function getAllNotifications() {
+  return api.get<Notification[]>("/api/v1/notification");
 }
 
 export default api;

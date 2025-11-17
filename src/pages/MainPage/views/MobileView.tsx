@@ -8,6 +8,7 @@ import type { Variants } from "framer-motion";
 import api from "../../../lib/api/axios";
 import type { Product } from "../../../type/product";
 import { useAppSelector } from "../../../store/hooks";
+import { getUnreadNotificationCount } from "../../../lib/api/notification";
 
 // ===== 타입 선언 =====
 type CategoryKey = "hall" | "studio" | "dress" | "makeup";
@@ -73,7 +74,7 @@ const ENDPOINT_BY_CATEGORY: Record<CategoryKey, string> = {
   makeup: "/api/v1/makeup/filter",
 };
 
-// ✅ 카테고리별 상세 페이지 경로 매핑
+// 상세 페이지 매핑
 const DETAIL_PATH_BY_CATEGORY: Record<
   CategoryKey,
   (id: number | string) => string
@@ -96,6 +97,36 @@ export default function MobileView({
 }: Props) {
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector((s) => s.user.isAuth);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [cartCount, setCartCount] = useState<number>(0); // 장바구니 상품 개수 상태 추가
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const fetchUnreadCount = async () => {
+        try {
+          const count = await getUnreadNotificationCount();
+          setUnreadCount(count);
+        } catch (error) {
+          console.error("Failed to fetch unread notification count:", error);
+        }
+      };
+
+      fetchUnreadCount();
+
+      const fetchCartCount = async () => {
+        try {
+          const response = await api.get<number>("/api/v1/cart/count");
+          setCartCount(response.data);
+        } catch (error) {
+          console.error(
+            "Failed to fetch cart count (MainPage MobileView):",
+            error
+          );
+        }
+      };
+      fetchCartCount();
+    }
+  }, [isAuthenticated]);
 
   // ====== 무한 스크롤 상태 ======
   const [items, setItems] = useState<Product[]>(products ?? []);
@@ -112,7 +143,6 @@ export default function MobileView({
   const [errorMore, setErrorMore] = useState<string | null>(null);
   const [reachedEnd, setReachedEnd] = useState<boolean>(false);
 
-  // 카테고리/초기 데이터 변경 시 초기화
   useEffect(() => {
     setItems(products ?? []);
     setPageNumber((products?.length ?? 0) > 0 ? 1 : 0);
@@ -121,7 +151,6 @@ export default function MobileView({
     setReachedEnd(false);
   }, [active, products, pageMeta]);
 
-  // 다음 페이지 여부 판단
   const hasNext = useMemo(() => {
     if (pageMeta?.totalPages && pageMeta?.number !== undefined) {
       const currentByMetaOneBase =
@@ -182,7 +211,6 @@ export default function MobileView({
     }
   }, [active, hasNext, loadingMore, pageNumber, pageSize]);
 
-  // IntersectionObserver로 가로 끝에서 추가 로드
   useEffect(() => {
     const rootEl = listRef.current;
     const targetEl = sentinelRef.current;
@@ -191,9 +219,7 @@ export default function MobileView({
     const observer = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
-          if (e.isIntersecting) {
-            loadNextPage();
-          }
+          if (e.isIntersecting) loadNextPage();
         }
       },
       {
@@ -207,15 +233,12 @@ export default function MobileView({
     return () => observer.disconnect();
   }, [loadNextPage, items.length, active]);
 
-  // 컨테이너가 넓어서 스크롤 안 생기면 자동 추가 로드
   useEffect(() => {
     const rootEl = listRef.current;
     if (!rootEl) return;
     const needsMore =
       rootEl.scrollWidth <= rootEl.clientWidth && hasNext && !loadingMore;
-    if (needsMore) {
-      loadNextPage();
-    }
+    if (needsMore) loadNextPage();
   }, [items, hasNext, loadingMore, loadNextPage]);
 
   const icons = [
@@ -244,30 +267,36 @@ export default function MobileView({
         <div className="flex gap-3">
           {isAuthenticated && (
             <motion.button
-              className="flex items-center justify-center hover:opacity-80 active:scale-95"
-              onClick={() => {
-                navigate("/notification");
-              }}
+              className="relative flex items-center justify-center hover:opacity-80 active:scale-95"
+              onClick={() => navigate("/notification")}
               whileTap={{ scale: 0.94 }}
             >
               <Icon
                 icon="solar:bell-linear"
                 className="w-6 h-6 text-black/80"
               />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </motion.button>
           )}
           {isAuthenticated && (
             <motion.button
-              className="flex items-center justify-center hover:opacity-80 active:scale-95"
-              onClick={() => {
-                navigate("/cart");
-              }}
+              className="relative flex items-center justify-center hover:opacity-80 active:scale-95"
+              onClick={() => navigate("/cart")}
               whileTap={{ scale: 0.94 }}
             >
               <Icon
                 icon="solar:cart-large-minimalistic-linear"
                 className="w-6 h-6 text-black/80"
               />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
             </motion.button>
           )}
           <motion.button
@@ -375,7 +404,7 @@ export default function MobileView({
           })}
         </motion.div>
 
-        {/* 카테고리 상품 리스트 (가로 스크롤) */}
+        {/* 가로 리스트 */}
         <div className="-mx-5 px-5">
           <motion.div
             key={active}
@@ -389,7 +418,8 @@ export default function MobileView({
             }}
           >
             {items.map((p) => {
-              const thumb = p.thumbnail || "/images/placeholder.png";
+              const thumb =
+                p.thumbnail && p.thumbnail.trim() !== "" ? p.thumbnail : null;
               const rating =
                 typeof p.starCount === "number"
                   ? Number(p.starCount).toFixed(1)
@@ -398,7 +428,7 @@ export default function MobileView({
                 ? p.address.split(" ").slice(0, 2).join(" ")
                 : "";
 
-              // ✅ 현재 활성 카테고리에 따라 상세 경로 결정
+              // 현재 활성 카테고리에 따라 상세 경로 결정
               const detailPath =
                 DETAIL_PATH_BY_CATEGORY[active]?.(p.id) ?? `/wedding/${p.id}`;
 
@@ -414,17 +444,21 @@ export default function MobileView({
                   onClick={() => navigate(detailPath)}
                 >
                   <div className="w-full h-[144px] bg-[#F3F4F5]">
-                    <img
-                      src={thumb}
-                      alt={p.name}
-                      className="h-full w-full object-cover rounded-[16px]"
-                      onError={(e) => {
-                        const t = e.currentTarget as HTMLImageElement;
-                        if (t.src !== "/images/placeholder.png") {
-                          t.src = "/images/placeholder.png";
-                        }
-                      }}
-                    />
+                    {thumb ? (
+                      <img
+                        src={thumb}
+                        alt={p.name}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none"; // 에러나면 숨김
+                        }}
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-xs text-[#B0B0B0]">
+                        이미지 없음
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-3">
@@ -447,16 +481,11 @@ export default function MobileView({
               );
             })}
 
-            {/* sentinel */}
-            <div
-              ref={sentinelRef}
-              className="flex-none w-px h-[1px]"
-              aria-hidden
-            />
+            <div ref={sentinelRef} className="flex-none w-px h-[1px]" />
           </motion.div>
         </div>
 
-        {/* 로딩/에러/끝 표시 */}
+        {/* 로딩/에러/끝 */}
         <div className="relative">
           {loadingMore && (
             <div className="mt-3 inline-flex items-center gap-2 rounded bg-black text-white text-xs px-2 py-1">
@@ -478,10 +507,11 @@ export default function MobileView({
           )}
         </div>
 
-        {/* 할인 배너 */}
+        {/* 할인 배너 — ★ 여기만 수정 ★ */}
         <motion.div
           variants={fadeUp}
-          className="text-white flex items-center justify-between mt-3 p-4 rounded-[16px] bg-[#A06CFF] hover:outline focus-within:outline hover:outline-blue-500 focus-within:outline-gray-600"
+          onClick={() => navigate("/event")}
+          className="text-white flex items-center justify-between mt-3 p-4 rounded-[16px] bg-[#A06CFF] hover:outline focus-within:outline hover:outline-blue-500 focus-within:outline-gray-600 cursor-pointer"
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
         >
@@ -545,7 +575,7 @@ export default function MobileView({
         </div>
       </div>
 
-      {/* 왼쪽 슬라이드 메뉴 */}
+      {/* 사이드 메뉴 */}
       <SideMenu isOpen={isMenuOpen} onClose={closeMenu} />
     </motion.div>
   );

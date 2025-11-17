@@ -1,12 +1,47 @@
 // /sections/ResultsWeb.tsx
 import { Icon } from "@iconify/react";
-import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
-import { koreanFuzzyMatch } from "../../../utils/koreanSearch";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import api from "../../../lib/api/axios";
+import ProductCard, { type CardProduct } from "../../../components/ProductCard";
+import type { SortOption } from "../../../components/SortBottomSheet";
 
 type ResultsProps = {
   /** 부모에서 넘기면 이 값을 우선 사용, 안 넘기면 URL ?q= 사용 */
   query?: string;
+};
+
+type PageInfo = {
+  size: number;
+  number: number;
+  totalElements: number;
+  totalPages: number;
+};
+
+type Tag = {
+  id: number;
+  tagName: string;
+};
+
+type SearchItem = {
+  id: number | string;
+  name: string;
+  brandName?: string;
+  price: number | string;
+  thumbnailUrl?: string | null;
+  thumbnail?: string | null;
+  viewCount?: number | string;
+  isWished?: boolean;
+  badges?: string[];
+  tags?: Tag[];
+  category?: string; // "WEDDING_HALL" | "DRESS" | "MAKEUP" | "STUDIO" 등
+  rating?: number;
+  starCount?: number;
+};
+
+type SearchResponse = {
+  content: SearchItem[];
+  page: PageInfo;
 };
 
 type Card = {
@@ -14,170 +49,329 @@ type Card = {
   img: string;
   brand: string;
   title: string;
-  price: string;
-  views: string;
-  badges?: { label: string; bg: string; color: string }[];
+  price: number;
   heart?: boolean;
+  category?: string;
+  rating: number;
 };
 
-const RAW_ITEMS: Card[] = [
-  {
-    id: "A",
-    img: "/images/placeholder.png",
-    brand: "루이즈블랑",
-    title: "[촬영] 드레스 3벌",
-    price: "300,000원",
-    views: "1,234명이 봤어요",
-    badges: [
-      { label: "BEST", bg: "#EFEBFF", color: "#803BFF" },
-      { label: "신상", bg: "#FDECFF", color: "#FF2D9E" },
-    ],
-    heart: true,
-  },
-  {
-    id: "B",
-    img: "/images/placeholder.png",
-    brand: "루이즈블랑",
-    title: "[본식] 드레스 2벌",
-    price: "480,000원",
-    views: "2,001명이 봤어요",
-    badges: [{ label: "BEST", bg: "#EFEBFF", color: "#803BFF" }],
-    heart: true,
-  },
-  {
-    id: "C",
-    img: "/images/placeholder.png",
-    brand: "포토바이유",
-    title: "스튜디오 2시간 대관",
-    price: "150,000원",
-    views: "856명이 봤어요",
-    heart: true,
-  },
-  {
-    id: "D",
-    img: "/images/placeholder.png",
-    brand: "메이크랩",
-    title: "메이크업 신부 베이직",
-    price: "220,000원",
-    views: "1,102명이 봤어요",
-    heart: true,
-  },
-  // 데스크톱 샘플용으로 약간 더 추가
-  {
-    id: "E",
-    img: "/images/placeholder.png",
-    brand: "라비앙로즈",
-    title: "본식 헤어/메이크업 패키지",
-    price: "350,000원",
-    views: "934명이 봤어요",
-    badges: [{ label: "BEST", bg: "#EFEBFF", color: "#803BFF" }],
-  },
-  {
-    id: "F",
-    img: "/images/placeholder.png",
-    brand: "더화이트홀",
-    title: "웨딩홀 스탠다드 패키지",
-    price: "2,900,000원",
-    views: "2,410명이 봤어요",
-  },
-];
+const PAGE_SIZE = 6;
+const DEFAULT_SORT = "LATEST";
 
 export default function ResultsWeb({ query }: ResultsProps) {
   const [sp] = useSearchParams();
-  const qFromUrl = sp.get("q")?.trim() ?? "";
-  const q = (query ?? qFromUrl).trim(); // ✅ props 우선, 없으면 URL
+  const navigate = useNavigate();
 
-  // 더미데이터 필터(초성/부분 허용). UI엔 영향 없음.
-  const items = useMemo(() => {
-    if (!q) return RAW_ITEMS;
-    return RAW_ITEMS.filter(
-      (it) => koreanFuzzyMatch(q, it.title) || koreanFuzzyMatch(q, it.brand)
+  const qFromUrl = sp.get("q")?.trim() ?? "";
+  const keyword = (query ?? qFromUrl).trim();
+
+  const [items, setItems] = useState<Card[]>([]);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [initialLoaded, setInitialLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // 정렬 상태 (모바일과 동일)
+  const [sortOption, setSortOption] = useState<SortOption>("최신순");
+
+  // 정렬 옵션 → API sortType 매핑
+  const sortParam = useMemo(() => {
+    if (sortOption === "최신순") return "LATEST";
+    if (sortOption === "인기순") return "POPULAR";
+    if (sortOption === "높은가격순") return "PRICE_DESC";
+    if (sortOption === "낮은가격순") return "PRICE_ASC";
+    return DEFAULT_SORT;
+  }, [sortOption]);
+
+  // 키워드 변경 시 상태 초기화
+  useEffect(() => {
+    if (!keyword) {
+      setItems([]);
+      setPageNumber(1);
+      setHasMore(false);
+      setTotalCount(null);
+      setInitialLoaded(false);
+      setError(null);
+      return;
+    }
+
+    setItems([]);
+    setPageNumber(1);
+    setHasMore(false);
+    setTotalCount(null);
+    setInitialLoaded(false);
+    setError(null);
+  }, [keyword]);
+
+  const mapToCard = (raw: SearchItem, index: number): Card => {
+    const id = String(raw.id ?? index);
+    const brand = raw.brandName || "브랜드명";
+    const title = raw.name || "상품명";
+
+    const priceNumber =
+      typeof raw.price === "number" ? raw.price : Number(raw.price || 0);
+
+    const img =
+      (raw.thumbnailUrl &&
+        raw.thumbnailUrl.trim().length > 0 &&
+        raw.thumbnailUrl) ||
+      (raw.thumbnail && raw.thumbnail.trim().length > 0 && raw.thumbnail) ||
+      "/images/placeholder.png";
+
+    const ratingRaw =
+      typeof raw.rating === "number"
+        ? raw.rating
+        : typeof raw.starCount === "number"
+        ? raw.starCount
+        : 0;
+
+    return {
+      id,
+      img,
+      brand,
+      title,
+      price: Number.isNaN(priceNumber) ? 0 : priceNumber,
+      heart: !!raw.isWished,
+      category: raw.category,
+      rating: Number.isNaN(ratingRaw) ? 0 : ratingRaw,
+    };
+  };
+
+  const fetchPage = useCallback(
+    async (page: number) => {
+      if (!keyword) return;
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await api.get<SearchResponse>("/api/v1/search", {
+          params: {
+            keyword,
+            sortType: sortParam,
+            pageNumber: page,
+            pageSize: PAGE_SIZE,
+          },
+        });
+
+        const data = res.data;
+        const content = Array.isArray(data.content) ? data.content : [];
+        const mapped = content.map(mapToCard);
+
+        setItems((prev) => (page === 1 ? mapped : [...prev, ...mapped]));
+
+        if (data.page && typeof data.page.totalElements === "number") {
+          setTotalCount(data.page.totalElements);
+        } else if (page === 1) {
+          setTotalCount(mapped.length);
+        }
+
+        setHasMore(content.length === PAGE_SIZE);
+        setInitialLoaded(true);
+      } catch (err) {
+        console.error(err);
+        setError("검색 결과를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [keyword, sortParam]
+  );
+
+  // 첫 페이지 및 페이지 변경 시 fetch
+  useEffect(() => {
+    if (!keyword) return;
+    fetchPage(pageNumber);
+  }, [keyword, pageNumber, fetchPage]);
+
+  // 인피니트 스크롤 옵저버
+  useEffect(() => {
+    if (!keyword) return;
+    if (!sentinelRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first.isIntersecting && !loading && hasMore && initialLoaded) {
+          setPageNumber((prev) => prev + 1);
+        }
+      },
+      {
+        root: null,
+        rootMargin: "200px",
+        threshold: 0.1,
+      }
     );
-  }, [q]);
+
+    observer.observe(sentinelRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [keyword, loading, hasMore, initialLoaded]);
+
+  const displayCount = useMemo(() => {
+    if (totalCount !== null) return totalCount;
+    return items.length;
+  }, [items.length, totalCount]);
+
+  const getDetailPath = (category: string | undefined, id: string) => {
+    switch (category) {
+      case "DRESS":
+        return `/dress/${id}`;
+      case "WEDDING_HALL":
+        return `/wedding/${id}`;
+      case "MAKEUP":
+        return `/makeup/${id}`;
+      case "STUDIO":
+        return `/studio/${id}`;
+      default:
+        return `/product/${id}`;
+    }
+  };
+
+  const handleCardClick = useCallback(
+    (id: string, category?: string) => {
+      const path = getDetailPath(category, id);
+      navigate(path);
+    },
+    [navigate]
+  );
+
+  const handleToggleLike = useCallback((id: number) => {
+    console.log("toggle like from search result (web):", id);
+  }, []);
+
+  const handleChangeSort = useCallback((opt: SortOption) => {
+    setSortOption(opt);
+    // 목록 리셋 후 1페이지부터 다시 호출
+    setItems([]);
+    setHasMore(false);
+    setTotalCount(null);
+    setPageNumber(1);
+    setInitialLoaded(false);
+    setError(null);
+  }, []);
+
+  if (!keyword) return null;
+
+  const sortButtons: { label: SortOption; icon: string }[] = [
+    { label: "최신순", icon: "solar:clock-circle-outline" },
+    { label: "인기순", icon: "tabler:flame" },
+    { label: "높은가격순", icon: "tabler:currency-won" },
+    { label: "낮은가격순", icon: "tabler:currency-won" },
+  ];
 
   return (
-    <div className="relative">
-      {/* 상단 결과 요약 + 정렬 더미 */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-[14px] text-gray-700">전체 {items.length}개</div>
+    <div className="relative w-full min-h-[400px]">
+      {/* 상단 결과 개수 & 정렬 버튼 */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="text-[14px] leading-[150%] tracking-[-0.2px] text-[#595F63]">
+          {initialLoaded && displayCount === 0 ? "" : `총 ${displayCount}개`}
+        </div>
+
         <div className="flex items-center gap-2">
-          <button className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-[#F3F4F5] text-xs text-gray-700 hover:bg-black/10">
-            <Icon icon="tabler:sort-descending" className="w-4 h-4" />
-            인기순
-          </button>
-          <button className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-[#F3F4F5] text-xs text-gray-700 hover:bg-black/10">
-            <Icon icon="tabler:currency-won" className="w-4 h-4" />
-            가격낮은순
-          </button>
-          <button className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-[#F3F4F5] text-xs text-gray-700 hover:bg-black/10">
-            <Icon icon="tabler:currency-won" className="w-4 h-4 rotate-180" />
-            가격높은순
-          </button>
-        </div>
-      </div>
+          {sortButtons.map((btn) => {
+            const active = sortOption === btn.label;
+            const isPriceDown = btn.label === "낮은가격순";
 
-      {/* 카드 그리드 (데스크톱 3~4열) */}
-      <div className="grid gap-6 grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-        {items.map((it) => {
-          const hasBadges = !!it.badges?.length;
-          return (
-            <div
-              key={it.id}
-              className="group flex flex-col rounded-xl border border-black/5 overflow-hidden hover:shadow-sm transition-shadow bg-white"
-            >
-              {/* 썸네일 */}
-              <div className="relative w-full aspect-[4/3] bg-[#F3F4F5] overflow-hidden">
-                <img
-                  src={it.img}
-                  alt={`${it.brand} - ${it.title}`}
-                  className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            return (
+              <button
+                key={btn.label}
+                type="button"
+                onClick={() => handleChangeSort(btn.label)}
+                className={[
+                  "inline-flex items-center gap-1 h-8 px-3 rounded-full border text-xs transition",
+                  active
+                    ? "border-black bg-black text-white"
+                    : "border-[#D0D4DA] bg-white text-[#555B65] hover:border-black/50 hover:bg-[#F3F4F5]",
+                ].join(" ")}
+              >
+                <Icon
+                  icon={btn.icon}
+                  className={[
+                    "w-4 h-4",
+                    btn.label === "높은가격순" ? "rotate-180" : "",
+                    isPriceDown ? "" : "",
+                  ].join(" ")}
                 />
-                {it.heart && (
-                  <button
-                    aria-label="wish"
-                    className="absolute right-3 top-3 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 backdrop-blur text-white hover:bg-black/50"
-                  >
-                    <Icon icon="solar:heart-linear" className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* 텍스트 묶음 */}
-              <div className="p-4 flex flex-col gap-2">
-                <div className="text-[13px] text-gray-500">{it.brand}</div>
-                <div className="text-[15px] text-black line-clamp-2 min-h-[44px]">
-                  {it.title}
-                </div>
-
-                {hasBadges && (
-                  <div className="flex items-center gap-1 pt-1">
-                    {it.badges!.map((b, i) => (
-                      <span
-                        key={i}
-                        className="inline-flex items-center px-2 py-0.5 rounded-[4px] text-[12px] font-semibold"
-                        style={{ background: b.bg, color: b.color }}
-                      >
-                        {b.label}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="pt-1 text-[18px] font-semibold text-black">
-                  {it.price}
-                </div>
-                <div className="text-[12px] text-gray-500">{it.views}</div>
-              </div>
-            </div>
-          );
-        })}
+                <span>{btn.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* 검색어 없을 때 가이드 */}
-      {!q && (
-        <div className="mt-10 rounded-xl border border-dashed border-gray-200 p-6 text-center text-gray-500">
-          원하는 키워드를 입력하거나 좌측 필터를 사용해 보세요.
-        </div>
+      {/* 에러 메시지 */}
+      {error && <div className="mb-4 text-[13px] text-red-500">{error}</div>}
+
+      {/* 카드 그리드 - ProductCard 재사용 (데스크톱 레이아웃) */}
+      {!error && (
+        <>
+          <div className="grid gap-6 grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+            {items.map((it) => {
+              const product: CardProduct = {
+                id: Number(it.id),
+                name: it.title,
+                ownerName: it.brand,
+                price: it.price,
+                thumbnail: it.img,
+                starCount: it.rating ?? 0,
+              };
+
+              return (
+                <ProductCard
+                  key={`p-${product.id}`}
+                  product={product}
+                  liked={it.heart ?? false}
+                  onToggleLike={handleToggleLike}
+                  onClick={() =>
+                    handleCardClick(String(product.id), it.category)
+                  }
+                />
+              );
+            })}
+
+            {/* 로딩 스켈레톤 (첫 로딩 시) */}
+            {loading &&
+              items.length === 0 &&
+              Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={`skeleton-${i}`}
+                  className="animate-pulse w-full flex flex-col gap-3"
+                >
+                  <div className="w-full aspect-[4/3] rounded-[12px] bg-gray-100" />
+                  <div className="h-3 w-2/5 rounded bg-gray-100" />
+                  <div className="h-3 w-4/5 rounded bg-gray-100" />
+                  <div className="h-4 w-1/2 rounded bg-gray-100" />
+                </div>
+              ))}
+          </div>
+
+          {/* 인피니트 스크롤 sentinel */}
+          <div ref={sentinelRef} className="w-full h-4" />
+
+          {loading && items.length > 0 && (
+            <div className="py-4 text-center">
+              <p className="text-[12px] text-[#595F63]">불러오는 중…</p>
+            </div>
+          )}
+
+          {!loading && !hasMore && items.length > 0 && (
+            <div className="py-4 text-center">
+              <p className="text-[12px] text-[#999999]">마지막 상품입니다.</p>
+            </div>
+          )}
+
+          {initialLoaded && !loading && items.length === 0 && !error && (
+            <div className="mt-10 rounded-xl border border-dashed border-gray-200 p-6 text-center text-[#8B9199] text-[13px]">
+              검색 조건에 맞는 상품이 없습니다.
+            </div>
+          )}
+        </>
       )}
     </div>
   );

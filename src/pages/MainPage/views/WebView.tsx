@@ -1,5 +1,6 @@
 // src/pages/MainPage/views/WebView.tsx
 import { Icon } from "@iconify/react";
+import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SideMenu from "../../../components/SideMenu";
@@ -36,7 +37,6 @@ const PRIMARY_COLOR = "bg-[#9370DB]";
 const PRIMARY_COLOR_TEXT = "text-[#7B61D1]";
 const CTA_DARK_BG = "bg-slate-900";
 const ACCENT_COLOR_HOVER = "hover:bg-[#F2EEFB]";
-const PLACEHOLDER = "/images/placeholder.png";
 
 // 카테고리별 엔드포인트
 const ENDPOINT_BY_CATEGORY: Record<CategoryKey, string> = {
@@ -44,6 +44,17 @@ const ENDPOINT_BY_CATEGORY: Record<CategoryKey, string> = {
   studio: "/api/v1/studio/filter",
   dress: "/api/v1/dress/filter",
   makeup: "/api/v1/makeup/filter",
+};
+
+// ✅ 카테고리별 상세 페이지 경로 매핑 (모바일과 동일하게)
+const DETAIL_PATH_BY_CATEGORY: Record<
+  CategoryKey,
+  (id: number | string) => string
+> = {
+  hall: (id) => `/wedding/${id}`,
+  studio: (id) => `/studio/${id}`,
+  dress: (id) => `/dress/${id}`,
+  makeup: (id) => `/makeup/${id}`,
 };
 
 // 서버 규격: pageNumber(1-base), pageSize(기본 6)
@@ -309,15 +320,22 @@ export default function WebView({
               }
             >
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-3">
-                {items.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    onClick={() => navigate(`/product/${p.id}`)}
-                    formatPrice={formatPrice}
-                    shortAddress={shortAddress}
-                  />
-                ))}
+                {items.map((p) => {
+                  // ✅ 현재 활성 카테고리에 따라 상세 경로 결정 (모바일과 동일)
+                  const detailPath =
+                    DETAIL_PATH_BY_CATEGORY[active]?.(p.id) ??
+                    `/wedding/${p.id}`;
+
+                  return (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      onClick={() => navigate(detailPath)}
+                      formatPrice={formatPrice}
+                      shortAddress={shortAddress}
+                    />
+                  );
+                })}
               </div>
 
               {/* 무한 스크롤 sentinel */}
@@ -359,7 +377,7 @@ export default function WebView({
           <aside className="col-span-12 lg:col-span-4">
             <button
               className={`w-full rounded-2xl ${PRIMARY_COLOR} p-5 text-white shadow-md transition duration-300 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]`}
-              onClick={() => navigate("/card-discount")}
+              onClick={() => navigate("/event")}
             >
               <div className="flex items-center justify-between text-left">
                 <div className="flex items-center">
@@ -422,7 +440,8 @@ export default function WebView({
                       alt={t.title}
                       className="h-[72px] w-[72px] shrink-0 rounded-xl object-cover shadow-sm"
                       onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
+                        (e.currentTarget as HTMLImageElement).style.display =
+                          "none";
                       }}
                     />
                     <div className="ml-4">
@@ -460,10 +479,11 @@ function ProductCard({
   formatPrice: (n?: number) => string | null;
   shortAddress: (s?: string) => string;
 }) {
-  const imgSrc =
-    product.thumbnail && product.thumbnail.trim()
+  const thumb =
+    product.thumbnail && product.thumbnail.trim() !== ""
       ? product.thumbnail
-      : PLACEHOLDER;
+      : null;
+
   const priceText = formatPrice(product.price);
   const addrText = shortAddress(product.address);
   const tags =
@@ -477,19 +497,27 @@ function ProductCard({
       onClick={onClick}
     >
       {/* 이미지 영역 */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden">
-        <img
-          src={imgSrc}
-          alt={product.name || "상품 이미지"}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
-          loading="lazy"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
-          }}
-        />
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F3F4F5]">
+        {thumb ? (
+          <img
+            src={thumb}
+            alt={product.name || "상품 이미지"}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+            loading="lazy"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-xs text-[#B0B0B0]">
+            이미지 없음
+          </div>
+        )}
+
         {/* 그라데이션 상·하단 오버레이 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
         {/* 우상단 퀵 아이콘 */}
         <div className="absolute right-3 top-3 flex gap-1 opacity-0 transition-all duration-300 group-hover:opacity-100">
           <span className="rounded-full bg-white/90 p-2 shadow hover:bg-white">
