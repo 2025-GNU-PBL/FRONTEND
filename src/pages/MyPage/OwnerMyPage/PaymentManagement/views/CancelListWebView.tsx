@@ -20,6 +20,7 @@ function ensureOwner(userData: UserData | null): OwnerData | null {
 /** 결제 취소 요청 리스트 API 응답 아이템 타입 */
 interface CancelPaymentItem {
   orderCode: string;
+  paymentKey: string; // 취소 상세 페이지로 넘길 paymentKey
   shopName: string;
   productName: string;
   status: ApiPaymentStatus;
@@ -31,6 +32,7 @@ interface CancelPaymentItem {
 const MOCK_ITEMS: CancelPaymentItem[] = [
   {
     orderCode: "ORD-20251116-0001",
+    paymentKey: "pay_mock_1",
     shopName: "제이헤어라이프스타",
     productName: "[본점] 신부님 헤어메이크업 (주중형)",
     status: "CANCEL_REQUESTED",
@@ -39,6 +41,7 @@ const MOCK_ITEMS: CancelPaymentItem[] = [
   },
   {
     orderCode: "ORD-20251115-0002",
+    paymentKey: "pay_mock_2",
     shopName: "제이헤어라이프스타",
     productName: "[본점] 신부님 헤어메이크업 (주말형)",
     status: "CANCELED",
@@ -62,20 +65,6 @@ function formatElapsedLabel(iso: string): string {
   if (diffMinutes < 60) return `${diffMinutes}분 전`;
   if (diffHours < 24) return `${diffHours}시간 전`;
   return `${diffDays}일 전`;
-}
-
-/** "2025.11.16 18:20" 형태로 변환 */
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const date = String(d.getDate()).padStart(2, "0");
-  const hours = String(d.getHours()).padStart(2, "0");
-  const minutes = String(d.getMinutes()).padStart(2, "0");
-
-  return `${year}.${month}.${date} ${hours}:${minutes}`;
 }
 
 /** 웹용 공용 섹션 카드 */
@@ -122,41 +111,7 @@ function SectionCard({
   );
 }
 
-/** 취소 상태 뱃지 */
-function CancelStatusBadge({ status }: { status: ApiPaymentStatus }) {
-  if (status === "CANCEL_REQUESTED") {
-    return (
-      <span className="inline-flex items-center rounded-full bg-[#FFF1F0] px-2 py-0.5 text-[11px] font-medium text-[#F04438]">
-        승인 요청
-      </span>
-    );
-  }
-
-  if (status === "CANCELED") {
-    return (
-      <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
-        취소 완료
-      </span>
-    );
-  }
-
-  if (status === "FAILED") {
-    return (
-      <span className="inline-flex items-center rounded-full bg-[#FEF0C7] px-2 py-0.5 text-[11px] font-medium text-[#B54708]">
-        실패
-      </span>
-    );
-  }
-
-  // DONE 등 기타 상태
-  return (
-    <span className="inline-flex items-center rounded-full bg-[#E5F0FF] px-2 py-0.5 text-[11px] font-medium text-[#4170FF]">
-      완료
-    </span>
-  );
-}
-
-/** 사장(OWNER) 마이페이지 - 취소 내역 (Web) */
+/** 사장(OWNER) 마이페이지 - 취소 내역 (Web, 모바일 뷰와 동작/구조 맞춤) */
 export default function WebView() {
   const nav = useNavigate();
   const rawUserData = useAppSelector((state) => state.user.userData);
@@ -179,7 +134,6 @@ export default function WebView() {
 
         const data = Array.isArray(res.data) ? res.data : [];
 
-        // API 데이터가 있으면 그대로, 없으면 더미 데이터 사용
         if (data.length > 0) {
           setItems(data);
         } else {
@@ -193,8 +147,7 @@ export default function WebView() {
           "[취소 내역 웹] API 호출 오류, 더미 데이터로 대체:",
           error
         );
-        // 에러 메시지는 UI 확인 위해 숨기고, 더미 데이터로 대체
-        setErrorMsg(null);
+        setErrorMsg("취소 내역을 불러오는 중 오류가 발생했습니다.");
         setItems(MOCK_ITEMS);
       } finally {
         setIsLoading(false);
@@ -203,6 +156,16 @@ export default function WebView() {
 
     fetchCancelRequests();
   }, []);
+
+  /** 카드 클릭 → 취소 상세 페이지로 이동 (paymentKey 전달) */
+  const handleCardClick = (item: CancelPaymentItem) => {
+    if (item.status !== "CANCEL_REQUESTED") return; // 요청 상태일 때만 이동 (모바일과 동일)
+    nav(
+      `/my-page/owner/payments/cancel/detail?paymentKey=${encodeURIComponent(
+        item.paymentKey
+      )}`
+    );
+  };
 
   // 비로그인 / OWNER 아님
   if (!owner) {
@@ -243,7 +206,7 @@ export default function WebView() {
               <h1 className="text-[24px] font-semibold tracking-[-0.4px] text-gray-900">
                 취소 내역
               </h1>
-              <p className="mt-1 text-sm text-gray-500 tracking-[-0.2px]">
+              <p className="mt-1 text-sm tracking-[-0.2px] text-gray-500">
                 {displayStoreName}의 결제 취소 요청 내역을 확인할 수 있습니다.
               </p>
             </div>
@@ -254,18 +217,6 @@ export default function WebView() {
             title="결제 취소 요청 내역"
             subtitle="승인 대기 중인 취소 요청과 완료된 취소 내역을 한 번에 확인해 보세요."
             icon="solar:bell-bing-bold-duotone"
-            rightSlot={
-              <button
-                type="button"
-                className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
-              >
-                <span>전체</span>
-                <Icon
-                  icon="solar:alt-arrow-down-linear"
-                  className="h-3.5 w-3.5 text-gray-400"
-                />
-              </button>
-            }
           >
             {/* 로딩 / 에러 / 리스트 */}
             {isLoading && (
@@ -275,100 +226,84 @@ export default function WebView() {
             )}
 
             {errorMsg && !isLoading && (
-              <div className="py-10 text-center text-sm text-red-500">
+              <div className="py-2 text-center text-xs text-red-500">
                 {errorMsg}
               </div>
             )}
 
-            {!isLoading && !errorMsg && (
-              <>
+            {!isLoading && (
+              <div className="mt-4 flex flex-col gap-3">
                 {items.length === 0 ? (
                   <div className="py-10 text-center text-sm text-gray-400">
                     취소 내역이 없습니다.
                   </div>
                 ) : (
-                  <div className="mt-2 overflow-hidden rounded-2xl border border-gray-100 bg-white">
-                    {/* 헤더 행 */}
-                    <div className="grid grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)_minmax(0,1.4fr)_90px] border-b border-gray-100 bg-gray-50 px-5 py-3 text-xs font-medium tracking-[-0.2px] text-gray-500">
-                      <div>주문 / 상품</div>
-                      <div>취소 사유</div>
-                      <div>취소 일시</div>
-                      <div className="text-right">상태</div>
-                    </div>
+                  items.map((item) => {
+                    const elapsedLabel = formatElapsedLabel(item.canceledAt);
+                    const isUnread = item.status === "CANCEL_REQUESTED";
 
-                    {/* 데이터 행 */}
-                    {items.map((item, idx) => {
-                      const elapsedLabel = formatElapsedLabel(item.canceledAt);
-                      const dateTimeLabel = formatDateTime(item.canceledAt);
+                    return (
+                      <button
+                        key={item.orderCode}
+                        type="button"
+                        onClick={() => handleCardClick(item)}
+                        className={[
+                          "relative flex w-full items-center gap-4 rounded-2xl border border-[#F3F4F5] bg-white px-5 py-4 text-left shadow-[0_4px_14px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(15,23,42,0.09)]",
+                          isUnread ? "cursor-pointer" : "cursor-default",
+                        ].join(" ")}
+                      >
+                        {/* 아이콘 영역 */}
+                        <div className="relative flex h-[48px] w-[48px] flex-shrink-0 items-center justify-center rounded-full bg-[#F5F5F8]">
+                          <Icon
+                            icon="duo-icons:bell"
+                            className="h-6 w-6 text-[#803BFF]"
+                          />
+                        </div>
 
-                      return (
-                        <div
-                          key={item.orderCode}
-                          className={[
-                            "grid grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)_minmax(0,1.4fr)_90px] items-start px-5 py-4 text-sm",
-                            idx !== items.length - 1
-                              ? "border-b border-gray-50"
-                              : "",
-                          ].join(" ")}
-                        >
-                          {/* 주문 / 상품 */}
-                          <div className="flex flex-col gap-0.5 pr-4">
-                            <div className="flex items-center gap-2">
-                              <span className="rounded-md bg-[#F6F7FB] px-1.5 py-0.5 text-[11px] font-medium text-gray-700">
-                                {item.orderCode}
-                              </span>
-                            </div>
-                            <span className="mt-0.5 text-[13px] font-medium text-[#1E2124] tracking-[-0.2px]">
-                              {item.productName}
+                        {/* 텍스트 영역 */}
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-md bg-[#F6F7FB] px-1.5 py-0.5 text-[11px] font-medium text-gray-700">
+                              {item.orderCode}
                             </span>
-                            <span className="text-[12px] text-[#999999] tracking-[-0.2px]">
+                            <span className="text-[12px] text-[#999999]">
                               {item.shopName}
                             </span>
                           </div>
-
-                          {/* 취소 사유 */}
-                          <div className="pr-4">
-                            <p className="line-clamp-2 text-[13px] text-[#4B5563]">
-                              {item.cancelReason || "-"}
-                            </p>
-                          </div>
-
-                          {/* 취소 일시 + 경과 시간 */}
-                          <div className="flex flex-col items-start gap-1 pr-2">
-                            <span className="text-[13px] text-[#1E2124] tracking-[-0.2px]">
-                              {dateTimeLabel}
-                            </span>
-                            <span className="inline-flex items-center gap-1 text-[12px] text-[#9CA3AF]">
-                              <Icon
-                                icon="solar:clock-circle-bold-duotone"
-                                className="h-3.5 w-3.5"
-                              />
-                              {elapsedLabel}
-                            </span>
-                          </div>
-
-                          {/* 상태 뱃지 */}
-                          <div className="flex justify-end">
-                            <CancelStatusBadge status={item.status} />
+                          <p className="mt-1 line-clamp-1 text-[14px] font-semibold leading-[21px] tracking-[-0.1px] text-black/80">
+                            {item.productName}
+                          </p>
+                          <p className="mt-0.5 text-[13px] text-[#4B5563] line-clamp-1">
+                            {item.cancelReason}
+                          </p>
+                          <div className="mt-1 flex items-center gap-2 text-[12px] text-[#999999]">
+                            <Icon
+                              icon="solar:clock-circle-bold-duotone"
+                              className="h-3.5 w-3.5"
+                            />
+                            <span>{elapsedLabel}</span>
+                            {isUnread && (
+                              <span className="rounded-full bg-[#FFF1F0] px-2 py-0.5 text-[11px] font-medium text-[#F04438]">
+                                승인 요청
+                              </span>
+                            )}
+                            {item.status === "CANCELED" && (
+                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                                취소 완료
+                              </span>
+                            )}
                           </div>
                         </div>
-                      );
-                    })}
 
-                    {/* 리스트 하단 안내 */}
-                    <div className="flex items-center gap-1 bg-gray-50 px-5 py-3 text-[11px] text-gray-400">
-                      <Icon
-                        icon="solar:info-circle-bold"
-                        className="h-3.5 w-3.5"
-                      />
-                      <span>
-                        승인 대기 중인 요청은 &ldquo;승인 요청&ldquo;으로
-                        표시되며, 처리 후 상태가 변경됩니다.
-                      </span>
-                    </div>
-                  </div>
+                        {/* 읽지 않은 알림 빨간 점 */}
+                        {isUnread && (
+                          <span className="absolute right-[14px] top-[12px] h-2 w-2 rounded-full bg-[#F11F2F]" />
+                        )}
+                      </button>
+                    );
+                  })
                 )}
-              </>
+              </div>
             )}
           </SectionCard>
         </div>

@@ -195,15 +195,6 @@ export default function WebView() {
                 주문번호 {payment?.orderCode ?? "-"}
               </p>
             </div>
-
-            <button
-              type="button"
-              onClick={() => nav(-1)}
-              className="hidden md:inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
-            >
-              <Icon icon="solar:arrow-left-linear" className="w-4 h-4" />
-              뒤로가기
-            </button>
           </header>
 
           {/* 로딩 / 에러 */}

@@ -6,7 +6,7 @@ import { useAppSelector } from "../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../store/userSlice";
 import api from "../../../../../lib/api/axios";
 
-/** 서버 결제 상태 타입 (필요 시 확장 가능) */
+/** 서버 결제 상태 타입 */
 type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
 
 /** OWNER 유저만 허용 */
@@ -21,6 +21,7 @@ function ensureOwner(userData: UserData | null): OwnerData | null {
 /** 결제 취소 요청 리스트 API 응답 아이템 타입 */
 interface CancelPaymentItem {
   orderCode: string;
+  paymentKey: string; // 취소 상세 페이지로 넘길 paymentKey
   shopName: string;
   productName: string;
   status: ApiPaymentStatus;
@@ -32,6 +33,7 @@ interface CancelPaymentItem {
 const MOCK_ITEMS: CancelPaymentItem[] = [
   {
     orderCode: "ORD-20251116-0001",
+    paymentKey: "pay_mock_1",
     shopName: "제이헤어라이프스타",
     productName: "[본점] 신부님 헤어메이크업 (주중형)",
     status: "CANCEL_REQUESTED",
@@ -40,6 +42,7 @@ const MOCK_ITEMS: CancelPaymentItem[] = [
   },
   {
     orderCode: "ORD-20251115-0002",
+    paymentKey: "pay_mock_2",
     shopName: "제이헤어라이프스타",
     productName: "[본점] 신부님 헤어메이크업 (주말형)",
     status: "CANCELED",
@@ -109,8 +112,6 @@ export default function MobileView() {
 
         const data = Array.isArray(res.data) ? res.data : [];
 
-        // API에서 배열이 오고 length > 0 이면 그대로 사용
-        // 비어 있으면 프론트 더미 데이터로 UI 확인
         if (data.length > 0) {
           setItems(data);
         } else {
@@ -121,7 +122,7 @@ export default function MobileView() {
         }
       } catch (error) {
         console.error("[취소 내역] API 호출 오류, 더미 데이터로 대체:", error);
-        setErrorMsg(null); // 화면에는 에러 대신 더미 데이터를 보여주고 싶으면 null
+        setErrorMsg("취소 내역을 불러오는 중 오류가 발생했습니다.");
         setItems(MOCK_ITEMS);
       } finally {
         setIsLoading(false);
@@ -131,11 +132,21 @@ export default function MobileView() {
     fetchCancelRequests();
   }, []);
 
+  /** 카드 클릭 → 취소 상세 페이지로 이동 (paymentKey 전달) */
+  const handleCardClick = (item: CancelPaymentItem) => {
+    if (item.status !== "CANCEL_REQUESTED") return; // 요청 상태일 때만 이동
+    nav(
+      `/my-page/owner/payments/cancel/detail?paymentKey=${encodeURIComponent(
+        item.paymentKey
+      )}`
+    );
+  };
+
   return (
     <div className="w-full bg-white">
       {/* 디바이스 프레임 390 x 844 */}
       <div className="relative mx-auto flex h-[844px] w-[390px] flex-col bg-white">
-        {/* 헤더 (상단 노치 / 홈 인디케이터 미사용) */}
+        {/* 헤더 */}
         <div className="sticky top-0 z-20 border-b border-gray-200 bg-white">
           <MyPageHeader
             title="취소 내역"
@@ -153,7 +164,6 @@ export default function MobileView() {
             </div>
           )}
 
-          {/* 에러 메시지는 더미 데이터로 대체할 거라면 굳이 안 보여줘도 됨 */}
           {errorMsg && !isLoading && (
             <div className="py-2 text-center text-xs text-red-500">
               {errorMsg}
@@ -172,13 +182,17 @@ export default function MobileView() {
                   const isUnread = item.status === "CANCEL_REQUESTED";
 
                   return (
-                    <div
+                    <button
                       key={item.orderCode}
-                      className="relative w-full rounded-[12px] border border-[#F6F6F6] bg-white px-5 py-5"
+                      type="button"
+                      onClick={() => handleCardClick(item)}
+                      className={[
+                        "relative w-full rounded-[12px] border border-[#F6F6F6] bg-white px-5 py-5 text-left",
+                        isUnread ? "active:bg-gray-50" : "cursor-default",
+                      ].join(" ")}
                     >
-                      {/* 카드 안쪽 레이아웃 */}
                       <div className="flex flex-row items-center gap-[18px]">
-                        {/* 아바타 영역 */}
+                        {/* 아이콘 */}
                         <div className="relative flex h-[44px] w-[44px] items-center justify-center rounded-full bg-[#F5F5F8]">
                           <Icon
                             icon="duo-icons:bell"
@@ -187,18 +201,13 @@ export default function MobileView() {
                         </div>
 
                         {/* 텍스트 영역 */}
-                        {/* ⬇️ 여기 부분 구조 변경 : 고정 높이 제거 + 두 줄로 분리 */}
                         <div className="flex w-[248px] flex-col justify-between">
-                          {/* 1줄: 주문번호 */}
                           <span className="text-[14px] font-semibold leading-[21px] tracking-[-0.1px] text-black/80">
                             [{item.orderCode}]
                           </span>
-                          {/* 2줄: 안내 문구 */}
                           <span className="mt-0.5 text-[14px] font-semibold leading-[21px] tracking-[-0.1px] text-black/80">
                             취소 승인이 요청되었어요.
                           </span>
-
-                          {/* 아래 상대 시간 */}
                           <span className="mt-1 text-[12px] font-normal leading-[18px] tracking-[-0.1px] text-[#999999]">
                             {elapsedLabel}
                           </span>
@@ -209,7 +218,7 @@ export default function MobileView() {
                       {isUnread && (
                         <span className="absolute right-[10px] top-[10px] h-2 w-2 rounded-full bg-[#F11F2F]" />
                       )}
-                    </div>
+                    </button>
                   );
                 })
               )}
