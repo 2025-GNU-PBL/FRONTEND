@@ -302,6 +302,14 @@ const App = () => {
             element={<ProductList />}
           />
           <Route
+            path="/my-page/owner/product/create"
+            element={<ProductCreate />}
+          />
+          <Route
+            path="/my-page/owner/product/edit/:id"
+            element={<ProductEdit />}
+          />
+          <Route
             path="/my-page/owner/payments"
             element={<OwnerPaymentManagementPage />}
           />
@@ -326,10 +334,6 @@ const App = () => {
           <Route
             path="/sign-up/owner/step4"
             element={<SignupOwnerCompletePage />}
-          />
-          <Route
-            path="/my-page/owner/product/create"
-            element={<ProductCreate />}
           />
         </Route>
 
