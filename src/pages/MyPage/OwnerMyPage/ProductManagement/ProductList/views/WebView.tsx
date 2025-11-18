@@ -147,14 +147,14 @@ export default function WebView() {
   };
 
   const onEdit = (id: number) => {
-    nav(`/owner/product/${id}/edit`);
+    nav(`/my-page/owner/product/edit/${id}`);
   };
 
   const onRegisterProduct = () => {
     nav("/my-page/owner/product/create");
   };
 
-  /** “쿠폰 등록” 버튼 (모바일과 동일 경로) */
+  /** “쿠폰 등록” 버튼 */
   const onRegisterCoupon = (productId: number, category: ProductCategory) => {
     nav(
       `/my-page/owner/coupons/register?productId=${productId}&category=${category}`

@@ -71,6 +71,7 @@ import CancelListPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelD
 import CancelDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
 import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentDetailPage";
 import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponListPage";
+import ProductEdit from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductEdit/ProductEdit";
 
 function Layout() {
   const location = useLocation();
@@ -296,6 +297,14 @@ const App = () => {
             element={<ProductList />}
           />
           <Route
+            path="/my-page/owner/product/create"
+            element={<ProductCreate />}
+          />
+          <Route
+            path="/my-page/owner/product/edit/:id"
+            element={<ProductEdit />}
+          />
+          <Route
             path="/my-page/owner/payments"
             element={<OwnerPaymentManagementPage />}
           />
@@ -320,10 +329,6 @@ const App = () => {
           <Route
             path="/sign-up/owner/step4"
             element={<SignupOwnerCompletePage />}
-          />
-          <Route
-            path="/my-page/owner/product/create"
-            element={<ProductCreate />}
           />
         </Route>
 

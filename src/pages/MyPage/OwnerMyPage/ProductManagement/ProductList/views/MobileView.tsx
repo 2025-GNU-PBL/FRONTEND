@@ -149,7 +149,7 @@ export default function MobileView() {
   };
 
   const onEdit = (id: number) => {
-    nav(`/owner/product/${id}/edit`);
+    nav(`/my-page/owner/product/edit/${id}`);
   };
 
   const onRegisterProduct = () => {
