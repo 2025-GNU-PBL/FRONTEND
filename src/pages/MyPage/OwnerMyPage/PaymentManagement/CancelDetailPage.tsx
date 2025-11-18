@@ -1,7 +1,7 @@
-import MobileView from "./views/ProfileMobileView";
-import WebView from "./views/ProfileWebView";
+import MobileView from "./views/CancelDetailMobileView";
+import WebView from "./views/CancelDetailWebView";
 
-export default function OwnerProfilePage() {
+export default function CancelListPage() {
   return (
     <div className="w-full bg-[#F6F7FB]">
       <div className="md:hidden">

@@ -29,6 +29,14 @@ export type OwnerApiResponse = {
   socialProvider: "KAKAO" | "NAVER" | string;
   createdAt: string;
   updatedAt: string;
+
+  // 🔽 서버 /api/v1/owner 스펙에 맞춘 추가 필드
+  bzName: string;
+  zipCode: string;
+  roadAddress: string;
+  jibunAddress: string;
+  detailAddress: string;
+  buildingName: string;
 };
 
 // CUSTOMER 응답
@@ -70,6 +78,14 @@ export type OwnerData = UserBase & {
   socialProvider: string;
   createdAt: string;
   updatedAt: string;
+
+  // 🔽 사업자 정보 / 주소 정보
+  bzName: string;
+  zipCode: string;
+  roadAddress: string;
+  jibunAddress: string;
+  detailAddress: string;
+  buildingName: string;
 };
 
 // 고객 데이터(프론트 표준)
@@ -105,6 +121,14 @@ function mapOwner(resp: OwnerApiResponse): OwnerData {
     createdAt: resp.createdAt,
     updatedAt: resp.updatedAt,
     userRole: resp.userRole,
+
+    // 🔽 추가 매핑
+    bzName: resp.bzName,
+    zipCode: resp.zipCode,
+    roadAddress: resp.roadAddress,
+    jibunAddress: resp.jibunAddress,
+    detailAddress: resp.detailAddress,
+    buildingName: resp.buildingName,
   };
 }
 

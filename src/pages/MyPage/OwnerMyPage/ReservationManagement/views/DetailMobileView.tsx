@@ -1,4 +1,3 @@
-// src/pages/Customer/Reservation/DetailMobileView.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import MyPageHeader from "../../../../../components/MyPageHeader";
@@ -28,6 +27,7 @@ type ReservationDetailStatus = "예약중" | "확정" | "취소";
 type ReservationDetail = {
   id: number;
   status: ReservationDetailStatus;
+  rawStatus: string; // 서버에서 내려온 원본 status
   date: string; // YYYY.MM.DD
   productBrand: string;
   productTitle: string;
@@ -113,15 +113,14 @@ export default function DetailMobileView() {
         const ui: ReservationDetail = {
           id: data.id,
           status: mapDetailStatus(data.status),
+          rawStatus: data.status,
           date: formatDateDot(data.reservationTime),
           productBrand: data.storeName,
           productTitle: data.productName,
           price: data.price,
-          // 썸네일 필드는 swagger에 없어서 일단 비워 둠
           thumbnailUrl: undefined,
           customerName: data.customerName,
           customerPhone: data.customerPhoneNumber,
-          // 고객 ID 자리에 무엇을 보여줄지 애매해서 이메일 사용 (필요하면 customerId.toString() 으로 교체)
           customerId: data.customerEmail || String(data.customerId),
           requestMessage: data.content || "",
         };
@@ -141,15 +140,60 @@ export default function DetailMobileView() {
   /** 가격 포맷 */
   const formatPrice = (n: number) => `${(n ?? 0).toLocaleString("ko-KR")}원`;
 
-  // 버튼 클릭 핸들러 (필요 시 실제 API 연동)
+  // 취소하기 버튼 클릭 핸들러
   const handleCancel = () => {
-    // TODO: 예약 취소 API 연동
-    console.log("취소하기 클릭");
+    if (!detail) return;
+    // 취소 내역 페이지로 라우팅
+    nav("/my-page/owner/payments/cancel");
   };
 
-  const handleApprove = () => {
-    // TODO: 예약 승인 API 연동
-    console.log("승인하기 클릭");
+  // 승인하기 버튼 클릭 핸들러
+  const handleApprove = async () => {
+    if (!detail) return;
+
+    try {
+      const config = {
+        params: {
+          accessor: accessorParam ?? {},
+        },
+      };
+
+      // PATCH /api/v1/reservation
+      const { data } = await api.patch<ReservationDetailApiResponse>(
+        "/api/v1/reservation",
+        {
+          id: detail.id,
+          status: "APPROVE",
+        },
+        config
+      );
+
+      // 응답 기준으로 상태 및 상세정보 갱신
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              id: data.id,
+              rawStatus: data.status,
+              status: mapDetailStatus(data.status),
+              date: formatDateDot(data.reservationTime),
+              productBrand: data.storeName,
+              productTitle: data.productName,
+              price: data.price,
+              customerName: data.customerName,
+              customerPhone: data.customerPhoneNumber,
+              customerId: data.customerEmail || String(data.customerId),
+              requestMessage: data.content || "",
+            }
+          : prev
+      );
+
+      // 메인 페이지로 이동
+      nav("/");
+    } catch (e) {
+      console.error("[Reservation/DetailMobileView] approve error:", e);
+      window.alert("예약 승인 중 오류가 발생했습니다.");
+    }
   };
 
   return (
@@ -163,7 +207,7 @@ export default function DetailMobileView() {
 
         {/* 콘텐츠 영역 */}
         <div className="flex-1 overflow-y-auto">
-          <div className="px-5 pt-10 pb-10">
+          <div className="px-5 pt-20 pb-10">
             {/* 로딩/에러 처리 */}
             {loading && (
               <div className="w-full h-[200px] flex items-center justify-center text-[14px] text-[#999999]">
@@ -272,7 +316,7 @@ export default function DetailMobileView() {
                 </section>
 
                 {/* 요청사항 카드 */}
-                <section className="w-full max-w-[350px] mx-auto">
+                <section className="w-full max-w-[350px] mx.auto">
                   <div className="bg-white border border-[#F3F4F5] rounded-[12px] px-4 pt-4 pb-5">
                     <div className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124] mb-4">
                       요청사항
@@ -292,24 +336,26 @@ export default function DetailMobileView() {
 
         {/* 하단 버튼 영역 - 취소하기 / 승인하기 */}
         {!loading && !error && detail && (
-          <div className="absolute bottom-[34px] left-1/2 -translate-x-1/2 w-[335px] h-[78px] px-[20px] pt-[10px] pb-[24px] flex flex-row items-center gap-[10px] z-20 rounded-b-[10px]">
-            {/* 취소하기 버튼 */}
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="w-[142px] h-[44px] flex flex-row items-center justify-center rounded-[10px] bg-white text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999]"
-            >
-              취소하기
-            </button>
+          <div className="absolute bottom-[96px] left-1/2 -translate-x-1/2 w-[350px] z-20">
+            <div className="w-full px-4 py-3 flex flex-row items-center gap-[12px]">
+              {/* 취소하기 버튼 */}
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="flex-1 h-[48px] flex flex-row items-center justify-center rounded-[12px] border border-[#E1E1E1] bg-white text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999]"
+              >
+                취소하기
+              </button>
 
-            {/* 승인하기 버튼 */}
-            <button
-              type="button"
-              onClick={handleApprove}
-              className="w-[143px] h-[44px] flex flex-row items-center justify-center rounded-[10px] bg-[#FF2233] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white"
-            >
-              승인하기
-            </button>
+              {/* 승인하기 버튼 */}
+              <button
+                type="button"
+                onClick={handleApprove}
+                className="flex-1 h-[48px] flex flex-row items-center justify-center rounded-[12px] bg-[#FF2233] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white"
+              >
+                승인하기
+              </button>
+            </div>
           </div>
         )}
       </div>

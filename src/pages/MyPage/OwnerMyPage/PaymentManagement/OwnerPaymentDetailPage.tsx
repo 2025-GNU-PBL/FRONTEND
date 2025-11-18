@@ -1,7 +1,7 @@
-import MobileView from "./views/ProfileMobileView";
-import WebView from "./views/ProfileWebView";
+import MobileView from "./views/DetailMobileView";
+import WebView from "./views/DetailWebView";
 
-export default function OwnerProfilePage() {
+export default function OwnerPaymentDetailPage() {
   return (
     <div className="w-full bg-[#F6F7FB]">
       <div className="md:hidden">
