@@ -1,5 +1,6 @@
 import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { useEffect, useState } from "react";
+import api from "../../../../lib/api/axios";
 
 // ⚠️ 여기 clientKey는 "API 개별 연동 키 > 클라이언트 키 (결제창용)"으로 교체해야 합니다.
 //    예: test_ck_... 형태 (위젯 키인 test_gck_... 쓰면 에러 납니다)
@@ -8,16 +9,63 @@ const clientKey = "test_ck_24xLea5zVAJWDaom1EBmrQAMYNwW";
 // 결제창에서도 customerKey는 필수 (결제창 초기화에 필요)
 const customerKey = "4518539793";
 
+// 서버에서 가져오는 주문 타입 (필요한 필드만 정의)
+type OrderSummary = {
+  orderId: number;
+  orderCode: string;
+  totalAmount: number;
+  status: string;
+};
+
 const WebView = () => {
   const [amount, setAmount] = useState({
     currency: "KRW" as const,
-    value: 50000,
+    value: 0,
   });
 
   const [ready, setReady] = useState(false);
   const [payment, setPayment] = useState<any | null>(null);
 
-  // 1) 결제창(payment) 인스턴스 초기화 (widgets 완전 제거)
+  const [order, setOrder] = useState<OrderSummary | null>(null);
+  const [loadingOrder, setLoadingOrder] = useState(true);
+
+  // 1) 결제 가능한 주문 가져오기 (/api/v1/orders/my)
+  useEffect(() => {
+    async function fetchOrder() {
+      try {
+        const { data } = await api.get<OrderSummary[]>("/api/v1/orders/my");
+
+        console.log("[ORDERS_MY_RESPONSE]", data);
+
+        if (!Array.isArray(data) || data.length === 0) {
+          console.error("[ORDERS_MY_ERROR]", "결제 가능한 주문이 없습니다.");
+          return;
+        }
+
+        // 우선순위: 결제 대기 중인 주문을 먼저 선택, 없으면 첫 번째 주문
+        const waitingOrder =
+          data.find((o) => o.status === "WAITING_FOR_PAYMENT") ?? data[0];
+
+        console.log("[SELECTED_ORDER_FOR_PAYMENT]", waitingOrder);
+
+        setOrder(waitingOrder);
+
+        // ✅ 토스 결제 amount는 서버에서 내려준 totalAmount 기준으로 설정
+        setAmount({
+          currency: "KRW",
+          value: waitingOrder.totalAmount,
+        });
+      } catch (error) {
+        console.error("[ORDERS_MY_REQUEST_ERROR]", error);
+      } finally {
+        setLoadingOrder(false);
+      }
+    }
+
+    fetchOrder();
+  }, []);
+
+  // 2) 결제창(payment) 인스턴스 초기화 (widgets 완전 제거)
   useEffect(() => {
     async function initPayment() {
       try {
@@ -39,24 +87,39 @@ const WebView = () => {
     initPayment();
   }, []);
 
-  // 혹시 금액 변경이 필요하면 이 함수로 상태만 바꾸면 됩니다.
+  // 금액 변경이 필요하면 이 함수로 상태만 바꾸면 됩니다.
   const updateAmount = (nextAmount: { currency: "KRW"; value: number }) => {
     setAmount(nextAmount);
   };
 
-  // 결제 요청 핸들러 (결제창 띄우기)
+  // 3) 결제 요청 핸들러 (결제창 띄우기)
   const handleRequestPayment = async () => {
-    if (!payment) return;
+    // 토스 결제 인스턴스 or 주문 정보가 없으면 실행 X
+    if (!payment || !order) {
+      console.error(
+        "[REQUEST_PAYMENT_BLOCKED]",
+        "payment 또는 order 정보가 없습니다.",
+        { paymentExists: !!payment, order }
+      );
+      return;
+    }
 
     try {
-      const orderId = generateRandomString();
+      // ✅ orderId는 서버에서 내려준 orderCode를 사용 (DB에도 동일하게 저장된 값)
+      const orderIdForToss = order.orderCode;
+
+      console.log("[REQUEST_PAYMENT_ORDER_INFO]", {
+        orderIdForToss,
+        amount,
+        order,
+      });
 
       // ✅ 결제창 방식: payment.requestPayment() 사용
       await payment.requestPayment({
         method: "CARD", // 카드/간편결제 통합결제창
-        amount, // { value, currency }
-        orderName: "토스 티셔츠 외 2건",
-        orderId,
+        amount, // { value, currency } ← 서버 totalAmount 기반
+        orderName: "주문 결제", // 필요시 orderDetails 기반으로 바꿔도 됨
+        orderId: orderIdForToss,
         customerEmail: "customer123@gmail.com",
         customerName: "김토스",
         customerMobilePhone: "01012341234",
@@ -67,9 +130,11 @@ const WebView = () => {
       // Redirect 방식이라 여기 아래 코드는 실행 안 되고, success/fail 페이지로 바로 이동함
     } catch (error) {
       // 결제창 열기 자체가 실패했을 때 (키 잘못됨, 파라미터 오류 등)
-      console.error(error);
+      console.error("[REQUEST_PAYMENT_ERROR]", error);
     }
   };
+
+  const isButtonDisabled = !ready || loadingOrder || !order;
 
   return (
     <div className="wrapper min-h-screen bg-[#F5F6FA] pt-24 pb-16 flex justify-center">
@@ -83,6 +148,11 @@ const WebView = () => {
             <p className="text-[13px] text-[#9CA3AF]">
               결제 수단을 선택하고, 약관 동의 후 결제를 진행해 주세요.
             </p>
+            {order && (
+              <p className="text-[12px] text-[#6B7280]">
+                주문번호: <span className="font-medium">{order.orderCode}</span>
+              </p>
+            )}
           </div>
           <div className="rounded-xl bg-white px-4 py-2 shadow-sm border border-[#E5E7EB] text-right">
             <span className="block text-[11px] text-[#9CA3AF]">
@@ -149,22 +219,34 @@ const WebView = () => {
           {/* 하단 안내 + 버튼 */}
           <section>
             <div className="mb-3 rounded-xl bg-[#F9FAFB] px-3 py-2 text-[11px] text-[#6B7280]">
-              <p>
-                결제하기 버튼을 누르면 토스페이먼츠 결제창으로 이동합니다. 결제
-                실패 시 다시 시도하거나 다른 수단을 선택할 수 있어요.
-              </p>
+              {loadingOrder && (
+                <p>주문 정보를 불러오는 중입니다. 잠시만 기다려 주세요.</p>
+              )}
+              {!loadingOrder && !order && (
+                <p>결제 가능한 주문이 없습니다. 주문을 먼저 생성해 주세요.</p>
+              )}
+              {!loadingOrder && order && (
+                <p>
+                  결제하기 버튼을 누르면 토스페이먼츠 결제창으로 이동합니다.
+                  결제 실패 시 다시 시도하거나 다른 수단을 선택할 수 있어요.
+                </p>
+              )}
             </div>
 
             <button
               className={`button mt-3 flex h-12 w-full items-center justify-center rounded-[999px] text-[15px] font-semibold tracking-[-0.2px] transition-transform ${
-                ready
+                !isButtonDisabled
                   ? "bg-[#2563EB] text-white hover:bg-[#1D4ED8] hover:scale-[1.01] shadow-[0_12px_30px_rgba(37,99,235,0.35)]"
                   : "bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed shadow-none"
               }`}
-              disabled={!ready}
+              disabled={isButtonDisabled}
               onClick={handleRequestPayment}
             >
-              결제하기
+              {loadingOrder
+                ? "주문 정보 불러오는 중..."
+                : !order
+                ? "결제 가능한 주문이 없습니다"
+                : "결제하기"}
             </button>
           </section>
         </div>
@@ -172,15 +254,5 @@ const WebView = () => {
     </div>
   );
 };
-
-function generateRandomString(length = 16) {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
 
 export default WebView;
