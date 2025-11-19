@@ -314,14 +314,17 @@ const MobileView: React.FC = () => {
             ? String(data.price).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
             : "";
 
-          // ✅ 백엔드 응답 필드: tag[]
-          const serverTags: string[] = Array.isArray(data.tag)
-            ? data.tag
-                .map((t: any) => t?.tagName)
+          // ✅ tags(string[]) 또는 예전 방식 tag(object[]) 모두 대응
+          const rawTags: unknown = data.tags ?? data.tag;
+          const serverTags: string[] = Array.isArray(rawTags)
+            ? rawTags
+                .map((t: any) =>
+                  typeof t === "string" ? t : t?.tagName ?? null
+                )
                 .filter((t: unknown): t is string => typeof t === "string")
             : [];
 
-          // 한글로 오면 KO_TO_EN 으로 EN 코드로 변환
+          // 한글이면 EN 코드로 변환, 이미 EN 이면 그대로 사용
           const normalizedTags: string[] = serverTags.map((tag) =>
             KO_TO_EN[tag] ? KO_TO_EN[tag] : tag
           );

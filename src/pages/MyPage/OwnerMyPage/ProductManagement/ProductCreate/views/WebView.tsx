@@ -1,6 +1,3 @@
-// === 전체 파일 리뉴얼 버전 (MobileView 로직/필드 완전 동기화) ===
-// WebView.tsx
-
 import React, { useRef } from "react";
 import { Icon } from "@iconify/react";
 import { useForm, Controller, useWatch } from "react-hook-form";
@@ -340,13 +337,13 @@ const WebView: React.FC = () => {
     : [];
 
   // ---------------------------------------------------------------------
-  // 제출
+  // 제출 (MobileView와 완전 동일 로직)
   // ---------------------------------------------------------------------
 
   const onSubmit = async (values: FormValues) => {
     const priceNumber = Number(values.price.replace(/[^\d]/g, ""));
 
-    // 공통 필수 체크 (MobileView와 동일)
+    // 공통 필수 체크
     if (
       !values.category ||
       !values.name.trim() ||
@@ -376,7 +373,7 @@ const WebView: React.FC = () => {
       }
     }
 
-    // 엔드포인트 결정 (MobileView와 동일)
+    // 엔드포인트 결정
     let endpoint = "";
     switch (values.category) {
       case "웨딩홀":
@@ -402,7 +399,8 @@ const WebView: React.FC = () => {
       address: values.address?.trim() ?? "",
       detail: values.detail.trim(),
       price: priceNumber,
-      availableTimes: values.availableTime.trim(), // DB: available_times
+      // ✅ DB 컬럼 available_times 에 매핑되는 필드
+      availableTimes: values.availableTime.trim(),
       thumbnail: values.thumbnail.trim() || undefined,
       region: values.region,
       tags: (values.tags || []).map((t) => ({ tagName: t })),
@@ -458,7 +456,7 @@ const WebView: React.FC = () => {
     }
     console.groupEnd();
 
-    values.images.forEach((img) => {
+    images.forEach((img) => {
       if (img.file) formData.append(FILE_PART_KEY, img.file, img.file.name);
     });
 

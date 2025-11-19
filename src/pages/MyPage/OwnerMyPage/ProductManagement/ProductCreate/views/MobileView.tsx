@@ -12,7 +12,7 @@ type ImageItem = { src: string; file?: File };
 type Region = "SEOUL" | "GYEONGGI" | "INCHEON" | "BUSAN";
 
 type FormValues = {
-  // 공통 (기존)
+  // 공통
   vendorName: string; // 읽기 전용
   address: string; // 읽기 전용
   category: string | null;
