@@ -1,5 +1,6 @@
-import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import api from "../../../../lib/api/axios";
 
 // ⚠️ 여기 clientKey는 "API 개별 연동 키 > 클라이언트 키 (결제창용)"으로 교체해야 합니다.
@@ -11,13 +12,15 @@ const customerKey = "4518539793";
 
 // 서버에서 가져오는 주문 타입 (필요한 필드만 정의)
 type OrderSummary = {
-  orderId: number;
+  orderId?: number; // 있어도 되고 없어도 됨 (우리는 orderCode, totalAmount만 사용)
   orderCode: string;
   totalAmount: number;
   status: string;
 };
 
 const WebView = () => {
+  const location = useLocation();
+
   const [amount, setAmount] = useState({
     currency: "KRW" as const,
     value: 0,
@@ -29,41 +32,45 @@ const WebView = () => {
   const [order, setOrder] = useState<OrderSummary | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(true);
 
-  // 1) 결제 가능한 주문 가져오기 (/api/v1/orders/my)
+  // 1) 이전 페이지에서 넘긴 orderCode 기반으로 단일 주문 조회
   useEffect(() => {
-    async function fetchOrder() {
+    async function fetchOrderByOrderCode() {
       try {
-        const { data } = await api.get<OrderSummary[]>("/api/v1/orders/my");
+        const state = location.state as { orderCode?: string } | null;
+        const selectedOrderCode = state?.orderCode;
 
-        console.log("[ORDERS_MY_RESPONSE]", data);
-
-        if (!Array.isArray(data) || data.length === 0) {
-          console.error("[ORDERS_MY_ERROR]", "결제 가능한 주문이 없습니다.");
+        if (!selectedOrderCode) {
+          console.error(
+            "[PAYMENT_PAGE_ERROR]",
+            "orderCode가 전달되지 않았습니다. 이전 단계에서 orderCode를 넘겨주세요."
+          );
+          setLoadingOrder(false);
           return;
         }
 
-        // 우선순위: 결제 대기 중인 주문을 먼저 선택, 없으면 첫 번째 주문
-        const waitingOrder =
-          data.find((o) => o.status === "WAITING_FOR_PAYMENT") ?? data[0];
+        // ✅ /api/v1/orders/{orderCode} 단건 조회
+        const { data } = await api.get<OrderSummary>(
+          `/api/v1/orders/${selectedOrderCode}`
+        );
 
-        console.log("[SELECTED_ORDER_FOR_PAYMENT]", waitingOrder);
+        console.log("[ORDER_BY_ORDER_CODE_RESPONSE]", data);
 
-        setOrder(waitingOrder);
+        setOrder(data);
 
-        // ✅ 토스 결제 amount는 서버에서 내려준 totalAmount 기준으로 설정
+        // ✅ 토스 결제 amount는 단건 주문의 totalAmount 기준으로 설정
         setAmount({
           currency: "KRW",
-          value: waitingOrder.totalAmount,
+          value: data.totalAmount,
         });
       } catch (error) {
-        console.error("[ORDERS_MY_REQUEST_ERROR]", error);
+        console.error("[ORDER_BY_ORDER_CODE_REQUEST_ERROR]", error);
       } finally {
         setLoadingOrder(false);
       }
     }
 
-    fetchOrder();
-  }, []);
+    fetchOrderByOrderCode();
+  }, [location]);
 
   // 2) 결제창(payment) 인스턴스 초기화 (widgets 완전 제거)
   useEffect(() => {
@@ -223,7 +230,10 @@ const WebView = () => {
                 <p>주문 정보를 불러오는 중입니다. 잠시만 기다려 주세요.</p>
               )}
               {!loadingOrder && !order && (
-                <p>결제 가능한 주문이 없습니다. 주문을 먼저 생성해 주세요.</p>
+                <p>
+                  결제 가능한 주문이 없습니다. 주문을 먼저 생성하거나 이전
+                  단계에서 다시 시도해 주세요.
+                </p>
               )}
               {!loadingOrder && order && (
                 <p>
