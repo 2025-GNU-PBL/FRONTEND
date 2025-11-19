@@ -5,55 +5,44 @@ import { useNavigate } from "react-router-dom";
 import { multipartApi } from "../../../../../../lib/api/multipartApi";
 import { useAppSelector } from "../../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../../store/userSlice";
+import MyPageHeader from "../../../../../../components/MyPageHeader";
 
 type ImageItem = { src: string; file?: File };
 
-type Region =
-  | "SEOUL"
-  | "GYEONGGI"
-  | "INCHEON"
-  | "BUSAN"
-  | "DAEGU"
-  | "GWANGJU"
-  | "DAEJEON"
-  | "ULSAN"
-  | "SEJONG"
-  | "GANGWON"
-  | "CHUNGBUK"
-  | "CHUNGNAM"
-  | "JEONBUK"
-  | "JEONNAM"
-  | "GYEONGBUK"
-  | "GYEONGNAM"
-  | "JEJU";
+type Region = "SEOUL" | "GYEONGGI" | "INCHEON" | "BUSAN";
 
 type FormValues = {
-  // 기존(디자인 유지)
+  // 공통 (기존)
   vendorName: string; // 읽기 전용
   address: string; // 읽기 전용
   category: string | null;
   name: string;
   price: string;
-  basicInfo: string; // 기존 UI 유지 (JSON에는 포함 X)
   detail: string;
   images: ImageItem[];
 
-  // 추가된 필드
+  // 공통 추가 필드
   availableTime: string; // 예: "09:00-11:00, 13:00-15:00"
   region: Region | "";
   ownerName: string;
-  starCount: string; // 숫자 텍스트 입력 → number 변환
+  starCount: string;
   subwayAccessible: boolean;
   diningAvailable: boolean;
-  thumbnail: string; // URL
-
-  // 태그 (백엔드 전송 형식: string[])
+  thumbnail: string;
   tags: string[];
+
+  // 웨딩홀 전용 필드
+  hallCapacity: string; // capacity
+  minGuest: string; // minGuest
+  maxGuest: string; // maxGuest
+  parkingCapacity: string; // parkingCapacity
+  cateringType: string; // cateringType
+  reservationPolicy: string; // reservationPolicy
 };
 
 const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"] as const;
 
-// ---------- 태그 그룹 정의  ----------
+// ---------- 태그 그룹 정의 ----------
 type TagOption = { ko: string; en: string };
 type TagGroup = { groupLabel: string; options: TagOption[] };
 
@@ -194,7 +183,7 @@ const JSON_PART_KEY = "request";
 
 const regions: Region[] = ["SEOUL", "GYEONGGI", "INCHEON", "BUSAN"];
 
-// OWNER 전용 유저 판별 (다른 파일과 동일한 방식)
+// OWNER 전용 유저 판별
 function ensureOwner(userData: UserData | null): OwnerData | null {
   if (!userData) return null;
   if ("bzNumber" in userData && userData.userRole === "OWNER") {
@@ -205,7 +194,7 @@ function ensureOwner(userData: UserData | null): OwnerData | null {
 
 const MobileView: React.FC = () => {
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const navigate = useNavigate(); // ✨ 2. useNavigate 훅 호출
+  const navigate = useNavigate();
 
   // Redux 의 userData에서 OWNER 정보 가져오기
   const rawUserData = useAppSelector((state) => state.user.userData);
@@ -220,7 +209,6 @@ const MobileView: React.FC = () => {
     : "";
 
   if (!owner) {
-    // OWNER 정보 없으면 콘솔만 경고하고, 폼은 비어있는 값으로 노출
     console.warn(
       "[상품 추가] OWNER 정보가 없습니다. 로그인 상태 및 권한을 확인해주세요."
     );
@@ -235,16 +223,14 @@ const MobileView: React.FC = () => {
   } = useForm<FormValues>({
     mode: "onChange",
     defaultValues: {
-      // 기존
+      // 공통
       vendorName: resolvedVendorName,
       address: resolvedAddress,
       category: null,
       name: "",
       price: "",
-      basicInfo: "",
       detail: "",
       images: [],
-      // 추가
       availableTime: "",
       region: "",
       ownerName: resolvedVendorName || "",
@@ -252,12 +238,17 @@ const MobileView: React.FC = () => {
       subwayAccessible: false,
       diningAvailable: false,
       thumbnail: "",
-      // 태그 (전송용: 영문 코드 배열)
       tags: [],
+      // 웨딩홀 전용
+      hallCapacity: "",
+      minGuest: "",
+      maxGuest: "",
+      parkingCapacity: "",
+      cateringType: "",
+      reservationPolicy: "",
     },
   });
 
-  // 기존 훅 유지
   const images = useWatch({ control, name: "images" }) || [];
   const category = useWatch({ control, name: "category" }) || null;
   const selectedTags = useWatch({ control, name: "tags" }) || [];
@@ -309,7 +300,7 @@ const MobileView: React.FC = () => {
     }
   };
 
-  // 카테고리 토글 시: 태그 초기화(선택 태그 전체 해제)
+  // 카테고리 토글 시: 태그 초기화
   const handleCategoryToggle = (
     nextCategory: (typeof categories)[number] | null
   ) => {
@@ -325,7 +316,7 @@ const MobileView: React.FC = () => {
     });
   };
 
-  // 태그 토글(칩) 클릭
+  // 태그 토글
   const toggleTag = (enCode: string) => {
     const set = new Set(selectedTags as string[]);
     if (set.has(enCode)) set.delete(enCode);
@@ -337,6 +328,7 @@ const MobileView: React.FC = () => {
   const onSubmit = async (values: FormValues) => {
     const priceNumber = Number(values.price.replace(/[^\d]/g, ""));
 
+    // 공통 필수 체크
     if (
       !values.category ||
       !values.name.trim() ||
@@ -349,6 +341,21 @@ const MobileView: React.FC = () => {
     ) {
       alert("필수 항목을 모두 입력해주세요.");
       return;
+    }
+
+    // 웨딩홀 선택 시, 웨딩홀 전용 필수 값 체크
+    if (values.category === "웨딩홀") {
+      if (
+        !values.hallCapacity.trim() ||
+        !values.minGuest.trim() ||
+        !values.maxGuest.trim() ||
+        !values.parkingCapacity.trim() ||
+        !values.cateringType.trim() ||
+        !values.reservationPolicy.trim()
+      ) {
+        alert("웨딩홀 정보 항목을 모두 입력해주세요.");
+        return;
+      }
     }
 
     // 엔드포인트 결정
@@ -371,17 +378,32 @@ const MobileView: React.FC = () => {
         return;
     }
 
-    // 전송용 JSON — tags는 string[] 평면 배열
-    const body: Record<string, unknown> = {
+    // 공통 전송용 JSON
+    const commonBody: Record<string, unknown> = {
       name: values.name.trim(),
       address: values.address?.trim() ?? "",
       detail: values.detail.trim(),
       price: priceNumber,
-      availableTime: values.availableTime.trim(),
+      availableTimes: values.availableTime.trim(),
       thumbnail: values.thumbnail.trim() || undefined,
       region: values.region,
       tags: (values.tags || []).map((t) => ({ tagName: t })),
     };
+
+    // 웨딩홀 전용 JSON
+    const hallBody: Record<string, unknown> =
+      values.category === "웨딩홀"
+        ? {
+            capacity: Number(values.hallCapacity),
+            minGuest: Number(values.minGuest),
+            maxGuest: Number(values.maxGuest),
+            parkingCapacity: Number(values.parkingCapacity),
+            cateringType: values.cateringType.trim(),
+            reservationPolicy: values.reservationPolicy.trim(),
+          }
+        : {};
+
+    const body: Record<string, unknown> = { ...commonBody, ...hallBody };
 
     const jsonBlob = new Blob([JSON.stringify(body)], {
       type: "application/json",
@@ -429,7 +451,6 @@ const MobileView: React.FC = () => {
       const res = await multipartApi.post(endpoint, formData);
       console.log("등록 성공:", res.data);
       alert("작성 완료!");
-      // 상품 등록 성공 후 경로 이동
       navigate("/my-page/owner/products/management");
     } catch (err) {
       console.error("등록 실패:", err);
@@ -509,24 +530,12 @@ const MobileView: React.FC = () => {
   return (
     <div className="w-full flex justify-center bg-white">
       <div className="relative w-[390px] min-h-screen bg-white">
-        {/* 헤더 */}
-        <header className="absolute left-0 top-0 w-[390px] h-[60px] flex items-center justify-between px-5">
-          <button
-            type="button"
-            aria-label="뒤로가기"
-            className="w-6 h-6 flex items-center justify-center"
-            // navigate(-1) 또는 window.history.back() 유지
-            onClick={() => window.history.back()}
-          >
-            <Icon icon="mdi:arrow-left" className="w-6 h-6 text-[#1E2124]" />
-          </button>
-
-          <h1 className="absolute left-1/2 -translate-x-1/2 top-[15.5px] text-[18px] leading-[29px] font-semibold tracking-[-0.2px] text-[#1E2124]">
-            상품 추가
-          </h1>
-
-          <div className="w-6 h-6" />
-        </header>
+        {/* 헤더: 커스텀 MyPageHeader 사용 */}
+        <MyPageHeader
+          title="상품 추가"
+          onBack={() => navigate(-1)}
+          showMenu={false}
+        />
 
         {/* 본문 */}
         <form
@@ -716,34 +725,17 @@ const MobileView: React.FC = () => {
               <div className="h-[120px] px-4 py-2 rounded-[8px] border border-[#D9D9D9]">
                 <textarea
                   placeholder={
-                    "상품 기본 정보에 대해 작성해주세요\nex) 상품 구성 : 촬영용 드레스 3벌 + 본식 드레스 1벌\n상담 소요 시간 : 60분  가봉 소요 시 : 90분"
+                    "상품 기본 정보에 대해 작성해주세요\nex) 상품 구성 : 촬영용 드레스 3벌 + 본식 드레스 1벌\n상담 소요 시간 : 60분  가봉 소요 시 : 90분"
                   }
                   className="w-full h-full resize-none text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
-                  {...register("basicInfo")}
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
-
-            {/* 상세 설명 */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[14px] leading-[21px] text-black">
-                상세 설명
-              </label>
-              <div className="h-[120px] px-4 py-2 rounded-[8px] border border-[#D9D9D9]">
-                <textarea
-                  placeholder={
-                    "ex) 취소 및 환불규정 > 웨딩촬영 행사일 기준 60일~31일 전 고객님의 일방적인 일정변경 또는 이용 취소 시, 위약금이 발생됩니다."
-                  }
-                  className="w-full h-full resize-none text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
-                  {...register("detail", { required: true })}
+                  {...register("detail")}
                   disabled={isSubmitting}
                 />
               </div>
             </div>
           </section>
 
-          {/* 추가 섹션 */}
+          {/* 추가 섹션 (공통) */}
           <section className="px-5 mt-8 flex flex-col gap-5">
             <h2 className="text-[16px] font-semibold text-[#1E2124]">
               추가 정보
@@ -785,7 +777,7 @@ const MobileView: React.FC = () => {
               </div>
             </div>
 
-            {/*  태그 그룹 (칩 토글, 여러 개 선택 가능) */}
+            {/* 태그 그룹 */}
             <div className="flex flex-col gap-3">
               <label className="text-[14px] leading-[21px] text-black">
                 태그 선택
@@ -846,6 +838,122 @@ const MobileView: React.FC = () => {
               )}
             </div>
           </section>
+
+          {/* ✅ 웨딩홀 전용 섹션 */}
+          {category === "웨딩홀" && (
+            <section className="px-5 mt-8 flex flex-col gap-5">
+              <h2 className="text-[16px] font-semibold text-[#1E2124]">
+                웨딩홀 정보
+              </h2>
+
+              {/* 수용 인원 */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[14px] leading-[21px] text-black">
+                  수용 인원 (capacity)
+                </label>
+                <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
+                  <input
+                    inputMode="numeric"
+                    placeholder="예: 200"
+                    className="w-full text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
+                    {...register("hallCapacity", {
+                      required: category === "웨딩홀",
+                    })}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+
+              {/* 최소 수용 인원 */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[14px] leading-[21px] text-black">
+                  최소 수용 인원 (minGuest)
+                </label>
+                <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
+                  <input
+                    inputMode="numeric"
+                    placeholder="예: 50"
+                    className="w-full text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
+                    {...register("minGuest", {
+                      required: category === "웨딩홀",
+                    })}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+
+              {/* 최대 수용 인원 */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[14px] leading-[21px] text-black">
+                  최대 수용 인원 (maxGuest)
+                </label>
+                <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
+                  <input
+                    inputMode="numeric"
+                    placeholder="예: 300"
+                    className="w-full text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
+                    {...register("maxGuest", {
+                      required: category === "웨딩홀",
+                    })}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+
+              {/* 주차 수용량 */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[14px] leading-[21px] text-black">
+                  주차 수용량 (parkingCapacity)
+                </label>
+                <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
+                  <input
+                    inputMode="numeric"
+                    placeholder="예: 100"
+                    className="w-full text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
+                    {...register("parkingCapacity", {
+                      required: category === "웨딩홀",
+                    })}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+
+              {/* 뷔페 타입 */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[14px] leading-[21px] text-black">
+                  뷔페 타입 (cateringType)
+                </label>
+                <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
+                  <input
+                    type="text"
+                    placeholder="예: 뷔페 / 테이블 / 뷔페+테이블"
+                    className="w-full text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
+                    {...register("cateringType", {
+                      required: category === "웨딩홀",
+                    })}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+
+              {/* 예약 규칙 */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[14px] leading-[21px] text-black">
+                  예약 규칙 (reservationPolicy)
+                </label>
+                <div className="h-[120px] px-4 py-2 rounded-[8px] border border-[#D9D9D9]">
+                  <textarea
+                    placeholder="예: 예약 및 취소/환불 규정을 입력해 주세요."
+                    className="w-full h-full resize-none text-[14px] leading-[21px] placeholder:text-[#D9D9D9] outline-none bg-transparent"
+                    {...register("reservationPolicy", {
+                      required: category === "웨딩홀",
+                    })}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+            </section>
+          )}
         </form>
 
         {/* 하단 버튼 */}

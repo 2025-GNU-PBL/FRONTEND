@@ -146,8 +146,8 @@ export default function WebView() {
     }
   };
 
-  const onEdit = (id: number) => {
-    nav(`/my-page/owner/product/edit/${id}`);
+  const onEdit = (category: ProductCategory, productId: number) => {
+    nav(`/my-page/owner/product/edit/${category}/${productId}`);
   };
 
   const onRegisterProduct = () => {
@@ -264,7 +264,8 @@ function ProductRow({
 }: {
   item: OwnerProduct;
   onDelete: (id: number) => void;
-  onEdit: (id: number) => void;
+  // category + productId 모두 받도록 수정
+  onEdit: (category: ProductCategory, productId: number) => void;
   onRegisterCoupon: (id: number, category: ProductCategory) => void;
 }) {
   return (
@@ -321,11 +322,11 @@ function ProductRow({
           </p>
         </div>
 
-        {/* 액션 버튼 세트 (세로) */}
+        {/* 액션 버튼 세트*/}
         <div className="flex flex-col justify-between items-end gap-2 ml-2">
           <button
             type="button"
-            onClick={() => onEdit(item.id)}
+            onClick={() => onEdit(item.category, item.id)}
             className="px-3 py-1.5 rounded-[999px] border border-[#E5E7EB] bg-white text-[12px] text-[#374151] tracking-[-0.2px] hover:bg-[#F9FAFB]"
           >
             상품 수정

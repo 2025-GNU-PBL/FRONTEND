@@ -1,5 +1,5 @@
-// === 전체 파일 리뉴얼 버전 ===
-// WebView.tsx (단일 스크롤 + 고급 패널 레이아웃)
+// === 전체 파일 리뉴얼 버전 (MobileView 로직/필드 완전 동기화) ===
+// WebView.tsx
 
 import React, { useRef } from "react";
 import { Icon } from "@iconify/react";
@@ -10,39 +10,25 @@ import { useAppSelector } from "../../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../../store/userSlice";
 
 // ---------------------------------------------------------------------
+// 타입 정의
+// ---------------------------------------------------------------------
 
 type ImageItem = { src: string; file?: File };
 
-type Region =
-  | "SEOUL"
-  | "GYEONGGI"
-  | "INCHEON"
-  | "BUSAN"
-  | "DAEGU"
-  | "GWANGJU"
-  | "DAEJEON"
-  | "ULSAN"
-  | "SEJONG"
-  | "GANGWON"
-  | "CHUNGBUK"
-  | "CHUNGNAM"
-  | "JEONBUK"
-  | "JEONNAM"
-  | "GYEONGBUK"
-  | "GYEONGNAM"
-  | "JEJU";
+type Region = "SEOUL" | "GYEONGGI" | "INCHEON" | "BUSAN";
 
 type FormValues = {
-  vendorName: string;
-  address: string;
+  // 공통
+  vendorName: string; // 읽기 전용
+  address: string; // 읽기 전용
   category: string | null;
   name: string;
   price: string;
-  basicInfo: string;
   detail: string;
   images: ImageItem[];
 
-  availableTime: string;
+  // 공통 추가 필드
+  availableTime: string; // 예: "09:00-11:00, 13:00-15:00"
   region: Region | "";
   ownerName: string;
   starCount: string;
@@ -50,10 +36,20 @@ type FormValues = {
   diningAvailable: boolean;
   thumbnail: string;
   tags: string[];
+
+  // 웨딩홀 전용 필드
+  hallCapacity: string; // capacity
+  minGuest: string; // minGuest
+  maxGuest: string; // maxGuest
+  parkingCapacity: string; // parkingCapacity
+  cateringType: string; // cateringType
+  reservationPolicy: string; // reservationPolicy
 };
 
 const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"] as const;
 
+// ---------------------------------------------------------------------
+// 태그 그룹
 // ---------------------------------------------------------------------
 
 type TagOption = { ko: string; en: string };
@@ -168,7 +164,7 @@ const TAG_GROUPS_BY_CATEGORY: Record<(typeof categories)[number], TagGroup[]> =
     메이크업: MAKEUP_TAG_GROUPS,
   };
 
-// 매핑
+// ko ↔ en 매핑
 const KO_TO_EN: Record<string, string> = [
   ...HALL_TAG_GROUPS,
   ...STUDIO_TAG_GROUPS,
@@ -179,16 +175,19 @@ const KO_TO_EN: Record<string, string> = [
   .reduce((acc, cur) => {
     acc[cur.ko] = cur.en;
     return acc;
-  }, {});
+  }, {} as Record<string, string>);
 
 const EN_TO_KO: Record<string, string> = Object.keys(KO_TO_EN).reduce(
   (acc, ko) => {
-    acc[KO_TO_EN[ko]] = ko;
+    const en = KO_TO_EN[ko];
+    acc[en] = ko;
     return acc;
   },
-  {}
+  {} as Record<string, string>
 );
 
+// ---------------------------------------------------------------------
+// 서버 전송 관련 상수
 // ---------------------------------------------------------------------
 
 const FILE_PART_KEY = "images";
@@ -196,7 +195,7 @@ const JSON_PART_KEY = "request";
 
 const regions: Region[] = ["SEOUL", "GYEONGGI", "INCHEON", "BUSAN"];
 
-// OWNER 판별
+// OWNER 전용 유저 판별
 function ensureOwner(userData: UserData | null): OwnerData | null {
   if (!userData) return null;
   if ("bzNumber" in userData && userData.userRole === "OWNER") {
@@ -206,13 +205,14 @@ function ensureOwner(userData: UserData | null): OwnerData | null {
 }
 
 // ---------------------------------------------------------------------
-// ★★★ 메인 컴포넌트 시작 (레이아웃 전체 리프레시 완료) ★★★
+// 메인 컴포넌트
 // ---------------------------------------------------------------------
 
 const WebView: React.FC = () => {
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement | null>(null);
 
+  // Redux userData에서 OWNER 정보
   const rawUserData = useAppSelector((state) => state.user.userData);
   const owner = ensureOwner(rawUserData);
 
@@ -223,6 +223,12 @@ const WebView: React.FC = () => {
       }`.trim()
     : "";
 
+  if (!owner) {
+    console.warn(
+      "[상품 추가(WebView)] OWNER 정보가 없습니다. 로그인 상태 및 권한을 확인해주세요."
+    );
+  }
+
   const {
     register,
     handleSubmit,
@@ -232,12 +238,12 @@ const WebView: React.FC = () => {
   } = useForm<FormValues>({
     mode: "onChange",
     defaultValues: {
+      // 공통
       vendorName: resolvedVendorName,
       address: resolvedAddress,
       category: null,
       name: "",
       price: "",
-      basicInfo: "",
       detail: "",
       images: [],
       availableTime: "",
@@ -248,6 +254,13 @@ const WebView: React.FC = () => {
       diningAvailable: false,
       thumbnail: "",
       tags: [],
+      // 웨딩홀 전용
+      hallCapacity: "",
+      minGuest: "",
+      maxGuest: "",
+      parkingCapacity: "",
+      cateringType: "",
+      reservationPolicy: "",
     },
   });
 
@@ -256,14 +269,15 @@ const WebView: React.FC = () => {
   const selectedTags = useWatch({ control, name: "tags" }) || [];
 
   // ---------------------------------------------------------------------
-  // 이미지 관련 핸들링
+  // 이미지 관련
   // ---------------------------------------------------------------------
 
   const handlePickFiles = () => fileRef.current?.click();
 
   const handleFiles = (files: FileList | null) => {
-    if (!files) return;
-    const list = Array.from(files);
+    const list = Array.from(files || []);
+    if (!list.length) return;
+
     const remain = Math.max(0, 10 - images.length);
     const next = list.slice(0, remain);
 
@@ -276,12 +290,12 @@ const WebView: React.FC = () => {
             reader.readAsDataURL(file);
           })
       )
-    ).then((previews) =>
+    ).then((previews) => {
       setValue("images", [...images, ...previews], {
         shouldDirty: true,
         shouldTouch: true,
-      })
-    );
+      });
+    });
   };
 
   const removeImage = (idx: number) => {
@@ -295,9 +309,18 @@ const WebView: React.FC = () => {
   };
 
   // ---------------------------------------------------------------------
+  // 카테고리/태그
+  // ---------------------------------------------------------------------
 
-  const handleCategoryToggle = (c: (typeof categories)[number] | null) => {
-    setValue("category", c, { shouldDirty: true, shouldTouch: true });
+  const handleCategoryToggle = (
+    nextCategory: (typeof categories)[number] | null
+  ) => {
+    setValue("category", nextCategory, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
+
+    // 카테고리 변경 시 태그 초기화
     setValue("tags", [], {
       shouldDirty: true,
       shouldTouch: true,
@@ -305,12 +328,16 @@ const WebView: React.FC = () => {
     });
   };
 
-  const toggleTag = (en: string) => {
-    const set = new Set(selectedTags);
-    if (set.has(en)) set.delete(en);
-    else set.add(en);
+  const toggleTag = (enCode: string) => {
+    const set = new Set(selectedTags as string[]);
+    if (set.has(enCode)) set.delete(enCode);
+    else set.add(enCode);
     setValue("tags", Array.from(set), { shouldDirty: true, shouldTouch: true });
   };
+
+  const currentTagGroups: TagGroup[] = category
+    ? TAG_GROUPS_BY_CATEGORY[category]
+    : [];
 
   // ---------------------------------------------------------------------
   // 제출
@@ -319,18 +346,37 @@ const WebView: React.FC = () => {
   const onSubmit = async (values: FormValues) => {
     const priceNumber = Number(values.price.replace(/[^\d]/g, ""));
 
+    // 공통 필수 체크 (MobileView와 동일)
     if (
       !values.category ||
-      !values.name ||
-      !values.detail ||
-      !values.availableTime ||
+      !values.name.trim() ||
+      !(priceNumber >= 0) ||
+      !values.detail.trim() ||
+      images.length < 1 ||
+      !values.availableTime.trim() ||
       !values.region ||
-      images.length === 0
+      !values.ownerName.trim()
     ) {
-      alert("필수 항목을 입력해 주세요.");
+      alert("필수 항목을 모두 입력해주세요.");
       return;
     }
 
+    // 웨딩홀 전용 필드 필수 체크
+    if (values.category === "웨딩홀") {
+      if (
+        !values.hallCapacity.trim() ||
+        !values.minGuest.trim() ||
+        !values.maxGuest.trim() ||
+        !values.parkingCapacity.trim() ||
+        !values.cateringType.trim() ||
+        !values.reservationPolicy.trim()
+      ) {
+        alert("웨딩홀 정보 항목을 모두 입력해주세요.");
+        return;
+      }
+    }
+
+    // 엔드포인트 결정 (MobileView와 동일)
     let endpoint = "";
     switch (values.category) {
       case "웨딩홀":
@@ -345,43 +391,89 @@ const WebView: React.FC = () => {
       case "메이크업":
         endpoint = "/api/v1/makeup";
         break;
+      default:
+        alert("카테고리를 선택해주세요.");
+        return;
     }
 
-    const body = {
+    // 공통 JSON
+    const commonBody: Record<string, unknown> = {
       name: values.name.trim(),
-      address: values.address.trim(),
+      address: values.address?.trim() ?? "",
       detail: values.detail.trim(),
       price: priceNumber,
-      availableTime: values.availableTime.trim(),
+      availableTimes: values.availableTime.trim(), // DB: available_times
       thumbnail: values.thumbnail.trim() || undefined,
       region: values.region,
-      tags: values.tags.map((t) => ({ tagName: t })),
+      tags: (values.tags || []).map((t) => ({ tagName: t })),
     };
 
-    const formData = new FormData();
-    formData.append(
-      JSON_PART_KEY,
-      new Blob([JSON.stringify(body)], { type: "application/json" }),
-      "request.json"
-    );
+    // 웨딩홀 전용 JSON
+    const hallBody: Record<string, unknown> =
+      values.category === "웨딩홀"
+        ? {
+            capacity: Number(values.hallCapacity),
+            minGuest: Number(values.minGuest),
+            maxGuest: Number(values.maxGuest),
+            parkingCapacity: Number(values.parkingCapacity),
+            cateringType: values.cateringType.trim(),
+            reservationPolicy: values.reservationPolicy.trim(),
+          }
+        : {};
 
-    values.images.forEach((i) => {
-      if (i.file) formData.append(FILE_PART_KEY, i.file, i.file.name);
+    const body: Record<string, unknown> = { ...commonBody, ...hallBody };
+
+    const jsonBlob = new Blob([JSON.stringify(body)], {
+      type: "application/json",
+    });
+
+    const formData = new FormData();
+    formData.append(JSON_PART_KEY, jsonBlob, "request.json");
+
+    console.groupCollapsed("[DEBUG] FormData(WebView)");
+    for (const [k, v] of formData.entries()) {
+      if (v instanceof File) {
+        console.log(
+          k,
+          `(File) name=${v.name}, type=${v.type}, size=${v.size}B`
+        );
+      } else if (v instanceof Blob) {
+        console.log(k, `(Blob) type=${v.type}`);
+      } else {
+        console.log(k, v);
+      }
+    }
+    const reqPart = formData.get("request");
+    if (reqPart instanceof Blob) {
+      try {
+        const text = await reqPart.text();
+        try {
+          console.log("request.json (parsed):", JSON.parse(text));
+        } catch {
+          console.log("request.json (raw text):", text);
+        }
+      } catch (e) {
+        console.warn("request.json 읽기 실패:", e);
+      }
+    }
+    console.groupEnd();
+
+    values.images.forEach((img) => {
+      if (img.file) formData.append(FILE_PART_KEY, img.file, img.file.name);
     });
 
     try {
-      await multipartApi.post(endpoint, formData);
-      alert("등록 완료!");
+      const res = await multipartApi.post(endpoint, formData);
+      console.log("등록 성공(WebView):", res.data);
+      alert("작성 완료!");
       navigate("/my-page/owner/products/management");
-    } catch (e) {
+    } catch (err) {
+      console.error("등록 실패(WebView):", err);
       alert("등록 중 오류가 발생했습니다.");
-      console.error(e);
     }
   };
 
   const canSubmit = isValid && !!category && images.length > 0;
-
-  const currentTagGroups = category ? TAG_GROUPS_BY_CATEGORY[category] : [];
 
   // ---------------------------------------------------------------------
   // UI 요소들 (Chip, TagGroupCard)
@@ -402,6 +494,7 @@ const WebView: React.FC = () => {
           ? "bg-[#1f2937] border-[#1f2937] text-white shadow-sm"
           : "bg-white border-[#E2E6EA] text-[#1E2124] hover:border-[#cbd5e1]",
       ].join(" ")}
+      aria-pressed={selected}
     >
       {labelKo}
     </button>
@@ -420,8 +513,8 @@ const WebView: React.FC = () => {
           </h3>
         </div>
         <span className="text-[12px] text-[#9AA1A6]">
-          {group.options.filter((o) => selectedTags.includes(o.en)).length} /{" "}
-          {group.options.length}
+          선택 {group.options.filter((o) => selectedTags.includes(o.en)).length}{" "}
+          / {group.options.length}
         </span>
       </div>
 
@@ -440,7 +533,7 @@ const WebView: React.FC = () => {
   );
 
   // ---------------------------------------------------------------------
-  // ★★★ 전체 UI 렌더링 ★★★
+  // 렌더링
   // ---------------------------------------------------------------------
 
   return (
@@ -470,7 +563,7 @@ const WebView: React.FC = () => {
             신규 상품 등록
           </h2>
           <p className="mt-2 text-[14px] text-[#6B7280]">
-            이미지, 기본 정보, 상세 설명, 태그를 입력해 웨딩 상품을 등록하세요.
+            이미지, 기본 정보, 태그를 입력해 웨딩 상품을 등록하세요.
           </p>
         </div>
 
@@ -498,24 +591,33 @@ const WebView: React.FC = () => {
               <button
                 type="button"
                 onClick={handlePickFiles}
-                disabled={images.length >= 10}
+                disabled={images.length >= 10 || isSubmitting}
                 className="w-[90px] h-[90px] shrink-0 border border-[#D1D5DB] rounded-xl bg-white hover:bg-[#F7F7FA] flex flex-col items-center justify-center text-[#9CA3AF]"
               >
                 <Icon icon="solar:camera-bold" className="w-6 h-6" />
-                <div className="mt-1 text-[12px]">{images.length}/10</div>
+                <div className="mt-1 text-[12px]">
+                  {images.length}
+                  /10
+                </div>
               </button>
 
               {images.map((it, idx) => (
                 <div
-                  key={idx}
+                  key={`${it.src}-${idx}`}
                   className="relative w-[90px] h-[90px] shrink-0 rounded-xl border border-[#E5E7EB] overflow-hidden bg-white"
                 >
-                  <img src={it.src} className="w-full h-full object-cover" />
+                  <img
+                    src={it.src}
+                    alt={`업로드 이미지 ${idx + 1}`}
+                    className="w-full h-full object-cover"
+                    draggable={false}
+                  />
                   <button
                     type="button"
                     disabled={isSubmitting}
                     onClick={() => removeImage(idx)}
                     className="absolute right-2 top-2 w-6 h-6 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center shadow"
+                    aria-label="이미지 삭제"
                   >
                     <Icon
                       icon="meteor-icons:xmark"
@@ -548,9 +650,11 @@ const WebView: React.FC = () => {
                 업체명
               </label>
               <input
+                type="text"
                 readOnly
+                aria-readonly="true"
                 {...register("vendorName")}
-                className="w-full h-[44px] px-3 rounded-lg bg-[#F6F7FB] border border-[#E8E8E8] text-[14px] text-[#4B5563]"
+                className="w-full h-[44px] px-3 rounded-lg bg-[#F6F7FB] border border-[#E8E8E8] text-[14px] text-[#4B5563] pointer-events-none select-none"
               />
             </div>
 
@@ -560,14 +664,16 @@ const WebView: React.FC = () => {
                 주소
               </label>
               <input
+                type="text"
                 readOnly
+                aria-readonly="true"
                 {...register("address")}
-                className="w-full h-[44px] px-3 rounded-lg bg-[#F6F7FB] border border-[#E8E8E8] text-[14px] text-[#4B5563]"
+                className="w-full h-[44px] px-3 rounded-lg bg-[#F6F7FB] border border-[#E8E8E8] text-[14px] text-[#4B5563] pointer-events-none select-none"
               />
             </div>
           </div>
 
-          {/* 상품 기본 정보 */}
+          {/* 기본 정보 패널 */}
           <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-6">
             <div className="text-[15px] font-semibold text-[#1E2124]">
               기본 정보
@@ -576,11 +682,11 @@ const WebView: React.FC = () => {
             {/* 카테고리 */}
             <div className="space-y-2">
               <label className="text-[14px] font-medium text-[#1E2124]">
-                카테고리
+                상품 카테고리
               </label>
               <div className="flex flex-wrap gap-2">
                 {categories.map((c) => {
-                  const selected = category === c;
+                  const selected = c === category;
                   return (
                     <button
                       key={c}
@@ -607,9 +713,11 @@ const WebView: React.FC = () => {
                 상품명
               </label>
               <input
-                {...register("name", { required: true })}
+                type="text"
                 placeholder="상품명을 입력해 주세요"
-                className="w-full h-[44px] px-3 rounded-lg border border-[#E8E8E8] bg-white text-[14px] placeholder:text-[#C1C1C1]"
+                {...register("name", { required: true })}
+                disabled={isSubmitting}
+                className="w-full h-[44px] px-3 rounded-lg border border-[#E8E8E8] bg-white text-[14px] placeholder:text-[#C1C1C1] outline-none"
               />
             </div>
 
@@ -621,60 +729,71 @@ const WebView: React.FC = () => {
               <Controller
                 control={control}
                 name="price"
-                rules={{ required: true }}
+                rules={{
+                  required: true,
+                  validate: (v) =>
+                    Number(v.replace(/[^\d]/g, "")) >= 0 &&
+                    /^\d[\d,]*$/.test(v.replace(/\s/g, "")),
+                }}
                 render={({ field: { value, onChange } }) => (
                   <input
-                    value={value}
+                    inputMode="numeric"
                     placeholder="가격을 입력해 주세요"
+                    className="w-full h-[44px] px-3 rounded-lg border border-[#E8E8E8] bg-white text-[14px] placeholder:text-[#C1C1C1] outline-none"
+                    value={value || ""}
                     onChange={(e) => onChange(formatPrice(e.target.value))}
-                    className="w-full h-[44px] px-3 rounded-lg border border-[#E8E8E8] bg-white text-[14px]"
+                    disabled={isSubmitting}
                   />
                 )}
               />
             </div>
-          </div>
 
-          {/* 상세 설명 */}
-          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-4">
-            <div className="text-[15px] font-semibold text-[#1E2124]">
-              상세 설명
-            </div>
-
-            <textarea
-              {...register("detail", { required: true })}
-              placeholder="상세 설명을 입력해 주세요"
-              className="w-full min-h-[120px] rounded-lg border border-[#E8E8E8] bg-white px-3 py-2 resize-none text-[14px]"
-            />
-          </div>
-
-          {/* 이용 가능 시간 + 지역 */}
-          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-6">
-            <div className="text-[15px] font-semibold text-[#1E2124]">
-              이용 안내
-            </div>
-
-            {/* 시간 */}
+            {/* 상품 기본 정보 */}
             <div className="space-y-1">
               <label className="text-[14px] font-medium text-[#1E2124]">
-                이용 가능 시간
+                상품 기본 정보
               </label>
               <textarea
-                {...register("availableTime", { required: true })}
+                placeholder={
+                  "상품 기본 정보에 대해 작성해주세요\nex) 상품 구성 : 촬영용 드레스 3벌 + 본식 드레스 1벌\n상담 소요 시간 : 60분  가봉 소요 시 : 90분"
+                }
+                {...register("detail")}
+                disabled={isSubmitting}
+                className="w-full min-h-[120px] px-3 py-2 rounded-lg border border-[#D9D9D9] bg-white text-[14px] resize-none outline-none placeholder:text-[#D9D9D9]"
+              />
+            </div>
+          </div>
+
+          {/* 이용 안내 (availableTime + region) */}
+          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-6">
+            <div className="text-[15px] font-semibold text-[#1E2124]">
+              추가 정보
+            </div>
+
+            {/* 이용 가능 시간 */}
+            <div className="space-y-1">
+              <label className="text-[14px] font-medium text-[#1E2124]">
+                이용 가능 시간 (availableTime)
+              </label>
+              <textarea
                 placeholder="예: 09:00-11:00, 13:00-15:00"
-                className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-[#E8E8E8] text-[14px] resize-none"
+                {...register("availableTime", { required: true })}
+                disabled={isSubmitting}
+                className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-[#D9D9D9] text-[14px] resize-none outline-none placeholder:text-[#D9D9D9]"
               />
             </div>
 
             {/* 지역 */}
             <div className="space-y-1">
               <label className="text-[14px] font-medium text-[#1E2124]">
-                지역
+                지역 (region)
               </label>
               <select
                 {...register("region", { required: true })}
-                className="w-full h-[44px] px-3 rounded-lg border border-[#E8E8E8] text-[14px] bg-white"
+                disabled={isSubmitting}
+                className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none"
               >
-                <option value="">선택해주세요</option>
+                <option value="">지역 선택</option>
                 {regions.map((r) => (
                   <option key={r} value={r}>
                     {r}
@@ -684,7 +803,7 @@ const WebView: React.FC = () => {
             </div>
           </div>
 
-          {/* 태그 */}
+          {/* 태그 패널 */}
           <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-6">
             <div className="flex items-center justify-between">
               <div className="text-[15px] font-semibold text-[#1E2124]">
@@ -705,10 +824,14 @@ const WebView: React.FC = () => {
                   <TagGroupCard key={g.groupLabel} group={g} />
                 ))}
 
+                {/* 선택된 태그 프리뷰 */}
                 <div className="rounded-xl border border-[#EEF0F2] bg-[#FAFAFC] p-3">
                   <div className="mb-2 flex items-center gap-2 text-[13px] text-[#6B7280]">
                     <Icon icon="mdi:check-circle-outline" className="w-4 h-4" />
-                    선택된 태그 ({selectedTags.length})
+                    선택된 태그
+                    <span className="ml-1 text-[#9AA1A6]">
+                      ({selectedTags.length})
+                    </span>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
@@ -720,17 +843,19 @@ const WebView: React.FC = () => {
                       selectedTags.map((en) => (
                         <span
                           key={en}
-                          className="px-3 h-8 bg-white rounded-full border border-[#E8ECF0] flex items-center gap-1 text-[12px] text-[#1E2124]"
+                          className="inline-flex items-center gap-1 px-3 h-8 rounded-full border border-[#E8ECF0] bg-[#F6F8FA] text-[#1E2124] text-[12px]"
                         >
                           {EN_TO_KO[en] || en}
                           <button
                             type="button"
+                            aria-label="태그 삭제"
                             onClick={() => toggleTag(en)}
-                            className="w-[18px] h-[18px] rounded-full flex items-center justify-center border border-[#E5E7EB] bg-[#F9FAFB]"
+                            disabled={isSubmitting}
+                            className="ml-1 w-[18px] h-[18px] flex items-center justify-center bg-white border border-[#F2F2F2] rounded-full"
                           >
                             <Icon
                               icon="meteor-icons:xmark"
-                              className="w-3 h-3 text-[#374151]"
+                              className="w-3 h-3 text-[#3C4144]"
                             />
                           </button>
                         </span>
@@ -741,6 +866,110 @@ const WebView: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* 웨딩홀 전용 섹션 */}
+          {category === "웨딩홀" && (
+            <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-6">
+              <div className="text-[15px] font-semibold text-[#1E2124]">
+                웨딩홀 정보
+              </div>
+
+              {/* 수용 인원 */}
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  수용 인원 (capacity)
+                </label>
+                <input
+                  inputMode="numeric"
+                  placeholder="예: 200"
+                  {...register("hallCapacity", {
+                    required: category === "웨딩홀",
+                  })}
+                  disabled={isSubmitting}
+                  className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none placeholder:text-[#D9D9D9]"
+                />
+              </div>
+
+              {/* 최소 수용 인원 */}
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  최소 수용 인원 (minGuest)
+                </label>
+                <input
+                  inputMode="numeric"
+                  placeholder="예: 50"
+                  {...register("minGuest", {
+                    required: category === "웨딩홀",
+                  })}
+                  disabled={isSubmitting}
+                  className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none placeholder:text-[#D9D9D9]"
+                />
+              </div>
+
+              {/* 최대 수용 인원 */}
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  최대 수용 인원 (maxGuest)
+                </label>
+                <input
+                  inputMode="numeric"
+                  placeholder="예: 300"
+                  {...register("maxGuest", {
+                    required: category === "웨딩홀",
+                  })}
+                  disabled={isSubmitting}
+                  className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none placeholder:text-[#D9D9D9]"
+                />
+              </div>
+
+              {/* 주차 수용량 */}
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  주차 수용량 (parkingCapacity)
+                </label>
+                <input
+                  inputMode="numeric"
+                  placeholder="예: 100"
+                  {...register("parkingCapacity", {
+                    required: category === "웨딩홀",
+                  })}
+                  disabled={isSubmitting}
+                  className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none placeholder:text-[#D9D9D9]"
+                />
+              </div>
+
+              {/* 뷔페 타입 */}
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  뷔페 타입 (cateringType)
+                </label>
+                <input
+                  type="text"
+                  placeholder="예: 뷔페 / 테이블 / 뷔페+테이블"
+                  {...register("cateringType", {
+                    required: category === "웨딩홀",
+                  })}
+                  disabled={isSubmitting}
+                  className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none placeholder:text-[#D9D9D9]"
+                />
+              </div>
+
+              {/* 예약 규칙 */}
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  예약 규칙 (reservationPolicy)
+                </label>
+                <textarea
+                  placeholder="예: 예약 및 취소/환불 규정을 입력해 주세요."
+                  {...register("reservationPolicy", {
+                    required: category === "웨딩홀",
+                  })}
+                  disabled={isSubmitting}
+                  className="w-full min-h-[120px] px-3 py-2 rounded-lg border border-[#D9D9D9] text-[14px] bg-white resize-none outline-none placeholder:text-[#D9D9D9]"
+                />
+              </div>
+            </div>
+          )}
 
           {/* 버튼 영역 */}
           <div className="flex justify-end gap-3">
@@ -757,7 +986,7 @@ const WebView: React.FC = () => {
               disabled={!canSubmit || isSubmitting}
               className={[
                 "h-[44px] px-6 rounded-xl text-[14px] font-semibold",
-                canSubmit && !isSubmitting
+                !isSubmitting && canSubmit
                   ? "bg-[#FF2233] text-white active:scale-95"
                   : "bg-[#EFEFF1] text-[#A8AEB2]",
               ].join(" ")}
