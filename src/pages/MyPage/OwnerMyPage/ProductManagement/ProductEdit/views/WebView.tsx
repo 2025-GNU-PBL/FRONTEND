@@ -203,7 +203,7 @@ const GET_ENDPOINT_MAP: Record<CategoryKo, string> = {
 
 const PATCH_ENDPOINT_MAP: Record<CategoryKo, string> = GET_ENDPOINT_MAP;
 
-// 🔁 리스트에서 넘어온 영어 카테고리 → 이 페이지에서 쓰는 한글 카테고리
+// 리스트에서 넘어온 영어 카테고리 → 이 페이지에서 쓰는 한글 카테고리
 const EN_CATEGORY_TO_KO: Record<string, CategoryKo> = {
   WEDDING_HALL: "웨딩홀",
   WEDDING: "웨딩홀", // 혹시 WEDDING 으로 오는 경우 대비
@@ -284,7 +284,7 @@ const WebView: React.FC = () => {
     const loadProduct = async () => {
       if (!id) return;
 
-      // ✅ URL 의 영어 categoryParam 을 한글 카테고리로 변환
+      // URL 의 영어 categoryParam 을 한글 카테고리로 변환
       const categoryKoFromParam: CategoryKo | undefined = categoryParam
         ? EN_CATEGORY_TO_KO[categoryParam]
         : undefined;
@@ -292,7 +292,7 @@ const WebView: React.FC = () => {
       let targetCategories: CategoryKo[];
 
       if (categoryKoFromParam) {
-        // ✅ 해당 카테고리 하나만 호출
+        // 해당 카테고리 하나만 호출
         targetCategories = [categoryKoFromParam];
       } else {
         // 파라미터가 없거나 매핑 실패하면, 전체 시도 (fallback)
@@ -314,10 +314,25 @@ const WebView: React.FC = () => {
             ? String(data.price).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
             : "";
 
+          // ✅ tags(string[]) 또는 예전 방식 tag(object[]) 모두 대응 (모바일과 동일)
+          const rawTags: unknown = data.tags ?? data.tag;
+          const serverTags: string[] = Array.isArray(rawTags)
+            ? rawTags
+                .map((t: any) =>
+                  typeof t === "string" ? t : t?.tagName ?? null
+                )
+                .filter((t: unknown): t is string => typeof t === "string")
+            : [];
+
+          // 한글이면 EN 코드로 변환, 이미 EN 이면 그대로 사용
+          const normalizedTags: string[] = serverTags.map((tag) =>
+            KO_TO_EN[tag] ? KO_TO_EN[tag] : tag
+          );
+
           reset({
             vendorName: resolvedVendorName,
             address: resolvedAddress,
-            category: cat, // ✅ 실제로 성공한 카테고리(한글)로 설정
+            category: cat, // 실제로 성공한 카테고리(한글)로 설정
             name: data.name ?? "",
             price: priceStr,
             detail: data.detail ?? "",
@@ -332,7 +347,7 @@ const WebView: React.FC = () => {
             subwayAccessible: false,
             diningAvailable: false,
             thumbnail: data.thumbnail ?? "",
-            tags: data.tags?.map((t: any) => t.tagName) ?? [],
+            tags: normalizedTags,
             hallCapacity: data.capacity ? String(data.capacity) : "",
             minGuest: data.minGuest ? String(data.minGuest) : "",
             maxGuest: data.maxGuest ? String(data.maxGuest) : "",
@@ -348,7 +363,7 @@ const WebView: React.FC = () => {
               })) ?? [],
           });
 
-          // ✅ 한 번 성공하면 나머지 카테고리는 호출하지 않음
+          // 한 번 성공하면 나머지 카테고리는 호출하지 않음
           break;
         } catch (e) {
           console.error("[상품 수정] 상품 로딩 실패:", e);
@@ -437,8 +452,10 @@ const WebView: React.FC = () => {
   const onSubmit = async (values: FormValues) => {
     const priceNumber = Number(values.price.replace(/[^\d]/g, ""));
 
-    // 공통 필수 체크
+    // 공통 필수 체크 (업체명 / 주소 포함)
     if (
+      !values.vendorName.trim() ||
+      !values.address.trim() ||
       !values.category ||
       !values.name.trim() ||
       !(priceNumber >= 0) ||
@@ -463,15 +480,18 @@ const WebView: React.FC = () => {
       .filter((i) => !i.file && i.id)
       .map((i) => i.id as number);
 
-    // PATCH 바디
+    // PATCH 바디 (업체명 / 주소 포함)
     const body: Record<string, unknown> = {
+      vendorName: values.vendorName.trim(),
+      address: values.address.trim(),
       name: values.name.trim(),
       detail: values.detail.trim(),
       price: priceNumber,
-      availableTime: values.availableTime.trim(),
+      availableTimes: values.availableTime.trim(),
       region: values.region,
       tags: (values.tags || []).map((t) => ({ tagName: t })),
       keepImagesIds,
+      options: [],
     };
 
     // 웨딩홀 카테고리일 때만 추가 정보 전송
@@ -581,7 +601,7 @@ const WebView: React.FC = () => {
           <MyPageHeader
             title="상품 수정"
             onBack={() => navigate(-1)}
-            showMenu
+            showMenu={false}
           />
         </div>
       </div>

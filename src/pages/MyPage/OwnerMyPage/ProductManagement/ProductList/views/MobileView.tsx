@@ -119,7 +119,7 @@ export default function MobileView() {
     [items]
   );
 
-  /** ====== 삭제 (웹뷰와 동일한 공통 API) ====== */
+  /** ====== 삭제 ====== */
   const onDelete = async (productId: number) => {
     if (!confirm("이 상품을 삭제하시겠어요?")) return;
 
