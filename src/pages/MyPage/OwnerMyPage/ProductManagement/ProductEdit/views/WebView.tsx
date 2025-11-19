@@ -476,7 +476,7 @@ const WebView: React.FC = () => {
     }
 
     // keepImagesIds (기존 이미지 유지)
-    const keepImagesIds = values.images
+    const keepImagesId = values.images
       .filter((i) => !i.file && i.id)
       .map((i) => i.id as number);
 
@@ -490,7 +490,7 @@ const WebView: React.FC = () => {
       availableTimes: values.availableTime.trim(),
       region: values.region,
       tags: (values.tags || []).map((t) => ({ tagName: t })),
-      keepImagesIds,
+      keepImagesId,
       options: [],
     };
 

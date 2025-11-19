@@ -314,7 +314,7 @@ const MobileView: React.FC = () => {
             ? String(data.price).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
             : "";
 
-          // ✅ tags(string[]) 또는 예전 방식 tag(object[]) 모두 대응
+          // tags(string[]) 또는 예전 방식 tag(object[]) 모두 대응
           const rawTags: unknown = data.tags ?? data.tag;
           const serverTags: string[] = Array.isArray(rawTags)
             ? rawTags
@@ -476,7 +476,7 @@ const MobileView: React.FC = () => {
     }
 
     // keepImagesIds (기존 이미지 유지)
-    const keepImagesIds = values.images
+    const keepImagesId = values.images
       .filter((i) => !i.file && i.id)
       .map((i) => i.id as number);
 
@@ -490,7 +490,7 @@ const MobileView: React.FC = () => {
       availableTimes: values.availableTime.trim(),
       region: values.region,
       tags: (values.tags || []).map((t) => ({ tagName: t })),
-      keepImagesIds,
+      keepImagesId,
       options: [],
     };
 
@@ -515,9 +515,25 @@ const MobileView: React.FC = () => {
       "request.json"
     );
 
-    values.images.forEach((img) => {
-      if (img.file) fd.append(FILE_PART_KEY, img.file, img.file.name);
+    values.images.forEach((img, idx) => {
+      if (img.file) {
+        console.log(`새로 업로드된 이미지 #${idx}`, img.file);
+        fd.append(FILE_PART_KEY, img.file, img.file.name);
+      } else {
+        console.log(`기존 이미지 유지 #${idx} (id=${img.id})`);
+      }
     });
+
+    // FormData 안에 뭐가 들어갔는지 한 번 더 확인
+    for (const [key, value] of fd.entries()) {
+      if (value instanceof File) {
+        console.log(
+          `FormData FILE - key: ${key}, name: ${value.name}, size: ${value.size}`
+        );
+      } else {
+        console.log(`FormData FIELD - key: ${key}, value:`, value);
+      }
+    }
 
     try {
       await multipartApi.patch(`${endpoint}/${id}`, fd);
