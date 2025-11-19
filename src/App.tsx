@@ -217,6 +217,9 @@ const App = () => {
         <Route path="/makeup/:id" element={<ProductDetailPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/checkout/coupon" element={<CouponPage />} />
+        <Route path="/checkout/payment" element={<PaymentPage />} />
+        <Route path="/success" element={<Success />} />
+        <Route path="/fail" element={<Fail />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>

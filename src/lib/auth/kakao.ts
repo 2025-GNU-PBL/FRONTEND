@@ -12,5 +12,6 @@ export const buildKakaoAuthUrl = (role: UserRole) => {
     `&client_id=${clientId}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
     `&state=${state}`
+    // `&prompt=login`
   );
 };
