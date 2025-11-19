@@ -71,13 +71,10 @@ import CancelListPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelD
 import CancelDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
 import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentDetailPage";
 import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponListPage";
-<<<<<<< HEAD
 import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import Success from "./pages/CheckoutPage/Success/Success";
 import Fail from "./pages/CheckoutPage/Fail/Fail";
-=======
 import ProductEdit from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductEdit/ProductEdit";
->>>>>>> 910d2b4df248b34d7ef6ae1fe0bbc71f6dce2e91
 
 function Layout() {
   const location = useLocation();
