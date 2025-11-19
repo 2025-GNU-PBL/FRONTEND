@@ -78,7 +78,10 @@ export default function MobileView() {
     bzNumber,
     bankAccount,
     bzName,
+    roadAddress,
+    jibunAddress,
     detailAddress,
+    buildingName,
     createdAt,
   } = owner as OwnerData & {
     bzName?: string;
@@ -89,6 +92,24 @@ export default function MobileView() {
   const displayCreatedAt = createdAt
     ? new Date(createdAt).toLocaleDateString("ko-KR")
     : "-";
+
+  // ✅ 주소 문자열 가공 (roadAddress 우선, 없으면 jibunAddress)
+  const displayBzAddress = (() => {
+    const baseAddress = roadAddress || jibunAddress || "";
+    const parts: string[] = [];
+
+    if (baseAddress) parts.push(baseAddress);
+    if (detailAddress) parts.push(detailAddress);
+    const addressStr = parts.join(" ");
+
+    if (buildingName) {
+      return addressStr
+        ? `${addressStr} (${buildingName})`
+        : `(${buildingName})`;
+    }
+
+    return addressStr;
+  })();
 
   const handleGoEdit = () => {
     nav("/my-page/owner/profile/edit");
@@ -147,7 +168,8 @@ export default function MobileView() {
             <div className="space-y-2">
               <InfoRow label="사업장명" value={bzName} />
               <InfoRow label="사업자 번호" value={bzNumber} />
-              <InfoRow label="사업장 주소" value={detailAddress} />
+              {/* ✅ 여기서 가공된 주소 사용 */}
+              <InfoRow label="사업장 주소" value={displayBzAddress} />
               <InfoRow label="사업장 메일" value={email} />
               <InfoRow label="정산 계좌" value={bankAccount} />
             </div>
