@@ -1,4 +1,3 @@
-// src/pages/Owner/Product/Manage/MobileView.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
@@ -6,7 +5,6 @@ import MyPageHeader from "../../../../../../components/MyPageHeader";
 import api from "../../../../../../lib/api/axios";
 
 /** ====== 타입 ====== */
-// 백엔드 category 예시에 WEDDING_HALL 이 있어서 포함
 type ProductCategory =
   | "WEDDING"
   | "STUDIO"
@@ -33,10 +31,8 @@ type ApiOwnerProduct = {
   thumbnail: string | null;
   category: string;
   createdAt: string;
-  // 나머지 필드들 (starCount, address, availableTime, region, tags...)은 일단 생략
 };
 
-// 스웨거 예시 DTO에 맞춘 페이지 응답 타입
 type PageMeta = {
   size: number;
   number: number;
@@ -71,7 +67,7 @@ export default function MobileView() {
 
   // 페이지네이션 파라미터 (스웨거: pageNumber, pageSize)
   const [pageNumber] = useState(1); // 현재는 1페이지 고정
-  const [pageSize] = useState(20); // 필요하면 6이나 다른 값으로 변경
+  const [pageSize] = useState(20);
   const [pageMeta, setPageMeta] = useState<PageMeta | null>(null);
 
   /** 목록 조회 */
@@ -91,7 +87,6 @@ export default function MobileView() {
           }
         );
 
-        // 백엔드 실제 응답을 화면용 OwnerProduct 로 매핑
         const mapped: OwnerProduct[] = (data?.content ?? []).map((p) => ({
           id: p.id,
           name: p.detail, // detail = 상품명(카드 타이틀)
@@ -124,16 +119,15 @@ export default function MobileView() {
     [items]
   );
 
-  /** 삭제 */
-  const onDelete = async (id: number) => {
+  /** ====== 삭제 (웹뷰와 동일한 공통 API) ====== */
+  const onDelete = async (productId: number) => {
     if (!confirm("이 상품을 삭제하시겠어요?")) return;
 
     try {
-      // 스웨거 DELETE /api/v1/dress/{id} 에 맞춘 삭제 호출
-      await api.delete(`/api/v1/dress/${id}`);
+      await api.delete(`/api/v1/product/${productId}`);
 
       // 로컬 상태에서 삭제
-      setItems((prev) => prev.filter((p) => p.id !== id));
+      setItems((prev) => prev.filter((p) => p.id !== productId));
       setPageMeta((prev) =>
         prev
           ? {
@@ -143,13 +137,14 @@ export default function MobileView() {
           : prev
       );
     } catch (e) {
-      console.error("[delete dress] error:", e);
+      console.error("[delete product] error:", e);
       alert("삭제 중 오류가 발생했습니다.");
     }
   };
 
-  const onEdit = (id: number) => {
-    nav(`/my-page/owner/product/edit/${id}`);
+  /** ====== 수정 ====== */
+  const onEdit = (category: ProductCategory, productId: number) => {
+    nav(`/my-page/owner/product/edit/${category}/${productId}`);
   };
 
   const onRegisterProduct = () => {
@@ -163,15 +158,17 @@ export default function MobileView() {
     );
   };
 
-  /** 뷰 */
+  /** ====== 뷰 ====== */
   return (
     <div className="w-full bg-white">
       {/* 모바일 프레임 390×844 */}
       <div className="mx-auto w-[390px] h-[844px] bg-[#FFFFFF] relative overflow-hidden">
-        {/* 헤더*/}
-        <div className="sticky top-0 z-20 bg-white">
-          <MyPageHeader title="상품 관리" onBack={onBack} showMenu />
-        </div>
+        {/* 헤더 */}
+        <MyPageHeader
+          title="상품 관리"
+          onBack={() => nav(-1)}
+          showMenu={false}
+        />
 
         {/* 스크롤 영역 */}
         <div className="absolute inset-x-0 bottom-0 top-[60px] bg-white overflow-y-auto">
@@ -258,7 +255,7 @@ export default function MobileView() {
                         {/* 수정 / 쿠폰 등록 */}
                         <div className="flex gap-2">
                           <ActionButton
-                            onClick={() => onEdit(p.id)}
+                            onClick={() => onEdit(p.category, p.id)}
                             className="flex-1"
                           >
                             수정하기

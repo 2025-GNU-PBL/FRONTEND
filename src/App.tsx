@@ -306,7 +306,7 @@ const App = () => {
             element={<ProductCreate />}
           />
           <Route
-            path="/my-page/owner/product/edit/:id"
+            path="/my-page/owner/product/edit/:category/:id"
             element={<ProductEdit />}
           />
           <Route
