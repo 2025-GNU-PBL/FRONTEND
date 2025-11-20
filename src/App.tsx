@@ -60,8 +60,6 @@ import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/ProductManagement/Cou
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
 import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEditPage";
 import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
-import OwnerSchedulePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerScheduleCalendarPage";
-import OwnerScheduleCalendarPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerScheduleCalendarPage";
 import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleCreatePage";
 import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
@@ -254,10 +252,6 @@ const App = () => {
           {/* 사장 마이페이지 */}
           <Route path="/my-page/owner/main" element={<OwnerMyPageMain />} />
           <Route path="/my-page/owner/profile" element={<OwnerProfilePage />} />
-          <Route
-            path="/my-page/owner/schedules"
-            element={<OwnerScheduleCalendarPage />}
-          />
           <Route
             path="/my-page/owner/schedules/personal"
             element={<OwnerPersonalScheduleCreatePage />}
