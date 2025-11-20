@@ -152,7 +152,7 @@ export default function MobileView() {
           <MyPageHeader
             title="매출 관리"
             onBack={() => nav(-1)}
-            showMenu={true}
+            showMenu={false}
           />
         </div>
 
@@ -177,10 +177,10 @@ export default function MobileView() {
             </div>
           </section>
 
-          {/* ✅ 여기 수정됨 */}
+          {/* 여기 수정됨 */}
           <button
             type="button"
-            onClick={() => nav("/my-page/owner/payments/cancel")}
+            onClick={() => nav("/my-page/owner/cancel")}
             className="w-full rounded-lg bg-[#F6F7FB] px-5 h-[50px] flex items-center justify-between"
           >
             <span className="text-[16px] font-normal text-[#333333] tracking-[-0.2px]">
@@ -254,10 +254,7 @@ export default function MobileView() {
                     item.approvedAt
                   );
 
-                  const isCanceled =
-                    item.status === "CANCELED" ||
-                    item.status === "FAILED" ||
-                    item.status === "CANCEL_REQUESTED";
+                  const isCanceled = item.status === "CANCELED";
 
                   const handleClick = () => {
                     if (item.status !== "DONE") return;

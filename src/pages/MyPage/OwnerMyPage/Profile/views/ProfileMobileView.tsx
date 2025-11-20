@@ -42,7 +42,7 @@ function ensureOwner(userData: UserData | null): OwnerData | null {
   return null;
 }
 
-/** 사장(OWNER) 마이페이지 - 내 정보 조회 (Mobile) */
+/** 사장(OWNER) 마이페이지 - 내 정보 조회 */
 export default function MobileView() {
   const nav = useNavigate();
 
@@ -93,7 +93,7 @@ export default function MobileView() {
     ? new Date(createdAt).toLocaleDateString("ko-KR")
     : "-";
 
-  // ✅ 주소 문자열 가공 (roadAddress 우선, 없으면 jibunAddress)
+  // 주소 문자열 가공
   const displayBzAddress = (() => {
     const baseAddress = roadAddress || jibunAddress || "";
     const parts: string[] = [];
@@ -168,7 +168,7 @@ export default function MobileView() {
             <div className="space-y-2">
               <InfoRow label="사업장명" value={bzName} />
               <InfoRow label="사업자 번호" value={bzNumber} />
-              {/* ✅ 여기서 가공된 주소 사용 */}
+              {/* 여기서 가공된 주소 사용 */}
               <InfoRow label="사업장 주소" value={displayBzAddress} />
               <InfoRow label="사업장 메일" value={email} />
               <InfoRow label="정산 계좌" value={bankAccount} />

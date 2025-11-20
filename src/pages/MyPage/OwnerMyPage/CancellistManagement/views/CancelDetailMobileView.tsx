@@ -1,4 +1,3 @@
-// MobileCancelDetailView.tsx
 import React, { useState } from "react";
 import axios from "axios";
 import { Icon } from "@iconify/react";
@@ -67,7 +66,6 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
 
     try {
       setLoading(true);
-      // Swagger 에 있는 경로 그대로 사용
       await axios.post(`/api/v1/payments/${paymentKey}/cancel-approve`);
 
       setConfirmOpen(false);

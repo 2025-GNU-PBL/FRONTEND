@@ -65,7 +65,7 @@ import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleMa
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
 import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
 import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
-import CancelListPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelDetailPage";
+import CancelListPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelListPage";
 import CancelDetailPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelDetailPage";
 import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentDetailPage";
 import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponListPage";
