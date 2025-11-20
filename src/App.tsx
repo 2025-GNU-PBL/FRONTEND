@@ -74,8 +74,6 @@ import OwnerPersonalScheduleEditPage from "./pages/MyPage/OwnerMyPage/ScheduleMa
 import Fail from "./pages/CheckoutPage/Fail/Fail";
 import Success from "./pages/CheckoutPage/Success/Success";
 import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
-import Success from "./pages/CheckoutPage/Success/Success";
-import Fail from "./pages/CheckoutPage/Fail/Fail";
 import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
 
 function Layout() {
