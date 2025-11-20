@@ -114,10 +114,10 @@ export const BasicInfoContent = ({
         {/* 평점 / 리뷰 */}
         {hasRating && ratingValue && (
           <div className="mt-1 flex items-center gap-1">
-            <img src="/images/star2.png" alt="평점" className="h-3 w-3" />
+            <img src="/images/star4.png" alt="평점" className="h-3 w-3" />
             <span className="text-[12px] text-[#999999]">{ratingValue}</span>
             {typeof reviewCount === "number" && (
-              <span className="text-[12px] text-[#999999]">
+              <span className="text-[12px] text-[#999999] ml-1">
                 리뷰 {reviewCount}개
               </span>
             )}
