@@ -121,6 +121,74 @@ const MobileView = () => {
     setShowReservationModal(true);
   };
 
+  /* ========================= 플로팅 버튼 핸들러 ========================= */
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    const title =
+      (detailData as any)?.name ||
+      (detailData as any)?.title ||
+      "웨딩 상품 상세";
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title,
+          url,
+        });
+      } catch (err) {
+        // 공유 취소 등은 무시
+        console.error("웹 공유 실패 또는 취소:", err);
+      }
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(url);
+        alert("링크가 클립보드에 복사되었어요.");
+      } catch (err) {
+        console.error("클립보드 복사 실패:", err);
+        alert(
+          "공유 기능 사용이 어려워요. 브라우저 주소창에서 직접 복사해주세요."
+        );
+      }
+    } else {
+      alert(
+        "브라우저에서 공유 기능을 지원하지 않아요. 주소창에서 직접 복사해주세요."
+      );
+    }
+  };
+
+  // ✅ 채팅 버튼: 상품 기반 채팅방 열기 API 연동
+  const handleChat = async () => {
+    if (!id) {
+      alert("상품 정보를 불러올 수 없습니다.");
+      return;
+    }
+
+    try {
+      const { data } = await api.post("/api/chat/rooms/open-from-product", {
+        productId: Number(id),
+      });
+
+      console.log("채팅방 생성/조회 결과:", data);
+
+      // TODO: 백엔드 응답에 따라 실제 채팅방 페이지로 이동 로직 추가
+      // 예: navigate(`/chat/rooms/${data.roomId}`);
+      alert("판매자와의 채팅방이 열렸어요.");
+    } catch (error: any) {
+      console.error("채팅방 열기 실패:", error);
+
+      const status = error?.response?.status;
+
+      if (status === 401) {
+        alert("로그인이 필요한 서비스입니다.");
+        // 필요하면 로그인 페이지로 이동
+        // navigate("/login");
+      } else {
+        alert("채팅방을 여는 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
+      }
+    }
+  };
+
   /* ========================= 쿠폰 ========================= */
 
   const handleOpenCoupon = () => {
@@ -446,6 +514,33 @@ const MobileView = () => {
           )}
         </main>
 
+        {/* ================== 우측 하단 플로팅 버튼 (공유 / 채팅) ================== */}
+        <div className="fixed right-4 bottom-[100px] flex flex-col items-center gap-2 z-40">
+          {/* 채팅 버튼 */}
+          <button
+            type="button"
+            onClick={handleChat}
+            className="box-border flex items-center justify-center w-10 h-10 rounded-[20px] bg-white border border-[#D9D9D9] shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-95 transition-transform"
+          >
+            <Icon
+              icon="fluent:chat-16-regular"
+              className="w-6 h-6 text-[#333333]"
+            />
+          </button>
+
+          {/* 공유 버튼 */}
+          <button
+            type="button"
+            onClick={handleShare}
+            className="box-border flex items-center justify-center w-10 h-10 rounded-[20px] bg-white border border-[#D9D9D9] shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-95 transition-transform"
+          >
+            <Icon
+              icon="solar:share-linear"
+              className="w-6 h-6 text-[#333333]"
+            />
+          </button>
+        </div>
+
         {/* 하단 고정 버튼 */}
         <div className="fixed left-0 bottom-0 w-full bg-white px-4 pt-3 pb-5 z-30">
           <div className="flex gap-3">
@@ -643,9 +738,9 @@ const MobileView = () => {
 
                 {/* 일러스트 영역 (image 3204 자리) */}
                 <img
-                  className="w-[204px] h-[204px] mb-6 flex items-center justify-center
-                "
+                  className="w-[204px] h-[204px] mb-6 flex items-center justify-center"
                   src="/images/reservation.png"
+                  alt="예약 완료 일러스트"
                 />
               </div>
 
