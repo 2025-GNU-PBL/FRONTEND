@@ -3,25 +3,13 @@ import { Icon } from "@iconify/react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../../../lib/api/axios";
 
-// API에서 내려오는 category를 UI 표기로 매핑
-const categoryMap: Record<string, string> = {
-  WEDDING_HALL: "웨딩홀",
-  STUDIO: "스튜디오",
-  DRESS: "드레스",
-  MAKEUP: "메이크업",
-};
-
-type CouponCategory =
-  | "전체"
-  | "웨딩홀"
-  | "스튜디오"
-  | "드레스"
-  | "메이크업"
-  | string;
-
-// API 응답 구조에 맞춘 Coupon 타입
-interface Coupon {
-  id: number;
+type UserCoupon = {
+  userCouponId: number;
+  status: "AVAILABLE" | "USED" | "EXPIRED" | string;
+  downloadedAt: string;
+  usedAt: string | null;
+  couponId: number;
+  couponCode: string;
   couponName: string;
   discountType: "RATE" | "FIXED";
   discountValue: number;
@@ -30,7 +18,7 @@ interface Coupon {
   expirationDate: string;
   couponDetail: string;
   category: string;
-}
+};
 
 interface ProductForCoupon {
   productId: number;

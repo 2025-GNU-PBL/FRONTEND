@@ -56,11 +56,10 @@ import NotificationPage from "./pages/NotificationPage/NotificationPage";
 import ProductDetailPage from "./pages/ProductDetailPage/ProductDetailPage";
 import OwnerProfilePage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfilePage";
 import ReservationManagementPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationManagementPage";
-import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/ProductManagement/CouponRegister/CouponRegisterPage";
+import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponRegisterPage";
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
 import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEditPage";
 import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
-import OwnerScheduleCalendarPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerScheduleCalendarPage";
 import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleCreatePage";
 import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
@@ -70,6 +69,10 @@ import CancelListPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelD
 import CancelDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
 import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentDetailPage";
 import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponListPage";
+import ProductEdit from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductEdit/ProductEdit";
+import OwnerPersonalScheduleEditPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleEditPage";
+import Fail from "./pages/CheckoutPage/Fail/Fail";
+import Success from "./pages/CheckoutPage/Success/Success";
 import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import Success from "./pages/CheckoutPage/Success/Success";
 import Fail from "./pages/CheckoutPage/Fail/Fail";
@@ -117,6 +120,7 @@ function Layout() {
     "/checkout/payment",
     "/success",
     "/fail",
+    "/my-page/owner/coupons/register", // 쿠폰 등록 페이지에 Footer 숨김
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)
@@ -271,12 +275,12 @@ const App = () => {
             element={<OwnerProfileEditPage />}
           />
           <Route
-            path="/my-page/owner/schedules"
-            element={<OwnerScheduleCalendarPage />}
-          />
-          <Route
             path="/my-page/owner/schedules/personal"
             element={<OwnerPersonalScheduleCreatePage />}
+          />
+          <Route
+            path="/my-page/owner/schedules/personal/edit/:id"
+            element={<OwnerPersonalScheduleEditPage />}
           />
           <Route
             path="/my-page/owner/schedules/shared"
@@ -304,6 +308,14 @@ const App = () => {
             element={<ProductList />}
           />
           <Route
+            path="/my-page/owner/product/create"
+            element={<ProductCreate />}
+          />
+          <Route
+            path="/my-page/owner/product/edit/:category/:id"
+            element={<ProductEdit />}
+          />
+          <Route
             path="/my-page/owner/payments"
             element={<OwnerPaymentManagementPage />}
           />
@@ -328,10 +340,6 @@ const App = () => {
           <Route
             path="/sign-up/owner/step4"
             element={<SignupOwnerCompletePage />}
-          />
-          <Route
-            path="/my-page/owner/product/create"
-            element={<ProductCreate />}
           />
         </Route>
 

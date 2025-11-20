@@ -2,8 +2,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import MyPageHeader from "../../../../../components/MyPageHeader";
-import api from "../../../../../lib/api/axios";
+import MyPageHeader from "../../../../src/components/MyPageHeader";
+import api from "../../../../src/lib/api/axios";
 
 /** ====== 서버 응답 DTO ====== */
 type ScheduleApiItem = {
