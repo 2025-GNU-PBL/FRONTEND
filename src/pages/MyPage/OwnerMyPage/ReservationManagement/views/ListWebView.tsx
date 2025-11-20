@@ -13,13 +13,13 @@ import api from "../../../../../lib/api/axios";
 type InquiryStatus = "대기" | "확정" | "취소";
 type StatusFilter = "전체" | InquiryStatus;
 
-/** 서버 Reservation API 응답 DTO (Swagger 기준) */
+/** 서버 Reservation API 응답 DTO  */
 type ReservationApiResponse = {
   id: number;
   ownerId: number;
   customerId: number;
   productId: number;
-  status: string; // WAITING / APPROVE / CANCEL ...
+  status: string; // WAITING / APPROVE / DENY ...
   reservationTime: string; // "2025-11-07T12:00:00"
   title: string;
   content: string;
@@ -54,12 +54,8 @@ export default function ListWebView() {
   const mapStatus = (status: string): InquiryStatus => {
     switch (status) {
       case "APPROVE":
-      case "APPROVED":
-      case "CONFIRM":
-      case "CONFIRMED":
         return "확정";
-      case "CANCEL":
-      case "CANCELED":
+      case "DENY":
         return "취소";
       default:
         return "대기"; // WAITING 등 기본값

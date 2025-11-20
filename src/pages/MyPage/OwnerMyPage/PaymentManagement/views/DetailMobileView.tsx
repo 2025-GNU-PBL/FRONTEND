@@ -84,7 +84,6 @@ export default function PaymentDetailMobileView() {
         setIsLoading(true);
         setErrorMsg(null);
 
-        // swagger: GET /api/v1/payments/{paymentKey}
         const res = await api.get<PaymentDetailResponse>(
           `/api/v1/payments/${paymentKey}`
         );
@@ -115,7 +114,7 @@ export default function PaymentDetailMobileView() {
     <div className="w-full bg-[#F5F6F8]">
       {/* 390 x 844 디바이스 프레임 */}
       <div className="mx-auto w-[390px] h-[844px] bg-[#F5F6F8] flex flex-col">
-        {/* 상단 헤더 (사용자 제작 헤더 사용, 상단 상태바/노치는 사용 안 함) */}
+        {/* 상단 헤더 */}
         <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
           <MyPageHeader
             title="결제 내역 상세"
@@ -151,7 +150,7 @@ export default function PaymentDetailMobileView() {
               </div>
 
               {/* 상품 정보 카드 */}
-              <section className="mt-3 px-5">
+              <section className="mt-10 px-5">
                 <div className="w-full rounded-[12px] border border-[#F3F4F5] bg-white px-4 pt-4 pb-5">
                   {/* 카드 제목 */}
                   <h2 className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124] mb-3">
@@ -229,7 +228,7 @@ export default function PaymentDetailMobileView() {
 
                     {/* 하단: 결제 수단 / 총 결제 금액 */}
                     <div className="flex flex-col gap-2">
-                      {/* 결제 수단 (예: 토스페이먼츠) */}
+                      {/* 결제 수단 */}
                       <div className="flex items-center justify-between">
                         <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
                           {payment.pgProvider ||

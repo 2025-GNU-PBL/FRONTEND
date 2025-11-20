@@ -126,7 +126,7 @@ export default function WebView() {
     detailAddress?: string;
   };
 
-  // 최초 진입 시 owner 값으로 초기화 (모바일과 동일)
+  // 최초 진입 시 owner 값으로 초기화
   const [memberName, setMemberName] = useState(name ?? "");
   const [memberPhone, setMemberPhone] = useState(phoneNumber ?? "");
   const [bizName, setBizName] = useState(bzName ?? "");
@@ -136,7 +136,7 @@ export default function WebView() {
   const [bizAccount, setBizAccount] = useState(bankAccount ?? "");
 
   // =============================
-  //   회원 정보 수정 요청 (모바일과 동일 payload)
+  //   회원 정보 수정 요청
   // =============================
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -173,7 +173,7 @@ export default function WebView() {
 
   return (
     <main className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col">
-      {/* 상단 그라디언트 바 (조회 웹뷰와 통일) */}
+      {/* 상단 그라디언트 바 */}
       <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
 
       <div className="pt-16 pb-16">
@@ -259,7 +259,7 @@ export default function WebView() {
               />
               <EditableRow
                 label="사업장 주소"
-                value={bizAddress}
+                value={displayBzAddress}
                 onChange={setBizAddress}
                 placeholder="사업장 주소를 입력하세요"
               />
