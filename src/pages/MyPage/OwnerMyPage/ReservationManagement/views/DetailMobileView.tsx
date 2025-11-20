@@ -9,7 +9,7 @@ type ReservationDetailApiResponse = {
   ownerId: number;
   customerId: number;
   productId: number;
-  status: string; // WAITING / APPROVE / CANCEL ...
+  status: string; // PENDING / APPROVE / DENY...
   reservationTime: string; // "2025-11-14"
   storeName: string;
   productName: string;
@@ -42,14 +42,8 @@ type ReservationDetail = {
 /** 서버 status → 상세 화면 status 매핑 */
 function mapDetailStatus(status: string): ReservationDetailStatus {
   const upper = (status || "").toUpperCase();
-  if (upper === "CANCEL" || upper === "CANCELED") return "취소";
-  if (
-    upper === "APPROVE" ||
-    upper === "APPROVED" ||
-    upper === "CONFIRM" ||
-    upper === "CONFIRMED"
-  )
-    return "확정";
+  if (upper === "DENY") return "취소";
+  if (upper === "APPROVE") return "확정";
   // 나머지는 전부 예약 진행 중으로 처리
   return "예약중";
 }
@@ -65,6 +59,24 @@ function formatDateDot(iso: string): string {
   return `${y}.${m}.${day}`;
 }
 
+/** API 응답 → UI 타입 매핑 */
+function mapApiToUi(data: ReservationDetailApiResponse): ReservationDetail {
+  return {
+    id: data.id,
+    status: mapDetailStatus(data.status),
+    rawStatus: data.status,
+    date: formatDateDot(data.reservationTime),
+    productBrand: data.storeName,
+    productTitle: data.productName,
+    price: data.price,
+    thumbnailUrl: undefined,
+    customerName: data.customerName,
+    customerPhone: data.customerPhoneNumber,
+    customerId: data.customerEmail || String(data.customerId),
+    requestMessage: data.content || "",
+  };
+}
+
 /** ====== 컴포넌트 ====== */
 export default function DetailMobileView() {
   const nav = useNavigate();
@@ -72,7 +84,8 @@ export default function DetailMobileView() {
   const onBack = useCallback(() => nav(-1), [nav]);
 
   const [detail, setDetail] = useState<ReservationDetail | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // 상세 조회 로딩
+  const [actionLoading, setActionLoading] = useState(false); // 승인/거절 로딩
   const [error, setError] = useState<string | null>(null);
 
   /** accessor 쿼리 파라미터 */
@@ -99,33 +112,16 @@ export default function DetailMobileView() {
         setLoading(true);
         setError(null);
 
-        const config = {
-          params: {
-            accessor: accessorParam ?? {},
-          },
-        };
-
         const { data } = await api.get<ReservationDetailApiResponse>(
           `/api/v1/reservation/${reservationId}`,
-          config
+          {
+            params: {
+              accessor: accessorParam ?? {},
+            },
+          }
         );
 
-        const ui: ReservationDetail = {
-          id: data.id,
-          status: mapDetailStatus(data.status),
-          rawStatus: data.status,
-          date: formatDateDot(data.reservationTime),
-          productBrand: data.storeName,
-          productTitle: data.productName,
-          price: data.price,
-          thumbnailUrl: undefined,
-          customerName: data.customerName,
-          customerPhone: data.customerPhoneNumber,
-          customerId: data.customerEmail || String(data.customerId),
-          requestMessage: data.content || "",
-        };
-
-        setDetail(ui);
+        setDetail(mapApiToUi(data));
       } catch (e) {
         console.error("[Reservation/DetailMobileView] fetchDetail error:", e);
         setError("예약 상세 정보를 불러오는 중 오류가 발생했습니다.");
@@ -140,66 +136,75 @@ export default function DetailMobileView() {
   /** 가격 포맷 */
   const formatPrice = (n: number) => `${(n ?? 0).toLocaleString("ko-KR")}원`;
 
-  // 취소하기 버튼 클릭 핸들러
-  const handleCancel = () => {
+  /** 공통: 상태 변경 PATCH 호출 */
+  const patchReservationStatus = async (status: "APPROVE" | "DENY") => {
     if (!detail) return;
-    // 취소 내역 페이지로 라우팅
-    nav("/my-page/owner/payments/cancel");
+
+    const config = {
+      params: {
+        accessor: accessorParam ?? {},
+      },
+    };
+
+    const { data } = await api.patch<ReservationDetailApiResponse>(
+      "/api/v1/reservation", // swagger에 나온 엔드포인트
+      {
+        id: detail.id,
+        status, // "APPROVE" 또는 "DENY"
+      },
+      config
+    );
+
+    // 응답 기준으로 상태 및 상세정보 갱신
+    setDetail(mapApiToUi(data));
+  };
+
+  // 거절하기 버튼 클릭 핸들러
+  const handleCancel = async () => {
+    if (!detail) return;
+    if (detail.status !== "예약중") return; // 이미 확정/취소된 건 처리 X
+
+    const ok = window.confirm("해당 예약을 취소(거절)하시겠습니까?");
+    if (!ok) return;
+
+    try {
+      setActionLoading(true);
+      await patchReservationStatus("DENY");
+      window.alert("예약이 취소(거절)되었습니다.");
+    } catch (e) {
+      console.error("[Reservation/DetailMobileView] cancel error:", e);
+      window.alert("예약 취소 중 오류가 발생했습니다.");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // 승인하기 버튼 클릭 핸들러
   const handleApprove = async () => {
     if (!detail) return;
+    if (detail.status !== "예약중") return; // 이미 확정/취소된 건 처리 X
+
+    const ok = window.confirm("해당 예약을 승인하시겠습니까?");
+    if (!ok) return;
 
     try {
-      const config = {
-        params: {
-          accessor: accessorParam ?? {},
-        },
-      };
-
-      // PATCH /api/v1/reservation
-      const { data } = await api.patch<ReservationDetailApiResponse>(
-        "/api/v1/reservation",
-        {
-          id: detail.id,
-          status: "APPROVE",
-        },
-        config
-      );
-
-      // 응답 기준으로 상태 및 상세정보 갱신
-      setDetail((prev) =>
-        prev
-          ? {
-              ...prev,
-              id: data.id,
-              rawStatus: data.status,
-              status: mapDetailStatus(data.status),
-              date: formatDateDot(data.reservationTime),
-              productBrand: data.storeName,
-              productTitle: data.productName,
-              price: data.price,
-              customerName: data.customerName,
-              customerPhone: data.customerPhoneNumber,
-              customerId: data.customerEmail || String(data.customerId),
-              requestMessage: data.content || "",
-            }
-          : prev
-      );
-
-      // 메인 페이지로 이동
-      nav("/");
+      setActionLoading(true);
+      await patchReservationStatus("APPROVE");
+      window.alert("예약이 승인되었습니다.");
+      // 승인 후에도 상세 페이지에 남아 있게 두고,
+      // 상태가 '확정'으로 바뀌면서 버튼은 자동으로 사라짐
     } catch (e) {
       console.error("[Reservation/DetailMobileView] approve error:", e);
       window.alert("예약 승인 중 오류가 발생했습니다.");
+    } finally {
+      setActionLoading(false);
     }
   };
 
   return (
     <div className="w-full bg-white">
       {/* 390 × 844 프레임 */}
-      <div className="mx-auto w-[390px] h-[844px] bg-[#F8F8F8] flex flex-col relative">
+      <div className="mx-auto h-[844px] w-[390px] flex flex-col bg-[#F8F8F8] relative">
         {/* 헤더 영역 */}
         <div className="sticky top-0 z-20 bg-white">
           <MyPageHeader title="예약 상세" onBack={onBack} showMenu={false} />
@@ -210,13 +215,13 @@ export default function DetailMobileView() {
           <div className="px-5 pt-20 pb-10">
             {/* 로딩/에러 처리 */}
             {loading && (
-              <div className="w-full h-[200px] flex items-center justify-center text-[14px] text-[#999999]">
+              <div className="flex h-[200px] w-full items-center justify-center text-[14px] text-[#999999]">
                 예약 상세 정보를 불러오는 중입니다...
               </div>
             )}
 
             {!loading && error && (
-              <div className="w-full h-[200px] flex items-center justify-center text-[14px] text-[#EB5147] text-center whitespace-pre-line">
+              <div className="flex h-[200px] w-full items-center justify-center whitespace-pre-line text-center text-[14px] text-[#EB5147]">
                 {error}
               </div>
             )}
@@ -224,7 +229,7 @@ export default function DetailMobileView() {
             {!loading && !error && detail && (
               <>
                 {/* 상단 상태 + 날짜 */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="mb-4 flex items-center justify-between">
                   <span className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                     {detail.status}
                   </span>
@@ -234,38 +239,38 @@ export default function DetailMobileView() {
                 </div>
 
                 {/* 상품정보 카드 */}
-                <section className="w-full max-w-[350px] mx-auto mb-4">
-                  <div className="bg-white border border-[#F3F4F5] rounded-[12px] px-4 pt-4 pb-5">
+                <section className="mx-auto mb-4 w-full max-w-[350px]">
+                  <div className="rounded-[12px] border border-[#F3F4F5] bg-white px-4 pt-4 pb-5">
                     {/* 타이틀 */}
-                    <div className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124] mb-4">
+                    <div className="mb-4 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                       상품정보
                     </div>
 
                     <div className="flex">
                       {/* 썸네일 */}
-                      <div className="w-[80px] h-[80px] rounded-[4px] border border-[#F5F5F5] overflow-hidden bg-[#F6F7FB] mr-4 flex-shrink-0">
+                      <div className="mr-4 h-[80px] w-[80px] flex-shrink-0 overflow-hidden rounded-[4px] border border-[#F5F5F5] bg-[#F6F7FB]">
                         {detail.thumbnailUrl ? (
                           <img
                             src={detail.thumbnailUrl}
                             alt={detail.productTitle}
-                            className="w-full h-full object-cover"
+                            className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full" />
+                          <div className="h-full w-full" />
                         )}
                       </div>
 
                       {/* 텍스트 영역 */}
-                      <div className="flex-1 flex flex-col justify-between min-w-0">
+                      <div className="flex min-w-0 flex-1 flex-col justify-between">
                         <div>
                           <div className="text-[14px] leading-[21px] tracking-[-0.2px] text-[rgba(0,0,0,0.4)]">
                             {detail.productBrand}
                           </div>
-                          <div className="mt-1 text-[14px] leading-[21px] tracking-[-0.2px] text-[#1E2124] break-words">
+                          <div className="mt-1 break-words text-[14px] leading-[21px] tracking-[-0.2px] text-[#1E2124]">
                             {detail.productTitle}
                           </div>
                         </div>
-                        <div className="mt-2 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124] text-right">
+                        <div className="mt-2 text-right text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                           {formatPrice(detail.price)}
                         </div>
                       </div>
@@ -274,10 +279,10 @@ export default function DetailMobileView() {
                 </section>
 
                 {/* 고객정보 카드 */}
-                <section className="w-full max-w-[350px] mx-auto mb-4">
-                  <div className="bg-white border border-[#F3F4F5] rounded-[12px] px-4 py-4">
+                <section className="mx-auto mb-4 w-full max-w-[350px]">
+                  <div className="rounded-[12px] border border-[#F3F4F5] bg-white px-4 py-4">
                     {/* 타이틀 */}
-                    <div className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124] mb-4">
+                    <div className="mb-4 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                       고객정보
                     </div>
 
@@ -316,14 +321,14 @@ export default function DetailMobileView() {
                 </section>
 
                 {/* 요청사항 카드 */}
-                <section className="w-full max-w-[350px] mx.auto">
-                  <div className="bg-white border border-[#F3F4F5] rounded-[12px] px-4 pt-4 pb-5">
-                    <div className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124] mb-4">
+                <section className="mx-auto w-full max-w-[350px]">
+                  <div className="rounded-[12px] border border-[#F3F4F5] bg-white px-4 pt-4 pb-5">
+                    <div className="mb-4 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                       요청사항
                     </div>
 
-                    <div className="bg-[#F8F8F8] rounded-[8px] px-4 py-3">
-                      <p className="text-[14px] leading-[21px] tracking-[-0.2px] text-[#000000] whitespace-pre-line">
+                    <div className="rounded-[8px] bg-[#F8F8F8] px-4 py-3">
+                      <p className="whitespace-pre-line text-[14px] leading-[21px] tracking-[-0.2px] text-[#000000]">
                         {detail.requestMessage}
                       </p>
                     </div>
@@ -334,24 +339,31 @@ export default function DetailMobileView() {
           </div>
         </div>
 
-        {/* 하단 버튼 영역 - 취소하기 / 승인하기 */}
-        {!loading && !error && detail && (
-          <div className="absolute bottom-[96px] left-1/2 -translate-x-1/2 w-[350px] z-20">
-            <div className="w-full px-4 py-3 flex flex-row items-center gap-[12px]">
-              {/* 취소하기 버튼 */}
+        {/* 하단 버튼 영역 - 거절하기 / 승인하기
+           예약 상태가 '예약중'일 때만 노출 (확정/취소면 버튼 숨김) */}
+        {!loading && !error && detail && detail.status === "예약중" && (
+          <div className="absolute bottom-[96px] left-1/2 z-20 w-[350px] -translate-x-1/2">
+            <div className="flex w-full flex-row items-center gap-[12px] px-4 py-3">
+              {/* 거절하기 버튼 */}
               <button
                 type="button"
                 onClick={handleCancel}
-                className="flex-1 h-[48px] flex flex-row items-center justify-center rounded-[12px] border border-[#E1E1E1] bg-white text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999]"
+                disabled={actionLoading}
+                className={`flex h-[48px] flex-1 flex-row items-center justify-center rounded-[12px] border border-[#E1E1E1] bg-white text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999] ${
+                  actionLoading ? "opacity-60" : ""
+                }`}
               >
-                취소하기
+                거절하기
               </button>
 
               {/* 승인하기 버튼 */}
               <button
                 type="button"
                 onClick={handleApprove}
-                className="flex-1 h-[48px] flex flex-row items-center justify-center rounded-[12px] bg-[#FF2233] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white"
+                disabled={actionLoading}
+                className={`flex h-[48px] flex-1 flex-row items-center justify-center rounded-[12px] bg-[#FF2233] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white ${
+                  actionLoading ? "opacity-60" : ""
+                }`}
               >
                 승인하기
               </button>

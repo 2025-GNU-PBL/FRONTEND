@@ -237,51 +237,6 @@ export default function WebView() {
 
           {!isLoading && !errorMsg && payment && (
             <>
-              {/* 상태 / 날짜 섹션 */}
-              <SectionCard
-                title="예약 상태"
-                subtitle="결제 상태와 예약 일자를 확인할 수 있습니다."
-                icon="solar:card-recive-bold-duotone"
-                rightSlot={
-                  <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusBadgeClass}`}
-                  >
-                    {statusLabel}
-                  </span>
-                }
-              >
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-gray-500">예약 일자</span>
-                    <span className="text-[16px] font-medium text-gray-900">
-                      {dateLabel}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-gray-500">결제 수단</span>
-                    <span className="text-[14px] text-gray-900">
-                      {payment.pgProvider || payment.paymentMethod || "-"}
-                    </span>
-                  </div>
-
-                  {payment.cancelReason ? (
-                    <div className="flex-1 min-w-[220px]">
-                      <div className="flex items-center gap-2 text-xs text-red-500">
-                        <Icon
-                          icon="solar:danger-triangle-bold"
-                          className="w-3.5 h-3.5"
-                        />
-                        <span>취소 사유</span>
-                      </div>
-                      <p className="mt-1 text-[13px] leading-relaxed text-gray-700">
-                        {payment.cancelReason}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              </SectionCard>
-
               {/* 상품 정보 섹션 */}
               <SectionCard
                 title="상품정보"

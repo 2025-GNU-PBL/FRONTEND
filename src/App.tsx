@@ -65,15 +65,15 @@ import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleMa
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
 import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
 import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
-import CancelListPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
-import CancelDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
+import CancelListPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelListPage";
+import CancelDetailPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelDetailPage";
 import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentDetailPage";
 import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponListPage";
+import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
+import Success from "./pages/CheckoutPage/Success/Success";
+import Fail from "./pages/CheckoutPage/Fail/Fail";
 import ProductEdit from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductEdit/ProductEdit";
 import OwnerPersonalScheduleEditPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleEditPage";
-import Fail from "./pages/CheckoutPage/Fail/Fail";
-import Success from "./pages/CheckoutPage/Success/Success";
-import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
 import ReviewCreate from "./pages/ReviewCreatePage/ReviewCreate";
 
@@ -324,12 +324,9 @@ const App = () => {
             path="/my-page/owner/payments/detail"
             element={<OwnerPaymentDetailPage />}
           />
+          <Route path="/my-page/owner/cancels" element={<CancelListPage />} />
           <Route
-            path="/my-page/owner/payments/cancel"
-            element={<CancelListPage />}
-          />
-          <Route
-            path="/my-page/owner/payments/cancel/detail"
+            path="/my-page/owner/cancels/detail"
             element={<CancelDetailPage />}
           />
           <Route path="/sign-up/owner/step1" element={<OwnerSignupPage />} />
