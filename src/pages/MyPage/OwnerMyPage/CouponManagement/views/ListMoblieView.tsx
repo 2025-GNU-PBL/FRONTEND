@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../../../components/MyPageHeader";
 import api from "../../../../../lib/api/axios";
 
 /** ====== 타입 ====== */
@@ -163,7 +162,15 @@ export default function CustomerCouponMobile() {
       <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col">
         {/* 헤더 */}
         <div className="sticky top-0 z-20 bg-white border-b border-[#F2F2F2]">
-          <MyPageHeader title="쿠폰함" onBack={onBack} showMenu={false} />
+          <div className="h-[59px] flex items-center justify-between px-5">
+            <button onClick={onBack} aria-label="back">
+              <Icon icon="solar:alt-arrow-left-linear" className="w-6 h-6" />
+            </button>
+            <h1 className="text-[18px] font-semibold">쿠폰함</h1>
+            <button onClick={() => nav("register-edit")} aria-label="add coupon">
+              <Icon icon="solar:add-square-bold" className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* 내용 영역 */}
@@ -171,9 +178,11 @@ export default function CustomerCouponMobile() {
           <div className="px-5 pt-5 pb-6">
             {/* 등록된 쿠폰 개수 */}
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[14px] text-[#000000]">
-                등록된 쿠폰 {registeredCount}
-              </p>
+              {registeredCount > 0 && (
+                <p className="text-[14px] text-[#000000]">
+                  {loading ? "쿠폰 불러오는 중..." : `등록된 쿠폰 ${registeredCount}`}
+                </p>
+              )}
             </div>
 
             {/* 상태 표시 */}
@@ -192,72 +201,82 @@ export default function CustomerCouponMobile() {
             {!loading && !errorMsg && (
               <>
                 {coupons.length === 0 ? (
-                  <div className="py-10 text-center text-[14px] text-[#999999]">
-                    등록된 쿠폰이 없습니다.
-                  </div>
+                  <EmptyState />
                 ) : (
                   <div className="flex flex-col gap-4">
-                    {coupons.map((coupon) => {
-                      const discountText = formatDiscountValue(
-                        coupon.discountType,
-                        coupon.discountValue
-                      );
-                      const conditionText = formatConditionText(
-                        coupon.minPurchaseAmount,
-                        coupon.maxDiscountAmount,
-                        coupon.discountType
-                      );
-                      const dateRange = formatDateRange(
-                        coupon.startDate,
-                        coupon.expirationDate
-                      );
-
-                      return (
-                        <div key={coupon.id} className="flex w-full h-[129px]">
-                          {/* 왼쪽 쿠폰 내용 영역 */}
-                          <div className="flex flex-col justify-between w-[278px] h-full border border-[#F2F2F2] border-r-0 rounded-l-[16px] bg-white px-4 py-4">
-                            <div className="flex flex-col gap-1">
-                              <p className="text-[14px] leading-[21px] text-[#000000]">
-                                {coupon.couponName ||
-                                  `[${CATEGORY_LABEL[coupon.category]}] 쿠폰`}
-                              </p>
-                              <p className="text-[20px] font-bold leading-[32px] text-[#000000]">
-                                {discountText}
-                              </p>
-                            </div>
-
-                            <div className="flex flex-col gap-1 mt-1">
-                              <p className="text-[12px] leading-[18px] text-[#999999]">
-                                {coupon.couponDetail || conditionText}
-                              </p>
-                              <p className="text-[12px] leading-[18px] text-[#999999]">
-                                사용기간 : {dateRange}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* 오른쪽 X 버튼 영역 */}
-                          <div className="flex items-center justify-center w-[72px] h-full bg-[#F6F7FB] border border-[#F2F2F2] border-l-0 rounded-r-[16px]">
-                            <button
-                              type="button"
-                              onClick={() => handleRemove(coupon.id)}
-                              className="flex items-center justify-center w-9 h-9 rounded-[20px] bg-white active:scale-95"
-                            >
-                              <Icon
-                                icon="solar:close-circle-linear"
-                                className="w-5 h-5 text-[#000000]"
-                              />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {coupons.map((coupon) => (
+                      <CouponCard key={coupon.id} c={coupon} onRemove={handleRemove} />
+                    ))}
                   </div>
                 )}
               </>
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** ====== 컴포넌트 ====== */
+
+interface CouponCardProps {
+  c: OwnerCoupon;
+  onRemove: (couponId: number) => void;
+}
+
+function CouponCard({ c, onRemove }: CouponCardProps) {
+  const discountLabel =
+    c.discountType === "PERCENT" ? `${c.discountValue}%` : `${c.discountValue}원`;
+  const period = formatDateRange(c.startDate, c.expirationDate);
+
+  return (
+    <div className="w-full h-[129px] flex">
+      {/* 좌측 본문 */}
+      <div className="w-[278px] h-[129px] border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-2 bg-white">
+        <div className="flex flex-col gap-1 w-[222px]">
+          <div className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
+            {c.couponName}
+          </div>
+          <div className="text-[20px] font-bold leading-[32px] tracking-[-0.2px] text-black">
+            {discountLabel}
+          </div>
+        </div>
+        <div className="flex flex-col w-[200px]">
+          <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999] line-clamp-1">
+            {c.couponDetail}
+          </div>
+          <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
+            사용기간: {period}
+          </div>
+        </div>
+      </div>
+
+      {/* 우측 영역: 삭제 버튼 */}
+      <div className="w-[72px] h-[129px] bg-[#F6F7FB] border border-l-0 border-[#F2F2F2] rounded-r-[16px] flex items-center justify-center px-[18px]">
+        <button
+          className="w-9 h-9 rounded-[20px] bg-white flex items-center justify-center active:scale-95"
+          aria-label="delete-coupon"
+          onClick={() => onRemove(c.id)}
+        >
+          <Icon icon="solar:close-square-broken" className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="h-[400px] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Icon
+          icon="material-symbols:credit-card-outline"
+          className="w-[80px] h-[80px] opacity-50"
+        />
+        <p className="text-center font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-black">
+          보유중인 쿠폰이 없어요
+        </p>
       </div>
     </div>
   );

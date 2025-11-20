@@ -8,7 +8,6 @@ import React, {
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import api from "../../../../lib/api/axios";
-import MyPageHeader from "../../../../components/MyPageHeader";
 
 type UserCoupon = {
   userCouponId: number;
@@ -39,22 +38,12 @@ export default function MobileView() {
   const onBack = useCallback(() => nav(-1), [nav]);
 
   const [category, setCategory] = useState<CategoryFilter>("전체");
-  const [sort, setSort] = useState<"최신순" | "오래된순">("최신순");
   const [sortOpen, setSortOpen] = useState(false);
   const [coupons, setCoupons] = useState<UserCoupon[]>([]);
   const [loading, setLoading] = useState(false);
 
   // 정렬 드롭다운 외부 클릭 감지
   const popRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (popRef.current && !popRef.current.contains(e.target as Node)) {
-        setSortOpen(false);
-      }
-    };
-    if (sortOpen) document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [sortOpen]);
 
   useEffect(() => {
     const fetchMyCoupons = async () => {
@@ -94,22 +83,24 @@ export default function MobileView() {
       category === "전체" ? true : c.category === category
     );
 
-    list.sort((a, b) => {
-      const da = +new Date(a.downloadedAt || a.startDate);
-      const db = +new Date(b.downloadedAt || b.startDate);
-      return sort === "최신순" ? db - da : da - db;
-    });
-
     return list;
-  }, [coupons, category, sort]);
+  }, [coupons, category]);
 
   return (
     <div className="w-full bg-white">
       {/* 화면 프레임(390×844) */}
-      <div className="mx-auto w-[390px] h-[844px] bg-[#F6F7FB] flex flex-col">
+      <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col">
         {/* 헤더 */}
-        <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
-          <MyPageHeader title="쿠폰함" onBack={onBack} showMenu={false} />
+        <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
+          <div className="h-[59px] flex items-center justify-between px-5">
+            <button onClick={onBack} aria-label="back">
+              <Icon icon="solar:alt-arrow-left-linear" className="w-6 h-6" />
+            </button>
+            <h1 className="text-[18px] font-semibold">쿠폰함</h1>
+            <button onClick={() => {}} aria-label="add coupon">
+              <Icon icon="solar:add-square-bold" className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* 본문 */}
@@ -148,55 +139,11 @@ export default function MobileView() {
             />
           </div>
 
-          {/* 보유개수 / 정렬 */}
+          {/* 보유개수 */}
           <div className="mt-4 w-full flex items-center justify-between relative">
             <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-              {loading ? "쿠폰 불러오는 중..." : `보유 쿠폰 ${filtered.length}`}
+              {loading ? "쿠폰 불러오는 중..." : `등록된 쿠폰 ${filtered.length}`}
             </span>
-
-            {/* 정렬 드롭다운 */}
-            <div className="relative" ref={popRef}>
-              <button
-                className="flex items-center gap-1"
-                onClick={() => setSortOpen((p) => !p)}
-                aria-haspopup="menu"
-                aria-expanded={sortOpen}
-              >
-                <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-                  {sort}
-                </span>
-                <Icon
-                  icon="solar:alt-arrow-down-linear"
-                  className="w-4 h-4 text-[#999999]"
-                />
-              </button>
-
-              {sortOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 mt-2 w-36 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30"
-                >
-                  <SortItem
-                    active={sort === "최신순"}
-                    onClick={() => {
-                      setSort("최신순");
-                      setSortOpen(false);
-                    }}
-                  >
-                    최신순
-                  </SortItem>
-                  <SortItem
-                    active={sort === "오래된순"}
-                    onClick={() => {
-                      setSort("오래된순");
-                      setSortOpen(false);
-                    }}
-                  >
-                    오래된순
-                  </SortItem>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* 리스트 */}
@@ -212,7 +159,7 @@ export default function MobileView() {
                 <CouponCard
                   key={c.userCouponId}
                   c={c}
-                  onDownload={handleDownload}
+                  
                 />
               ))
             )}
@@ -276,10 +223,8 @@ function Chip({
 
 function CouponCard({
   c,
-  onDownload,
 }: {
   c: UserCoupon;
-  onDownload: (couponId: number) => void;
 }) {
   const period = `사용기간 : ${c.startDate} ~ ${c.expirationDate}`;
   const discountLabel =
@@ -313,11 +258,11 @@ function CouponCard({
       <div className="w-[72px] h-[129px] bg-[#F6F7FB] border border-l-0 border-[#F2F2F2] rounded-r-[16px] flex items-center justify-center px-[18px]">
         <button
           className="w-9 h-9 rounded-[20px] bg-white flex items-center justify-center active:scale-95 disabled:opacity-40"
-          aria-label="download-coupon"
-          onClick={() => onDownload(c.couponId)}
-          disabled={!c.canUse}
+          aria-label="delete-coupon"
+          onClick={() => console.log("delete coupon", c.userCouponId)}
+          
         >
-          <Icon icon="mdi:download-outline" className="w-4 h-4" />
+         <Icon icon="solar:close-square-broken" className="w-4 h-4" />
         </button>
       </div>
     </div>
