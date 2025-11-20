@@ -72,6 +72,10 @@ import CancelDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/Cance
 import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentDetailPage";
 import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponListPage";
 import ProductEdit from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductEdit/ProductEdit";
+import OwnerPersonalScheduleEditPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleEditPage";
+import Fail from "./pages/CheckoutPage/Fail/Fail";
+import Success from "./pages/CheckoutPage/Success/Success";
+import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import Success from "./pages/CheckoutPage/Success/Success";
 import Fail from "./pages/CheckoutPage/Fail/Fail";
@@ -277,6 +281,10 @@ const App = () => {
           <Route
             path="/my-page/owner/schedules/personal"
             element={<OwnerPersonalScheduleCreatePage />}
+          />
+          <Route
+            path="/my-page/owner/schedules/personal/edit/:id"
+            element={<OwnerPersonalScheduleEditPage />}
           />
           <Route
             path="/my-page/owner/schedules/shared"

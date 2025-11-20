@@ -1,8 +1,8 @@
 import React from "react";
-import MobileView from "./views/CalendarMoblieView";
-import WebView from "./views/CalendarWebView";
+import MobileView from "./views/PersonalScheduleEditMobileView";
+import WebView from "./views/PersonalScheduleEditWebView";
 
-export default function OwnerSchedulePage() {
+export default function OwnerPersonalScheduleEditPage() {
   return (
     <div className="w-full bg-white">
       {/* Mobile */}
