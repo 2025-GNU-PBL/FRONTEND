@@ -66,8 +66,8 @@ import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
 import CouponPage from "./pages/MyPage/ClientMyPage/Coupons/CouponPage";
 import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
 import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
-import CancelListPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
-import CancelDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
+import CancelListPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelDetailPage";
+import CancelDetailPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelDetailPage";
 import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentDetailPage";
 import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponListPage";
 import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
@@ -318,12 +318,9 @@ const App = () => {
             path="/my-page/owner/payments/detail"
             element={<OwnerPaymentDetailPage />}
           />
+          <Route path="/my-page/owner/cancels" element={<CancelListPage />} />
           <Route
-            path="/my-page/owner/payments/cancel"
-            element={<CancelListPage />}
-          />
-          <Route
-            path="/my-page/owner/payments/cancel/detail"
+            path="/my-page/owner/cancels/detail"
             element={<CancelDetailPage />}
           />
           <Route path="/sign-up/owner/step1" element={<OwnerSignupPage />} />
