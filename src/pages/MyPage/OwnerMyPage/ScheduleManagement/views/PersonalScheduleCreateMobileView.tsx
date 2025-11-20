@@ -126,7 +126,7 @@ export default function PersonalScheduleCreateMobileView() {
       scheduleDate: startDate, // yyyy-MM-dd
     };
 
-    // multipart/form-data 로 FormData 구성 (@RequestPart 사용 중)
+    // multipart/form-data 로 FormData 구성
     const formData = new FormData();
 
     // "request" 파트에 JSON 넣기
