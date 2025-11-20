@@ -75,6 +75,10 @@ import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import Success from "./pages/CheckoutPage/Success/Success";
 import Fail from "./pages/CheckoutPage/Fail/Fail";
 import ProductEdit from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductEdit/ProductEdit";
+import OwnerPersonalScheduleEditPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleEditPage";
+import Fail from "./pages/CheckoutPage/Fail/Fail";
+import Success from "./pages/CheckoutPage/Success/Success";
+import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 
 function Layout() {
   const location = useLocation();
@@ -276,6 +280,10 @@ const App = () => {
           <Route
             path="/my-page/owner/schedules/personal"
             element={<OwnerPersonalScheduleCreatePage />}
+          />
+          <Route
+            path="/my-page/owner/schedules/personal/edit/:id"
+            element={<OwnerPersonalScheduleEditPage />}
           />
           <Route
             path="/my-page/owner/schedules/shared"
