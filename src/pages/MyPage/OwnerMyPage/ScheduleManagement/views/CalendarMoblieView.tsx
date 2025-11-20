@@ -51,7 +51,9 @@ function formatTimeText(iso: string): string | null {
 
   const h = d.getHours();
   const m = d.getMinutes();
-  if (h === 0 && m === 0) return null; // 시간 정보가 없다고 보고 생략
+
+  // 백엔드가 날짜만 줄 때(00:00)는 시간 표시 X
+  if (h === 0 && m === 0) return null;
 
   const ampm = h >= 12 ? "PM" : "AM";
   const hour12 = ((h + 11) % 12) + 1;
@@ -86,12 +88,12 @@ function buildCalendarMatrix(year: number, monthIndex: number): CalendarCell[] {
   return cells;
 }
 
-/** ====== 컴포넌트 ====== */
+/** ====== 캘린더 모바일 뷰 ====== */
 export default function CalendarMobileView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
 
-  /** accessor 쿼리 파라미터 (Reservation 상세와 동일하게 처리) */
+  /** accessor 쿼리 파라미터 (고객/사장 구분용이라면 여기서 같이 전송) */
   const accessorParam = useMemo(() => {
     try {
       const raw = localStorage.getItem("accessor");
@@ -126,7 +128,7 @@ export default function CalendarMobileView() {
     [currentYear, currentMonthIndex]
   );
 
-  /** 현재 월의 일정 조회 */
+  /** ====== 월별 일정 조회 API 연동 ====== */
   useEffect(() => {
     const fetchSchedules = async () => {
       try {
@@ -138,16 +140,16 @@ export default function CalendarMobileView() {
           month: currentMonthIndex + 1,
         };
 
-        // accessor가 있다면 함께 전송
         if (accessorParam) {
           params.accessor = accessorParam;
         }
 
+        // GET /api/v1/schedule?year=2025&month=11
         const { data } = await api.get<ScheduleApiItem[]>("/api/v1/schedule", {
           params,
         });
 
-        // 날짜별로 group
+        // 날짜별로 그룹핑 (YYYY-MM-DD 단위)
         const grouped: Record<string, ScheduleApiItem[]> = {};
         (data || []).forEach((item) => {
           const key = (item.scheduleDate || "").slice(0, 10); // YYYY-MM-DD
@@ -157,12 +159,11 @@ export default function CalendarMobileView() {
 
         setScheduleByDate(grouped);
 
-        // 선택된 날짜가 현재 월 밖이면, 이번 달 1일로 이동
-        const tempSelected = selectedDate;
+        // 선택된 날짜가 이번 달이 아니면 이번 달 1일로 맞춰줌
         if (
-          !tempSelected ||
-          tempSelected.getFullYear() !== currentYear ||
-          tempSelected.getMonth() !== currentMonthIndex
+          !selectedDate ||
+          selectedDate.getFullYear() !== currentYear ||
+          selectedDate.getMonth() !== currentMonthIndex
         ) {
           const firstDay = new Date(currentYear, currentMonthIndex, 1);
           setSelectedDate(firstDay);
@@ -201,19 +202,18 @@ export default function CalendarMobileView() {
     setSelectedDate(date);
   }, []);
 
-  /** 일정 삭제 (API 스펙이 없어서 일단 UI만) */
-  const handleDeleteSchedule = useCallback((scheduleId: number) => {
-    // TODO: 삭제 API 연동 필요 시 연결
-    // eslint-disable-next-line no-alert
-    alert(`일정(ID: ${scheduleId}) 삭제 클릭 (추후 API 연동)`);
-  }, []);
-
-  /** 일정 추가하기 클릭 */
+  /** 일정 추가하기 클릭 → 개인 일정 추가 페이지로 이동 */
   const handleAddSchedule = useCallback(() => {
-    // TODO: 일정 생성 페이지 경로에 맞춰 수정
-    // eslint-disable-next-line no-alert
-    alert("일정 추가하기 클릭 (추후 캘린더/일정 생성 페이지로 연결)");
-  }, []);
+    nav("/my-page/owner/schedules/personal");
+  }, [nav]);
+
+  /** 일정 클릭 → 수정 페이지로 이동 */
+  const handleClickSchedule = useCallback(
+    (scheduleId: number) => {
+      nav(`/my-page/owner/schedules/personal/edit/${scheduleId}`);
+    },
+    [nav]
+  );
 
   /** 선택된 날짜의 일정 목록 */
   const selectedDateKey = formatDateKey(selectedDate);
@@ -227,7 +227,7 @@ export default function CalendarMobileView() {
     <div className="w-full bg-white">
       {/* 390 × 844 프레임 */}
       <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col relative">
-        {/* 헤더 (형님이 만든 헤더 사용) */}
+        {/* 헤더 */}
         <div className="sticky top-0 z-20 bg-white">
           <MyPageHeader title="캘린더" onBack={onBack} showMenu={false} />
         </div>
@@ -349,20 +349,20 @@ export default function CalendarMobileView() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {selectedSchedules.map((item, index) => {
+                    {selectedSchedules.map((item) => {
                       const timeText = formatTimeText(item.scheduleDate);
                       const hasTime = !!timeText;
-                      const hasDelete =
-                        selectedSchedules.length > 1 && index > 0; // 디자인처럼 두 번째 카드에만 휴지통을 보여주고 싶다면 이런 식으로 제어
 
                       return (
-                        <div
+                        <button
                           key={item.id}
-                          className="w-[350px] min-h-[52px] bg-[#F6F7FB] rounded-[12px] px-4 py-[11px] flex items-center justify-between"
+                          type="button"
+                          onClick={() => handleClickSchedule(item.id)}
+                          className="w-[350px] min-h-[52px] bg-[#F6F7FB] rounded-[12px] px-4 py-[11px] flex items-center justify-between active:scale-[0.99] transition-transform"
                         >
                           {/* 왼쪽: 시간 + 제목 */}
                           <div className="flex items-center gap-4 flex-1 min-w-0">
-                            {/* 시간 */}
+                            {/* 시간 영역 */}
                             <div className="w-[70px] shrink-0">
                               {hasTime && (
                                 <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
@@ -375,27 +375,13 @@ export default function CalendarMobileView() {
                             <div className="flex items-center gap-[9.6px] flex-1 min-w-0">
                               <div className="w-[3.2px] h-[25.6px] rounded-[2.4px] bg-[#FF2233]" />
                               <div className="flex-1 min-w-0">
-                                <p className="text-[14px] font-semibold leading-[22px] tracking-[-0.16px] text-[#1E2124] truncate">
+                                <p className="text-[14px] font-semibold leading-[22px] tracking-[-0.16px] text-[#1E2124] truncate text-left">
                                   {item.title}
                                 </p>
                               </div>
                             </div>
                           </div>
-
-                          {/* 오른쪽: 삭제 버튼 (선택적으로 노출) */}
-                          {hasDelete && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSchedule(item.id)}
-                              className="ml-2 w-[52px] h-[52px] flex items-center justify-center rounded-[12px] bg-[#F6F7FB]"
-                            >
-                              <Icon
-                                icon="mynaui:trash"
-                                className="w-6 h-6 text-[#FF2233]"
-                              />
-                            </button>
-                          )}
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
