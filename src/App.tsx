@@ -56,11 +56,10 @@ import NotificationPage from "./pages/NotificationPage/NotificationPage";
 import ProductDetailPage from "./pages/ProductDetailPage/ProductDetailPage";
 import OwnerProfilePage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfilePage";
 import ReservationManagementPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationManagementPage";
-import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/ProductManagement/CouponRegister/CouponRegisterPage";
+import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponRegisterPage";
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
 import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEditPage";
 import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
-import OwnerScheduleCalendarPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerScheduleCalendarPage";
 import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleCreatePage";
 import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
@@ -116,6 +115,7 @@ function Layout() {
     "/notification",
     "/checkout",
     "/checkout/coupon",
+    "/my-page/owner/coupons/register", // 쿠폰 등록 페이지에 Footer 숨김
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)
@@ -269,10 +269,6 @@ const App = () => {
           <Route
             path="/my-page/owner/profile/edit"
             element={<OwnerProfileEditPage />}
-          />
-          <Route
-            path="/my-page/owner/schedules"
-            element={<OwnerScheduleCalendarPage />}
           />
           <Route
             path="/my-page/owner/schedules/personal"
