@@ -75,6 +75,7 @@ import Fail from "./pages/CheckoutPage/Fail/Fail";
 import Success from "./pages/CheckoutPage/Success/Success";
 import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
+import ReviewCreate from "./pages/ReviewCreatePage/ReviewCreate";
 
 function Layout() {
   const location = useLocation();
@@ -119,6 +120,7 @@ function Layout() {
     "/success",
     "/fail",
     "/my-page/owner/coupons/register", // 쿠폰 등록 페이지에 Footer 숨김
+    "/review",
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)
@@ -226,6 +228,7 @@ const App = () => {
         <Route path="/checkout/payment" element={<PaymentPage />} />
         <Route path="/success" element={<Success />} />
         <Route path="/fail" element={<Fail />} />
+        <Route path="/review" element={<ReviewCreate />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>
