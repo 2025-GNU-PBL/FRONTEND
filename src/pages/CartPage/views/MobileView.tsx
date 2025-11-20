@@ -9,6 +9,7 @@ interface CartItem {
   cartItemId: number;
   productId: number;
   productName: string;
+  bzName: string;
   price: number;
   quantity: number;
   selected: boolean;
@@ -215,7 +216,7 @@ const MobileView = () => {
           </button>
           <img src={item.thumbnailUrl || "/images/placeholder.png"} alt={item.productName} className="product-item-image" />
           <div className="product-details">
-            <p className="product-item-shop-name">제이바이로이스타</p> {/* TODO: 실제 상점 이름으로 대체 */}
+            <p className="product-item-shop-name">{item.bzName}</p> {/* TODO: 실제 상점 이름으로 대체 */}
             <p className="product-item-description">{item.productName}<br />(수량: {item.quantity})</p>
             <div className="product-price-section">
               <p className="product-item-original-price">{(item.price * item.quantity).toLocaleString()}원</p>
@@ -249,7 +250,7 @@ const MobileView = () => {
       {/* Purchase Bar */}
       <div className="purchase-bar-container">
         <button className="purchase-button" onClick={togglePopup}>
-          <span className="purchase-button-text">{cartData.paymentAmount.toLocaleString()}원 구매하기</span>
+          <span className="purchase-button-text">문의하기 </span>
         </button>
       </div>
 
@@ -261,8 +262,8 @@ const MobileView = () => {
               <div className="popup-product-info">
                 <img src={cartData.items[0]?.thumbnailUrl || "/images/placeholder.png"} alt="Product" className="popup-product-image" />
                 <div className="popup-product-text-group">
-                  <p className="popup-product-shop-name">제이바이로이스타</p>
-                  <p className="popup-product-description">{cartData.items[0]?.productName}<br />(부원장)</p>
+                  <p className="popup-product-shop-name">{cartData.items[0]?.bzName}</p>
+                  <p className="popup-product-description">{cartData.items[0]?.productName}<br /></p>
                 </div>
               </div>
               <Icon icon="meteor-icons:xmark" className="popup-close-icon" onClick={togglePopup} />
@@ -291,7 +292,7 @@ const MobileView = () => {
                 <span className="popup-cart-button-text">장바구니</span>
               </button>
               <button className="popup-purchase-button" onClick={handlePurchase}>
-                <span className="popup-purchase-button-text">구매하기</span>
+                <span className="popup-purchase-button-text">문의하기</span>
               </button>
             </div>
           </div>
