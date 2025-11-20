@@ -519,7 +519,7 @@ const WebView: React.FC = () => {
   const goDetail = useCallback(
     (id: number) => {
       // 모바일과 동일 경로 유지
-      navigate(`/wedding/${id}`);
+      navigate(`/dress/${id}`);
     },
     [navigate]
   );

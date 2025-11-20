@@ -6,73 +6,28 @@ import api from "../../../lib/api/axios";
 import { BasicInfoContent } from "../sections/BasicInfoContent";
 import { DetailContent } from "../sections/DetailContent";
 import { ReviewContent } from "../sections/ReviewContent";
+import { useAppSelector } from "../../../store/hooks";
+import type {
+  Category,
+  NormalizedDetail,
+  WeddingHallDetail,
+  StudioDetail,
+  DressDetail,
+  MakeupDetail,
+  Coupon,
+  MyCoupon,
+} from "../../../type/product";
 
-/* ========================= 타입 정의 ========================= */
-
-type Category = "wedding" | "studio";
-
-/** 공통 이미지 타입 */
-type CommonImage = {
-  id: number;
-  url: string;
-  s3Key: string;
-  displayOrder: number;
+/* 날짜 포맷: 2025-11-19 -> 25.11.19 */
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yy}.${mm}.${dd}`;
 };
-
-/** 공통 옵션 타입 */
-type CommonOption = {
-  name: string;
-  detail: string;
-  price: number;
-};
-
-/** 웨딩홀 상세 타입 (모바일뷰와 동일) */
-export type WeddingHallDetail = {
-  id: number;
-  name: string;
-  price: number;
-  address: string;
-  detail: string;
-  availableTimes: string;
-  starCount: number;
-  averageRating: number;
-  capacity: number;
-  minGuest: number;
-  maxGuest: number;
-  parkingCapacity: number;
-  cateringType: string;
-  reservationPolicy: string;
-  region: string;
-  ownerName: string;
-  images: CommonImage[];
-  options: CommonOption[];
-  tags: string[];
-};
-
-/** 스튜디오 태그 타입 */
-type StudioTag = {
-  id: number;
-  tagName: string;
-};
-
-/** 스튜디오 상세 타입 (모바일뷰와 동일) */
-export type StudioDetail = {
-  id: number;
-  name: string;
-  address: string;
-  detail: string;
-  price: number;
-  availableTimes: string;
-  region: string;
-  images: CommonImage[];
-  options: CommonOption[];
-  tags: StudioTag[];
-};
-
-/** 공통 형태 */
-export type NormalizedDetail =
-  | (WeddingHallDetail & { _category: "wedding" })
-  | (StudioDetail & { _category: "studio" });
 
 /* ========================= 컴포넌트 ========================= */
 
@@ -80,6 +35,7 @@ const WebView = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
+  const isAuth = useAppSelector((s) => s.user.isAuth);
 
   const [activeTab, setActiveTab] = useState<"basic" | "detail" | "review">(
     "basic"
@@ -92,16 +48,53 @@ const WebView = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // 상품별 쿠폰 리스트 (오너가 설정한 쿠폰)
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  // 이미 내가 가진 쿠폰 id 목록 (couponId 기준)
+  const [myCouponIds, setMyCouponIds] = useState<Set<number>>(
+    () => new Set<number>()
+  );
+  // 현재 세션에서 다운로드한 쿠폰 id 목록 (UI 즉시 반영용)
+  const [downloadedCouponIds, setDownloadedCouponIds] = useState<number[]>([]);
+
+  // 상품예약 완료 모달
+  const [showReservationModal, setShowReservationModal] = useState(false);
+
   /* ========================= 네비게이션 ========================= */
 
   const handleGoCart = () => {
     navigate("/cart");
   };
 
-  const handleGoReservation = () => {
-    if (!detailData) return;
-    // 추후 예약 페이지 경로 연결
-    // navigate(`/reservation/${detailData._category}/${detailData.id}`);
+  /* ========= 장바구니 공용 로직 (알럿 X) ========= */
+  const addToCartCore = async (): Promise<boolean> => {
+    if (!detailData || !id) {
+      alert("상품 정보를 불러올 수 없습니다.");
+      return false;
+    }
+
+    try {
+      const quantity = 1;
+      await api.post("/api/v1/cart", {
+        productId: Number(id),
+        quantity,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("장바구니 추가 실패:", error);
+      alert("장바구니 추가에 실패했습니다.");
+      return false;
+    }
+  };
+
+  /* ========= 상품 예약 버튼용 (모달 O, 알럿 X) ========= */
+  const handleProductReservation = async () => {
+    const ok = await addToCartCore();
+    if (!ok) return;
+
+    // 예약 완료 모달 오픈
+    setShowReservationModal(true);
   };
 
   /* ========================= 쿠폰 ========================= */
@@ -114,22 +107,58 @@ const WebView = () => {
     setIsCouponOpen(false);
   };
 
-  const handleCouponDownload = () => {
+  // 쿠폰 다운로드
+  const handleCouponDownload = async (couponId: number) => {
+    // 이미 다운로드된 쿠폰이면 무시
+    if (downloadedCouponIds.includes(couponId) || myCouponIds.has(couponId)) {
+      return;
+    }
+    // 토스트 떠 있는 동안 중복 클릭 방지
     if (showCouponToast) return;
-    setShowCouponToast(true);
-    setTimeout(() => {
-      setShowCouponToast(false);
-    }, 3000);
+
+    try {
+      const { data } = await api.post(
+        `/api/v1/customer/coupon/${couponId}/download`
+      );
+
+      console.log("쿠폰 다운로드 응답:", data);
+
+      // 세션용 다운로드 목록에 반영
+      setDownloadedCouponIds((prev) =>
+        prev.includes(couponId) ? prev : [...prev, couponId]
+      );
+
+      // 내 쿠폰 Set에도 반영
+      setMyCouponIds((prev) => {
+        const next = new Set(prev);
+        next.add(couponId);
+        return next;
+      });
+
+      // 토스트 표시
+      setShowCouponToast(true);
+      setTimeout(() => {
+        setShowCouponToast(false);
+      }, 3000);
+    } catch (error) {
+      console.error("쿠폰 다운로드 실패:", error);
+      alert("쿠폰 다운로드에 실패했습니다.");
+    }
   };
 
   /* ========================= 카테고리 판별 ========================= */
 
   useEffect(() => {
     const [, first] = location.pathname.split("/");
+
     if (first === "wedding") {
       setCategory("wedding");
     } else if (first === "studio") {
       setCategory("studio");
+    } else if (first === "dress") {
+      setCategory("dress");
+    } else if (first === "makeup") {
+      setCategory("makeup");
     } else {
       setCategory(null);
       setErrorMsg("유효하지 않은 카테고리 경로입니다.");
@@ -152,6 +181,10 @@ const WebView = () => {
           url = `/api/v1/wedding-hall/${id}`;
         } else if (category === "studio") {
           url = `/api/v1/studio/${id}`;
+        } else if (category === "dress") {
+          url = `/api/v1/dress/${id}`;
+        } else if (category === "makeup") {
+          url = `/api/v1/makeup/${id}`;
         }
 
         const { data } = await api.get(url);
@@ -168,6 +201,18 @@ const WebView = () => {
             _category: "studio",
           };
           setDetailData(normalized);
+        } else if (category === "dress") {
+          const normalized: NormalizedDetail = {
+            ...(data as DressDetail),
+            _category: "dress",
+          };
+          setDetailData(normalized);
+        } else if (category === "makeup") {
+          const normalized: NormalizedDetail = {
+            ...(data as MakeupDetail),
+            _category: "makeup",
+          };
+          setDetailData(normalized);
         }
       } catch (error) {
         console.error(error);
@@ -181,6 +226,51 @@ const WebView = () => {
     fetchDetail();
   }, [category, id]);
 
+  /* ========================= 쿠폰 데이터 호출 ========================= */
+
+  // 1) 상품별 쿠폰 (오너 설정 쿠폰 목록)
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchCoupons = async () => {
+      try {
+        const { data } = await api.get<Coupon[]>(
+          `/api/v1/owner/coupon/product/${id}`
+        );
+        setCoupons(data ?? []);
+      } catch (error) {
+        console.error("쿠폰 정보를 불러오는 중 오류가 발생했습니다.:", error);
+        setCoupons([]);
+      }
+    };
+
+    fetchCoupons();
+  }, [id]);
+
+  // 2) 내 쿠폰 목록 (이미 다운로드한 쿠폰들)
+  useEffect(() => {
+    if (!isAuth) return;
+
+    const fetchMyCoupons = async () => {
+      try {
+        const { data } = await api.get<MyCoupon[]>(
+          "/api/v1/customer/coupon/my"
+        );
+
+        // 서버에서 내려준 쿠폰 id들을 Set으로 관리
+        const ids = new Set<number>(data.map((c) => c.couponId));
+        setMyCouponIds(ids);
+
+        // UI 제어용 배열에도 동기화
+        setDownloadedCouponIds(Array.from(ids));
+      } catch (error) {
+        console.error("내 쿠폰 목록 조회 실패:", error);
+      }
+    };
+
+    fetchMyCoupons();
+  }, [isAuth]);
+
   /* ========================= 파생 값 ========================= */
 
   const displayPrice =
@@ -189,11 +279,19 @@ const WebView = () => {
       : undefined;
 
   const displayCategoryLabel =
-    detailData?._category === "wedding" ? "웨딩홀" : "스튜디오";
+    detailData?._category === "wedding"
+      ? "웨딩홀"
+      : detailData?._category === "studio"
+      ? "스튜디오"
+      : detailData?._category === "dress"
+      ? "드레스"
+      : detailData?._category === "makeup"
+      ? "메이크업"
+      : "";
 
   const displayBrand =
     detailData && "ownerName" in detailData
-      ? detailData.ownerName
+      ? detailData.bzName
       : detailData?.region ?? "브랜드 정보";
 
   const displayRegion = detailData?.region;
@@ -271,7 +369,6 @@ const WebView = () => {
             {/* 메인 2컬럼 레이아웃 */}
             <section className="grid grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] gap-10 items-start">
               {/* 좌측: 이미지 + 탭 컨텐츠 */}
-              {/* 탭 + 컨텐츠 */}
               <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB]">
                 {/* 탭 버튼 */}
                 <div className="flex items-center gap-8 px-5 pt-4 border-b border-[#E5E7EB] text-sm font-medium">
@@ -422,7 +519,7 @@ const WebView = () => {
                     <button
                       type="button"
                       className="w-full h-12 rounded-xl bg-[#FF2233] text-white flex items-center justify-center gap-2 text-[14px] font-semibold hover:brightness-95 transition-all"
-                      onClick={handleGoReservation}
+                      onClick={handleProductReservation}
                     >
                       <Icon
                         icon="solar:calendar-bold-duotone"
@@ -485,89 +582,90 @@ const WebView = () => {
 
               {/* 쿠폰 리스트 */}
               <div className="px-6 pt-3 pb-4 max-h-[60vh] md:max-h-[420px] overflow-y-auto">
-                {/* 쿠폰 1 */}
-                <div className="flex items-stretch mt-4">
-                  <div className="flex-1 border border-r-0 border-[#E5E7EB] rounded-l-2xl p-4 flex flex-col gap-2">
-                    <div className="text-[13px] text-[#111827] font-medium">
-                      [상반기 WEDDING] 구매금액 1만원 할인
-                    </div>
-                    <div className="text-[20px] font-bold text-[#111827] leading-[1.3]">
-                      6% 할인
-                    </div>
-                    <div className="flex flex-col gap-[2px] text-[11px] text-[#9CA3AF]">
-                      <span>10만원 이상 구매 시 최대 1만원 할인</span>
-                      <span>사용기간 : 25.09.29 ~ 25.10.31</span>
-                    </div>
-                  </div>
-                  <div className="w-[80px] bg-[#F9FAFB] border border-l-0 border-[#E5E7EB] rounded-r-2xl flex items-center justify-center">
-                    <button
-                      type="button"
-                      className="w-10 h-10 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center shadow-sm"
-                      onClick={handleCouponDownload}
-                    >
-                      <Icon
-                        icon="streamline:arrow-down-2"
-                        className="w-4 h-4 text-[#111827]"
-                      />
-                    </button>
-                  </div>
-                </div>
+                {coupons.map((coupon, index) => {
+                  const isFirst = index === 0;
+                  const isLast = index === coupons.length - 1;
 
-                {/* 쿠폰 2 */}
-                <div className="flex items-stretch mt-3">
-                  <div className="flex-1 border border-r-0 border-[#E5E7EB] rounded-l-2xl p-4 flex flex-col gap-2">
-                    <div className="text-[13px] text-[#111827] font-medium">
-                      [상반기 WEDDING] 구매금액 1만원 할인
-                    </div>
-                    <div className="text-[20px] font-bold text-[#111827] leading-[1.3]">
-                      6% 할인
-                    </div>
-                    <div className="flex flex-col gap-[2px] text-[11px] text-[#9CA3AF]">
-                      <span>10만원 이상 구매 시 최대 1만원 할인</span>
-                      <span>사용기간 : 25.09.29 ~ 25.10.31</span>
-                    </div>
-                  </div>
-                  <div className="w-[80px] bg-[#F9FAFB] border border-l-0 border-[#E5E7EB] rounded-r-2xl flex items-center justify-center">
-                    <button
-                      type="button"
-                      className="w-10 h-10 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center shadow-sm"
-                      onClick={handleCouponDownload}
-                    >
-                      <Icon
-                        icon="streamline:arrow-down-2"
-                        className="w-4 h-4 text-[#111827]"
-                      />
-                    </button>
-                  </div>
-                </div>
+                  const wrapperMargin = [
+                    isFirst ? "mt-4" : "mt-3",
+                    isLast ? "mb-2" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
 
-                {/* 쿠폰 3 */}
-                <div className="flex items-stretch mt-3 mb-2">
-                  <div className="flex-1 border border-r-0 border-[#E5E7EB] rounded-l-2xl p-4 flex flex-col gap-2">
-                    <div className="text-[13px] text-[#111827] font-medium">
-                      [상반기 WEDDING] 추가 할인 쿠폰
-                    </div>
-                    <div className="text-[20px] font-bold text-[#111827] leading-[1.3]">
-                      5% 할인
-                    </div>
-                    <div className="flex flex-col gap-[2px] text-[11px] text-[#9CA3AF]">
-                      <span>5만원 이상 구매 시</span>
-                      <span>사용기간 : 25.09.29 ~ 25.10.31</span>
-                    </div>
-                  </div>
-                  <div className="w-[80px] bg-[#F9FAFB] border border-l-0 border-[#E5E7EB] rounded-r-2xl flex items-center justify-center">
-                    <button
-                      type="button"
-                      className="w-10 h-10 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center shadow-sm"
-                      onClick={handleCouponDownload}
+                  // 모바일과 동일: 서버 + 세션 상태 모두 고려해서 다운로드 여부 체크
+                  const isDownloaded =
+                    downloadedCouponIds.includes(coupon.id) ||
+                    myCouponIds.has(coupon.id);
+
+                  const isRate = coupon.discountType === "RATE";
+                  const discountText = isRate
+                    ? `${coupon.discountValue}% 할인`
+                    : `${coupon.discountValue.toLocaleString()}원 할인`;
+
+                  const line1 =
+                    coupon.minPurchaseAmount > 0
+                      ? `${coupon.minPurchaseAmount.toLocaleString()}원 이상 구매 시${
+                          coupon.maxDiscountAmount > 0
+                            ? ` 최대 ${coupon.maxDiscountAmount.toLocaleString()}원 할인`
+                            : ""
+                        }`
+                      : coupon.couponDetail;
+
+                  const line2 =
+                    coupon.startDate && coupon.expirationDate
+                      ? `사용기간 : ${formatDate(
+                          coupon.startDate
+                        )} ~ ${formatDate(coupon.expirationDate)}`
+                      : "";
+
+                  return (
+                    <div
+                      key={coupon.id}
+                      className={`flex items-stretch ${wrapperMargin}`}
                     >
-                      <Icon
-                        icon="streamline:arrow-down-2"
-                        className="w-4 h-4 text-[#111827]"
-                      />
-                    </button>
+                      <div className="flex-1 border border-r-0 border-[#E5E7EB] rounded-l-2xl p-4 flex flex-col gap-2">
+                        <div className="text-[13px] text-[#111827] font-medium">
+                          {coupon.couponName}
+                        </div>
+                        <div className="text-[20px] font-bold text-[#111827] leading-[1.3]">
+                          {discountText}
+                        </div>
+                        <div className="flex flex-col gap-[2px] text-[11px] text-[#9CA3AF]">
+                          {line1 && <span>{line1}</span>}
+                          {line2 && <span>{line2}</span>}
+                        </div>
+                      </div>
+                      <div className="w-[80px] bg-[#F9FAFB] border border-l-0 border-[#E5E7EB] rounded-r-2xl flex items-center justify-center">
+                        <button
+                          type="button"
+                          className="w-10 h-10 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center shadow-sm"
+                          onClick={
+                            isDownloaded
+                              ? undefined
+                              : () => handleCouponDownload(coupon.id)
+                          }
+                          disabled={isDownloaded}
+                        >
+                          <Icon
+                            icon={
+                              isDownloaded
+                                ? "material-symbols:check-rounded" // 다운로드 완료 아이콘
+                                : "streamline:arrow-down-2" // 다운로드 전 아이콘
+                            }
+                            className="w-4 h-4 text-[#111827]"
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {coupons.length === 0 && (
+                  <div className="w-full py-6 text-center text-[12px] text-[#9CA3AF]">
+                    사용 가능한 쿠폰이 없습니다.
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -601,6 +699,55 @@ const WebView = () => {
           마이페이지 &gt; 쿠폰함에서 확인할 수 있어요.
         </p>
       </div>
+
+      {/* ================== 상품 예약 완료 모달 (웹뷰 전용 중앙 카드) ================== */}
+      {showReservationModal && (
+        <>
+          {/* 딤드 */}
+          <div
+            className="fixed inset-0 z-[70] bg-[rgba(0,0,0,0.6)]"
+            onClick={() => setShowReservationModal(false)}
+          />
+
+          {/* 중앙 카드 모달 */}
+          <div className="fixed inset-0 z-[80] flex items-center justify-center px-4">
+            <div className="w-full max-w-[420px] rounded-[24px] bg-white pt-8 pb-8 px-6 shadow-2xl">
+              <div className="flex flex-col items-center">
+                <p className="text-[15px] text-[#FF2233] font-medium mb-2 text-center">
+                  예약 요청을 보냈어요
+                </p>
+                <p className="text-[20px] font-semibold leading-[1.4] tracking-[-0.2px] text-[#1E2124] text-center mb-6">
+                  판매자가 승인하면
+                  <br />
+                  예약이 확정돼요
+                </p>
+
+                {/* 일러스트 영역 (모바일과 동일 이미지 사용) */}
+                <img
+                  className="w-[204px] h-[204px] mb-6"
+                  src="/images/reservation.png"
+                  alt="예약 완료"
+                />
+              </div>
+
+              <div className="mt-2">
+                <button
+                  type="button"
+                  className="w-full h-[56px] rounded-[12px] bg-[#FF2233] flex items-center justify-center hover:brightness-95 transition-all"
+                  onClick={() => {
+                    setShowReservationModal(false);
+                    navigate("/cart");
+                  }}
+                >
+                  <span className="text-[16px] font-semibold text-white tracking-[-0.2px]">
+                    장바구니 보러가기
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

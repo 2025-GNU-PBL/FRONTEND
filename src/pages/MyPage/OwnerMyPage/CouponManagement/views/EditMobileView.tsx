@@ -307,7 +307,7 @@ export default function RegisterMobile() {
               <input
                 className={inputCls()}
                 placeholder={
-                  discountType === "RATE" ? "ex) 10 (퍼센트)" : "ex) 10000 (원)"
+                  discountType === "RATE" ? "ex) 100 (퍼센트)" : "ex) 100000 (원)"
                 }
                 inputMode="numeric"
                 value={discountValue}

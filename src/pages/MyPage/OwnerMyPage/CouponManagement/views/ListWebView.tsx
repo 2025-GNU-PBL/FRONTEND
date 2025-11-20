@@ -168,7 +168,7 @@ export default function CustomerCouponWebView() {
 
       {/* 본문 */}
       <div className="max-w-[1040px] mt-20 mx-auto px-6 py-8">
-        {/* 상단 타이틀/설명 */}
+        {/* 상단 타이틀/설명 및 등록 버튼 */}
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-[22px] font-semibold text-[#111827] tracking-[-0.3px]">
@@ -179,14 +179,26 @@ export default function CustomerCouponWebView() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 text-[13px] text-[#4B5563]">
-            <Icon icon="solar:ticket-broken" className="w-5 h-5" />
-            <span>
-              등록된 쿠폰{" "}
-              <span className="font-semibold text-[#111827]">
-                {registeredCount}
+          <div className="flex items-center gap-4">
+            {/* 등록 버튼 */}
+            <button
+              type="button"
+              onClick={() => nav("/my-page/owner/coupons/register")}
+              className="inline-flex items-center gap-1.5 h-[38px] px-4 rounded-[12px] bg-[#FF2233] text-white text-[13px] font-semibold transition hover:opacity-90"
+            >
+              <Icon icon="solar:add-square-bold" className="w-5 h-5" />
+              <span>등록하기</span>
+            </button>
+
+            <div className="flex items-center gap-2 text-[13px] text-[#4B5563]">
+              <Icon icon="solar:ticket-broken" className="w-5 h-5" />
+              <span>
+                등록된 쿠폰{" "}
+                <span className="font-semibold text-[#111827]">
+                  {registeredCount}
+                </span>
               </span>
-            </span>
+            </div>
           </div>
         </div>
 

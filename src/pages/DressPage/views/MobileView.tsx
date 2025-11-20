@@ -175,7 +175,7 @@ const MobileView: React.FC = () => {
 
   // 네비게이션
   const goDetail = useCallback(
-    (id: number) => navigate(`/wedding/${id}`),
+    (id: number) => navigate(`/dress/${id}`),
     [navigate]
   );
   const onBack = useCallback(() => {

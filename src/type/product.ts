@@ -9,7 +9,7 @@ export type Product = {
   createdAt: string;
   thumbnail: string | null;
   region: string;
-  ownerName: string;
+  bzName: string;
   category: string;
   tags: {
     id: number;
@@ -62,7 +62,7 @@ export type WeddingHallDetail = {
   cateringType: string;
   reservationPolicy: string;
   region: string;
-  ownerName: string;
+  bzName: string;
   images: CommonImage[];
   options: CommonOption[];
   tags: string[]; // 문자열 태그
@@ -80,6 +80,7 @@ export type StudioDetail = {
   images: CommonImage[];
   options: CommonOption[];
   tags: StudioTag[];
+  bzName: string;
 };
 
 /** 드레스 상세 타입 (스튜디오와 동일 구조, tags 포함) */
@@ -94,6 +95,7 @@ export type DressDetail = {
   images: CommonImage[];
   options: CommonOption[];
   tags: StudioTag[];
+  bzName: string;
 };
 
 /** 메이크업 상세 타입 (tags 없음 / 선택적) */
@@ -108,6 +110,7 @@ export type MakeupDetail = {
   images: CommonImage[];
   options: CommonOption[];
   tags?: StudioTag[];
+  bzName: string;
 };
 
 /* ========================= 정규화 타입 ========================= */
@@ -121,3 +124,43 @@ export type NormalizedDetail =
   | (StudioDetail & { _category: "studio" })
   | (DressDetail & { _category: "dress" })
   | (MakeupDetail & { _category: "makeup" });
+
+export type Coupon = {
+  id: number;
+  couponCode: string;
+  discountType: "RATE" | "AMOUNT" | string;
+  discountValue: number;
+  startDate: string;
+  expirationDate: string;
+  couponName: string;
+  couponDetail: string;
+  category: string;
+  maxDiscountAmount: number;
+  minPurchaseAmount: number;
+  currentUsageCount: number;
+  ownerId: number;
+  productId: number;
+  status: string;
+};
+
+export type MyCoupon = {
+  userCouponId: number;
+  status: string;
+  downloadedAt: string | null;
+  usedAt: string | null;
+  couponId: number;
+  couponCode: string;
+  couponName: string;
+  couponDetail: string;
+  discountType: string;
+  discountValue: number;
+  maxDiscountAmount: number;
+  minPurchaseAmount: number;
+  startDate: string;
+  expirationDate: string;
+  category: string;
+  canUse: boolean;
+  daysUntilExpiration: number;
+  productId: number;
+  productName: string;
+};
