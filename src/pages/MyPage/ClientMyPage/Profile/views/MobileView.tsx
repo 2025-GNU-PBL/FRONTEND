@@ -1,8 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../../components/MyPageHeader";
-import { useAppSelector } from "../../../../store/hooks";
-import type { CustomerData, UserData } from "../../../../store/userSlice";
+import type { CustomerData, UserData } from "../../../../../store/userSlice";
+import MyPageHeader from "../../../../../components/MyPageHeader";
+import { useAppSelector } from "../../../../../store/hooks";
 
 function SectionCard({
   title,

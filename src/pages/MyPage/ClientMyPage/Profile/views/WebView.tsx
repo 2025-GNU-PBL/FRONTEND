@@ -1,6 +1,6 @@
 import React from "react";
-import { useAppSelector } from "../../../../store/hooks";
-import type { CustomerData, UserData } from "../../../../store/userSlice"; // 실제 경로에 맞게 수정
+import type { CustomerData, UserData } from "../../../../../store/userSlice";
+import { useAppSelector } from "../../../../../store/hooks";
 
 // 이 페이지는 "고객(CUSTOMER) 전용"이라는 전제를 코드로 한 번 잡아줌
 function ensureCustomer(userData: UserData | null): CustomerData | null {
