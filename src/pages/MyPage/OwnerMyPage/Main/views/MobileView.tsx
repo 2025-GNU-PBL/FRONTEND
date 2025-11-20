@@ -105,6 +105,10 @@ export default function MobileView() {
                 label="예약관리"
                 onClick={() => go("/my-page/owner/reservations")}
               />
+              <MidLink
+                label="취소내역 관리"
+                onClick={() => go("/my-page/owner/reservations")}
+              />
             </div>
           </section>
         </main>

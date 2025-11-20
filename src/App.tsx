@@ -60,7 +60,6 @@ import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/ProductManagement/Cou
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
 import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEditPage";
 import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
-import OwnerScheduleCalendarPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerScheduleCalendarPage";
 import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleCreatePage";
 import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
@@ -76,9 +75,6 @@ import Success from "./pages/CheckoutPage/Success/Success";
 import Fail from "./pages/CheckoutPage/Fail/Fail";
 import ProductEdit from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductEdit/ProductEdit";
 import OwnerPersonalScheduleEditPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleEditPage";
-import Fail from "./pages/CheckoutPage/Fail/Fail";
-import Success from "./pages/CheckoutPage/Success/Success";
-import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 
 function Layout() {
   const location = useLocation();
@@ -272,10 +268,6 @@ const App = () => {
           <Route
             path="/my-page/owner/profile/edit"
             element={<OwnerProfileEditPage />}
-          />
-          <Route
-            path="/my-page/owner/schedules"
-            element={<OwnerScheduleCalendarPage />}
           />
           <Route
             path="/my-page/owner/schedules/personal"
