@@ -506,7 +506,7 @@ const WebView: React.FC = () => {
 
   const goDetail = useCallback(
     (id: number) => {
-      navigate(`/wedding/${id}`);
+      navigate(`/makeup/${id}`);
     },
     [navigate]
   );

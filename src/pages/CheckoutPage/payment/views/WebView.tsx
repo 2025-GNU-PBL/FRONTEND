@@ -18,6 +18,12 @@ type OrderSummary = {
   status: string;
 };
 
+type PaymentLocationState = {
+  orderCode?: string;
+  couponDiscountAmount?: number; // 이전 페이지에서 쿠폰 할인 금액(표시용)
+  userCouponId?: number | null; // 성공 페이지 쿼리 파라미터로 전달용
+} | null;
+
 const WebView = () => {
   const location = useLocation();
 
@@ -32,12 +38,23 @@ const WebView = () => {
   const [order, setOrder] = useState<OrderSummary | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(true);
 
-  // 1) 이전 페이지에서 넘긴 orderCode 기반으로 단일 주문 조회
+  // 쿠폰 할인 금액 (UI 표시용)
+  const [couponDiscountAmount, setCouponDiscountAmount] = useState<number>(0);
+
+  // 금액 변경이 필요하면 이 함수로 상태만 바꾸면 됩니다.
+  const updateAmount = (nextAmount: { currency: "KRW"; value: number }) => {
+    setAmount(nextAmount);
+  };
+
+  // 1) 이전 페이지에서 넘긴 orderCode + couponDiscountAmount 기반으로 단일 주문 조회
   useEffect(() => {
     async function fetchOrderByOrderCode() {
       try {
-        const state = location.state as { orderCode?: string } | null;
+        const state = location.state as PaymentLocationState;
         const selectedOrderCode = state?.orderCode;
+        const discountFromState = state?.couponDiscountAmount ?? 0;
+
+        setCouponDiscountAmount(discountFromState);
 
         if (!selectedOrderCode) {
           console.error(
@@ -57,10 +74,12 @@ const WebView = () => {
 
         setOrder(data);
 
-        // ✅ 토스 결제 amount는 단건 주문의 totalAmount 기준으로 설정
-        setAmount({
+        // ✅ 토스 결제 amount는 단건 주문의 totalAmount(쿠폰 적용 후) 기준으로 설정
+        const baseAmount = data.totalAmount ?? 0;
+
+        updateAmount({
           currency: "KRW",
-          value: data.totalAmount,
+          value: baseAmount,
         });
       } catch (error) {
         console.error("[ORDER_BY_ORDER_CODE_REQUEST_ERROR]", error);
@@ -72,7 +91,7 @@ const WebView = () => {
     fetchOrderByOrderCode();
   }, [location]);
 
-  // 2) 결제창(payment) 인스턴스 초기화 (widgets 완전 제거)
+  // 2) 결제창(payment) 인스턴스 초기화
   useEffect(() => {
     async function initPayment() {
       try {
@@ -94,11 +113,6 @@ const WebView = () => {
     initPayment();
   }, []);
 
-  // 금액 변경이 필요하면 이 함수로 상태만 바꾸면 됩니다.
-  const updateAmount = (nextAmount: { currency: "KRW"; value: number }) => {
-    setAmount(nextAmount);
-  };
-
   // 3) 결제 요청 핸들러 (결제창 띄우기)
   const handleRequestPayment = async () => {
     // 토스 결제 인스턴스 or 주문 정보가 없으면 실행 X
@@ -112,25 +126,35 @@ const WebView = () => {
     }
 
     try {
-      // ✅ orderId는 서버에서 내려준 orderCode를 사용 (DB에도 동일하게 저장된 값)
+      // ✅ orderId는 서버에서 내려준 orderCode를 사용
       const orderIdForToss = order.orderCode;
+
+      const state = location.state as PaymentLocationState;
+      const userCouponId = state?.userCouponId ?? null;
+
+      const successUrl =
+        userCouponId !== null && userCouponId !== undefined
+          ? `${window.location.origin}/success?userCouponId=${userCouponId}`
+          : `${window.location.origin}/success`;
 
       console.log("[REQUEST_PAYMENT_ORDER_INFO]", {
         orderIdForToss,
         amount,
         order,
+        couponDiscountAmount,
+        userCouponId,
       });
 
       // ✅ 결제창 방식: payment.requestPayment() 사용
       await payment.requestPayment({
         method: "CARD", // 카드/간편결제 통합결제창
         amount, // { value, currency } ← 서버 totalAmount 기반
-        orderName: "주문 결제", // 필요시 orderDetails 기반으로 바꿔도 됨
+        orderName: "주문 결제",
         orderId: orderIdForToss,
         customerEmail: "customer123@gmail.com",
         customerName: "김토스",
         customerMobilePhone: "01012341234",
-        successUrl: `${window.location.origin}/success`,
+        successUrl,
         failUrl: `${window.location.origin}/fail`,
       });
 
@@ -142,6 +166,11 @@ const WebView = () => {
   };
 
   const isButtonDisabled = !ready || loadingOrder || !order;
+
+  // ❗ UI에서 사용할 "원 금액(할인 전)" – 쿠폰 금액을 더해 복원
+  const originalAmount = order
+    ? order.totalAmount + couponDiscountAmount
+    : amount.value + couponDiscountAmount;
 
   return (
     <div className="wrapper min-h-screen bg-[#F5F6FA] pt-24 pb-16 flex justify-center">
@@ -168,12 +197,22 @@ const WebView = () => {
             <span className="text-md font-semibold tracking-[-0.2px] text-[#111827]">
               {amount.value.toLocaleString()}원
             </span>
+            {couponDiscountAmount > 0 && (
+              <div className="mt-1 text-[11px] text-[#EF4444]">
+                쿠폰 할인 -{couponDiscountAmount.toLocaleString()}원
+              </div>
+            )}
+            {couponDiscountAmount > 0 && (
+              <div className="text-[10px] text-[#9CA3AF]">
+                (할인 전 {originalAmount.toLocaleString()}원)
+              </div>
+            )}
           </div>
         </header>
 
         {/* 메인 카드 */}
         <div className="box_section rounded-2xl bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.08)] border border-[#E5E7EB]">
-          {/* 결제 안내 영역 (위젯 UI 대신 텍스트 안내만 유지) */}
+          {/* 결제 안내 영역 */}
           <section className="mb-6">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -200,7 +239,7 @@ const WebView = () => {
             </div>
           </section>
 
-          {/* 약관 안내 영역 (실제 약관 UI는 결제창에서 처리됨) */}
+          {/* 약관 안내 영역 */}
           <section className="mb-6">
             <div className="mb-3 flex items-center gap-2">
               <span className="rounded-full bg-[#FEF3C7] px-2.5 py-1 text-[11px] font-medium text-[#D97706]">

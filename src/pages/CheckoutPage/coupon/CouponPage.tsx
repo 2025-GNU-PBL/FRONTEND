@@ -11,7 +11,7 @@ const CouponPage: React.FC = () => {
       </div>
 
       {/* Desktop */}
-      <div className="hidden md:block">
+      <div className="hidden md:block mt-20">
         <WebView />
       </div>
     </>

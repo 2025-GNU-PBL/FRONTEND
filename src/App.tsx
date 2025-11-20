@@ -114,6 +114,9 @@ function Layout() {
     "/notification",
     "/checkout",
     "/checkout/coupon",
+    "/checkout/payment",
+    "/success",
+    "/fail",
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)

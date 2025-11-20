@@ -1,6 +1,6 @@
 import React from "react";
 import { Icon } from "@iconify/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../../../lib/api/axios";
 
 type OrderStatus = "WAITING_FOR_PAYMENT" | "PAID" | string;
@@ -33,12 +33,49 @@ interface ProductForView extends OrderDetail {
   shopName: string | null;
 }
 
+// 쿠폰 타입 (모바일과 동일 스펙)
+interface Coupon {
+  userCouponId: number;
+  status: string;
+  downloadedAt: string;
+  usedAt: string | null;
+  couponId: number;
+  couponCode: string;
+  couponName: string;
+  couponDetail: string;
+  discountType: "RATE" | "FIXED" | string;
+  discountValue: number;
+  maxDiscountAmount: number;
+  minPurchaseAmount: number;
+  startDate: string;
+  expirationDate: string;
+  category: string;
+  canUse: boolean;
+  daysUntilExpiration: number;
+  productId: number | null;
+  productName: string | null;
+}
+
+// 쿠폰 페이지에서 되돌아올 때 받는 state 타입 (모바일과 동일)
+interface CheckoutLocationState {
+  selectedCouponId?: number | null; // == userCouponId
+  selectedCoupon?: Coupon | null;
+  discountAmount?: number; // 선택된 쿠폰 기준 할인액
+  productId?: number;
+  appliedAmount?: number;
+  applicableCount?: number;
+}
+
 const WebView: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const [applicableCouponCount, setApplicableCouponCount] =
+    React.useState<number>(0);
 
   React.useEffect(() => {
     const fetchOrders = async () => {
@@ -74,26 +111,61 @@ const WebView: React.FC = () => {
     [orders]
   );
 
-  // 금액 계산 (총 상품금액, 총 할인금액, 결제금액)
+  // ✅ 우리 서비스 기준: 기본 할인 없음 → originalPrice만 신뢰
   const totalOriginalPrice = React.useMemo(
     () => orders.reduce((sum, order) => sum + order.originalPrice, 0),
     [orders]
   );
 
-  const totalDiscountAmount = React.useMemo(
-    () => orders.reduce((sum, order) => sum + order.discountAmount, 0),
-    [orders]
-  );
-
-  const totalAmount = React.useMemo(
-    () => orders.reduce((sum, order) => sum + order.totalAmount, 0),
-    [orders]
-  );
-
   const formatPrice = (value: number) => `${value.toLocaleString("ko-KR")}원`;
 
-  // ✅ 결제 페이지로 "orderCode"를 넘기는 핸들러
-  const handleClickPayment = () => {
+  // ✅ 쿠폰 페이지에서 돌아올 때 전달된 state
+  const locationState = (location.state as CheckoutLocationState) || {};
+  const selectedCoupon = locationState.selectedCoupon ?? null;
+  const selectedCouponName = selectedCoupon?.couponName ?? null;
+  const couponDiscountAmount = locationState.discountAmount ?? 0;
+  const selectedCouponId = locationState.selectedCouponId ?? null;
+
+  const displayApplicableCouponCount =
+    locationState.applicableCount ?? applicableCouponCount;
+
+  // ✅ 최종 결제 금액(쿠폰 할인만 반영) – 화면 표시용
+  const finalDiscountAmount = couponDiscountAmount;
+  const finalPayAmount = Math.max(totalOriginalPrice - couponDiscountAmount, 0);
+
+  // ✅ 최초 진입 시, 맨 위 상품 + 전체 결제 금액 기준으로 사용 가능한 쿠폰 개수 조회
+  React.useEffect(() => {
+    const fetchApplicableCoupons = async () => {
+      try {
+        if (products.length === 0 || totalOriginalPrice <= 0) {
+          setApplicableCouponCount(0);
+          return;
+        }
+
+        const firstProduct = products[0];
+
+        const res = await api.get<Coupon[]>(
+          "/api/v1/customer/coupon/my/applicable",
+          {
+            params: {
+              productId: firstProduct.productId,
+              // ✅ 기본 할인 없음 → 원가 기준으로 쿠폰 가능 여부 체크
+              purchaseAmount: totalOriginalPrice,
+            },
+          }
+        );
+
+        setApplicableCouponCount(res.data?.length ?? 0);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchApplicableCoupons();
+  }, [products, totalOriginalPrice]);
+
+  // ✅ 결제 버튼 클릭 시: 주문에 쿠폰 먼저 적용 → 그 다음 결제 페이지로 이동
+  const handleClickPayment = async () => {
     if (orders.length === 0) {
       console.warn("[CHECKOUT_STEP2] 결제 가능한 주문이 없습니다.");
       return;
@@ -103,17 +175,32 @@ const WebView: React.FC = () => {
     const waitingOrder =
       orders.find((o) => o.status === "WAITING_FOR_PAYMENT") ?? orders[0];
 
-    console.log("[CHECKOUT_STEP2_NAVIGATE]", {
-      selectedOrderId: waitingOrder.orderId,
-      selectedOrderCode: waitingOrder.orderCode,
-    });
+    try {
+      // 선택된 쿠폰이 있으면 주문에 쿠폰 적용 API 호출
+      if (selectedCouponId) {
+        await api.post(
+          `/api/v1/orders/${waitingOrder.orderCode}/coupon/apply`,
+          null,
+          {
+            params: {
+              userCouponId: selectedCouponId,
+            },
+          }
+        );
+      }
 
-    // ✅ orderId 대신 orderCode만 넘김
-    navigate("/checkout/payment", {
-      state: {
-        orderCode: waitingOrder.orderCode,
-      },
-    });
+      // ✅ orderCode + 쿠폰 정보 들고 결제 페이지로 이동
+      navigate("/checkout/payment", {
+        state: {
+          orderCode: waitingOrder.orderCode,
+          couponDiscountAmount,
+          userCouponId: selectedCouponId ?? null,
+        },
+      });
+    } catch (e) {
+      console.error("[ORDER_COUPON_APPLY_ERROR]", e);
+      alert("쿠폰 적용 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    }
   };
 
   return (
@@ -216,7 +303,7 @@ const WebView: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* 예약 날짜 영역 (디자인 유지, 문구만 공통) */}
+                    {/* 예약 날짜 영역 */}
                     <div className="mt-3 flex items-center justify-between rounded-[12px] bg-[#F7F9FA] px-4 py-3">
                       <div className="flex items-center gap-2">
                         <Icon
@@ -259,16 +346,45 @@ const WebView: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => navigate("/checkout/coupon")}
+                onClick={() =>
+                  navigate("/checkout/coupon", {
+                    state: {
+                      products: products.map((p) => ({
+                        productId: p.productId,
+                        productName: p.productName,
+                        lineTotal: p.lineTotal,
+                        shopName: p.shopName,
+                      })),
+                      // ✅ 쿠폰 페이지에도 원가 기준으로 넘김
+                      purchaseAmount: totalOriginalPrice,
+                    },
+                  })
+                }
                 className="flex h-[52px] w-full items-center justify-between rounded-[14px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-left transition-all hover:border-[#FF2233] hover:bg-[#FFF5F5]"
               >
-                <div className="flex flex-col">
-                  <span className="text-[13px] font-medium leading-[1.6] tracking-[-0.2px] text-[#111827]">
-                    쿠폰 선택
-                  </span>
-                  <span className="text-[11px] leading-[1.5] text-[#9CA3AF]">
-                    사용 가능 0장
-                  </span>
+                {/* 디자인 유지하면서 내용만 쿠폰 선택/적용 상태에 맞게 변경 */}
+                <div className="flex flex-col max-w-[240px]">
+                  {selectedCouponName ? (
+                    <>
+                      <span className="text-[13px] font-medium leading-[1.6] tracking-[-0.2px] text-[#111827] truncate">
+                        {selectedCouponName}
+                      </span>
+                      <span className="text-[11px] leading-[1.5] text-[#6B7280]">
+                        {couponDiscountAmount > 0
+                          ? `쿠폰 할인 -${formatPrice(couponDiscountAmount)}`
+                          : "할인 없음"}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[13px] font-medium leading-[1.6] tracking-[-0.2px] text-[#111827]">
+                        쿠폰 선택
+                      </span>
+                      <span className="text-[11px] leading-[1.5] text-[#9CA3AF]">
+                        사용 가능 {displayApplicableCouponCount}장
+                      </span>
+                    </>
+                  )}
                 </div>
                 <Icon
                   icon="mdi:chevron-right"
@@ -303,7 +419,7 @@ const WebView: React.FC = () => {
                     총 할인금액
                   </span>
                   <span className="text-[14px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#16A34A]">
-                    -{formatPrice(totalDiscountAmount)}
+                    -{formatPrice(finalDiscountAmount)}
                   </span>
                 </div>
               </div>
@@ -318,9 +434,8 @@ const WebView: React.FC = () => {
                     금액입니다.
                   </span>
                 </div>
-                {/* 🔥 여기 nowrap 추가 */}
                 <span className="whitespace-nowrap text-[20px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#111827]">
-                  {formatPrice(totalAmount)}
+                  {formatPrice(finalPayAmount)}
                 </span>
               </div>
 
