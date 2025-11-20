@@ -3,13 +3,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../../../../../lib/api/axios";
 
-/** ====== 서버 응답 DTO (Swagger 기준) ====== */
+/** ====== 서버 응답 DTO ====== */
 type ReservationDetailApiResponse = {
   id: number;
   ownerId: number;
   customerId: number;
   productId: number;
-  status: string; // WAITING / APPROVE / CANCEL ...
+  status: string; // WAITING / APPROVE / DENY ...
   reservationTime: string; // "2025-11-14"
   storeName: string;
   productName: string;
@@ -41,14 +41,8 @@ type ReservationDetail = {
 /** 서버 status → 상세 화면 status 매핑 */
 function mapDetailStatus(status: string): ReservationDetailStatus {
   const upper = (status || "").toUpperCase();
-  if (upper === "CANCEL" || upper === "CANCELED") return "취소";
-  if (
-    upper === "APPROVE" ||
-    upper === "APPROVED" ||
-    upper === "CONFIRM" ||
-    upper === "CONFIRMED"
-  )
-    return "확정";
+  if (upper === "DENY") return "취소";
+  if (upper === "APPROVE") return "확정";
   // 나머지는 전부 예약 진행 중으로 처리
   return "예약중";
 }

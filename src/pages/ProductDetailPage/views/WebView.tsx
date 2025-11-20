@@ -97,6 +97,74 @@ const WebView = () => {
     setShowReservationModal(true);
   };
 
+  /* ========================= 공유 / 채팅 ========================= */
+
+  // 웹 공유 / 클립보드 공유
+  const handleShare = async () => {
+    const url = window.location.href;
+    const title =
+      (detailData as any)?.name ||
+      (detailData as any)?.title ||
+      "웨딩 상품 상세";
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title,
+          url,
+        });
+      } catch (err) {
+        console.error("웹 공유 실패 또는 취소:", err);
+      }
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(url);
+        alert("링크가 클립보드에 복사되었어요.");
+      } catch (err) {
+        console.error("클립보드 복사 실패:", err);
+        alert(
+          "공유 기능 사용이 어려워요. 브라우저 주소창에서 직접 복사해주세요."
+        );
+      }
+    } else {
+      alert(
+        "브라우저에서 공유 기능을 지원하지 않아요. 주소창에서 직접 복사해주세요."
+      );
+    }
+  };
+
+  // 상품 기반 채팅방 열기
+  const handleChat = async () => {
+    if (!id) {
+      alert("상품 정보를 불러올 수 없습니다.");
+      return;
+    }
+
+    try {
+      const { data } = await api.post("/api/chat/rooms/open-from-product", {
+        productId: Number(id),
+      });
+
+      console.log("채팅방 생성/조회 결과:", data);
+
+      // TODO: 실제 채팅방 경로 확정되면 여기서 이동
+      // 예: navigate(`/chat/rooms/${data.roomId}`);
+      alert("판매자와의 채팅방이 열렸어요.");
+    } catch (error: any) {
+      console.error("채팅방 열기 실패:", error);
+
+      const status = error?.response?.status;
+
+      if (status === 401) {
+        alert("로그인이 필요한 서비스입니다.");
+        // 필요하다면 로그인 페이지로 이동
+        // navigate("/login");
+      } else {
+        alert("채팅방을 여는 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
+      }
+    }
+  };
+
   /* ========================= 쿠폰 ========================= */
 
   const handleOpenCoupon = () => {
@@ -433,8 +501,9 @@ const WebView = () => {
                 </div>
               </div>
 
-              {/* 우측: 예약 카드 (sticky) */}
-              <aside className="sticky top-10">
+              {/* 우측: 예약 카드 (sticky) + 채팅/공유 버튼 */}
+              <aside className="sticky top-10 space-y-3">
+                {/* 예약 카드 */}
                 <div className="bg-white rounded-2xl shadow-md border border-[#E5E7EB] px-6 py-6 space-y-5">
                   {/* 브랜드 / 타이틀 */}
                   <div className="space-y-2">
@@ -473,7 +542,7 @@ const WebView = () => {
                     )}
                   </div>
 
-                  {/* 요약 정보 (주소 + 이용 가능 시간: 여기서만 보여줌) */}
+                  {/* 요약 정보 (주소 + 이용 가능 시간) */}
                   <div className="rounded-xl bg-[#F9FAFB] px-4 py-3 space-y-2 text-[13px]">
                     <div className="flex items-start gap-3">
                       <Icon
@@ -503,7 +572,7 @@ const WebView = () => {
                     )}
                   </div>
 
-                  {/* 버튼 영역 */}
+                  {/* 버튼 영역: 장바구니 / 예약 */}
                   <div className="space-y-2">
                     <button
                       type="button"
@@ -534,6 +603,26 @@ const WebView = () => {
                     예약 요청 후 담당 MD가 일정 및 세부 내용을 확인한 뒤
                     알림으로 확정 여부를 안내드려요.
                   </p>
+
+                  {/* 채팅 / 공유 버튼 (오른쪽 영역 전용) */}
+                  <div className="pt-4 mt-2 border-t border-[#E5E7EB] flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleChat}
+                      className="flex-1 h-11 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] flex items-center justify-center gap-2 text-[13px] font-medium text-[#111827] transition-colors"
+                    >
+                      <Icon icon="fluent:chat-16-regular" className="w-4 h-4" />
+                      <span>판매자와 채팅하기</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleShare}
+                      className="h-11 px-4 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] flex items-center justify-center gap-2 text-[13px] text-[#4B5563] transition-colors"
+                    >
+                      <Icon icon="solar:share-linear" className="w-4 h-4" />
+                      <span>공유</span>
+                    </button>
+                  </div>
                 </div>
               </aside>
             </section>
@@ -593,7 +682,7 @@ const WebView = () => {
                     .filter(Boolean)
                     .join(" ");
 
-                  // 모바일과 동일: 서버 + 세션 상태 모두 고려해서 다운로드 여부 체크
+                  // 서버 + 세션 상태 모두 고려해서 다운로드 여부 체크
                   const isDownloaded =
                     downloadedCouponIds.includes(coupon.id) ||
                     myCouponIds.has(coupon.id);
@@ -650,8 +739,8 @@ const WebView = () => {
                           <Icon
                             icon={
                               isDownloaded
-                                ? "material-symbols:check-rounded" // 다운로드 완료 아이콘
-                                : "streamline:arrow-down-2" // 다운로드 전 아이콘
+                                ? "material-symbols:check-rounded"
+                                : "streamline:arrow-down-2"
                             }
                             className="w-4 h-4 text-[#111827]"
                           />

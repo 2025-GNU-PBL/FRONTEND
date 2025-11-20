@@ -20,7 +20,7 @@ type ReservationApiResponse = {
   ownerId: number;
   customerId: number;
   productId: number;
-  status: string; // WAITING / APPROVE / CANCEL
+  status: string; // WAITING / APPROVE / DENY
   reservationTime: string; // "2025-11-07T12:00:00"
   title: string;
   content: string;
@@ -55,12 +55,8 @@ export default function ListMoblieView() {
   const mapStatus = (status: string): ReservationStatus => {
     switch (status) {
       case "APPROVE":
-      case "APPROVED":
-      case "CONFIRM":
-      case "CONFIRMED":
         return "확정";
-      case "CANCEL":
-      case "CANCELED":
+      case "DENY":
         return "취소";
       default:
         return "대기";

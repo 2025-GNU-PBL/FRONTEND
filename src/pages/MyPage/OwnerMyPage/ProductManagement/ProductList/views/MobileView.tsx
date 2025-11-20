@@ -45,6 +45,14 @@ type ApiOwnerProductPageResponse = {
   page: PageMeta;
 };
 
+const DELETE_ENDPOINT_MAP: Record<ProductCategory, string> = {
+  WEDDING_HALL: "/api/v1/wedding-hall",
+  WEDDING: "/api/v1/wedding-hall", // 목록에서 WEDDING 으로 올 수도 있으니 같이 맵핑
+  STUDIO: "/api/v1/studio",
+  DRESS: "/api/v1/dress",
+  MAKEUP: "/api/v1/makeup",
+};
+
 /** ====== 유틸 ====== */
 const formatDateYMD = (iso: string) => {
   if (!iso) return "";
@@ -120,20 +128,23 @@ export default function MobileView() {
   );
 
   /** ====== 삭제 ====== */
-  const onDelete = async (productId: number) => {
+  const onDelete = async (productId: number, category: ProductCategory) => {
     if (!confirm("이 상품을 삭제하시겠어요?")) return;
 
+    const endpoint = DELETE_ENDPOINT_MAP[category];
+    if (!endpoint) {
+      alert("삭제할 수 없는 카테고리입니다.");
+      return;
+    }
+
     try {
-      await api.delete(`/api/v1/product/${productId}`);
+      await api.delete(`${endpoint}/${productId}`);
 
       // 로컬 상태에서 삭제
       setItems((prev) => prev.filter((p) => p.id !== productId));
       setPageMeta((prev) =>
         prev
-          ? {
-              ...prev,
-              totalElements: Math.max(prev.totalElements - 1, 0),
-            }
+          ? { ...prev, totalElements: Math.max(prev.totalElements - 1, 0) }
           : prev
       );
     } catch (e) {
@@ -202,7 +213,7 @@ export default function MobileView() {
                       type="button"
                       className="w-5 h-5 rounded-full flex items-center justify-center"
                       aria-label="delete-card"
-                      onClick={() => onDelete(p.id)}
+                      onClick={() => onDelete(p.id, p.category)}
                     >
                       <Icon
                         icon="meteor-icons:xmark"

@@ -530,7 +530,7 @@ const MobileView: React.FC = () => {
   return (
     <div className="w-full flex justify-center bg-white">
       <div className="relative w-[390px] min-h-screen bg-white">
-        {/* 헤더: 커스텀 MyPageHeader 사용 */}
+        {/* 헤더 */}
         <MyPageHeader
           title="상품 추가"
           onBack={() => navigate(-1)}
