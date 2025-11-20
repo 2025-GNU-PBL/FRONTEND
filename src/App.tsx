@@ -271,10 +271,6 @@ const App = () => {
             element={<OwnerProfileEditPage />}
           />
           <Route
-            path="/my-page/owner/schedules"
-            element={<OwnerScheduleCalendarPage />}
-          />
-          <Route
             path="/my-page/owner/schedules/personal"
             element={<OwnerPersonalScheduleCreatePage />}
           />
