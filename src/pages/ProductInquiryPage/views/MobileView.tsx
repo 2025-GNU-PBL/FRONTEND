@@ -8,6 +8,8 @@ interface InquiryDraft {
   prefillId: number;
   productId: number;
   productName: string;
+  bzName: string;
+  ownerProfileImage: string;
   price: number;
   thumbnailUrl: string;
   quantity: number;
@@ -20,10 +22,10 @@ const MobileView: React.FC = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   // shopName과 shopImageUrl은 현재 API 응답에 없으므로, productName을 사용하고 기본 이미지를 유지
-  const [shopName, setShopName] = useState('루이즈블랑'); // 기본값 유지
-  const [productName, setProductName] = useState('[촬영] 신부신랑 헤어메이크업 (부원장)');
-  const [shopImageUrl, setShopImageUrl] = useState('/images/dress.png'); // public 제거
-  const [productImageUrl, setProductImageUrl] = useState('/images/makeup.png'); // public 제거
+  const [shopName, setShopName] = useState('');
+  const [productName, setProductName] = useState('');
+  const [shopImageUrl, setShopImageUrl] = useState('');
+  const [productImageUrl, setProductImageUrl] = useState('');
   const maxContentLength = 200;
 
   const [hasDraftIds, setHasDraftIds] = useState(false); // 새로운 상태 추가
@@ -32,10 +34,10 @@ const MobileView: React.FC = () => {
   const resetInquiryState = () => {
     setTitle('');
     setContent('');
-    setShopName('루이즈블랑'); // 기본값
-    setProductName('[촬영] 신부신랑 헤어메이크업 (부원장)'); // 기본값
-    setShopImageUrl('/images/dress.png'); // 기본값
-    setProductImageUrl('/images/makeup.png'); // 기본값
+    setShopName(''); // 기본값
+    setProductName(''); // 기본값
+    setShopImageUrl(''); // 기본값
+    setProductImageUrl(''); // 기본값
   };
 
   // draftIds가 없을 경우 /cart로 리다이렉트
@@ -60,11 +62,10 @@ const MobileView: React.FC = () => {
         // setContent(draft.content || '');
 
         setProductName(draft.productName);
-        setProductImageUrl(draft.thumbnailUrl.replace("/public", ""));
+        setProductImageUrl(draft.thumbnailUrl || ''); // null 처리 및 기본값 설정
 
-        // shopName은 현재 응답에 없으므로, productName을 임시로 사용하거나 고정값을 유지
-        setShopName(draft.productName); // 예시: productName을 shopName으로 사용
-        setShopImageUrl(draft.thumbnailUrl.replace("/public", "")); // 예시: product thumbnail을 shop image로 사용
+        setShopName(draft.bzName);
+        setShopImageUrl(draft.ownerProfileImage || ''); // null 처리 및 기본값 설정
 
       } catch (error) {
         console.error(`Failed to fetch inquiry draft ${draftId}:`, error);
@@ -161,7 +162,7 @@ const MobileView: React.FC = () => {
       <div className="inquiry-shop-product-section">
         <div className="inquiry-shop-info">
           <div className="inquiry-shop-avatar">
-            <img src={shopImageUrl.replace("/public", "")} alt="Shop Avatar" />
+            <img src={shopImageUrl} alt="Shop Avatar" />
           </div>
           <div className="inquiry-shop-text-group">
             <p className="inquiry-shop-name">{shopName}</p>
@@ -175,7 +176,7 @@ const MobileView: React.FC = () => {
             <img src={productImageUrl} alt="Product Thumbnail" />
           </div>
           <div className="inquiry-product-text-group">
-            <p className="inquiry-product-shop-name">{shopName}</p> {/* productName 대신 shopName 사용 예시 */}
+            <p className="inquiry-product-shop-name">{shopName}</p>
             <p className="inquiry-product-description">{productName}</p>
           </div>
         </div>
