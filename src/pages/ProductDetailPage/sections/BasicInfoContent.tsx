@@ -1,13 +1,6 @@
 // sections/BasicInfoContent.tsx
 import { Icon } from "@iconify/react";
-import type {
-  Category,
-  NormalizedDetail,
-  WeddingHallDetail,
-  StudioDetail,
-  DressDetail,
-  MakeupDetail,
-} from "../../../type/product";
+import type { Category, NormalizedDetail } from "../../../type/product";
 
 /* ========================= Props ========================= */
 
@@ -15,6 +8,7 @@ type BasicInfoContentProps = {
   data: NormalizedDetail;
   category: Category;
   onOpenCoupon?: () => void;
+  onGoReviewTab?: () => void; // 평점후기 탭 이동용 콜백
 };
 
 /* ========================= 컴포넌트 ========================= */
@@ -23,61 +17,57 @@ export const BasicInfoContent = ({
   data,
   category,
   onOpenCoupon,
+  onGoReviewTab,
 }: BasicInfoContentProps) => {
   const handleOpenCouponClick = () => {
     if (onOpenCoupon) onOpenCoupon();
+  };
+
+  const handleReviewAllClick = () => {
+    if (onGoReviewTab) onGoReviewTab();
   };
 
   // 메인 이미지 (첫 번째 이미지 사용)
   const mainImageUrl =
     data.images && data.images.length > 0 ? data.images[0].url : "";
 
-  // 가격 표시
+  // 가격 표시 (예: 11000000 -> "11,000,000원")
   const priceText =
-    typeof (data as any).price === "number"
-      ? `${(data as any).price.toLocaleString("ko-KR")}원`
+    typeof data.price === "number"
+      ? `${data.price.toLocaleString("ko-KR")}원`
       : "";
 
-  // 태그 정리
-  // - wedding: string[]
-  // - studio / dress / makeup: StudioTag[] (메이크업은 tags가 없을 수 있으므로 optional 처리)
-  const tagLabels: string[] =
-    data._category === "wedding"
-      ? (data as WeddingHallDetail).tags
-      : ((data as StudioDetail | DressDetail | MakeupDetail).tags ?? []).map(
-          (t) => t.tagName
-        );
+  // ✅ 태그 정리
+  // 주신 예시: tags: ["SMALL"]
+  // 혹시 다른 카테고리가 객체 배열(tagName 등)일 수도 있으니 둘 다 처리
+  const rawTags = (data.tags ?? []) as any[];
+  const tagLabels: string[] = rawTags
+    .map((t) =>
+      typeof t === "string"
+        ? t
+        : typeof t?.tagName === "string"
+        ? t.tagName
+        : typeof t?.name === "string"
+        ? t.name
+        : ""
+    )
+    .filter((t) => t && t.trim().length > 0);
 
   const primaryTag = tagLabels[0];
   const secondaryTag = tagLabels[1];
 
-  // 평점 / 리뷰 수 (웨딩에만 명확히 존재한다고 가정)
-  const hasRating =
-    data._category === "wedding" && typeof data.averageRating === "number";
+  // ✅ 평점 / 리뷰 수
+  // 예시 데이터:
+  // "starCount": 4.9,
+  // "averageRating": 5
+  // => 4.9점, 리뷰 5개로 해석
+  const averageRating = (data as any).averageRating;
+  const starCount = (data as any).starCount;
 
-  const ratingValue =
-    data._category === "wedding" && data.averageRating
-      ? data.averageRating.toFixed(1)
-      : null;
-
+  const hasRating = typeof averageRating === "number";
+  const ratingValue = hasRating ? averageRating.toFixed(1) : null;
   const reviewCount =
-    data._category === "wedding" && typeof data.starCount === "number"
-      ? data.starCount
-      : null;
-
-  // 옵션 기반 상품 구성 문구
-  const productConfig =
-    data.options && data.options.length > 0
-      ? data.options.map((o) => o.name).join(" + ")
-      : "상품 구성 정보가 준비 중입니다.";
-
-  // 상담 소요시간 / 가봉 소요시간은 availableTimes 기반 or 더미 유지
-  const consultTime =
-    (data as any).availableTimes && (data as any).availableTimes.trim().length
-      ? (data as any).availableTimes
-      : "상담 소요시간 정보가 준비 중입니다.";
-
-  const fittingTime = "가봉 소요시간 정보가 준비 중입니다.";
+    typeof starCount === "number" ? (starCount as number) : null;
 
   return (
     <>
@@ -98,7 +88,7 @@ export const BasicInfoContent = ({
           {/* 상단 작은 타이틀: 업체/상품명 */}
           <div className="flex items-center gap-1">
             <span className="text-[13px] text-[#999999] font-semibold">
-              {data.name}
+              {data.bzName || "(임시) [브랜드명]"}
             </span>
             <Icon
               icon="mingcute:down-line"
@@ -184,22 +174,11 @@ export const BasicInfoContent = ({
             상품 기본 정보
           </h2>
 
-          {/* 상품 구성: options 기반 */}
-          <div className="flex text-[14px] mb-2">
-            <div className="w-[80px] text-[#999999]">상품 구성</div>
-            <div className="flex-1 text-[#1E2124]">{productConfig}</div>
-          </div>
-
-          {/* 상담 소요시간: availableTimes or 더미 */}
-          <div className="flex text-[14px] mb-2">
-            <div className="w-[80px] text-[#999999]">상담 소요시간</div>
-            <div className="flex-1 text-[#1E2124]">{consultTime}</div>
-          </div>
-
-          {/* 가봉 소요시간: 현재는 명확한 필드 없어서 안내 문구 */}
-          <div className="flex text-[14px] mb-2">
-            <div className="w-[80px] text-[#999999]">가봉 소요시간</div>
-            <div className="flex-1 text-[#1E2124]">{fittingTime}</div>
+          {/* ✅ data.detail 그대로 노출 (줄바꿈 유지) */}
+          <div className="text-[14px] text-[#1E2124] whitespace-pre-line">
+            {data.detail && data.detail.trim().length > 0
+              ? data.detail
+              : "상품 기본 정보가 준비 중입니다."}
           </div>
         </section>
       </div>
@@ -228,9 +207,9 @@ export const BasicInfoContent = ({
 
           <div className="mt-3 grid grid-cols-3 gap-2">
             {data.images && data.images.length > 0
-              ? data.images.slice(0, 6).map((img) => (
+              ? data.images.slice(0, 6).map((img, index) => (
                   <div
-                    key={img.id}
+                    key={`${img.id ?? img.url}-${index}`}
                     className="w-full aspect-square bg-white border border-[#F5F5F5] rounded-[4px] overflow-hidden"
                   >
                     <img
@@ -274,6 +253,7 @@ export const BasicInfoContent = ({
             <button
               type="button"
               className="flex items-center gap-1 text-[14px] text-[#666666]"
+              onClick={handleReviewAllClick}
             >
               <span>전체보기</span>
               <Icon

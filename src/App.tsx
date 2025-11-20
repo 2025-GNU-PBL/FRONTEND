@@ -17,7 +17,7 @@ import ScrollToTop from "./components/ScrollToTop";
 
 import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain";
 import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
-import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/CouponPage";
+import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPage";
 import MainPage from "./pages/MainPage/MainPage";
 import StudioPage from "./pages/StudioPage/StudioPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
@@ -63,7 +63,6 @@ import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagem
 import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleCreatePage";
 import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
-import CouponPage from "./pages/MyPage/ClientMyPage/Coupons/CouponPage";
 import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
 import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
 import CancelListPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CancelDetailPage";
@@ -75,6 +74,9 @@ import OwnerPersonalScheduleEditPage from "./pages/MyPage/OwnerMyPage/ScheduleMa
 import Fail from "./pages/CheckoutPage/Fail/Fail";
 import Success from "./pages/CheckoutPage/Success/Success";
 import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
+import Success from "./pages/CheckoutPage/Success/Success";
+import Fail from "./pages/CheckoutPage/Fail/Fail";
+import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
 
 function Layout() {
   const location = useLocation();
@@ -115,6 +117,9 @@ function Layout() {
     "/notification",
     "/checkout",
     "/checkout/coupon",
+    "/checkout/payment",
+    "/success",
+    "/fail",
     "/my-page/owner/coupons/register", // 쿠폰 등록 페이지에 Footer 숨김
   ];
 
@@ -214,7 +219,6 @@ const App = () => {
         <Route path="/search" element={<SearchPage />} />
         <Route path="/quotation" element={<QuotationPage />} />
         <Route path="/notification" element={<NotificationPage />} />
-        <Route path="/test" element={<ProductDetailPage />} />
         <Route path="/wedding/:id" element={<ProductDetailPage />} />
         <Route path="/studio/:id" element={<ProductDetailPage />} />
         <Route path="/dress/:id" element={<ProductDetailPage />} />
