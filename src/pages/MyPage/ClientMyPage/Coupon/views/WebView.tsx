@@ -9,8 +9,8 @@ import React, {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import api from "../../../../lib/api/axios";
-import { useAppSelector } from "../../../../store/hooks";
+import api from "../../../../../lib/api/axios";
+import { useAppSelector } from "../../../../../store/hooks";
 
 /** 백엔드 CustomerCouponResponseDto 구조 기준 */
 type UserCoupon = {

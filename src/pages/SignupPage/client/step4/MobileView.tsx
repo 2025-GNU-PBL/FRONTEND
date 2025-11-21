@@ -5,6 +5,7 @@ import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../../../store/store";
 import { submitSignup } from "../../../../store/thunkFunctions";
 import signupImg from "../../../../assets/images/signup.png";
+import { useRefreshAuth } from "../../../../hooks/useRefreshAuth";
 
 interface MobileCompleteViewProps {
   title?: string;
@@ -20,6 +21,7 @@ export default function MobileView({
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { refreshAuth } = useRefreshAuth;
 
   const location = useLocation();
   const {
@@ -71,6 +73,7 @@ export default function MobileView({
     try {
       // payload를 인자로 넘겨 호출 (수정된 thunk가 받아 사용)
       await dispatch(submitSignup(formValues as any)).unwrap();
+      refreshAuth();
       navigate("/");
     } catch (err: any) {
       console.error("[submitSignup] error:", err);
