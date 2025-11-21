@@ -49,6 +49,11 @@ type ReservationApproveRequest = {
   reservationEndTime: string; // "HH:mm"
 };
 
+/** 거절용 Request Body 타입 */
+type ReservationRejectRequest = {
+  status: "DENY";
+};
+
 /** 서버 status → 상세 화면 status 매핑 */
 function mapDetailStatus(status: string): ReservationDetailStatus {
   const upper = (status || "").toUpperCase();
@@ -162,44 +167,40 @@ export default function DetailMobileView() {
   /** 가격 포맷 */
   const formatPrice = (n: number) => `${(n ?? 0).toLocaleString("ko-KR")}원`;
 
-  /** 공통: 거절(DENY) 상태 변경 PATCH 호출 (이전 API 유지) */
-  const patchReservationStatus = async (status: "DENY") => {
-    if (!detail) return;
-
-    const config = {
-      params: {
-        accessor: accessorParam ?? {},
-      },
-    };
-
-    const { data } = await api.patch<ReservationDetailApiResponse>(
-      "/api/v1/reservation",
-      {
-        id: detail.id,
-        status, // "DENY"
-      },
-      config
-    );
-
-    // 응답 기준으로 상태 및 상세정보 갱신
-    setDetail(mapApiToUi(data));
-  };
-
   // 거절하기 버튼 클릭 핸들러
   const handleCancel = async () => {
     if (!detail) return;
     if (detail.status !== "예약중") return; // 이미 확정/취소된 건 처리 X
 
-    const ok = window.confirm("해당 예약을 취소(거절)하시겠습니까?");
+    // 간단 검증
+    if (!startDate || !endDate || !startTime || !endTime) {
+      window.alert("예약 시작/종료 날짜와 시간을 모두 입력해주세요.");
+      return;
+    }
+
+    const ok = window.confirm("해당 예약을 거절하시겠습니까?");
     if (!ok) return;
 
     try {
       setActionLoading(true);
-      await patchReservationStatus("DENY");
-      window.alert("예약이 취소(거절)되었습니다.");
+
+      const body: ReservationRejectRequest = {
+        status: "DENY",
+      };
+
+      const { data } = await api.patch<ReservationDetailApiResponse>(
+        `/api/v1/reservation/${detail.id}/reject`,
+        body
+      );
+
+      // 응답 기준으로 상태 갱신
+      setDetail(mapApiToUi(data));
+
+      window.alert("예약이 거절되었습니다.");
+      // 상태가 DENY으로 바뀌면서 버튼은 자동으로 사라짐
     } catch (e) {
-      console.error("[Reservation/DetailMobileView] cancel error:", e);
-      window.alert("예약 취소 중 오류가 발생했습니다.");
+      console.error("[Reservation/DetailMobileView] approve error:", e);
+      window.alert("예약 거절 중 오류가 발생했습니다.");
     } finally {
       setActionLoading(false);
     }
@@ -230,7 +231,6 @@ export default function DetailMobileView() {
         reservationEndTime: endTime,
       };
 
-      // Swagger 스펙: PATCH /api/v1/reservation/{id}/approve (사장님만 가능)
       const { data } = await api.patch<ReservationDetailApiResponse>(
         `/api/v1/reservation/${detail.id}/approve`,
         body
