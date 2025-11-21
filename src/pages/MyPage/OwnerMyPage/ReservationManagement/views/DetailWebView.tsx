@@ -19,6 +19,7 @@ type ReservationDetailApiResponse = {
   customerEmail: string;
   title: string;
   content: string;
+  thumbnail: string;
 };
 
 /** ====== UI용 타입 ====== */
@@ -33,7 +34,7 @@ type ReservationDetail = {
   productBrand: string;
   productTitle: string;
   price: number;
-  thumbnailUrl?: string;
+  thumbnail?: string;
   customerName: string;
   customerPhone: string;
   customerId: string;
@@ -85,7 +86,7 @@ function mapApiToUi(data: ReservationDetailApiResponse): ReservationDetail {
     productBrand: data.storeName,
     productTitle: data.productName,
     price: data.price,
-    thumbnailUrl: undefined,
+    thumbnail: data.thumbnail,
     customerName: data.customerName,
     customerPhone: data.customerPhoneNumber,
     customerId: data.customerEmail || String(data.customerId),
@@ -270,7 +271,7 @@ export default function DetailWebView() {
         ) : (
           <>
             {/* 페이지 타이틀 + 상태 */}
-            <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+            <header className="mt-10 mb-8 flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h1 className="text-[26px] font-semibold tracking-[-0.4px] text-[#111827]">
                   예약 상세
@@ -294,7 +295,7 @@ export default function DetailWebView() {
               </div>
             </header>
 
-            {/* 메인 정보 카드 (한 장짜리) */}
+            {/* 메인 정보 카드 */}
             <section className="mb-6 rounded-3xl border border-[#E5E7EB] bg-white px-8 py-7 shadow-sm">
               {/* 상품정보 헤더 라인 */}
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -306,9 +307,6 @@ export default function DetailWebView() {
                     예약 상품과 고객 정보를 한눈에 확인할 수 있습니다.
                   </p>
                 </div>
-                <div className="text-right text-[20px] font-semibold tracking-[-0.3px] text-[#111827]">
-                  {formatPrice(detail.price)}
-                </div>
               </div>
 
               {/* 상품 + 고객 + 예약시간을 한 카드 안에서 구성 */}
@@ -316,9 +314,9 @@ export default function DetailWebView() {
                 {/* 상품정보 블록 */}
                 <div className="flex flex-col gap-6 md:flex-row md:items-center">
                   <div className="flex h-[110px] w-[110px] flex-shrink-0 items-center justify-center overflow-hidden rounded-[18px] border border-[#F3F4F6] bg-[#F9FAFB]">
-                    {detail.thumbnailUrl ? (
+                    {detail.thumbnail ? (
                       <img
-                        src={detail.thumbnailUrl}
+                        src={detail.thumbnail}
                         alt={detail.productTitle}
                         className="h-full w-full object-cover"
                       />
@@ -333,6 +331,9 @@ export default function DetailWebView() {
                     </p>
                     <p className="text-[16px] leading-[24px] tracking-[-0.2px] text-[#111827] break-words">
                       {detail.productTitle}
+                    </p>
+                    <p className="text-right text-[20px] font-semibold tracking-[-0.3px] text-[#111827]">
+                      {formatPrice(detail.price)}
                     </p>
                   </div>
                 </div>
@@ -349,7 +350,7 @@ export default function DetailWebView() {
                     <div className="space-y-3 text-[14px]">
                       <InfoRow label="이름" value={detail.customerName} />
                       <InfoRow label="전화번호" value={detail.customerPhone} />
-                      <InfoRow label="고객 ID" value={detail.customerId} />
+                      <InfoRow label="고객 이메일" value={detail.customerId} />
                     </div>
                   </div>
 

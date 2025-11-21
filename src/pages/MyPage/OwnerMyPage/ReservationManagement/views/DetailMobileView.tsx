@@ -19,6 +19,7 @@ type ReservationDetailApiResponse = {
   customerEmail: string;
   title: string;
   content: string;
+  thumbnail: string;
 };
 
 /** ====== UI용 타입 ====== */
@@ -33,7 +34,7 @@ type ReservationDetail = {
   productBrand: string;
   productTitle: string;
   price: number;
-  thumbnailUrl?: string;
+  thumbnail?: string;
   customerName: string;
   customerPhone: string;
   customerId: string;
@@ -85,7 +86,7 @@ function mapApiToUi(data: ReservationDetailApiResponse): ReservationDetail {
     productBrand: data.storeName,
     productTitle: data.productName,
     price: data.price,
-    thumbnailUrl: undefined,
+    thumbnail: data.thumbnail,
     customerName: data.customerName,
     customerPhone: data.customerPhoneNumber,
     customerId: data.customerEmail || String(data.customerId),
@@ -297,9 +298,9 @@ export default function DetailMobileView() {
                     <div className="flex">
                       {/* 썸네일 */}
                       <div className="mr-4 h-[80px] w-[80px] flex-shrink-0 overflow-hidden rounded-[4px] border border-[#F5F5F5] bg-[#F6F7FB]">
-                        {detail.thumbnailUrl ? (
+                        {detail.thumbnail ? (
                           <img
-                            src={detail.thumbnailUrl}
+                            src={detail.thumbnail}
                             alt={detail.productTitle}
                             className="h-full w-full object-cover"
                           />
@@ -355,10 +356,10 @@ export default function DetailMobileView() {
                         </span>
                       </div>
 
-                      {/* 고객 ID */}
+                      {/* 고객 이메일 */}
                       <div className="flex items-center justify-between">
                         <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
-                          고객 ID
+                          고객 이메일
                         </span>
                         <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
                           {detail.customerId}
@@ -385,6 +386,7 @@ export default function DetailMobileView() {
                           className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
+                          disabled={detail.status !== "예약중"}
                         />
                       </div>
 
@@ -397,6 +399,7 @@ export default function DetailMobileView() {
                           className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
+                          disabled={detail.status !== "예약중"}
                         />
                       </div>
 
@@ -409,6 +412,7 @@ export default function DetailMobileView() {
                           className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
                           value={startTime}
                           onChange={(e) => setStartTime(e.target.value)}
+                          disabled={detail.status !== "예약중"}
                         />
                       </div>
 
@@ -421,6 +425,7 @@ export default function DetailMobileView() {
                           className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
                           value={endTime}
                           onChange={(e) => setEndTime(e.target.value)}
+                          disabled={detail.status !== "예약중"}
                         />
                       </div>
                     </div>
