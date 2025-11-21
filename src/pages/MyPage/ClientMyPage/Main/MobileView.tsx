@@ -25,9 +25,9 @@ export default function MobileView() {
 
   return (
     <div className="w-full bg-white">
-      <div className="mx-auto w-[390px] min-h-[844px] bg-white flex flex-col">
+      <div className="mx-auto w-[390px] min-h-[844px] flex flex-col">
         {/* 최상단 헤더 */}
-        <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
+        <div className="sticky top-0 z-20 bg-[#F6F7FB]">
           <MyPageHeader title="마이페이지" onBack={onBack} onMenu={onMenu} />
         </div>
 

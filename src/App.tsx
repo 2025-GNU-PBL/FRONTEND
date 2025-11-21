@@ -17,7 +17,7 @@ import ScrollToTop from "./components/ScrollToTop";
 
 import ClientMyPageMain from "./pages/MyPage/ClientMyPage/Main/ClientMyPageMain";
 import ClientProfilePage from "./pages/MyPage/ClientMyPage/Profile/ClientProfilePage";
-import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupons/ClientCouponPage";
+import ClientCouponPage from "./pages/MyPage/ClientMyPage/Coupon/ClientCouponPage";
 import MainPage from "./pages/MainPage/MainPage";
 import StudioPage from "./pages/StudioPage/StudioPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
@@ -28,7 +28,7 @@ import SearchPage from "./pages/SearchPage/SearchPage";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import NotAuthRoutes from "./components/NotAuthRoutes";
 
-import { useAppDispatch, useAppSelector } from "./store/hooks";
+import { useAppSelector } from "./store/hooks";
 import LoginPage from "./pages/LoginPage/RoleSelection/SelectRolePage";
 
 import Navbar from "./layout/Navbar/Navbar";
@@ -42,7 +42,6 @@ import ClientSignupPage from "./pages/SignupPage/client/step1/ClientSignupPage";
 import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
 import ProductInquiryPage from "./pages/ProductInquiryPage/InquiryPage";
 import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
-import { authCustomer, authOwner } from "./store/thunkFunctions";
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
 import PaymentListPage from "./pages/MyPage/ClientMyPage/Payments/PaymentListPage";
 import PaymentDetailPage from "./pages/MyPage/ClientMyPage/Payments/PaymentDetailPage";
@@ -75,6 +74,8 @@ import Fail from "./pages/CheckoutPage/Fail/Fail";
 import Success from "./pages/CheckoutPage/Success/Success";
 import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
+import ClientProfileEdit from "./pages/MyPage/ClientMyPage/ProfileEdit/ClientProfileEdit";
+import { useRefreshAuth } from "./hooks/useRefreshAuth";
 
 function Layout() {
   const location = useLocation();
@@ -119,6 +120,7 @@ function Layout() {
     "/success",
     "/fail",
     "/my-page/owner/coupons/register", // 쿠폰 등록 페이지에 Footer 숨김
+    "/my-page/client/profile/edit",
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)
@@ -181,25 +183,15 @@ function Layout() {
 }
 
 const App = () => {
-  const dispatch = useAppDispatch();
-
-  const { isAuth, role } = useAppSelector((state) => state.user);
+  const { isAuth } = useAppSelector((state) => state.user);
   const rehydrated = useAppSelector((state) => state._persist?.rehydrated);
+
+  const { refreshAuth } = useRefreshAuth();
 
   useEffect(() => {
     if (!rehydrated || !isAuth) return;
-
-    if (role === "CUSTOMER") {
-      dispatch(authCustomer());
-    } else if (role === "OWNER") {
-      dispatch(authOwner());
-    } else {
-      //  예외 케이스(로그인인데 role이 비어있음). 필요 시 아래 주석을 해제해 포괄 처리 가능.
-      // dispatch(authOwner())
-      //   .unwrap()
-      //   .catch(() => dispatch(authCustomer()).unwrap().catch(() => {}));
-    }
-  }, [rehydrated, isAuth, role, dispatch]);
+    refreshAuth();
+  }, [rehydrated, isAuth, refreshAuth]);
 
   // 리덕스 퍼시스트 완료 전까지 렌더링 지연
   if (!rehydrated) return null;
@@ -243,6 +235,10 @@ const App = () => {
           <Route
             path="/my-page/client/profile"
             element={<ClientProfilePage />}
+          />
+          <Route
+            path="/my-page/client/profile/edit"
+            element={<ClientProfileEdit />}
           />
           <Route
             path="/my-page/client/coupons"

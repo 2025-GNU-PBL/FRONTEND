@@ -1,195 +1,265 @@
 import React from "react";
+import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
-import type { CustomerData, UserData } from "../../../../../store/userSlice";
-import MyPageHeader from "../../../../../components/MyPageHeader";
 import { useAppSelector } from "../../../../../store/hooks";
+import type { CustomerData } from "../../../../../store/userSlice";
+import api from "../../../../../lib/api/axios";
+import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
-function SectionCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="w-full rounded-2xl bg-white border border-gray-200 shadow-sm p-5 mb-6 last:mb-0">
-      <h3 className="text-[16px] font-semibold text-gray-900 tracking-[-0.2px]">
-        {title}
-      </h3>
-      <div className="my-4 h-px bg-[#D9D9D9]" />
-      {children}
-    </section>
-  );
-}
+const MobileView: React.FC = () => {
+  const navigate = useNavigate();
+  const { userData, role } = useAppSelector((state) => state.user);
+  const { refreshAuth } = useRefreshAuth();
 
-function InfoRow({ label, value }: { label: string; value?: string }) {
-  return (
-    <div className="flex items-center justify-between py-1.5">
-      <span className="text-[14px] text-[#999] tracking-[-0.2px]">{label}</span>
-      <span className="text-[14px] text-[#000] tracking-[-0.2px]">
-        {value ?? "-"}
-      </span>
-    </div>
-  );
-}
+  // role과 userData를 보고 CustomerData로 좁혀주기
+  const customerData =
+    role === "CUSTOMER" && userData ? (userData as CustomerData) : null;
 
-// 이 페이지는 "고객(CUSTOMER) 전용"이라는 전제를 코드로 한 번 잡아줌
-function ensureCustomer(userData: UserData | null): CustomerData | null {
-  if (!userData) return null;
+  // 회원 탈퇴 모달 오픈 여부
+  const [showWithdrawModal, setShowWithdrawModal] = React.useState(false);
 
-  // UserData 타입에서 Customer를 판단할 가장 확실한 기준 필드를 사용
-  if ("weddingDate" in userData) {
-    return userData as CustomerData;
-  }
+  const handleGoBack = () => {
+    navigate(-1);
+  };
 
-  // OWNER 등 다른 타입이면 null 처리
-  return null;
-}
+  const handleGoToEdit = () => {
+    navigate("/my-page/client/profile/edit");
+  };
 
-/** 고정 레이아웃(390×844) - 고객 마이페이지 */
-export default function MobileView() {
-  const nav = useNavigate();
+  // 회원 탈퇴 버튼 클릭 -> 모달만 오픈
+  const handleOpenWithdrawModal = () => {
+    setShowWithdrawModal(true);
+  };
 
-  const rawUserData = useAppSelector((state) => state.user.userData);
-  const customer = ensureCustomer(rawUserData);
+  // 모달에서 "취소" 클릭
+  const handleCancelWithdraw = () => {
+    setShowWithdrawModal(false);
+  };
 
-  // signupSlice 에 저장된 임시 회원가입 정보
-  const signupValues = useAppSelector((state) => state.signup.values);
+  // 모달에서 "탈퇴할래요" 클릭 -> 실제 탈퇴 API 호출
+  const handleConfirmWithdraw = async () => {
+    try {
+      await api.delete("/api/v1/customer");
 
-  // 로그인 안 됐거나, CUSTOMER가 아닌 경우 예외 처리
-  if (!customer) {
-    return (
-      <div className="w-full bg-white">
-        <div className="mx-auto w-[390px] h-[844px] bg-[#F6F7FB] flex flex-col">
-          <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
-            <MyPageHeader
-              title="내 정보 조회"
-              onBack={() => nav(-1)}
-              showMenu={false}
-            />
-          </div>
-          <div className="flex-1 px-5 pt-20 flex items-center justify-center text-sm text-gray-500">
-            고객 정보가 없습니다. 다시 로그인해주세요.
-          </div>
-        </div>
-      </div>
-    );
-  }
+      refreshAuth();
 
-  // 여기부터는 무조건 CustomerData라고 보고 사용하면 됨
-  const {
-    name,
-    phoneNumber,
-    email,
-    roadAddress,
-    jibunAddress,
-    address,
-    sido,
-    sigungu,
-    dong,
-    buildingName,
-    weddingDate,
-    weddingSido,
-    weddingSigungu,
-  } = customer;
+      navigate("/");
+    } catch (error) {
+      console.error("회원 탈퇴 요청 중 에러 발생:", error);
+    } finally {
+      setShowWithdrawModal(false);
+    }
+  };
 
-  // 전화번호: 고객 정보 → 없으면 signupSlice 값
-  const displayPhone = phoneNumber || signupValues.phone || "-";
-
-  // 주소: 고객 주소 → 없으면 signupSlice 주소
-  const displayAddress =
-    roadAddress ||
-    jibunAddress ||
-    address ||
-    [sido, sigungu, dong, buildingName].filter(Boolean).join(" ") ||
-    signupValues.roadAddress ||
-    signupValues.jibunAddress ||
-    signupValues.address ||
-    [
-      signupValues.sido,
-      signupValues.sigungu,
-      signupValues.dong,
-      signupValues.buildingName,
-    ]
-      .filter(Boolean)
-      .join(" ") ||
-    "-";
-
-  // 예식일: 고객 예식일 → 없으면 signupSlice 예식일
-  const rawWeddingDate = weddingDate || signupValues.weddingDate;
-  const displayWeddingDate = rawWeddingDate
-    ? new Date(rawWeddingDate).toLocaleDateString("ko-KR")
-    : "-";
-
-  // 예식장소: 고객 예식 장소 정보 → 없으면 signupSlice 예식 장소 정보
-  const displayWeddingVenue =
-    buildingName ||
-    [weddingSido, weddingSigungu].filter(Boolean).join(" ") ||
-    signupValues.buildingName ||
-    [signupValues.weddingSido, signupValues.weddingSigungu]
-      .filter(Boolean)
-      .join(" ") ||
-    "-";
+  const weddingPlace =
+    customerData?.weddingSido && customerData?.weddingSigungu
+      ? `${customerData.weddingSido} ${customerData.weddingSigungu}`
+      : "예식 장소";
 
   return (
-    <div className="w-full bg-white">
-      {/* 프레임 하나로 통일 (헤더 + 본문) */}
-      <div className="mx-auto w-[390px] h-[844px] bg-[#F6F7FB] flex flex-col">
-        {/* 헤더 */}
-        <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
-          <MyPageHeader
-            title="내 정보 조회"
-            onBack={() => nav(-1)}
-            showMenu={false}
+    <div className="relative mx-auto w-[390px] h-[844px] bg-white overflow-hidden">
+      {/* 상단 헤더 */}
+      <div className="absolute top-0 left-0 w-full h-[60px] bg-white flex items-center justify-between px-5">
+        {/* Back Button */}
+        <button
+          className="w-8 h-8 flex items-center justify-center"
+          type="button"
+          onClick={handleGoBack}
+        >
+          <Icon
+            icon="solar:alt-arrow-left-linear"
+            className="w-8 h-8 text-[#1E2124]"
           />
-        </div>
+        </button>
 
-        {/* 본문 */}
-        <div className="flex-1 px-5 pt-20 pb-0 overflow-auto space-y-6">
-          {/* 상단 프로필 카드 */}
-          <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-[#D9D9D9]" />
-              <div>
-                <div className="text-[18px] font-semibold text-black tracking-[-0.2px]">
-                  {name}
+        {/* Title */}
+        <h1 className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-[#1E2124]">
+          내 정보 조회
+        </h1>
+
+        {/* 우측 상단 Group2085664926 아이콘 */}
+        <button
+          className="w-6 h-6 flex items-center justify-center z-[1]"
+          type="button"
+          onClick={handleGoToEdit}
+        >
+          <Icon
+            icon="majesticons:edit-pen-2-line"
+            className="w-6 h-6 text-[#1E2124]"
+          />
+        </button>
+      </div>
+
+      {/* 메인 컨텐츠 */}
+      <div className="absolute left-1/2 -translate-x-1/2 top-[60px] w-full px-5">
+        <div className="w-full flex flex-col items-start gap-[30px] mt-[30px]">
+          {/* 프로필 */}
+          <div className="flex flex-row items-center gap-4 h-[64px]">
+            <div className="w-16 h-16 rounded-full bg-[#D9D9D9]" />
+            <span className="font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-black">
+              {customerData?.name || "홍종민"}
+            </span>
+          </div>
+
+          {/* 정보 섹션 전체 */}
+          <div className="w-full flex flex-col items-start gap-[40px]">
+            {/* 회원정보 */}
+            <div className="w-full flex flex-col items-start gap-5">
+              {/* 제목 + 수정버튼 */}
+              <div className="w-full flex flex-row items-center justify-between">
+                <span className="font-[Pretendard] text-[16px] leading-[26px] tracking-[-0.2px] text-black">
+                  회원정보
+                </span>
+
+                <button
+                  className="flex flex-row items-center gap-1"
+                  type="button"
+                  onClick={handleGoToEdit}
+                >
+                  <span className="font-[Pretendard] text-[12px] leading-[18px] tracking-[-0.1px] text-[#4170FF]">
+                    회원 정보 수정
+                  </span>
+                  <Icon
+                    icon="solar:alt-arrow-left-linear"
+                    className="w-4 h-4 text-[#4170FF] rotate-180"
+                  />
+                </button>
+              </div>
+
+              <div className="w-full border-t border-[#D9D9D9]" />
+
+              {/* 1열(라벨) + 2열(값) 두 칼럼 정렬 */}
+              <div className="w-full flex flex-col items-start gap-3">
+                {/* 고객명 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                    고객명
+                  </span>
+                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                    {customerData?.name || "홍종민"}
+                  </span>
                 </div>
-                <div className="text-sm text-gray-600 tracking-[-0.2px]">
-                  반가워요! 오늘도 좋은 하루 👋
+
+                {/* 전화번호 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                    전화번호
+                  </span>
+                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                    {customerData?.phoneNumber || "010-1234-5678"}
+                  </span>
+                </div>
+
+                {/* 이메일 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                    이메일
+                  </span>
+                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                    {customerData?.email || "이메일"}
+                  </span>
+                </div>
+
+                {/* 주소 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                    주소
+                  </span>
+                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                    {customerData?.address || "주소"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 예식정보 */}
+            <div className="w-full flex flex-col items-start gap-5">
+              <span className="font-[Pretendard] text-[16px] leading-[26px] tracking-[-0.2px] text-black">
+                예식정보
+              </span>
+
+              <div className="w-full border-t border-[#D9D9D9]" />
+
+              <div className="w-full flex flex-col items-start gap-3">
+                {/* 예식일 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                    예식일
+                  </span>
+                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                    {customerData?.weddingDate || "예식일"}
+                  </span>
+                </div>
+
+                {/* 예식 장소 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                    예식 장소
+                  </span>
+                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                    {weddingPlace}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* 회원정보 */}
-          <SectionCard title="회원정보">
-            <div className="space-y-2">
-              <InfoRow label="고객명" value={name} />
-              <InfoRow label="전화번호" value={displayPhone} />
-              <InfoRow label="이메일" value={email} />
-              <InfoRow label="주소" value={displayAddress} />
-            </div>
-          </SectionCard>
-
-          {/* 예식정보 */}
-          <SectionCard title="예식정보">
-            <div className="space-y-2">
-              <InfoRow label="예식일" value={displayWeddingDate} />
-              <InfoRow label="예식장소" value={displayWeddingVenue} />
-            </div>
-          </SectionCard>
-
-          {/* 회원 탈퇴 */}
-          <div className="mt-4 flex">
-            <button
-              className="ml-auto text-[14px] text-[#999] hover:text-[#666]"
-              onClick={() => alert("회원 탈퇴 프로세스를 연결하세요.")}
-            >
-              회원 탈퇴
-            </button>
-          </div>
+        {/* 회원 탈퇴 */}
+        <div className="w-full flex justify-end mt-10 mb-10">
+          <button
+            className="text-[14px] text-[#999999]"
+            type="button"
+            onClick={handleOpenWithdrawModal}
+          >
+            회원 탈퇴
+          </button>
         </div>
       </div>
+
+      {/* 회원 탈퇴 확인 모달 */}
+      {showWithdrawModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-[310px] rounded-2xl bg-white px-5 py-6 shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
+            <div className="w-full flex justify-center mb-3">
+              <div className="w-10 h-10 rounded-full bg-[#FFF2F2] flex items-center justify-center">
+                <Icon
+                  icon="solar:warning-triangle-bold"
+                  className="w-6 h-6 text-[#FF4D4F]"
+                />
+              </div>
+            </div>
+
+            <p className="text-center font-[Pretendard] text-[16px] leading-[24px] tracking-[-0.2px] text-[#1E2124] font-semibold">
+              정말 탈퇴하시겠어요?
+            </p>
+            <p className="mt-2 text-center text-[13px] leading-[20px] tracking-[-0.2px] text-[#777777]">
+              탈퇴 후에는 계정 및 예식 정보가
+              <br />
+              복구되지 않을 수 있어요.
+            </p>
+
+            <div className="mt-5 flex flex-row gap-2">
+              <button
+                type="button"
+                className="flex-1 h-11 rounded-full border border-[#D9D9D9] text-[14px] leading-[21px] tracking-[-0.2px] text-[#666666]"
+                onClick={handleCancelWithdraw}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="flex-1 h-11 rounded-full bg-[#FF4D4F] text-white text-[14px] leading-[21px] tracking-[-0.2px]"
+                onClick={handleConfirmWithdraw}
+              >
+                탈퇴할래요
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default MobileView;
