@@ -76,6 +76,7 @@ import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
 import ClientProfileEdit from "./pages/MyPage/ClientMyPage/ProfileEdit/ClientProfileEdit";
 import { useRefreshAuth } from "./hooks/useRefreshAuth";
+import TestPage from "./pages/TestPage/TestPage";
 
 function Layout() {
   const location = useLocation();
@@ -218,6 +219,7 @@ const App = () => {
         <Route path="/checkout/payment" element={<PaymentPage />} />
         <Route path="/success" element={<Success />} />
         <Route path="/fail" element={<Fail />} />
+        <Route path="/test" element={<TestPage />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>

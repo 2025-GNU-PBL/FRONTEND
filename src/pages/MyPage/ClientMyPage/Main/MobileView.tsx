@@ -1,11 +1,18 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../../components/MyPageHeader";
 import { Icon } from "@iconify/react";
 import { useAppDispatch, useAppSelector } from "../../../../store/hooks";
 import { logoutUser } from "../../../../store/thunkFunctions";
+import SideMenu from "../../../../components/SideMenu";
 
-export default function MobileView() {
+// 메인 페이지처럼 메뉴 상태를 부모에서 내려받도록 Props 정의
+type Props = {
+  isMenuOpen: boolean;
+  openMenu: () => void;
+  closeMenu: () => void;
+};
+
+export default function MobileView({ isMenuOpen, openMenu, closeMenu }: Props) {
   const nav = useNavigate();
   const dispatch = useAppDispatch();
 
@@ -13,7 +20,6 @@ export default function MobileView() {
 
   const go = useCallback((to: string) => nav(to), [nav]);
   const onBack = useCallback(() => nav(-1), [nav]);
-  const onMenu = useCallback(() => go("/settings"), [go]);
 
   const handleLogout = async () => {
     try {
@@ -24,12 +30,48 @@ export default function MobileView() {
   };
 
   return (
-    <div className="w-full bg-white">
+    <div className="w-full bg-white relative">
       <div className="mx-auto w-[390px] min-h-[844px] flex flex-col">
         {/* 최상단 헤더 */}
-        <div className="sticky top-0 z-20 bg-[#F6F7FB]">
-          <MyPageHeader title="마이페이지" onBack={onBack} onMenu={onMenu} />
-        </div>
+        <header
+          className="
+        absolute top-[0px] left-0
+        w-[390px] h-[60px]
+        flex flex-row justify-between items-center
+        px-[20px] gap-[4px]
+        bg-[#F6F7FB]
+      "
+        >
+          {/* Back Button */}
+          <button
+            className="w-8 h-8 flex items-center justify-center"
+            type="button"
+            onClick={onBack}
+          >
+            <Icon
+              icon="solar:alt-arrow-left-linear"
+              className="w-8 h-8 text-[#1E2124]"
+            />
+          </button>
+          {/* 가운데: 타이틀 */}
+          <h1
+            className="
+          text-[18px] font-semibold text-[#1E2124]
+          tracking-[-0.2px] select-none
+        "
+          >
+            마이페이지
+          </h1>
+          {/* 햄버거 메뉴 버튼 -> 메뉴 열기 */}
+          <button
+            className="flex items-center justify-center hover:opacity-80 active:scale-95"
+            type="button"
+            aria-label="메뉴 열기"
+            onClick={openMenu}
+          >
+            <Icon icon="mynaui:menu" className="w-6 h-6 text-black/80" />
+          </button>
+        </header>
 
         {/* 메인 콘텐츠 */}
         <main className="flex-1">
@@ -85,16 +127,13 @@ export default function MobileView() {
                 label="결제 관리"
                 onClick={() => go("/my-page/client/payments")}
               />
+              <MidLink label="스케줄 내역" onClick={() => go("/calendar")} />
               <MidLink
-                label="스케줄 내역"
-                onClick={() => go("/my-page/client/schedules")}
-              />
-              <MidLink
-                label="문의 내역"
+                label="예약 내역"
                 onClick={() => go("/my-page/client/inquiries")}
               />
               <MidLink
-                label="리뷰관리"
+                label="리뷰 내역"
                 onClick={() => go("/my-page/client/reviews")}
               />
             </div>
@@ -120,6 +159,9 @@ export default function MobileView() {
           </div>
         </section>
       </div>
+
+      {/* 메인 페이지처럼 사이드 메뉴 붙이기 */}
+      <SideMenu isOpen={isMenuOpen} onClose={closeMenu} />
     </div>
   );
 }

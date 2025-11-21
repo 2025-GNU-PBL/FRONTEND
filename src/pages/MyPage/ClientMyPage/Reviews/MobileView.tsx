@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import MyPageHeader from "../../../../components/MyPageHeader";
@@ -14,8 +14,8 @@ type ReviewApiResponseItem = {
   title: string; // brand
   comment: string;
   imageUrl?: string | null;
-  category?: string; // 추후 벡엔드 수정 예정
-  createdAt: string; // "2025-11-07T12:00:00"
+  category?: string;
+  createdAt: string;
 };
 
 type ReviewApiResponse = {
@@ -48,13 +48,13 @@ export default function MobileView() {
 
   const hasReviews = !loading && reviews.length > 0;
 
-  /** API 응답 → UI 모델 매핑 */
+  /** API 응답 → UI 모델 */
   const mapToReview = (item: ReviewApiResponseItem): Review => ({
     id: String(item.id),
-    brand: item.title || "상품명 미지정", // title을 브랜드처럼 노출
-    category: "", // 서버에 없으니 공백으로 처리
-    rating: item.star ?? 0, // star → rating
-    createdAgo: "", // createdAt이 없으니 빈 문자열 (추후 백엔드 추가 시 교체)
+    brand: item.title || "상품명 미지정",
+    category: "",
+    rating: item.star ?? 0,
+    createdAgo: "",
     content: item.comment || "",
     thumbnail: item.imageUrl || "",
   });
@@ -79,7 +79,6 @@ export default function MobileView() {
         setReviews(list);
       } catch (err) {
         console.error("[Reviews/MobileView] fetchMyReviews error:", err);
-        // TODO: 토스트로 "리뷰 목록을 불러오지 못했습니다." 노출
         setReviews([]);
       } finally {
         setLoading(false);
@@ -92,44 +91,33 @@ export default function MobileView() {
   /** 리뷰 삭제 */
   const handleDelete = useCallback(async (id: string) => {
     try {
-      // 서버 삭제 요청
       await api.delete(`/api/v1/reviews/${id}`);
-
-      // 로컬 상태에서도 제거
       setReviews((prev) => prev.filter((r) => r.id !== id));
-
-      // TODO: 토스트로 "리뷰가 삭제되었습니다." 노출
     } catch (err) {
       console.error("[Reviews/MobileView] delete error:", err);
-      // TODO: 토스트로 "리뷰 삭제에 실패했습니다." 노출
     }
   }, []);
 
   return (
     <div className="w-full bg-white">
-      {/* 화면 프레임(390×844) */}
       <div className="relative mx-auto w-[390px] h-[844px] bg-white flex flex-col overflow-hidden">
-        {/* 상단 헤더 */}
         <div className="sticky top-0 z-20 bg-white border-b border-[#F3F4F5]">
           <MyPageHeader title="리뷰 내역" onBack={onBack} showMenu={false} />
         </div>
 
-        {/* 콘텐츠 영역 */}
-        <div className="flex-1 w-full overflow-y-auto">
+        <div className="flex-1 w-full overflow-y-auto mt-30">
           {loading ? (
             <div className="flex-1 flex items-center justify-center text-[14px] text-[#999999]">
               리뷰 내역을 불러오는 중입니다...
             </div>
           ) : hasReviews ? (
             <>
-              {/* 상단: 리뷰 개수 */}
               <div className="px-5 pt-5">
                 <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
                   리뷰 내역 {reviews.length}
                 </span>
               </div>
 
-              {/* 리뷰 리스트 */}
               <div className="mt-3 flex flex-col">
                 {reviews.map((r) => (
                   <ReviewRow key={r.id} review={r} onDelete={handleDelete} />
@@ -137,13 +125,10 @@ export default function MobileView() {
               </div>
             </>
           ) : (
-            <EmptyState />
+            <div className="mt-35">
+              <EmptyState />
+            </div>
           )}
-        </div>
-
-        {/* 하단 Home Indicator */}
-        <div className="w-full h-[34px] flex items-end justify-center">
-          <div className="w-[134px] h-[5px] mb-2 bg-black rounded-[100px]" />
         </div>
       </div>
     </div>
@@ -162,7 +147,6 @@ function ReviewRow({
   return (
     <div className="px-5">
       <div className="w-full py-4 flex flex-row items-start gap-3 border-b border-[#F3F4F5]">
-        {/* 썸네일 (원형) */}
         <div className="w-[48px] h-[48px] rounded-full overflow-hidden bg-[#F3F4F5] flex items-center justify-center flex-shrink-0">
           {review.thumbnail ? (
             <img
@@ -175,9 +159,7 @@ function ReviewRow({
           )}
         </div>
 
-        {/* 텍스트 영역 */}
         <div className="flex-1 flex flex-col gap-1">
-          {/* 상단: 브랜드 / 카테고리 / 작성일 */}
           <div className="flex items-center gap-1 text-[12px] leading-[18px] text-[#999999]">
             <span className="text-[14px] font-semibold text-[#111111] mr-1">
               {review.brand}
@@ -189,7 +171,6 @@ function ReviewRow({
             <span>{review.createdAgo}</span>
           </div>
 
-          {/* 별점 */}
           <div className="flex items-center gap-1">
             {Array.from({ length: 5 }).map((_, i) => (
               <Icon
@@ -206,13 +187,11 @@ function ReviewRow({
             ))}
           </div>
 
-          {/* 내용 한 줄 요약 */}
           <div className="text-[12px] leading-[18px] text-[#4B5563] line-clamp-2">
             {review.content}
           </div>
         </div>
 
-        {/* 삭제 버튼 */}
         <button
           type="button"
           className="ml-2 mt-1 text-[12px] leading-[18px] text-[#4B6FFF]"
@@ -227,13 +206,13 @@ function ReviewRow({
 
 function EmptyState() {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-6">
-      <Icon
-        icon="solar:document-linear"
-        className="w-[72px] h-[72px] text-[#D3D4D6]"
+    <div className="flex-1 flex flex-col items-center justify-center py-10">
+      <img
+        src="/images/document.png"
+        className="w-[72px] h-[72px] text-[#D3D4D6] mb-4"
       />
-      <div className="flex flex-col items-center gap-1">
-        <p className="text-[16px] leading-[24px] font-semibold tracking-[-0.2px] text-black">
+      <div className="flex flex-col items-center">
+        <p className="text-[16px] leading-[24px] font-semibold tracking-[-0.2px] text-black mb-2">
           작성한 리뷰 내역이 없어요
         </p>
         <p className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
@@ -247,9 +226,7 @@ function EmptyState() {
   );
 }
 
-/* ---------- 유틸 ---------- */
-
-/** createdAt ISO → "n일 전" 등으로 변환 (값 없으면 빈 문자열) */
+/** createdAt → "n일 전" 변환 */
 function formatAgo(iso?: string): string {
   if (!iso) return "";
   const created = new Date(iso);

@@ -20,7 +20,7 @@ export default function MyPageHeader({
         w-[390px] h-[60px]
         flex flex-row justify-between items-center
         px-[20px] gap-[4px]
-        bg-[#F6F7FB]
+        bg-white
       "
     >
       {/* Back Button */}

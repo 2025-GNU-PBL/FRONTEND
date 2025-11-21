@@ -138,9 +138,9 @@ export default function MobileView() {
   return (
     <div className="w-full bg-white">
       {/* 화면 프레임(390×844) */}
-      <div className="mx-auto w-[390px] h-[844px] bg-[#F6F7FB] flex flex-col">
+      <div className="mx-auto w-[390px] h-[844px] flex flex-col">
         {/* 헤더 */}
-        <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
+        <div className="sticky top-0 z-20">
           <MyPageHeader title="예약 내역" onBack={onBack} showMenu={false} />
         </div>
 
@@ -363,10 +363,7 @@ function ReservationRow({
 function EmptyState() {
   return (
     <div className="w-full h-[489px] flex flex-col items-center justify-center gap-6">
-      <Icon
-        icon="solar:document-linear"
-        className="w-[72px] h-[72px] text-[#DADADA]"
-      />
+      <img src="/images/document.png" className="w-20 h-20 text-[#DADADA]" />
       <div className="flex flex-col items-center gap-1">
         <p className="text-[16px] leading-[24px] font-semibold tracking-[-0.2px] text-black">
           예약 내역이 없어요
