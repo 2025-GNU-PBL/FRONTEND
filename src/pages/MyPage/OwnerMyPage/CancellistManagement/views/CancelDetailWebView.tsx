@@ -1,35 +1,59 @@
-// WebView.tsx (사장_마이페이지_취소 상세 내역 - Web)
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../../../../../lib/api/axios";
 
-/** 상품 정보 타입 */
+/** 상품 정보 타입 (모바일과 동일) */
 type ProductInfo = {
   shopName: string;
   productName: string;
-  price: number;
-  imageUrl: string;
+  paidAmount: number;
+  thumbnailUrl: string;
 };
 
-/** 고객 정보 타입 */
+/** 고객 정보 타입 (모바일과 동일) */
 type CustomerInfo = {
   name: string;
   phone: string;
-  customerId: string;
+  customerEmail: string;
 };
 
-/** location.state 로 전달되는 타입 */
+/** 서버 결제 상태 타입 (모바일과 동일, 필요 시 확장용) */
+type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
+
+/** 상세 화면에서 실제로 쓸 상태 (모바일과 동일) */
+type DetailPaymentStatus = "CANCEL_REQUESTED" | "CANCELED";
+
+/** 리스트 → 상세로 전달되는 state 타입
+ *  - paymentStatus 포함 (취소요청 / 취소완료 구분)
+ *  - product / customer / cancelReason 은 옵션으로 두고
+ *    paymentKey 만 있어도 동작하도록 구성
+ */
 type CancelDetailLocationState = {
+  paymentKey?: string;
+  paymentStatus?: DetailPaymentStatus;
+  product?: ProductInfo;
+  customer?: CustomerInfo;
+  cancelReason?: string;
+};
+
+/** 취소 상세 조회 API 응답 DTO (모바일과 동일) */
+type CancelDetailApiResponse = {
   paymentKey: string;
-  product: ProductInfo;
-  customer: CustomerInfo;
+  shopName: string;
+  productName: string;
+  paidAmount: number;
+  thumbnailUrl?: string;
+  customerName: string;
+  customerPhoneNumber: string;
+  customerEmail: string;
   cancelReason: string;
 };
 
 interface WebCancelDetailViewProps {
   /** 옵션: 없으면 location.state 에서 가져옴 */
   paymentKey?: string;
+  paymentStatus?: DetailPaymentStatus;
   product?: ProductInfo;
   customer?: CustomerInfo;
   cancelReason?: string;
@@ -37,7 +61,7 @@ interface WebCancelDetailViewProps {
   onApproved?: () => void;
 }
 
-/** 공용 섹션 카드 (웹 디자인 참고용) */
+/** 공용 섹션 카드 */
 function SectionCard({
   title,
   subtitle,
@@ -83,15 +107,93 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
 
   // 1순위: props, 2순위: location.state
   const paymentKey = props.paymentKey ?? state?.paymentKey ?? "";
-  const product = props.product ?? state?.product;
-  const customer = props.customer ?? state?.customer;
-  const cancelReason = props.cancelReason ?? state?.cancelReason ?? "";
 
+  /** 처음 넘어온 상태값 (모바일과 동일 로직) */
+  const initialStatus: DetailPaymentStatus = (props.paymentStatus ??
+    state?.paymentStatus ??
+    "CANCEL_REQUESTED") as DetailPaymentStatus;
+
+  /** product / customer / cancelReason 은 내부 state 로 관리 */
+  const [product, setProduct] = useState<ProductInfo | undefined>(
+    props.product ?? state?.product
+  );
+  const [customer, setCustomer] = useState<CustomerInfo | undefined>(
+    props.customer ?? state?.customer
+  );
+  const [cancelReason, setCancelReason] = useState<string>(
+    props.cancelReason ?? state?.cancelReason ?? ""
+  );
+
+  /** 현재 결제 상태 (요청 / 완료) */
+  const [paymentStatus, setPaymentStatus] =
+    useState<DetailPaymentStatus>(initialStatus);
+
+  /** 상세 조회 로딩 / 에러 */
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  /** 승인 확인 모달 / 승인 API 로딩 / 토스트 */
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
+  /** 금액 포맷 (모바일과 동일) */
+  const formattedPrice =
+    product?.paidAmount != null
+      ? product.paidAmount.toLocaleString("ko-KR") + "원"
+      : "-";
+
+  /** 취소 상세 정보 조회 (모바일과 동일한 분기: 요청/완료에 따라 엔드포인트 변경) */
+  useEffect(() => {
+    if (!paymentKey) return;
+
+    // 이미 필요한 정보가 다 있으면 조회 생략
+    if (product && customer && cancelReason) return;
+
+    const fetchDetail = async () => {
+      try {
+        setDetailLoading(true);
+        setDetailError(null);
+
+        const endpoint =
+          paymentStatus === "CANCELED"
+            ? `/api/v1/payments/cancels/${paymentKey}`
+            : `/api/v1/payments/cancel-requests/${paymentKey}`;
+
+        const { data } = await api.get<CancelDetailApiResponse>(endpoint);
+
+        const mappedProduct: ProductInfo = {
+          shopName: data.shopName,
+          productName: data.productName,
+          paidAmount: data.paidAmount,
+          thumbnailUrl: data.thumbnailUrl ?? "",
+        };
+
+        const mappedCustomer: CustomerInfo = {
+          name: data.customerName,
+          phone: data.customerPhoneNumber,
+          customerEmail: data.customerEmail,
+        };
+
+        setProduct((prev) => prev ?? mappedProduct);
+        setCustomer((prev) => prev ?? mappedCustomer);
+        setCancelReason((prev) =>
+          prev && prev.trim() ? prev : data.cancelReason
+        );
+      } catch (error) {
+        console.error("[Web CancelDetail] fetchDetail error:", error);
+        setDetailError("취소 상세 정보를 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setDetailLoading(false);
+      }
+    };
+
+    fetchDetail();
+  }, [paymentKey, paymentStatus, product, customer, cancelReason]);
+
+  /** 승인 버튼 클릭 (요청 건에서만 의미 있음, 모바일과 동일) */
   const handleApproveClick = () => {
+    if (paymentStatus !== "CANCEL_REQUESTED") return;
     setConfirmOpen(true);
   };
 
@@ -101,17 +203,17 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
 
   const handleApproveConfirm = async () => {
     if (!paymentKey) return;
+    if (paymentStatus !== "CANCEL_REQUESTED") return;
 
     try {
-      setLoading(true);
-      // Swagger 에 있는 경로 그대로 사용 (공용 api 인스턴스)
+      setApproveLoading(true);
       await api.post(`/api/v1/payments/${paymentKey}/cancel-approve`);
 
       setConfirmOpen(false);
       setShowToast(true);
+      setPaymentStatus("CANCELED"); // 모바일과 동일하게 완료 상태로 전환
       props.onApproved?.();
 
-      // 토스트 자동 닫힘
       setTimeout(() => {
         setShowToast(false);
       }, 2500);
@@ -119,17 +221,17 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
       console.error(error);
       alert("승인 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
     } finally {
-      setLoading(false);
+      setApproveLoading(false);
     }
   };
 
-  // 필수 데이터가 없을 때 처리 (URL 직접 입력 등)
-  if (!paymentKey || !product || !customer) {
+  /** 필수 키 자체가 없을 때  */
+  if (!paymentKey) {
     return (
       <main className="flex min-h-screen w-full items-center justify-center bg-[#F6F7FB] px-4">
         <div className="w-full max-w-[420px] rounded-2xl bg-white px-8 py-10 text-center shadow">
           <h1 className="mb-2 text-[18px] font-semibold text-gray-900">
-            취소 상세 정보를 찾을 수 없습니다.
+            취소 상세 정보를 찾을 수 없습니다. (paymentKey 없음)
           </h1>
           <p className="mb-6 text-sm text-gray-500">
             올바르지 않은 접근이거나, 필요한 데이터가 전달되지 않았습니다.
@@ -146,7 +248,47 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
     );
   }
 
-  const formattedPrice = product.price.toLocaleString("ko-KR") + "원";
+  /** 상세 조회 중이고 아직 product / customer 가 없으면 로딩 화면 */
+  if (detailLoading && (!product || !customer)) {
+    return (
+      <main className="flex min-h-screen w-full items-center justify-center bg-[#F6F7FB] px-4">
+        <div className="w-full max-w-[420px] rounded-2xl bg-white px-8 py-10 text-center shadow">
+          <h1 className="mb-2 text-[18px] font-semibold text-gray-900">
+            취소 상세 정보를 불러오는 중입니다...
+          </h1>
+          <p className="mb-6 text-sm text-gray-500">잠시만 기다려 주세요.</p>
+        </div>
+      </main>
+    );
+  }
+
+  /** 로딩 끝났는데도 필수 데이터가 없으면 에러 처리 */
+  if ((!product || !customer) && !detailLoading) {
+    return (
+      <main className="flex min-h-screen w-full items-center justify-center bg-[#F6F7FB] px-4">
+        <div className="w-full max-w-[420px] rounded-2xl bg-white px-8 py-10 text-center shadow">
+          <h1 className="mb-2 text-[18px] font-semibold text-gray-900">
+            취소 상세 정보를 찾을 수 없습니다.
+          </h1>
+          {detailError && (
+            <p className="mb-2 text-xs text-red-500">{detailError}</p>
+          )}
+          <p className="mb-6 text-sm text-gray-500">
+            올바르지 않은 접근이거나, 필요한 데이터가 전달되지 않았습니다.
+          </p>
+          <button
+            type="button"
+            onClick={() => nav(-1)}
+            className="inline-flex items-center justify-center rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white"
+          >
+            뒤로가기
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  const isRequested = paymentStatus === "CANCEL_REQUESTED";
 
   return (
     <>
@@ -155,21 +297,11 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
         {/* 상단 그라디언트 바 */}
         <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
 
-        <div className="pt-12 pb-20">
+        <div className="pt-20 pb-20">
           <div className="mx-auto flex w-full max-w-[960px] flex-col gap-8 px-6">
-            {/* 상단 타이틀 + 뒤로가기 */}
+            {/* 상단 타이틀*/}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => nav(-1)}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                >
-                  <Icon
-                    icon="solar:alt-arrow-left-linear"
-                    className="h-4 w-4"
-                  />
-                </button>
                 <div>
                   <h1 className="text-[24px] font-semibold tracking-[-0.4px] text-gray-900">
                     취소 상세 내역
@@ -191,7 +323,7 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
               <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
                 {/* 왼쪽: 상품 + 고객 */}
                 <div className="space-y-5">
-                  {/* 상품정보 카드 (모바일 디자인 기반) */}
+                  {/* 상품정보 카드  */}
                   <div className="relative h-[170px] w-full rounded-[16px] border border-[#F3F4F5] bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
                     <div className="flex items-center justify-between px-5 pt-4">
                       <h3 className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
@@ -202,9 +334,9 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
                     <div className="flex px-5 pb-5 pt-3">
                       {/* 썸네일 */}
                       <div className="h-24 w-24 flex-shrink-0 rounded-[6px] border border-[#F5F5F5] bg-[#F9FAFB]">
-                        {product.imageUrl ? (
+                        {product?.thumbnailUrl ? (
                           <img
-                            src={product.imageUrl}
+                            src={product.thumbnailUrl}
                             alt={product.productName}
                             className="h-full w-full rounded-[6px] object-cover"
                           />
@@ -218,10 +350,10 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
                       {/* 텍스트 영역 */}
                       <div className="ml-4 flex min-w-0 flex-1 flex-col justify-between">
                         <p className="line-clamp-1 text-[13px] font-normal leading-[21px] tracking-[-0.2px] text-black/40">
-                          {product.shopName}
+                          {product?.shopName}
                         </p>
                         <p className="mt-1 line-clamp-2 text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-[#1E2124]">
-                          {product.productName}
+                          {product?.productName}
                         </p>
                         <p className="mt-3 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                           {formattedPrice}
@@ -240,19 +372,19 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600">이름</span>
                         <span className="text-right font-medium">
-                          {customer.name}
+                          {customer?.name}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600">전화번호</span>
                         <span className="text-right font-medium">
-                          {customer.phone}
+                          {customer?.phone}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-600">고객 ID</span>
+                        <span className="text-gray-600">고객 이메일</span>
                         <span className="text-right font-medium">
-                          {customer.customerId}
+                          {customer?.customerEmail}
                         </span>
                       </div>
                     </div>
@@ -280,28 +412,30 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
                     </p>
                   </div>
 
-                  {/* 승인 버튼 영역 */}
-                  <div className="mt-auto rounded-2xl bg-white px-5 py-4 shadow-[0_4px_18px_rgba(15,23,42,0.06)]">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <p className="text-[14px] font-semibold text-[#1E2124]">
-                          취소 요청 승인
-                        </p>
-                        <p className="text-[12px] text-gray-500">
-                          요청 내용을 확인하셨다면 아래 버튼을 눌러 취소를
-                          승인해 주세요.
-                        </p>
+                  {/* 승인 버튼 영역 (요청 건일 때만 의미 있음) */}
+                  {isRequested && (
+                    <div className="mt-auto rounded-2xl bg-white px-5 py-4 shadow-[0_4px_18px_rgba(15,23,42,0.06)]">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <p className="text-[14px] font-semibold text-[#1E2124]">
+                            취소 요청 승인
+                          </p>
+                          <p className="text-[12px] text-gray-500">
+                            요청 내용을 확인하셨다면 아래 버튼을 눌러 취소를
+                            승인해 주세요.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleApproveClick}
+                          disabled={approveLoading}
+                          className="inline-flex h-11 min-w-[130px] items-center justify-center rounded-[10px] bg-[#FF2233] px-4 text-[14px] font-semibold leading-[21px] tracking-[-0.2px] text-white shadow-sm hover:bg-[#ff1124] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {approveLoading ? "승인 중..." : "승인하기"}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleApproveClick}
-                        disabled={loading}
-                        className="inline-flex h-11 min-w-[130px] items-center justify-center rounded-[10px] bg-[#FF2233] px-4 text-[14px] font-semibold leading-[21px] tracking-[-0.2px] text-white shadow-sm hover:bg-[#ff1124] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {loading ? "승인 중..." : "승인하기"}
-                      </button>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </SectionCard>
@@ -332,7 +466,7 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
               <button
                 type="button"
                 onClick={handleCancelConfirm}
-                disabled={loading}
+                disabled={approveLoading}
                 className="flex h-11 w-[142px] items-center justify-center rounded-[10px] bg-[#F3F4F5] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999] disabled:opacity-60"
               >
                 취소하기
@@ -340,10 +474,10 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
               <button
                 type="button"
                 onClick={handleApproveConfirm}
-                disabled={loading}
+                disabled={approveLoading}
                 className="flex h-11 w-[143px] flex-1 items-center justify-center rounded-[10px] bg-[#FF2233] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white disabled:opacity-60"
               >
-                {loading ? "승인 중..." : "승인하기"}
+                {approveLoading ? "승인 중..." : "승인하기"}
               </button>
             </div>
           </div>

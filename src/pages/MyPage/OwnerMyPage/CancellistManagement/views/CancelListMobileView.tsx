@@ -9,6 +9,9 @@ import api from "../../../../../lib/api/axios";
 /** 서버 결제 상태 타입 */
 type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
 
+/** 상세 화면에서 실제로 쓸 상태(둘만 구분하면 되니까) */
+type DetailPaymentStatus = "CANCEL_REQUESTED" | "CANCELED";
+
 /** 상태 필터 타입 */
 type StatusFilter = "ALL" | "CANCEL_REQUESTED" | "CANCELED";
 
@@ -24,7 +27,7 @@ function ensureOwner(userData: UserData | null): OwnerData | null {
   return null;
 }
 
-/** 결제 취소 요청 리스트 API 응답 아이템 타입 */
+/** 결제 취소 요청 & 완료 리스트 API 응답 아이템 타입 */
 interface CancelPaymentItem {
   orderCode: string;
   paymentKey: string; // 취소 상세 페이지로 넘길 paymentKey
@@ -91,7 +94,7 @@ function getSortOrderLabel(order: SortOrder) {
   return order === "DESC" ? "최신순" : "오래된 순";
 }
 
-/** 사장(OWNER) 마이페이지 - 취소 내역 모바일 뷰 */
+/** 사장(OWNER) 마이페이지 */
 export default function MobileView() {
   const nav = useNavigate();
   const rawUserData = useAppSelector((state) => state.user.userData);
@@ -130,37 +133,46 @@ export default function MobileView() {
     );
   }
 
-  /** 취소 내역(대기 + 취소 완료 등) 목록 조회 */
+  /** 취소 요청 + 취소 완료 목록 조회 */
   useEffect(() => {
-    const fetchCancelRequests = async () => {
+    const fetchAllCancels = async () => {
       try {
         setIsLoading(true);
         setErrorMsg(null);
 
-        const res = await api.get<CancelPaymentItem[]>(
-          "/api/v1/payments/cancel-requests/me"
-        );
+        const [reqRes, doneRes] = await Promise.all([
+          api.get<CancelPaymentItem[]>("/api/v1/payments/cancel-requests/me"),
+          api.get<CancelPaymentItem[]>("/api/v1/payments/cancels/me"),
+        ]);
 
-        const data = Array.isArray(res.data) ? res.data : [];
-        setItems(data);
+        const reqData = Array.isArray(reqRes.data) ? reqRes.data : [];
+        const doneData = Array.isArray(doneRes.data) ? doneRes.data : [];
+
+        // 한 리스트로 합치기
+        setItems([...reqData, ...doneData]);
       } catch (error) {
+        console.error("[취소 내역] fetchAllCancels error:", error);
         setErrorMsg("취소 내역을 불러오는 중 오류가 발생했습니다.");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchCancelRequests();
+    fetchAllCancels();
   }, []);
 
-  /** 카드 클릭 → 대기 상태만 상세로 이동 */
+  /** 카드 클릭 → 상태 + paymentKey 함께 전달 */
   const handleCardClick = (item: CancelPaymentItem) => {
-    if (item.status !== "CANCEL_REQUESTED") return;
-    nav(
-      `/my-page/owner/cancels/detail?paymentKey=${encodeURIComponent(
-        item.paymentKey
-      )}`
-    );
+    const detailStatus: DetailPaymentStatus =
+      item.status === "CANCELED" ? "CANCELED" : "CANCEL_REQUESTED";
+
+    nav("/my-page/owner/cancels/detail", {
+      state: {
+        paymentKey: item.paymentKey,
+        paymentStatus: detailStatus,
+        // 필요하면 나중에 product / customer / cancelReason 도 같이 넘길 수 있음
+      },
+    });
   };
 
   /** 최신/오래된 순 정렬된 전체 리스트 */
@@ -332,20 +344,17 @@ export default function MobileView() {
                   const writtenDate = formatWrittenDate(item.canceledAt);
                   const badge = getStatusBadge(item.status);
 
-                  const isClickable = item.status === "CANCEL_REQUESTED";
-
                   return (
                     <button
                       key={item.orderCode}
                       type="button"
                       onClick={() => handleCardClick(item)}
-                      disabled={!isClickable}
                       className={[
                         "w-full",
                         bgClass,
                         "px-5",
                         "border-b border-[#F3F4F5]",
-                        "disabled:cursor-default",
+                        "cursor-pointer",
                       ].join(" ")}
                     >
                       <div className="mx-auto flex h-[101px] w-[350px] flex-row items-center justify-between">
@@ -367,7 +376,7 @@ export default function MobileView() {
                         {/* 우측 상태 배지 */}
                         <div
                           className={[
-                            "flex h-[33px] w-[48px] items-center justify-center rounded-[20px] px-3 py-[6px]",
+                            "flex h-[33px] min-w-[48px] items-center justify-center rounded-[20px] px-3 py-[6px]",
                             badge.className,
                           ].join(" ")}
                         >

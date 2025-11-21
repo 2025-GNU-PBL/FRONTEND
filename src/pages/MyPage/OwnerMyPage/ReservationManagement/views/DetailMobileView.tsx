@@ -10,7 +10,7 @@ type ReservationDetailApiResponse = {
   customerId: number;
   productId: number;
   status: string; // PENDING / APPROVE / DENY...
-  reservationTime: string; // "2025-11-14"
+  reservationTime: string; // "2025-11-14" (기본 예약 날짜)
   storeName: string;
   productName: string;
   price: number;
@@ -19,6 +19,7 @@ type ReservationDetailApiResponse = {
   customerEmail: string;
   title: string;
   content: string;
+  thumbnail: string;
 };
 
 /** ====== UI용 타입 ====== */
@@ -28,15 +29,30 @@ type ReservationDetail = {
   id: number;
   status: ReservationDetailStatus;
   rawStatus: string; // 서버에서 내려온 원본 status
-  date: string; // YYYY.MM.DD
+  date: string; // YYYY.MM.DD (상단에 표기용)
+  reservationDateIso: string; // "2025-11-14" (승인용 기본 날짜)
   productBrand: string;
   productTitle: string;
   price: number;
-  thumbnailUrl?: string;
+  thumbnail?: string;
   customerName: string;
   customerPhone: string;
   customerId: string;
   requestMessage: string;
+};
+
+/** 승인용 Request Body 타입 */
+type ReservationApproveRequest = {
+  status: "APPROVE";
+  reservationStartDate: string; // "YYYY-MM-DD"
+  reservationEndDate: string; // "YYYY-MM-DD"
+  reservationStartTime: string; // "HH:mm"
+  reservationEndTime: string; // "HH:mm"
+};
+
+/** 거절용 Request Body 타입 */
+type ReservationRejectRequest = {
+  status: "DENY";
 };
 
 /** 서버 status → 상세 화면 status 매핑 */
@@ -66,10 +82,11 @@ function mapApiToUi(data: ReservationDetailApiResponse): ReservationDetail {
     status: mapDetailStatus(data.status),
     rawStatus: data.status,
     date: formatDateDot(data.reservationTime),
+    reservationDateIso: data.reservationTime, // 승인용 기본 날짜
     productBrand: data.storeName,
     productTitle: data.productName,
     price: data.price,
-    thumbnailUrl: undefined,
+    thumbnail: data.thumbnail,
     customerName: data.customerName,
     customerPhone: data.customerPhoneNumber,
     customerId: data.customerEmail || String(data.customerId),
@@ -87,6 +104,12 @@ export default function DetailMobileView() {
   const [loading, setLoading] = useState(false); // 상세 조회 로딩
   const [actionLoading, setActionLoading] = useState(false); // 승인/거절 로딩
   const [error, setError] = useState<string | null>(null);
+
+  /** 승인용 입력 값 (날짜/시간) */
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
 
   /** accessor 쿼리 파라미터 */
   const accessorParam = useMemo(() => {
@@ -121,7 +144,16 @@ export default function DetailMobileView() {
           }
         );
 
-        setDetail(mapApiToUi(data));
+        const ui = mapApiToUi(data);
+        setDetail(ui);
+
+        // 승인용 입력 기본값 세팅
+        const baseDate = ui.reservationDateIso?.slice(0, 10) || "";
+        setStartDate((prev) => prev || baseDate);
+        setEndDate((prev) => prev || baseDate);
+        // 시간은 스펙 예시 값으로 기본 세팅 (원하면 변경 가능)
+        setStartTime((prev) => prev || "13:30");
+        setEndTime((prev) => prev || "15:00");
       } catch (e) {
         console.error("[Reservation/DetailMobileView] fetchDetail error:", e);
         setError("예약 상세 정보를 불러오는 중 오류가 발생했습니다.");
@@ -136,44 +168,40 @@ export default function DetailMobileView() {
   /** 가격 포맷 */
   const formatPrice = (n: number) => `${(n ?? 0).toLocaleString("ko-KR")}원`;
 
-  /** 공통: 상태 변경 PATCH 호출 */
-  const patchReservationStatus = async (status: "APPROVE" | "DENY") => {
-    if (!detail) return;
-
-    const config = {
-      params: {
-        accessor: accessorParam ?? {},
-      },
-    };
-
-    const { data } = await api.patch<ReservationDetailApiResponse>(
-      "/api/v1/reservation", // swagger에 나온 엔드포인트
-      {
-        id: detail.id,
-        status, // "APPROVE" 또는 "DENY"
-      },
-      config
-    );
-
-    // 응답 기준으로 상태 및 상세정보 갱신
-    setDetail(mapApiToUi(data));
-  };
-
   // 거절하기 버튼 클릭 핸들러
   const handleCancel = async () => {
     if (!detail) return;
     if (detail.status !== "예약중") return; // 이미 확정/취소된 건 처리 X
 
-    const ok = window.confirm("해당 예약을 취소(거절)하시겠습니까?");
+    // 간단 검증
+    if (!startDate || !endDate || !startTime || !endTime) {
+      window.alert("예약 시작/종료 날짜와 시간을 모두 입력해주세요.");
+      return;
+    }
+
+    const ok = window.confirm("해당 예약을 거절하시겠습니까?");
     if (!ok) return;
 
     try {
       setActionLoading(true);
-      await patchReservationStatus("DENY");
-      window.alert("예약이 취소(거절)되었습니다.");
+
+      const body: ReservationRejectRequest = {
+        status: "DENY",
+      };
+
+      const { data } = await api.patch<ReservationDetailApiResponse>(
+        `/api/v1/reservation/${detail.id}/reject`,
+        body
+      );
+
+      // 응답 기준으로 상태 갱신
+      setDetail(mapApiToUi(data));
+
+      window.alert("예약이 거절되었습니다.");
+      // 상태가 DENY으로 바뀌면서 버튼은 자동으로 사라짐
     } catch (e) {
-      console.error("[Reservation/DetailMobileView] cancel error:", e);
-      window.alert("예약 취소 중 오류가 발생했습니다.");
+      console.error("[Reservation/DetailMobileView] approve error:", e);
+      window.alert("예약 거절 중 오류가 발생했습니다.");
     } finally {
       setActionLoading(false);
     }
@@ -184,14 +212,35 @@ export default function DetailMobileView() {
     if (!detail) return;
     if (detail.status !== "예약중") return; // 이미 확정/취소된 건 처리 X
 
+    // 간단 검증
+    if (!startDate || !endDate || !startTime || !endTime) {
+      window.alert("예약 시작/종료 날짜와 시간을 모두 입력해주세요.");
+      return;
+    }
+
     const ok = window.confirm("해당 예약을 승인하시겠습니까?");
     if (!ok) return;
 
     try {
       setActionLoading(true);
-      await patchReservationStatus("APPROVE");
+
+      const body: ReservationApproveRequest = {
+        status: "APPROVE",
+        reservationStartDate: startDate,
+        reservationEndDate: endDate,
+        reservationStartTime: startTime,
+        reservationEndTime: endTime,
+      };
+
+      const { data } = await api.patch<ReservationDetailApiResponse>(
+        `/api/v1/reservation/${detail.id}/approve`,
+        body
+      );
+
+      // 응답 기준으로 상태 갱신
+      setDetail(mapApiToUi(data));
+
       window.alert("예약이 승인되었습니다.");
-      // 승인 후에도 상세 페이지에 남아 있게 두고,
       // 상태가 '확정'으로 바뀌면서 버튼은 자동으로 사라짐
     } catch (e) {
       console.error("[Reservation/DetailMobileView] approve error:", e);
@@ -249,9 +298,9 @@ export default function DetailMobileView() {
                     <div className="flex">
                       {/* 썸네일 */}
                       <div className="mr-4 h-[80px] w-[80px] flex-shrink-0 overflow-hidden rounded-[4px] border border-[#F5F5F5] bg-[#F6F7FB]">
-                        {detail.thumbnailUrl ? (
+                        {detail.thumbnail ? (
                           <img
-                            src={detail.thumbnailUrl}
+                            src={detail.thumbnail}
                             alt={detail.productTitle}
                             className="h-full w-full object-cover"
                           />
@@ -307,10 +356,10 @@ export default function DetailMobileView() {
                         </span>
                       </div>
 
-                      {/* 고객 ID */}
+                      {/* 고객 이메일 */}
                       <div className="flex items-center justify-between">
                         <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
-                          고객 ID
+                          고객 이메일
                         </span>
                         <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
                           {detail.customerId}
@@ -320,8 +369,71 @@ export default function DetailMobileView() {
                   </div>
                 </section>
 
+                {/* 예약 시간 설정 카드 */}
+                <section className="mx-auto mb-4 w-full max-w-[350px]">
+                  <div className="rounded-[12px] border border-[#F3F4F5] bg-white px-4 pt-4 pb-5">
+                    <div className="mb-4 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                      예약 시간 설정
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
+                          시작 날짜
+                        </span>
+                        <input
+                          type="date"
+                          className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          disabled={detail.status !== "예약중"}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
+                          종료 날짜
+                        </span>
+                        <input
+                          type="date"
+                          className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          disabled={detail.status !== "예약중"}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
+                          시작 시간
+                        </span>
+                        <input
+                          type="time"
+                          className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          disabled={detail.status !== "예약중"}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
+                          종료 시간
+                        </span>
+                        <input
+                          type="time"
+                          className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          disabled={detail.status !== "예약중"}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
                 {/* 요청사항 카드 */}
-                <section className="mx-auto w-full max-w-[350px]">
+                <section className="mx-auto w-full max-w-[350px] mb-25">
                   <div className="rounded-[12px] border border-[#F3F4F5] bg-white px-4 pt-4 pb-5">
                     <div className="mb-4 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                       요청사항
@@ -342,7 +454,7 @@ export default function DetailMobileView() {
         {/* 하단 버튼 영역 - 거절하기 / 승인하기
            예약 상태가 '예약중'일 때만 노출 (확정/취소면 버튼 숨김) */}
         {!loading && !error && detail && detail.status === "예약중" && (
-          <div className="absolute bottom-[96px] left-1/2 z-20 w-[350px] -translate-x-1/2">
+          <div className="absolute bottom-[60px] left-1/2 z-20 w-[350px] -translate-x-1/2">
             <div className="flex w-full flex-row items-center gap-[12px] px-4 py-3">
               {/* 거절하기 버튼 */}
               <button

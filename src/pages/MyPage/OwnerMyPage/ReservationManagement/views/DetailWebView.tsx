@@ -9,7 +9,7 @@ type ReservationDetailApiResponse = {
   ownerId: number;
   customerId: number;
   productId: number;
-  status: string; // WAITING / APPROVE / DENY ...
+  status: string; // PENDING / APPROVE / DENY ...
   reservationTime: string; // "2025-11-14"
   storeName: string;
   productName: string;
@@ -19,6 +19,7 @@ type ReservationDetailApiResponse = {
   customerEmail: string;
   title: string;
   content: string;
+  thumbnail: string;
 };
 
 /** ====== UI용 타입 ====== */
@@ -27,15 +28,31 @@ type ReservationDetailStatus = "예약중" | "확정" | "취소";
 type ReservationDetail = {
   id: number;
   status: ReservationDetailStatus;
+  rawStatus: string;
   date: string; // YYYY.MM.DD
+  reservationDateIso: string; // 승인용 기본 날짜 (YYYY-MM-DD)
   productBrand: string;
   productTitle: string;
   price: number;
-  thumbnailUrl?: string;
+  thumbnail?: string;
   customerName: string;
   customerPhone: string;
   customerId: string;
   requestMessage: string;
+};
+
+/** 승인용 Request Body 타입 */
+type ReservationApproveRequest = {
+  status: "APPROVE";
+  reservationStartDate: string; // "YYYY-MM-DD"
+  reservationEndDate: string; // "YYYY-MM-DD"
+  reservationStartTime: string; // "HH:mm"
+  reservationEndTime: string; // "HH:mm"
+};
+
+/** 거절용 Request Body 타입 */
+type ReservationRejectRequest = {
+  status: "DENY";
 };
 
 /** 서버 status → 상세 화면 status 매핑 */
@@ -58,15 +75,52 @@ function formatDateDot(iso: string): string {
   return `${y}.${m}.${day}`;
 }
 
-/** ====== 컴포넌트 ====== */
+/** API 응답 → UI 타입 매핑 */
+function mapApiToUi(data: ReservationDetailApiResponse): ReservationDetail {
+  return {
+    id: data.id,
+    status: mapDetailStatus(data.status),
+    rawStatus: data.status,
+    date: formatDateDot(data.reservationTime),
+    reservationDateIso: data.reservationTime,
+    productBrand: data.storeName,
+    productTitle: data.productName,
+    price: data.price,
+    thumbnail: data.thumbnail,
+    customerName: data.customerName,
+    customerPhone: data.customerPhoneNumber,
+    customerId: data.customerEmail || String(data.customerId),
+    requestMessage: data.content || "",
+  };
+}
+
+/** 상태 뱃지 스타일 */
+function getStatusBadgeClasses(status: ReservationDetailStatus) {
+  if (status === "확정") {
+    return "bg-emerald-50 text-emerald-700 border border-emerald-100";
+  }
+  if (status === "취소") {
+    return "bg-red-50 text-red-600 border border-red-100";
+  }
+  return "bg-gray-50 text-gray-700 border border-gray-200";
+}
+
+/** ====== 메인 컴포넌트 ====== */
 export default function DetailWebView() {
   const { reservationId } = useParams<{ reservationId: string }>();
 
   const [detail, setDetail] = useState<ReservationDetail | null>(null);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** accessor 쿼리 파라미터 */
+  /** 승인용 입력 값 (날짜/시간) */
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+
+  /** accessor 쿼리 파라미터 (GET 전용) */
   const accessorParam = useMemo(() => {
     try {
       const raw = localStorage.getItem("accessor");
@@ -78,7 +132,7 @@ export default function DetailWebView() {
     }
   }, []);
 
-  /** 상세 조회 API 호출 */
+  /** 상세 조회 */
   useEffect(() => {
     if (!reservationId) {
       setError("예약 ID가 없습니다.");
@@ -90,32 +144,24 @@ export default function DetailWebView() {
         setLoading(true);
         setError(null);
 
-        const config = {
-          params: {
-            accessor: accessorParam ?? {},
-          },
-        };
-
         const { data } = await api.get<ReservationDetailApiResponse>(
           `/api/v1/reservation/${reservationId}`,
-          config
+          {
+            params: {
+              accessor: accessorParam ?? {},
+            },
+          }
         );
 
-        const ui: ReservationDetail = {
-          id: data.id,
-          status: mapDetailStatus(data.status),
-          date: formatDateDot(data.reservationTime),
-          productBrand: data.storeName,
-          productTitle: data.productName,
-          price: data.price,
-          thumbnailUrl: undefined, // swagger에 이미지 필드 없어서 비워둠
-          customerName: data.customerName,
-          customerPhone: data.customerPhoneNumber,
-          customerId: data.customerEmail || String(data.customerId),
-          requestMessage: data.content || "",
-        };
-
+        const ui = mapApiToUi(data);
         setDetail(ui);
+
+        // 승인용 기본값 세팅
+        const baseDate = ui.reservationDateIso?.slice(0, 10) || "";
+        setStartDate((prev) => prev || baseDate);
+        setEndDate((prev) => prev || baseDate);
+        setStartTime((prev) => prev || "13:30");
+        setEndTime((prev) => prev || "15:00");
       } catch (e) {
         console.error("[Reservation/DetailWebView] fetchDetail error:", e);
         setError("예약 상세 정보를 불러오는 중 오류가 발생했습니다.");
@@ -130,95 +176,281 @@ export default function DetailWebView() {
   /** 가격 포맷 */
   const formatPrice = (n: number) => `${(n ?? 0).toLocaleString("ko-KR")}원`;
 
+  /** 거절하기 */
+  const handleReject = async () => {
+    if (!detail) return;
+    if (detail.status !== "예약중") return;
+
+    if (!startDate || !endDate || !startTime || !endTime) {
+      window.alert("예약 시작/종료 날짜와 시간을 모두 입력해주세요.");
+      return;
+    }
+
+    const ok = window.confirm("해당 예약을 거절하시겠습니까?");
+    if (!ok) return;
+
+    try {
+      setActionLoading(true);
+
+      const body: ReservationRejectRequest = {
+        status: "DENY",
+      };
+
+      const { data } = await api.patch<ReservationDetailApiResponse>(
+        `/api/v1/reservation/${detail.id}/reject`,
+        body
+      );
+
+      setDetail(mapApiToUi(data));
+      window.alert("예약이 거절되었습니다.");
+    } catch (e) {
+      console.error("[Reservation/DetailWebView] reject error:", e);
+      window.alert("예약 거절 중 오류가 발생했습니다.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /** 승인하기 */
+  const handleApprove = async () => {
+    if (!detail) return;
+    if (detail.status !== "예약중") return;
+
+    if (!startDate || !endDate || !startTime || !endTime) {
+      window.alert("예약 시작/종료 날짜와 시간을 모두 입력해주세요.");
+      return;
+    }
+
+    const ok = window.confirm("해당 예약을 승인하시겠습니까?");
+    if (!ok) return;
+
+    try {
+      setActionLoading(true);
+
+      const body: ReservationApproveRequest = {
+        status: "APPROVE",
+        reservationStartDate: startDate,
+        reservationEndDate: endDate,
+        reservationStartTime: startTime,
+        reservationEndTime: endTime,
+      };
+
+      const { data } = await api.patch<ReservationDetailApiResponse>(
+        `/api/v1/reservation/${detail.id}/approve`,
+        body
+      );
+
+      setDetail(mapApiToUi(data));
+      window.alert("예약이 승인되었습니다.");
+    } catch (e) {
+      console.error("[Reservation/DetailWebView] approve error:", e);
+      window.alert("예약 승인 중 오류가 발생했습니다.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <main className="min-h-screen w-full bg-[#F6F7FB]">
-      {/* 글로벌 헤더는 레이아웃에서 렌더된다고 가정하고, 여기서는 본문만 */}
-      <div className="max-w-[1040px] mx-auto px-6 pt-25 pb-24">
+      {/* 상단 얇은 그라디언트 바 */}
+      <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
+
+      <div className="mx-auto max-w-[1120px] px-6 lg:px-10 py-10 lg:py-14">
         {loading ? (
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm py-16 px-8 text-center text-[14px] text-[#6B7280]">
+          <div className="rounded-3xl border border-[#E5E7EB] bg-white py-16 px-10 text-center text-[14px] text-[#6B7280] shadow-sm">
             예약 상세 정보를 불러오는 중입니다...
           </div>
         ) : error ? (
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm py-16 px-8 text-center text-[14px] text-[#EB5147] whitespace-pre-line">
+          <div className="rounded-3xl border border-[#E5E7EB] bg-white py-16 px-10 text-center text-[14px] text-[#EB5147] shadow-sm whitespace-pre-line">
             {error}
           </div>
         ) : !detail ? (
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm py-16 px-8 text-center text-[14px] text-[#6B7280]">
+          <div className="rounded-3xl border border-[#E5E7EB] bg-white py-16 px-10 text-center text-[14px] text-[#6B7280] shadow-sm">
             예약 정보를 찾을 수 없습니다.
           </div>
         ) : (
-          <div className="space-y-10">
-            {/* 상품정보 카드 - 폭 전체 사용 */}
-            <section className="bg-white rounded-[18px] border border-[#F3F4F5] shadow-sm px-10 py-8">
-              <div className="flex items-start justify-between mb-6">
-                <h2 className="text-[18px] font-semibold text-[#1E2124] tracking-[-0.2px]">
-                  상품정보
-                </h2>
-                <div className="flex flex-col items-end gap-1">
-                  <span className="text-[13px] text-[#999999]">
-                    {detail.date}
-                  </span>
-                  <span className="text-[13px] text-[#FF2233] font-semibold">
-                    {detail.status}
-                  </span>
+          <>
+            {/* 페이지 타이틀 + 상태 */}
+            <header className="mt-10 mb-8 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h1 className="text-[26px] font-semibold tracking-[-0.4px] text-[#111827]">
+                  예약 상세
+                </h1>
+                <p className="mt-1 text-sm text-[#6B7280] tracking-[-0.2px]">
+                  스튜디오 예약 요청 내역을 확인하고 승인/거절할 수 있습니다.
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1 text-xs">
+                <span
+                  className={[
+                    "inline-flex items-center rounded-full px-3 py-1 font-medium",
+                    getStatusBadgeClasses(detail.status),
+                  ].join(" ")}
+                >
+                  {detail.status}
+                </span>
+                <span className="text-[#9CA3AF]">
+                  예약 요청일&nbsp;{detail.date}
+                </span>
+              </div>
+            </header>
+
+            {/* 메인 정보 카드 */}
+            <section className="mb-6 rounded-3xl border border-[#E5E7EB] bg-white px-8 py-7 shadow-sm">
+              {/* 상품정보 헤더 라인 */}
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-[18px] font-semibold tracking-[-0.2px] text-[#111827]">
+                    상품정보
+                  </h2>
+                  <p className="mt-1 text-xs text-[#9CA3AF] tracking-[-0.2px]">
+                    예약 상품과 고객 정보를 한눈에 확인할 수 있습니다.
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-6">
-                {/* 썸네일 자리 */}
-                <div className="w-[96px] h-[96px] rounded-[10px] bg-[#F6F7FB] border border-[#F3F4F5] flex-shrink-0 overflow-hidden">
-                  {detail.thumbnailUrl ? (
-                    <img
-                      src={detail.thumbnailUrl}
-                      alt={detail.productTitle}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full" />
-                  )}
-                </div>
+              {/* 상품 + 고객 + 예약시간을 한 카드 안에서 구성 */}
+              <div className="space-y-8">
+                {/* 상품정보 블록 */}
+                <div className="flex flex-col gap-6 md:flex-row md:items-center">
+                  <div className="flex h-[110px] w-[110px] flex-shrink-0 items-center justify-center overflow-hidden rounded-[18px] border border-[#F3F4F6] bg-[#F9FAFB]">
+                    {detail.thumbnail ? (
+                      <img
+                        src={detail.thumbnail}
+                        alt={detail.productTitle}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full" />
+                    )}
+                  </div>
 
-                <div className="flex-1 flex items-center justify-between gap-6 min-w-0">
-                  <div className="min-w-0">
-                    <div className="text-[14px] text-[#999999] tracking-[-0.2px]">
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <p className="text-[14px] text-[#9CA3AF] tracking-[-0.2px]">
                       {detail.productBrand}
-                    </div>
-                    <div className="mt-1 text-[15px] text-[#1E2124] tracking-[-0.2px] leading-[22px] break-words">
+                    </p>
+                    <p className="text-[16px] leading-[24px] tracking-[-0.2px] text-[#111827] break-words">
                       {detail.productTitle}
+                    </p>
+                    <p className="text-right text-[20px] font-semibold tracking-[-0.3px] text-[#111827]">
+                      {formatPrice(detail.price)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="h-px w-full bg-[#F3F4F6]" />
+
+                {/* 고객정보 + 예약 시간 설정 (내부 2컬럼, 카드 밖은 1장) */}
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {/* 고객정보 */}
+                  <div className="rounded-2xl bg-[#F9FAFB] px-6 py-5">
+                    <h3 className="mb-4 text-[15px] font-semibold tracking-[-0.2px] text-[#111827]">
+                      고객정보
+                    </h3>
+                    <div className="space-y-3 text-[14px]">
+                      <InfoRow label="이름" value={detail.customerName} />
+                      <InfoRow label="전화번호" value={detail.customerPhone} />
+                      <InfoRow label="고객 이메일" value={detail.customerId} />
                     </div>
                   </div>
-                  <div className="text-[18px] font-semibold text-[#1E2124] whitespace-nowrap">
-                    {formatPrice(detail.price)}
+
+                  {/* 예약 시간 설정 */}
+                  <div className="rounded-2xl bg-[#F9FAFB] px-6 py-5">
+                    <h3 className="mb-4 text-[15px] font-semibold tracking-[-0.2px] text-[#111827]">
+                      예약 시간 설정
+                    </h3>
+
+                    <div className="grid gap-3 text-[13px]">
+                      <TimeFieldRow label="시작 날짜">
+                        <input
+                          type="date"
+                          className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          disabled={detail.status !== "예약중"}
+                        />
+                      </TimeFieldRow>
+
+                      <TimeFieldRow label="종료 날짜">
+                        <input
+                          type="date"
+                          className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          disabled={detail.status !== "예약중"}
+                        />
+                      </TimeFieldRow>
+
+                      <TimeFieldRow label="시작 시간">
+                        <input
+                          type="time"
+                          className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          disabled={detail.status !== "예약중"}
+                        />
+                      </TimeFieldRow>
+
+                      <TimeFieldRow label="종료 시간">
+                        <input
+                          type="time"
+                          className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          disabled={detail.status !== "예약중"}
+                        />
+                      </TimeFieldRow>
+                    </div>
                   </div>
                 </div>
               </div>
             </section>
 
-            {/* 고객정보 카드 */}
-            <section className="bg-white rounded-[18px] border border-[#F3F4F5] shadow-sm px-10 py-8">
-              <h2 className="text-[18px] font-semibold text-[#1E2124] tracking-[-0.2px] mb-6">
-                고객정보
-              </h2>
-
-              <div className="space-y-4 text-[14px]">
-                <InfoRow label="이름" value={detail.customerName} />
-                <InfoRow label="전화번호" value={detail.customerPhone} />
-                <InfoRow label="고객 ID" value={detail.customerId} />
-              </div>
-            </section>
-
-            {/* 요청사항 카드 */}
-            <section className="bg-white rounded-[18px] border border-[#F3F4F5] shadow-sm px-10 py-8">
-              <h2 className="text-[18px] font-semibold text-[#1E2124] tracking-[-0.2px] mb-6">
+            {/* 요청사항 카드 (아래 넓게) */}
+            <section className="mb-8 rounded-3xl border border-[#E5E7EB] bg-white px-8 py-7 shadow-sm">
+              <h2 className="mb-4 text-[16px] font-semibold tracking-[-0.2px] text-[#111827]">
                 요청사항
               </h2>
-              <div className="bg-[#F8F8F8] rounded-[12px] px-6 py-5 min-h-[80px] flex items-center">
-                <p className="text-[14px] leading-[22px] text-[#1E2124] tracking-[-0.2px] whitespace-pre-line">
-                  {detail.requestMessage}
+              <div className="min-h-[120px] rounded-2xl bg-[#F9FAFB] px-6 py-5">
+                <p className="whitespace-pre-line text-[14px] leading-[22px] tracking-[-0.2px] text-[#111827]">
+                  {detail.requestMessage || "요청사항이 없습니다."}
                 </p>
               </div>
             </section>
-          </div>
+
+            {/* 하단 버튼 카드: 예약중일 때만 노출 */}
+            {detail.status === "예약중" && (
+              <section className="mb-4 rounded-3xl border border-[#F3F4F6] bg-white px-8 py-5 shadow-sm">
+                <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+                  <p className="text-xs text-[#9CA3AF] tracking-[-0.2px]">
+                    예약 일정을 확인한 뒤 승인 또는 거절을 선택해 주세요.
+                  </p>
+                  <div className="flex w-full justify-end gap-3 sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={handleReject}
+                      disabled={actionLoading}
+                      className={`inline-flex flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] px-5 py-2.5 text-[14px] font-medium text-[#6B7280] transition hover:bg-[#F9FAFB] sm:flex-none sm:min-w-[120px] ${
+                        actionLoading ? "opacity-60 cursor-not-allowed" : ""
+                      }`}
+                    >
+                      거절하기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleApprove}
+                      disabled={actionLoading}
+                      className={`inline-flex flex-1 items-center justify-center rounded-xl bg-gradient-to-r from-[#FF4646] to-[#FF2233] px-6 py-2.5 text-[14px] font-semibold text-white shadow-[0_12px_30px_rgba(255,34,51,0.35)] transition hover:brightness-105 sm:flex-none sm:min-w-[120px] ${
+                        actionLoading ? "opacity-60 cursor-not-allowed" : ""
+                      }`}
+                    >
+                      승인하기
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+          </>
         )}
       </div>
     </main>
@@ -230,10 +462,25 @@ export default function DetailWebView() {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between text-[14px] leading-[22px]">
-      <span className="text-[#777777]">{label}</span>
-      <span className="text-[#1E2124] text-right break-words">
+      <span className="text-[#6B7280]">{label}</span>
+      <span className="break-words text-right text-[#111827]">
         {value || "-"}
       </span>
+    </div>
+  );
+}
+
+function TimeFieldRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[80px_minmax(0,1fr)] items-center gap-3">
+      <span className="text-[13px] text-[#6B7280]">{label}</span>
+      {children}
     </div>
   );
 }
