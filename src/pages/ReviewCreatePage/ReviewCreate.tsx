@@ -1,20 +1,22 @@
+// 예: src/pages/ReviewCreate.tsx 또는 app/(routes)/review/ReviewCreate.tsx 등
+import React from "react";
 import MobileView from "./views/MobileView";
 import WebView from "./views/WebView";
 
-const ProductManagementPage = () => {
+const ReviewCreate: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 모바일 뷰 */}
+    <>
+      {/* Mobile */}
       <div className="md:hidden">
         <MobileView />
       </div>
 
-      {/* 웹 뷰 */}
+      {/* Web */}
       <div className="hidden md:block">
         <WebView />
       </div>
-    </div>
+    </>
   );
 };
 
-export default ProductManagementPage;
+export default ReviewCreate;

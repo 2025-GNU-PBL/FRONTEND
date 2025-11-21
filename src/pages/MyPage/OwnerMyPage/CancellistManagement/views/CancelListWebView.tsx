@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../../../../store/hooks";
@@ -7,6 +7,12 @@ import api from "../../../../../lib/api/axios";
 
 /** 서버 결제 상태 타입 (필요 시 확장 가능) */
 type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
+
+/** 상태 필터 타입 */
+type StatusFilter = "ALL" | "CANCEL_REQUESTED" | "CANCELED";
+
+/** 정렬 순서 타입 */
+type SortOrder = "DESC" | "ASC";
 
 /** OWNER 유저만 허용 */
 function ensureOwner(userData: UserData | null): OwnerData | null {
@@ -67,6 +73,25 @@ function formatElapsedLabel(iso: string): string {
   return `${diffDays}일 전`;
 }
 
+/** 상태 필터 라벨 */
+function getStatusFilterLabel(filter: StatusFilter) {
+  switch (filter) {
+    case "ALL":
+      return "상태별";
+    case "CANCEL_REQUESTED":
+      return "대기";
+    case "CANCELED":
+      return "취소완료";
+    default:
+      return "상태별";
+  }
+}
+
+/** 정렬 순서 라벨 */
+function getSortOrderLabel(order: SortOrder) {
+  return order === "DESC" ? "최신순" : "오래된 순";
+}
+
 /** 웹용 공용 섹션 카드 */
 function SectionCard({
   title,
@@ -121,6 +146,14 @@ export default function WebView() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  /** 상태 필터(전체 / 대기 / 취소 완료) */
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+
+  /** 정렬 순서(최신순 / 오래된 순) */
+  const [sortOrder, setSortOrder] = useState<SortOrder>("DESC");
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+
   /** 취소 요청 목록 조회 */
   useEffect(() => {
     const fetchCancelRequests = async () => {
@@ -156,6 +189,31 @@ export default function WebView() {
 
     fetchCancelRequests();
   }, []);
+
+  /** 최신/오래된 순 정렬된 전체 리스트 */
+  const sortedItems = useMemo(
+    () =>
+      [...items].sort((a, b) => {
+        const da = new Date(a.canceledAt).getTime();
+        const db = new Date(b.canceledAt).getTime();
+        // DESC: 최신순, ASC: 오래된 순
+        return sortOrder === "DESC" ? db - da : da - db;
+      }),
+    [items, sortOrder]
+  );
+
+  /** 상태 필터 적용된 리스트 */
+  const filteredItems = useMemo(
+    () =>
+      sortedItems.filter((item) => {
+        if (statusFilter === "ALL") return true;
+        return item.status === statusFilter;
+      }),
+    [sortedItems, statusFilter]
+  );
+
+  /** 상단에 보여줄 개수(필터 적용 후) */
+  const filteredCount = filteredItems.length;
 
   /** 카드 클릭 → 취소 상세 페이지로 이동 (paymentKey 전달) */
   const handleCardClick = (item: CancelPaymentItem) => {
@@ -193,6 +251,9 @@ export default function WebView() {
   const displayStoreName =
     storeName && storeName.trim() !== "" ? storeName : "내 매장";
 
+  const statusFilterLabel = getStatusFilterLabel(statusFilter);
+  const sortOrderLabel = getSortOrderLabel(sortOrder);
+
   return (
     <main className="flex min-h-screen w-full flex-col bg-[#F6F7FB] text-gray-900">
       {/* 상단 그라디언트 바 */}
@@ -215,8 +276,107 @@ export default function WebView() {
           {/* 취소 내역 리스트 카드 */}
           <SectionCard
             title="결제 취소 요청 내역"
-            subtitle="승인 대기 중인 취소 요청과 완료된 취소 내역을 한 번에 확인해 보세요."
+            subtitle={`승인 대기 중인 취소 요청과 완료된 취소 내역을 한 번에 확인해 보세요. (총 ${filteredCount}건)`}
             icon="solar:bell-bing-bold-duotone"
+            rightSlot={
+              <div className="flex items-center gap-4 text-[13px] text-gray-800">
+                {/* 상태별 드롭다운 */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsStatusMenuOpen((prev) => !prev);
+                      setIsSortMenuOpen(false);
+                    }}
+                    className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+                  >
+                    <span>{statusFilterLabel}</span>
+                    <Icon
+                      icon="solar:alt-arrow-down-linear"
+                      className="h-4 w-4 text-[#999999]"
+                    />
+                  </button>
+
+                  {isStatusMenuOpen && (
+                    <div className="absolute right-0 z-10 mt-1 w-[120px] rounded-[10px] border border-[#E5E7EB] bg-white shadow-[0_8px_18px_rgba(15,23,42,0.12)]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter("ALL");
+                          setIsStatusMenuOpen(false);
+                        }}
+                        className="flex w-full items-center px-3 py-2 text-left text-[13px] text-[#111827] hover:bg-[#F3F4F6]"
+                      >
+                        전체
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter("CANCEL_REQUESTED");
+                          setIsStatusMenuOpen(false);
+                        }}
+                        className="flex w-full items-center px-3 py-2 text-left text-[13px] text-[#111827] hover:bg-[#F3F4F6]"
+                      >
+                        대기
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter("CANCELED");
+                          setIsStatusMenuOpen(false);
+                        }}
+                        className="flex w-full items-center px-3 py-2 text-left text-[13px] text-[#111827] hover:bg-[#F3F4F6]"
+                      >
+                        취소 완료
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 정렬 순서 드롭다운 (최신순 / 오래된 순) */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSortMenuOpen((prev) => !prev);
+                      setIsStatusMenuOpen(false);
+                    }}
+                    className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+                  >
+                    <span>{sortOrderLabel}</span>
+                    <Icon
+                      icon="solar:alt-arrow-down-linear"
+                      className="h-4 w-4 text-[#999999]"
+                    />
+                  </button>
+
+                  {isSortMenuOpen && (
+                    <div className="absolute right-0 z-10 mt-1 w-[120px] rounded-[10px] border border-[#E5E7EB] bg-white shadow-[0_8px_18px_rgba(15,23,42,0.12)]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortOrder("DESC"); // 최신순
+                          setIsSortMenuOpen(false);
+                        }}
+                        className="flex w-full items-center px-3 py-2 text-left text-[13px] text-[#111827] hover:bg-[#F3F4F6]"
+                      >
+                        최신순
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortOrder("ASC"); // 오래된 순
+                          setIsSortMenuOpen(false);
+                        }}
+                        className="flex w-full items-center px-3 py-2 text-left text-[13px] text-[#111827] hover:bg-[#F3F4F6]"
+                      >
+                        오래된 순
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            }
           >
             {/* 로딩 / 에러 / 리스트 */}
             {isLoading && (
@@ -233,12 +393,12 @@ export default function WebView() {
 
             {!isLoading && (
               <div className="mt-4 flex flex-col gap-3">
-                {items.length === 0 ? (
+                {filteredItems.length === 0 ? (
                   <div className="py-10 text-center text-sm text-gray-400">
                     취소 내역이 없습니다.
                   </div>
                 ) : (
-                  items.map((item) => {
+                  filteredItems.map((item) => {
                     const elapsedLabel = formatElapsedLabel(item.canceledAt);
                     const isUnread = item.status === "CANCEL_REQUESTED";
 
@@ -248,8 +408,10 @@ export default function WebView() {
                         type="button"
                         onClick={() => handleCardClick(item)}
                         className={[
-                          "relative flex w-full items-center gap-4 rounded-2xl border border-[#F3F4F5] bg-white px-5 py-4 text-left shadow-[0_4px_14px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(15,23,42,0.09)]",
-                          isUnread ? "cursor-pointer" : "cursor-default",
+                          "relative flex w-full items-center gap-4 rounded-2xl border border-[#F3F4F5] bg-white px-5 py-4 text-left shadow-[0_4px_14px_rgba(15,23,42,0.04)] transition",
+                          isUnread
+                            ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(15,23,42,0.09)]"
+                            : "cursor-default",
                         ].join(" ")}
                       >
                         {/* 아이콘 영역 */}
@@ -262,7 +424,7 @@ export default function WebView() {
 
                         {/* 텍스트 영역 */}
                         <div className="flex min-w-0 flex-1 flex-col">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-md bg-[#F6F7FB] px-1.5 py-0.5 text-[11px] font-medium text-gray-700">
                               {item.orderCode}
                             </span>
@@ -273,10 +435,10 @@ export default function WebView() {
                           <p className="mt-1 line-clamp-1 text-[14px] font-semibold leading-[21px] tracking-[-0.1px] text-black/80">
                             {item.productName}
                           </p>
-                          <p className="mt-0.5 text-[13px] text-[#4B5563] line-clamp-1">
+                          <p className="mt-0.5 line-clamp-1 text-[13px] text-[#4B5563]">
                             {item.cancelReason}
                           </p>
-                          <div className="mt-1 flex items-center gap-2 text-[12px] text-[#999999]">
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-[#999999]">
                             <Icon
                               icon="solar:clock-circle-bold-duotone"
                               className="h-3.5 w-3.5"

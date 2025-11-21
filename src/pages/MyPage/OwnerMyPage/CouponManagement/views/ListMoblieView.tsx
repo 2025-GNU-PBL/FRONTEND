@@ -167,7 +167,7 @@ export default function CustomerCouponMobile() {
               <Icon icon="solar:alt-arrow-left-linear" className="w-6 h-6" />
             </button>
             <h1 className="text-[18px] font-semibold">쿠폰함</h1>
-            <button onClick={() => nav("register-edit")} aria-label="add coupon">
+            <button onClick={() => nav("register")} aria-label="add coupon">
               <Icon icon="solar:add-square-bold" className="w-6 h-6" />
             </button>
           </div>

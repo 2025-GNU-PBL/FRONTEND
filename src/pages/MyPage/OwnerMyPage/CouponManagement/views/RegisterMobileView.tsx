@@ -1,6 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
+type ProductCategory =
+  | "WEDDING"
+  | "STUDIO"
+  | "DRESS"
+  | "MAKEUP"
+  | "WEDDING_HALL";
+
+const CATEGORY_LABEL: Record<ProductCategory, string> = {
+  WEDDING: "웨딩",
+  WEDDING_HALL: "웨딩홀",
+  STUDIO: "스튜디오",
+  DRESS: "드레스",
+  MAKEUP: "메이크업",
+};
+
 interface ProductPageResponse {
   id: number;
   name: string;
@@ -12,7 +27,7 @@ interface ProductPageResponse {
   createdAt: string;
   region: string;
   thumbnail: string;
-  category: string;
+  category: ProductCategory; // 타입 변경
   tags: any[]; // Adjust based on actual TagResponse structure if needed
 }
 
@@ -28,6 +43,7 @@ const RegisterMobileView = () => {
   const [expirationDate, setExpirationDate] = useState<string>("2025-11-12"); // Initial values from image
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [selectedProductName, setSelectedProductName] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null); // selectedCategory 상태 추가
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState<boolean>(false); // 드롭다운 상태 추가
   const [products, setProducts] = useState<ProductPageResponse[]>([]);
 
@@ -77,6 +93,13 @@ const RegisterMobileView = () => {
       if (response.ok) {
         const data = await response.json();
         setProducts(data.content || []); // Assuming the API returns a 'content' array for products
+        if (data.content && data.content.length > 0 && selectedProductId === null) {
+          // 상품 목록을 불러온 후, 선택된 상품이 없으면 첫 번째 상품으로 자동 선택
+          const firstProduct = data.content[0];
+          setSelectedProductId(firstProduct.id);
+          setSelectedProductName(firstProduct.name);
+          setSelectedCategory(firstProduct.category); // 첫 번째 상품의 카테고리도 설정
+        }
       } else {
         console.error("상품 목록 불러오기 실패:", response.statusText);
         alert("상품 목록을 불러오는데 실패했습니다.");
@@ -90,12 +113,17 @@ const RegisterMobileView = () => {
   const handleProductSelect = (product: ProductPageResponse) => {
     setSelectedProductId(product.id);
     setSelectedProductName(product.name);
+    setSelectedCategory(product.category); // 선택된 상품의 카테고리 업데이트
     setIsProductDropdownOpen(false); // 상품 선택 시 드롭다운 닫기
   };
 
   const handleSubmit = async () => {
     if (selectedProductId === null) {
       alert("상품을 선택해 주세요.");
+      return;
+    }
+    if (selectedCategory === null) { // selectedCategory 유효성 검사 추가
+      alert("상품 카테고리를 선택해 주세요.");
       return;
     }
 
@@ -115,7 +143,7 @@ const RegisterMobileView = () => {
       discountValue: parseFloat(discountValue) || 0,
       maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
       minPurchaseAmount: parseFloat(minPurchaseAmount) || 0,
-      category: "DRESS", // Placeholder, as it's not in the current UI
+      category: selectedCategory ?? ("DRESS" as ProductCategory), // selectedCategory 사용, null일 경우 DRESS를 fallback으로
       startDate,
       expirationDate,
     };
@@ -247,6 +275,18 @@ const RegisterMobileView = () => {
                 value={couponDetail}
                 onChange={(e) => setCouponDetail(e.target.value)}
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Category Display (추가) */}
+        <div className="flex flex-col items-start gap-[10px] w-full">
+          <div className="w-full h-[21px] font-['Pretendard'] font-normal text-sm leading-[150%] tracking-[-0.2px] text-black">
+            선택된 카테고리
+          </div>
+          <div className="box-border flex flex-row items-center pl-[16px] gap-[8px] w-full h-[49px] bg-[#F8F8F8] border border-[#E8E8E8] rounded-[8px]">
+            <div className="w-full h-[21px] font-['Pretendard'] font-normal text-sm leading-[150%] tracking-[-0.2px] text-[#949494]">
+              {selectedCategory ? CATEGORY_LABEL[selectedCategory] : "카테고리가 선택되지 않았습니다."}
             </div>
           </div>
         </div>

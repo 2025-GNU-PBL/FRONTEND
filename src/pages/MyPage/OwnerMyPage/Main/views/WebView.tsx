@@ -92,9 +92,9 @@ export default function WebView() {
                 onClick={() => go("/my-page/owner/reservations")}
               />
               <MenuTile
-                label="고객센터"
-                icon="mdi:lifetime-support"
-                onClick={() => go("/support")}
+                label="취소내역관리"
+                icon="mdi:history"
+                onClick={() => go("/my-page/owner/cancels")}
               />
               <MenuTile label="로그아웃" icon="mdi:logout" onClick={onLogout} />
             </div>
