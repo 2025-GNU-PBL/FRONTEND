@@ -201,7 +201,7 @@ const Success = () => {
       </div>
 
       {/* 웹 뷰 */}
-      <div className="hidden md:block">
+      <div className="hidden md:block mt-15">
         <WebView
           loading={loading}
           responseData={responseData}

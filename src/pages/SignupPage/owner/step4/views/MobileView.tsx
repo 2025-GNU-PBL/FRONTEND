@@ -5,6 +5,7 @@ import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../../../../store/store";
 import { submitOwnerSignup } from "../../../../../store/thunkFunctions";
 import signupImg from "../../../../../assets/images/signup.png";
+import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
 interface MobileCompleteViewProps {
   title?: string;
@@ -20,6 +21,7 @@ export default function MobileView({
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { refreshAuth } = useRefreshAuth();
 
   const location = useLocation();
   const {
@@ -72,6 +74,7 @@ export default function MobileView({
     setIsSubmitting(true);
     try {
       await dispatch(submitOwnerSignup(ownerValues)).unwrap();
+      refreshAuth();
       navigate("/");
     } catch (err: any) {
       console.error("[submitOwnerSignup:mobile] error:", err);

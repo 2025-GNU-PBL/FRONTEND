@@ -30,14 +30,6 @@ interface PaymentItem {
   thumbnail?: string;
 }
 
-/** accessor 쿼리 객체 */
-interface Accessor {
-  socialId: string;
-  userRole: UserRole;
-  owner: boolean;
-  customer: boolean;
-}
-
 /** status → 라벨 */
 function mapStatusToLabel(status: string): PaymentStatus {
   switch (status) {
@@ -222,11 +214,9 @@ export default function ListMobileView() {
         setLoading(true);
         setError(null);
 
-        const { data } = await api.get<PaymentMeItem[]>("/api/v1/payments/me", {
-          params: {
-            accessor: JSON.stringify(accessor),
-          },
-        });
+        const { data } = await api.get<PaymentMeItem[]>("/api/v1/payments/me");
+
+        console.log(data);
 
         let mapped = (data || []).map(mapToPaymentItem);
 

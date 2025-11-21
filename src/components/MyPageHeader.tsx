@@ -1,4 +1,3 @@
-import React from "react";
 import { Icon } from "@iconify/react";
 
 interface MyPageHeaderProps {
@@ -21,18 +20,18 @@ export default function MyPageHeader({
         w-[390px] h-[60px]
         flex flex-row justify-between items-center
         px-[20px] gap-[4px]
-        bg-[#FFFFFF] border-b border-[#E8E8E8]
+        bg-white
       "
     >
-      {/* 왼쪽: 뒤로가기 버튼 */}
+      {/* Back Button */}
       <button
+        className="w-8 h-8 flex items-center justify-center"
+        type="button"
         onClick={onBack}
-        aria-label="back"
-        className="w-[32px] h-[32px] flex items-center justify-center hover:opacity-80 transition"
       >
         <Icon
           icon="solar:alt-arrow-left-linear"
-          className="w-[24px] h-[24px] text-[#1E2124]"
+          className="w-8 h-8 text-[#1E2124]"
         />
       </button>
 

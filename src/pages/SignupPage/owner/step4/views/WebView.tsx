@@ -5,6 +5,7 @@ import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../../../../store/store";
 import { submitOwnerSignup } from "../../../../../store/thunkFunctions";
 import signupImg from "../../../../../assets/images/signup.png";
+import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
 interface WebCompleteViewProps {
   onStart?: () => void;
@@ -22,6 +23,7 @@ export default function WebView({
   const nav = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { refreshAuth } = useRefreshAuth();
 
   const location = useLocation();
   const state = (location.state as any) || {};
@@ -72,6 +74,7 @@ export default function WebView({
     try {
       await dispatch(submitOwnerSignup(ownerValues)).unwrap();
       onStart?.();
+      refreshAuth();
       nav("/");
     } catch (err: any) {
       console.error("[submitOwnerSignup:web] error:", err);
