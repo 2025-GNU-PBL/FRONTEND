@@ -122,7 +122,7 @@ function SectionCard({
   );
 }
 
-/* 결제 내역 상세 - WebView */
+/* 결제 내역 상세 */
 export default function WebView() {
   const nav = useNavigate();
   const { paymentKey: paymentKeyFromParams } = useParams<{
@@ -180,10 +180,10 @@ export default function WebView() {
 
   return (
     <main className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col">
-      {/* 상단 얇은 그라데이션 바 (웹뷰 공통 스타일) */}
+      {/* 상단 얇은 그라데이션 바 */}
       <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
 
-      <div className="pt-16 pb-16">
+      <div className="pt-30 pb-16">
         <div className="max-w-[960px] mx-auto px-6 space-y-8">
           {/* 페이지 타이틀 */}
           <header className="flex items-center justify-between gap-4">
