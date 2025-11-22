@@ -98,10 +98,7 @@ export default function MobileView() {
                 label="쿠폰관리"
                 onClick={() => go("/my-page/owner/coupons")}
               />
-              <MidLink
-                label="일정관리"
-                onClick={() => go("/my-page/owner/schedules")}
-              />
+              <MidLink label="일정관리" onClick={() => go("/calendar")} />
               <MidLink
                 label="상품관리"
                 onClick={() => go("/my-page/owner/products/management")}
