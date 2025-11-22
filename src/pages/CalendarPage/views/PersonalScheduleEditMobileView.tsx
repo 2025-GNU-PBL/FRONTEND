@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import MyPageHeader from "../../../../../components/MyPageHeader";
-import api from "../../../../../lib/api/axios";
+import MyPageHeader from "../../../components/MyPageHeader";
+import api from "../../../lib/api/axios";
 
 /** ====== 유틸 ====== */
 

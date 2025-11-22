@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import MyPageHeader from "../../../../../components/MyPageHeader";
-import api from "../../../../../lib/api/axios";
+import MyPageHeader from "../../../components/MyPageHeader";
+import api from "../../../lib/api/axios";
 
 /** ====== 유틸 ====== */
 const toDateInput = (d: Date) =>
@@ -43,7 +43,19 @@ function formatTime12h(timeStr: string) {
   return `${hh}:${mStr}`;
 }
 
-/** ====== 서버 DTO ====== */
+/** ====== 서버 DTO 맞춘 생성 요청 타입 ======
+ * {
+ *   "request": {
+ *     "title": "...",
+ *     "content": "...",
+ *     "startScheduleDate": "2025-11-21",
+ *     "endScheduleDate":   "2025-11-21",
+ *     "startTime": "11:00",
+ *     "endTime":   "13:00"
+ *   },
+ *   "file": [...]
+ * }
+ */
 type ScheduleCreateRequest = {
   title: string;
   content: string;
@@ -53,7 +65,7 @@ type ScheduleCreateRequest = {
   endTime: string; // HH:mm
 };
 
-export default function PersonalScheduleCreateMobileView() {
+export default function PersonalScheduleCreateWebView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
 
@@ -89,6 +101,7 @@ export default function PersonalScheduleCreateMobileView() {
       if (sd > ed) {
         next.endDate = "종료일은 시작일 이후여야 합니다.";
       }
+      // 여러 날짜 허용 → 같은 날짜인지까지는 검사하지 않음
     }
 
     if (!startTime || !endTime) {
@@ -105,6 +118,7 @@ export default function PersonalScheduleCreateMobileView() {
     }
     const sd = new Date(startDate);
     const ed = new Date(endDate);
+    // sd <= ed 만 체크
     return sd <= ed;
   }, [title, startDate, endDate, startTime, endTime]);
 
@@ -116,8 +130,8 @@ export default function PersonalScheduleCreateMobileView() {
     const requestPayload: ScheduleCreateRequest = {
       title: title.trim(),
       content: memo.trim(),
-      startScheduleDate: startDate, // yyyy-MM-dd
-      endScheduleDate: endDate, // yyyy-MM-dd
+      startScheduleDate: startDate,
+      endScheduleDate: endDate,
       startTime,
       endTime,
     };
@@ -130,7 +144,7 @@ export default function PersonalScheduleCreateMobileView() {
         type: "application/json",
       })
     );
-    // file 필드는 현재 개인 일정에서는 사용 안 해서 append 안 함
+    // 현재는 파일 업로드 UI 없음 → file 파트 생략
 
     try {
       setSubmitting(true);
@@ -142,7 +156,7 @@ export default function PersonalScheduleCreateMobileView() {
       alert("개인 일정이 등록되었습니다.");
       nav(-1);
     } catch (e) {
-      console.error("[PersonalScheduleCreate] create error:", e);
+      console.error("[PersonalScheduleCreateWebView] create error:", e);
       alert("일정 등록 중 오류가 발생했습니다. 입력값을 확인해 주세요.");
     } finally {
       setSubmitting(false);
@@ -159,7 +173,7 @@ export default function PersonalScheduleCreateMobileView() {
     nav,
   ]);
 
-  /** 날짜/시간 라벨 */
+  /** 날짜/시간 라벨 + 표시용 값 */
   const startDateLabel = formatKoreanDateLabel(startDate) || "날짜 선택";
   const endDateLabel = formatKoreanDateLabel(endDate) || "날짜 선택";
 
@@ -178,23 +192,35 @@ export default function PersonalScheduleCreateMobileView() {
     : `${startDateLabel} ~ ${endDateLabel} 일정의 시간입니다.`;
 
   return (
-    <div className="w-full bg-[#F4F6FB]">
-      {/* 390 × 844 프레임 */}
-      <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col relative">
-        {/* 상단 헤더 */}
-        <div className="sticky top-0 z-20 bg-white">
+    <div className="w-full min-h-screen bg-[#F6F7FB]">
+      {/* 상단 공통 헤더 영역 */}
+      <div className="w-full bg-white border-b border-[#E5E7EB]">
+        <div className="max-w-[1040px] mx-auto">
           <MyPageHeader
             title="개인 일정 추가"
             onBack={onBack}
             showMenu={false}
           />
         </div>
+      </div>
 
-        {/* 콘텐츠 영역 */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-5 pt-20 pb-6">
-            {/* 제목 입력 섹션 */}
-            <div className="mt-4 mb-8 flex items-center gap-3">
+      {/* 본문 */}
+      <div className="max-w-[1040px] mt-20 mx-auto px-6 py-8">
+        {/* 상단 타이틀/설명 */}
+        <div className="mb-6">
+          <h1 className="text-[22px] font-semibold text-[#111827] tracking-[-0.3px]">
+            개인 일정 등록
+          </h1>
+          <p className="mt-1 text-[13px] text-[#6B7280] tracking-[-0.2px]">
+            날짜와 시간을 선택하고 메모를 남겨 개인 일정을 등록해 보세요.
+          </p>
+        </div>
+
+        {/* 메인 카드 */}
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8">
+          <div className="max-w-[720px]">
+            {/* 제목 입력 */}
+            <div className="mt-2 mb-8 flex items-center gap-3">
               <div className="w-1 h-8 rounded-[3px] bg-[#FF2233]" />
               <input
                 className="flex-1 bg-transparent outline-none text-[20px] font-semibold leading-[32px] tracking-[-0.2px] placeholder:text-[#D9D9D9] text-[#1E2124]"
@@ -209,6 +235,7 @@ export default function PersonalScheduleCreateMobileView() {
 
             {/* 날짜 선택 라인 */}
             <div className="mt-2">
+              {/* 상단 라벨 영역 */}
               <div className="flex items-center gap-4">
                 <Icon
                   icon="ant-design:calendar-outlined"
@@ -228,8 +255,9 @@ export default function PersonalScheduleCreateMobileView() {
                 </div>
               </div>
 
-              <div className="mt-3 ml-9 flex flex-col gap-2">
-                <div className="w-[260px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
+              {/* 날짜 입력 pill - 가로 배치 */}
+              <div className="mt-3 ml-9 flex gap-3">
+                <div className="w-[320px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
                   <input
                     type="date"
                     className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
@@ -237,7 +265,7 @@ export default function PersonalScheduleCreateMobileView() {
                     onChange={(e) => setStartDate(e.target.value)}
                   />
                 </div>
-                <div className="w-[260px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
+                <div className="w-[320px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
                   <input
                     type="date"
                     className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
@@ -256,6 +284,7 @@ export default function PersonalScheduleCreateMobileView() {
 
             {/* 시간 선택 라인 */}
             <div className="mt-6">
+              {/* 상단 라벨 */}
               <div className="flex items-center gap-4">
                 <Icon icon="prime:clock" className="w-5 h-5 text-[#333333]" />
 
@@ -272,15 +301,17 @@ export default function PersonalScheduleCreateMobileView() {
                 </div>
               </div>
 
+              {/* 이 시간이 어떤 날짜인지 설명 */}
               <p className="mt-1 ml-9 text-[12px] text-[#9CA3AF]">
                 {timeDateHint}
               </p>
 
+              {/* 시간 pill */}
               <div className="mt-3 ml-9 flex items-center gap-3">
                 {/* 시작 시간 */}
                 <button
                   type="button"
-                  className="relative w-[150px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
+                  className="relative w-[180px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
                 >
                   <div className="flex flex-col text-left">
                     <span className="text-[11px] text-[#9CA3AF]">
@@ -294,6 +325,7 @@ export default function PersonalScheduleCreateMobileView() {
                     icon="mdi:clock-time-four-outline"
                     className="w-4 h-4 text-[#9CA3AF]"
                   />
+                  {/* 실제 입력은 숨김 */}
                   <input
                     type="time"
                     value={startTime}
@@ -307,7 +339,7 @@ export default function PersonalScheduleCreateMobileView() {
                 {/* 종료 시간 */}
                 <button
                   type="button"
-                  className="relative w-[150px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
+                  className="relative w-[180px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
                 >
                   <div className="flex flex-col text-left">
                     <span className="text-[11px] text-[#9CA3AF]">
@@ -339,7 +371,7 @@ export default function PersonalScheduleCreateMobileView() {
 
             {/* 메모 입력 */}
             <div className="mt-8">
-              <div className="w-full h-[160px] bg-[#F6F7FB] rounded-[12px] px-4 py-3">
+              <div className="w-full h-[180px] bg-[#F6F7FB] rounded-[12px] px-4 py-3">
                 <textarea
                   className="w-full h-full bg-transparent resize-none outline-none text-[14px] text-[#1E2124]"
                   placeholder="메모를 입력해 주세요"
@@ -349,24 +381,24 @@ export default function PersonalScheduleCreateMobileView() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* 하단 등록 버튼 */}
-        <div className="px-5 pb-20 pt-3">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!isValid || submitting}
-            className={[
-              "w-[350px] h-[56px] mx-auto rounded-[12px] flex items-center justify-center",
-              "text-[16px] font-semibold tracking-[-0.2px]",
-              isValid && !submitting
-                ? "bg-[#FF2233] text-white active:scale-95"
-                : "bg-[#F6F6F6] text-[#ADB3B6]",
-            ].join(" ")}
-          >
-            {submitting ? "등록 중..." : "등록하기"}
-          </button>
+          {/* 하단 등록 버튼 */}
+          <div className="mt-10 flex justify-end">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!isValid || submitting}
+              className={[
+                "min-w-[200px] h-[52px] rounded-[12px] flex items-center justify-center",
+                "text-[16px] font-semibold tracking-[-0.2px]",
+                isValid && !submitting
+                  ? "bg-[#FF2233] text-white active:scale-95"
+                  : "bg-[#F6F6F6] text-[#ADB3B6]",
+              ].join(" ")}
+            >
+              {submitting ? "등록 중..." : "등록하기"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

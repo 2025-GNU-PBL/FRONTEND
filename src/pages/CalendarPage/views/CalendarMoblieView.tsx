@@ -13,6 +13,8 @@ type ScheduleApiItem = {
   endScheduleDate: string;
   startTime: string; // "HH:mm" 형태
   endTime: string; // "HH:mm" 형태
+  /** 공유/개인 구분 (없으면 기본 PERSONAL 취급) */
+  scheduleType?: "PERSONAL" | "SHARED" | string;
 };
 
 /** 날짜 → key (YYYY-MM-DD) */
@@ -46,9 +48,7 @@ function isSameDate(a: Date, b: Date): boolean {
   );
 }
 
-/** 시간 텍스트: 11:00AM
- *  - DTO startTime / endTime 이 "HH:mm" 형태라서 그에 맞춰 포맷
- */
+/** 시간 텍스트: 11:00AM (startTime / endTime "HH:mm" 기준) */
 function formatTimeText(time: string): string | null {
   if (!time) return null;
 
@@ -153,7 +153,7 @@ export default function CalendarMobileView() {
           params,
         });
 
-        // 날짜별로 그룹핑 (YYYY-MM-DD 단위)
+        // 날짜별로 그룹핑 (YYYY-MM-DD 단위, 시작일 기준)
         const grouped: Record<string, ScheduleApiItem[]> = {};
         (data || []).forEach((item) => {
           const key = (item.startScheduleDate || "").slice(0, 10); // YYYY-MM-DD
@@ -206,15 +206,20 @@ export default function CalendarMobileView() {
     setSelectedDate(date);
   }, []);
 
-  /** 일정 추가하기 클릭 → 개인 일정 추가 페이지로 이동 */
+  /** 일정 추가하기 클릭 → 개인 일정 추가 페이지로 이동 (App.tsx 새 경로 기준) */
   const handleAddSchedule = useCallback(() => {
-    nav("/my-page/owner/schedules/personal");
+    nav("/calendar/personal");
   }, [nav]);
 
-  /** 일정 클릭 → 수정 페이지로 이동 */
+  /** 일정 클릭 → 공유/개인에 따라 각각 수정 페이지로 이동 (새 경로 기준) */
   const handleClickSchedule = useCallback(
-    (scheduleId: number) => {
-      nav(`/my-page/owner/schedules/personal/edit/${scheduleId}`);
+    (item: ScheduleApiItem) => {
+      if (item.scheduleType === "SHARED") {
+        nav(`/calendar/shared/edit/${item.id}`);
+      } else {
+        // 기본은 개인 일정
+        nav(`/calendar/personal/edit/${item.id}`);
+      }
     },
     [nav]
   );
@@ -361,7 +366,7 @@ export default function CalendarMobileView() {
                         <button
                           key={item.id}
                           type="button"
-                          onClick={() => handleClickSchedule(item.id)}
+                          onClick={() => handleClickSchedule(item)}
                           className="w-[350px] min-h-[52px] bg-[#F6F7FB] rounded-[12px] px-4 py-[11px] flex items-center justify-between active:scale-[0.99] transition-transform"
                         >
                           {/* 왼쪽: 시간 + 제목 */}
