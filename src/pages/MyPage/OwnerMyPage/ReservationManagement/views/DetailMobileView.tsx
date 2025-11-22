@@ -257,7 +257,7 @@ export default function DetailMobileView() {
       });
 
       window.alert("예약이 승인되었습니다.");
-      // 상태가 '확정'으로 바뀌면서 버튼은 자동으로 사라짐
+      // 상태가 '확정'으로 바뀌면서 버튼/시간 설정 카드가 자동으로 사라짐
     } catch (e) {
       console.error("[Reservation/DetailMobileView] approve error:", e);
       window.alert("예약 승인 중 오류가 발생했습니다.");
@@ -385,68 +385,66 @@ export default function DetailMobileView() {
                   </div>
                 </section>
 
-                {/* 예약 시간 설정 카드 */}
-                <section className="mx-auto mb-4 w-full max-w-[350px]">
-                  <div className="rounded-[12px] border border-[#F3F4F5] bg-white px-4 pt-4 pb-5">
-                    <div className="mb-4 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
-                      예약 시간 설정
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
-                          시작 날짜
-                        </span>
-                        <input
-                          type="date"
-                          className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          disabled={detail.status !== "예약중"}
-                        />
+                {/* 예약 시간 설정 카드 : 예약중일 때만 보여준다 */}
+                {detail.status === "예약중" && (
+                  <section className="mx-auto mb-4 w-full max-w-[350px]">
+                    <div className="rounded-[12px] border border-[#F3F4F5] bg-white px-4 pt-4 pb-5">
+                      <div className="mb-4 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                        예약 시간 설정
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
-                          종료 날짜
-                        </span>
-                        <input
-                          type="date"
-                          className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          disabled={detail.status !== "예약중"}
-                        />
-                      </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
+                            시작 날짜
+                          </span>
+                          <input
+                            type="date"
+                            className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                          />
+                        </div>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
-                          시작 시간
-                        </span>
-                        <input
-                          type="time"
-                          className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
-                          value={startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
-                          disabled={detail.status !== "예약중"}
-                        />
-                      </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
+                            종료 날짜
+                          </span>
+                          <input
+                            type="date"
+                            className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                          />
+                        </div>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
-                          종료 시간
-                        </span>
-                        <input
-                          type="time"
-                          className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
-                          value={endTime}
-                          onChange={(e) => setEndTime(e.target.value)}
-                          disabled={detail.status !== "예약중"}
-                        />
+                        <div className="flex items-center justify-between">
+                          <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
+                            시작 시간
+                          </span>
+                          <input
+                            type="time"
+                            className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
+                            종료 시간
+                          </span>
+                          <input
+                            type="time"
+                            className="h-8 w-[190px] rounded-[8px] border border-[#E5E7EB] px-2 text-right text-[12px] leading-[18px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                            value={endTime}
+                            onChange={(e) => setEndTime(e.target.value)}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </section>
+                  </section>
+                )}
 
                 {/* 요청사항 카드 */}
                 <section className="mx-auto w-full max-w-[350px] mb-25">
@@ -467,7 +465,7 @@ export default function DetailMobileView() {
           </div>
         </div>
 
-        {/* 하단 버튼 영역 */}
+        {/* 하단 버튼 영역 : 예약중일 때만 노출 */}
         {!loading && !error && detail && detail.status === "예약중" && (
           <div className="absolute bottom-[60px] left-1/2 z-20 w-[350px] -translate-x-1/2">
             <div className="flex w-full flex-row items-center gap-[12px] px-4 py-3">

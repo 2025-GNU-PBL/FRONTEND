@@ -36,7 +36,12 @@ export default function MobileView() {
       <div className="mx-auto w-[390px] min-h-[844px] bg-white flex flex-col">
         {/* 최상단 헤더 */}
         <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
-          <MyPageHeader title="마이페이지" onBack={onBack} onMenu={onMenu} />
+          <MyPageHeader
+            title="마이페이지"
+            onBack={onBack}
+            onMenu={onMenu}
+            showMenu={false}
+          />
         </div>
 
         {/* 메인 콘텐츠 */}
@@ -93,10 +98,7 @@ export default function MobileView() {
                 label="쿠폰관리"
                 onClick={() => go("/my-page/owner/coupons")}
               />
-              <MidLink
-                label="일정관리"
-                onClick={() => go("/my-page/owner/schedules")}
-              />
+              <MidLink label="일정관리" onClick={() => go("/calendar")} />
               <MidLink
                 label="상품관리"
                 onClick={() => go("/my-page/owner/products/management")}
