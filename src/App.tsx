@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, Route, Routes, useLocation, useMatch } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { jwtDecode } from "jwt-decode"; // jwtDecode import
 
 import ClientLoginPage from "./pages/LoginPage/client/ClientLoginPage";
 import OwnerLoginPage from "./pages/LoginPage/owner/OwnerLoginPage";
@@ -59,8 +60,6 @@ import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/CouponManagement/Coup
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
 import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEditPage";
 import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
-import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleCreatePage";
-import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
 import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
 import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
@@ -72,12 +71,16 @@ import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import Success from "./pages/CheckoutPage/Success/Success";
 import Fail from "./pages/CheckoutPage/Fail/Fail";
 import ProductEdit from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductEdit/ProductEdit";
-import OwnerPersonalScheduleEditPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleEditPage";
 import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
 import ReviewCreate from "./pages/ReviewCreatePage/ReviewCreate";
 import ClientProfileEdit from "./pages/MyPage/ClientMyPage/ProfileEdit/ClientProfileEdit";
 import { useRefreshAuth } from "./hooks/useRefreshAuth";
 import TestPage from "./pages/TestPage/TestPage";
+import PersonalScheduleCreatePage from "./pages/CalendarPage/PersonalScheduleCreatePage";
+import PersonalScheduleEditPage from "./pages/CalendarPage/PersonalScheduleEditPage";
+import SharedScheduleEditPage from "./pages/CalendarPage/SharedScheduleEdigPage";
+import { subscribeToNotifications } from "./lib/api/notificationService";
+import CustomNotificationToast from "./components/CustomNotificationToast/CustomNotificationToast";
 import SupportPage from "./pages/SupportPage/SupportPage";
 
 function Layout() {
@@ -167,7 +170,10 @@ function Layout() {
         position="bottom-right"
         theme="light"
         pauseOnHover
-        autoClose={1500}
+        autoClose={3000} // autoClose 시간 3초로 조정
+        hideProgressBar={true} // 프로그레스 바 숨김
+        closeButton={false} // 기본 닫기 버튼 숨김
+        // toastClassName="custom-toastify-toast" // CustomNotificationToast에만 적용되도록 여기서 제거
       />
       <ScrollToTop />
       {showNavbar && <Navbar />}
@@ -187,8 +193,41 @@ function Layout() {
 }
 
 const App = () => {
-  const { isAuth } = useAppSelector((state) => state.user);
+  const { isAuth } = useAppSelector((state) => state.user); // isAuth만 가져오도록 수정
   const rehydrated = useAppSelector((state) => state._persist?.rehydrated);
+
+  const [currentAccessToken, setCurrentAccessToken] = useState<string | null>(
+    localStorage.getItem("accessToken")
+  );
+  const [liveNotifications, setLiveNotifications] = useState<Notification[]>(
+    []
+  );
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null); // userId 상태 추가
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null); // userRole 상태 추가
+
+  // AccessToken 변경 및 디코딩
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token !== currentAccessToken) {
+      setCurrentAccessToken(token);
+    }
+
+    if (token) {
+      try {
+        const decodedToken: { user_id: number; user_role: string } =
+          jwtDecode(token); // 토큰 디코딩
+        setCurrentUserId(decodedToken.user_id);
+        setCurrentUserRole(decodedToken.user_role);
+      } catch (error) {
+        console.error("Error decoding access token:", error);
+        setCurrentUserId(null);
+        setCurrentUserRole(null);
+      }
+    } else {
+      setCurrentUserId(null);
+      setCurrentUserRole(null);
+    }
+  }, [currentAccessToken]); // currentAccessToken이 변경될 때만 실행되도록
 
   const { refreshAuth } = useRefreshAuth();
 
@@ -196,6 +235,56 @@ const App = () => {
     if (!rehydrated || !isAuth) return;
     refreshAuth();
   }, [rehydrated, isAuth, refreshAuth]);
+
+  // SSE 구독 useEffect
+  useEffect(() => {
+    let cleanup: () => void = () => {};
+
+    // accessToken, userId, userRole이 모두 있을 때만 구독 시작
+    if (
+      currentAccessToken &&
+      currentUserId !== null &&
+      currentUserRole !== null
+    ) {
+      cleanup = subscribeToNotifications(
+        (newNotification) => {
+          // 현재 로그인한 사용자가 알림의 대상인지 확인
+          const isTargetUser =
+            newNotification.recipientId === currentUserId &&
+            newNotification.recipientRole === currentUserRole;
+
+          if (isTargetUser) {
+            setLiveNotifications((prev) => [newNotification, ...prev]);
+            toast(
+              <CustomNotificationToast message={newNotification.message} />,
+              {
+                onClick: () => {
+                  if (newNotification.type === "PAYMENT_REQUIRED") {
+                    window.location.href = "/checkout";
+                  } else if (newNotification.actionUrl) {
+                    window.location.href = newNotification.actionUrl;
+                  } else {
+                    window.location.href = "/notification";
+                  }
+                },
+                hideProgressBar: true,
+                closeButton: false,
+                className: "custom-toastify-toast", // CustomNotificationToast의 루트 요소에 적용
+              }
+            );
+          }
+        },
+        (error) => {
+          console.error("SSE subscription error:", error);
+          toast.error("알림 구독 중 오류가 발생했습니다.");
+        }
+      );
+    } else {
+      setLiveNotifications([]);
+    }
+
+    return cleanup;
+  }, [currentAccessToken, currentUserId, currentUserRole]); // 디코딩된 userId와 userRole을 의존성 배열에 추가
 
   // 리덕스 퍼시스트 완료 전까지 렌더링 지연
   if (!rehydrated) return null;
@@ -212,7 +301,10 @@ const App = () => {
         <Route path="/makeup" element={<MakeupPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/quotation" element={<QuotationPage />} />
-        <Route path="/notification" element={<NotificationPage />} />
+        <Route
+          path="/notification"
+          element={<NotificationPage liveNotifications={liveNotifications} />}
+        />
         <Route path="/wedding/:id" element={<ProductDetailPage />} />
         <Route path="/studio/:id" element={<ProductDetailPage />} />
         <Route path="/dress/:id" element={<ProductDetailPage />} />
@@ -237,6 +329,18 @@ const App = () => {
             path="/product-inquiry"
             element={<ProductInquiryPage />}
           />{" "}
+          <Route
+            path="/calendar/personal"
+            element={<PersonalScheduleCreatePage />}
+          />
+          <Route
+            path="/calendar/personal/edit/:id"
+            element={<PersonalScheduleEditPage />}
+          />
+          <Route
+            path="/calendar/shared/edit/:id"
+            element={<SharedScheduleEditPage />}
+          />
           {/* 고객 마이페이지 */}
           <Route path="/my-page/client" element={<ClientMyPageMain />} />
           <Route
@@ -278,18 +382,6 @@ const App = () => {
           <Route
             path="/my-page/owner/profile/edit"
             element={<OwnerProfileEditPage />}
-          />
-          <Route
-            path="/my-page/owner/schedules/personal"
-            element={<OwnerPersonalScheduleCreatePage />}
-          />
-          <Route
-            path="/my-page/owner/schedules/personal/edit/:id"
-            element={<OwnerPersonalScheduleEditPage />}
-          />
-          <Route
-            path="/my-page/owner/schedules/shared"
-            element={<OwnerSharedScheduleCreatePage />}
           />
           <Route path="/my-page/owner/coupons" element={<CouponListPage />} />
           <Route

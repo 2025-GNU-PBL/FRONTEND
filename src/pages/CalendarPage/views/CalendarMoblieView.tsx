@@ -9,7 +9,12 @@ type ScheduleApiItem = {
   id: number;
   title: string;
   content: string;
-  scheduleDate: string; // "2025-11-14" 또는 "2025-11-14T11:00:00"
+  startScheduleDate: string; // "2025-11-21"
+  endScheduleDate: string;
+  startTime: string; // "HH:mm" 형태
+  endTime: string; // "HH:mm" 형태
+  /** 공유/개인 구분 (없으면 기본 PERSONAL 취급) */
+  scheduleType?: "PERSONAL" | "SHARED" | string;
 };
 
 /** 날짜 → key (YYYY-MM-DD) */
@@ -43,21 +48,20 @@ function isSameDate(a: Date, b: Date): boolean {
   );
 }
 
-/** 시간 텍스트: 11:00AM (scheduleDate에 시간이 있을 때만) */
-function formatTimeText(iso: string): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(+d)) return null;
+/** 시간 텍스트: 11:00AM (startTime / endTime "HH:mm" 기준) */
+function formatTimeText(time: string): string | null {
+  if (!time) return null;
 
-  const h = d.getHours();
-  const m = d.getMinutes();
+  const [hStr, mStr] = time.split(":");
+  const h = Number(hStr);
+  const m = Number(mStr ?? "0");
 
-  // 백엔드가 날짜만 줄 때(00:00)는 시간 표시 X
-  if (h === 0 && m === 0) return null;
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
 
   const ampm = h >= 12 ? "PM" : "AM";
   const hour12 = ((h + 11) % 12) + 1;
   const mm = String(m).padStart(2, "0");
+
   return `${hour12}:${mm}${ampm}`;
 }
 
@@ -149,10 +153,10 @@ export default function CalendarMobileView() {
           params,
         });
 
-        // 날짜별로 그룹핑 (YYYY-MM-DD 단위)
+        // 날짜별로 그룹핑 (YYYY-MM-DD 단위, 시작일 기준)
         const grouped: Record<string, ScheduleApiItem[]> = {};
         (data || []).forEach((item) => {
-          const key = (item.scheduleDate || "").slice(0, 10); // YYYY-MM-DD
+          const key = (item.startScheduleDate || "").slice(0, 10); // YYYY-MM-DD
           if (!grouped[key]) grouped[key] = [];
           grouped[key].push(item);
         });
@@ -202,15 +206,20 @@ export default function CalendarMobileView() {
     setSelectedDate(date);
   }, []);
 
-  /** 일정 추가하기 클릭 → 개인 일정 추가 페이지로 이동 */
+  /** 일정 추가하기 클릭 → 개인 일정 추가 페이지로 이동 (App.tsx 새 경로 기준) */
   const handleAddSchedule = useCallback(() => {
-    nav("/my-page/owner/schedules/personal");
+    nav("/calendar/personal");
   }, [nav]);
 
-  /** 일정 클릭 → 수정 페이지로 이동 */
+  /** 일정 클릭 → 공유/개인에 따라 각각 수정 페이지로 이동 (새 경로 기준) */
   const handleClickSchedule = useCallback(
-    (scheduleId: number) => {
-      nav(`/my-page/owner/schedules/personal/edit/${scheduleId}`);
+    (item: ScheduleApiItem) => {
+      if (item.scheduleType === "SHARED") {
+        nav(`/calendar/shared/edit/${item.id}`);
+      } else {
+        // 기본은 개인 일정
+        nav(`/calendar/personal/edit/${item.id}`);
+      }
     },
     [nav]
   );
@@ -350,14 +359,14 @@ export default function CalendarMobileView() {
                 ) : (
                   <div className="flex flex-col gap-2">
                     {selectedSchedules.map((item) => {
-                      const timeText = formatTimeText(item.scheduleDate);
+                      const timeText = formatTimeText(item.startTime);
                       const hasTime = !!timeText;
 
                       return (
                         <button
                           key={item.id}
                           type="button"
-                          onClick={() => handleClickSchedule(item.id)}
+                          onClick={() => handleClickSchedule(item)}
                           className="w-[350px] min-h-[52px] bg-[#F6F7FB] rounded-[12px] px-4 py-[11px] flex items-center justify-between active:scale-[0.99] transition-transform"
                         >
                           {/* 왼쪽: 시간 + 제목 */}
@@ -391,7 +400,7 @@ export default function CalendarMobileView() {
                 <button
                   type="button"
                   onClick={handleAddSchedule}
-                  className="mt-3 w-[350px] h-[52px] bg-[#F6F7FB] rounded-[12px] px-4 flex items-center"
+                  className="mt-3 mb-10 w-[350px] h-[52px] bg-[#F6F7FB] rounded-[12px] px-4 flex items-center"
                 >
                   <div className="w-6 h-6 flex items-center justify-center mr-3">
                     <Icon

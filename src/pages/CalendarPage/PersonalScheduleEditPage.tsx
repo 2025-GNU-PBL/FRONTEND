@@ -2,7 +2,7 @@ import React from "react";
 import MobileView from "./views/PersonalScheduleEditMobileView";
 import WebView from "./views/PersonalScheduleEditWebView";
 
-export default function OwnerPersonalScheduleEditPage() {
+export default function PersonalScheduleEditPage() {
   return (
     <div className="w-full bg-white">
       {/* Mobile */}

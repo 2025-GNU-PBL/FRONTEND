@@ -79,7 +79,7 @@ export default function WebView() {
               <MenuTile
                 label="스케줄관리"
                 icon="mdi:calendar-clock-outline"
-                onClick={() => go("/my-page/owner/schedules")}
+                onClick={() => go("/calendar")}
               />
               <MenuTile
                 label="상품관리"

@@ -189,7 +189,7 @@ const userSlice = createSlice({
       state.jwt = null;
       state.role = null;
       localStorage.removeItem("accessToken");
-      toast.info("로그아웃 되었습니다.");
+      toast.info("로그아웃 되었습니다.", { className: "default-toast" }); // className 추가
     },
   },
   extraReducers: (builder) => {
@@ -227,7 +227,7 @@ const userSlice = createSlice({
           ? action.payload
           : "카카오 로그인 실패";
       state.error = errorMessage;
-      toast.error(errorMessage);
+      toast.error(errorMessage, { className: "default-toast" }); // className 추가
     });
 
     /** 네이버 로그인 */
@@ -264,7 +264,7 @@ const userSlice = createSlice({
           ? action.payload
           : "네이버 로그인 실패";
       state.error = errorMessage;
-      toast.error(errorMessage);
+      toast.error(errorMessage, { className: "default-toast" }); // className 추가
     });
 
     /** 로그아웃 */
@@ -275,7 +275,7 @@ const userSlice = createSlice({
       state.jwt = null;
       state.role = null;
       localStorage.removeItem("accessToken");
-      toast.info("로그아웃 되었습니다.");
+      toast.info("로그아웃 되었습니다.", { className: "default-toast" }); // className 추가
     });
     builder.addCase(logoutUser.rejected, (state) => {
       state.isAuth = false;
@@ -309,6 +309,7 @@ const userSlice = createSlice({
           ? action.payload
           : "인증 정보 확인 실패";
       state.error = errorMessage;
+      toast.error(errorMessage, { className: "default-toast" }); // className 추가
     });
 
     /** 인증 유저 조회 (사장) */
@@ -333,7 +334,7 @@ const userSlice = createSlice({
           ? action.payload
           : "인증 정보 확인 실패";
       state.error = errorMessage;
-      // toast.error(errorMessage);
+      toast.error(errorMessage, { className: "default-toast" }); // className 추가
     });
   },
 });

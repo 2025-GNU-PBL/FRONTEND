@@ -176,15 +176,10 @@ export default function DetailWebView() {
   /** 가격 포맷 */
   const formatPrice = (n: number) => `${(n ?? 0).toLocaleString("ko-KR")}원`;
 
-  /** 거절하기 */
+  /** 거절하기 (모바일처럼 날짜/시간 검증 없이) */
   const handleReject = async () => {
     if (!detail) return;
     if (detail.status !== "예약중") return;
-
-    if (!startDate || !endDate || !startTime || !endTime) {
-      window.alert("예약 시작/종료 날짜와 시간을 모두 입력해주세요.");
-      return;
-    }
 
     const ok = window.confirm("해당 예약을 거절하시겠습니까?");
     if (!ok) return;
@@ -354,54 +349,52 @@ export default function DetailWebView() {
                     </div>
                   </div>
 
-                  {/* 예약 시간 설정 */}
-                  <div className="rounded-2xl bg-[#F9FAFB] px-6 py-5">
-                    <h3 className="mb-4 text-[15px] font-semibold tracking-[-0.2px] text-[#111827]">
-                      예약 시간 설정
-                    </h3>
+                  {/* 예약 시간 설정 : 예약중일 때만 노출 (모바일과 동일한 동작) */}
+                  {detail.status === "예약중" && (
+                    <div className="rounded-2xl bg-[#F9FAFB] px-6 py-5">
+                      <h3 className="mb-4 text-[15px] font-semibold tracking-[-0.2px] text-[#111827]">
+                        예약 시간 설정
+                      </h3>
 
-                    <div className="grid gap-3 text-[13px]">
-                      <TimeFieldRow label="시작 날짜">
-                        <input
-                          type="date"
-                          className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          disabled={detail.status !== "예약중"}
-                        />
-                      </TimeFieldRow>
+                      <div className="grid gap-3 text-[13px]">
+                        <TimeFieldRow label="시작 날짜">
+                          <input
+                            type="date"
+                            className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                          />
+                        </TimeFieldRow>
 
-                      <TimeFieldRow label="종료 날짜">
-                        <input
-                          type="date"
-                          className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          disabled={detail.status !== "예약중"}
-                        />
-                      </TimeFieldRow>
+                        <TimeFieldRow label="종료 날짜">
+                          <input
+                            type="date"
+                            className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                          />
+                        </TimeFieldRow>
 
-                      <TimeFieldRow label="시작 시간">
-                        <input
-                          type="time"
-                          className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
-                          value={startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
-                          disabled={detail.status !== "예약중"}
-                        />
-                      </TimeFieldRow>
+                        <TimeFieldRow label="시작 시간">
+                          <input
+                            type="time"
+                            className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                          />
+                        </TimeFieldRow>
 
-                      <TimeFieldRow label="종료 시간">
-                        <input
-                          type="time"
-                          className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
-                          value={endTime}
-                          onChange={(e) => setEndTime(e.target.value)}
-                          disabled={detail.status !== "예약중"}
-                        />
-                      </TimeFieldRow>
+                        <TimeFieldRow label="종료 시간">
+                          <input
+                            type="time"
+                            className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-right text-[13px] leading-[20px] text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#FF2233]"
+                            value={endTime}
+                            onChange={(e) => setEndTime(e.target.value)}
+                          />
+                        </TimeFieldRow>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </section>
