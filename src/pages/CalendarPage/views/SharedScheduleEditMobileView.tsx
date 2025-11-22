@@ -54,6 +54,7 @@ type ScheduleDetailResponse = {
   endTime: string;
   scheduleType: "PERSONAL" | "SHARED" | string;
   productName: string;
+  customerName: string;
   bzName: string;
   address: string;
   scheduleFiles: {
@@ -88,7 +89,7 @@ export default function SharedScheduleCreateMobileView() {
   /** 폼 상태 */
   const [title, setTitle] = useState("");
   const [companyName, setCompanyName] = useState(""); // bzName
-  const [customerName, setCustomerName] = useState(""); // productName
+  const [customerName, setCustomerName] = useState(""); // customerName
   const [locationText, setLocationText] = useState(""); // address
 
   const [startDate, setStartDate] = useState(defaultDate);
@@ -129,7 +130,7 @@ export default function SharedScheduleCreateMobileView() {
         setTitle(data.title ?? "");
         setMemo(data.content ?? "");
         setCompanyName(data.bzName ?? "");
-        setCustomerName(data.productName ?? "");
+        setCustomerName(data.customerName ?? "");
         setLocationText(data.address ?? "");
 
         setStartDate(normalizeDate(data.startScheduleDate));
