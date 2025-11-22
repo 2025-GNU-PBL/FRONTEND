@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
-import api from "../../../../lib/api/axios";
+import api from "../../../../../lib/api/axios";
 
 /** 서버 응답 DTO (백엔드 스펙 기준) */
 type ReviewApiResponseItem = {
@@ -27,7 +26,7 @@ type ReviewApiResponse = {
   };
 };
 
-/** 화면에서 사용할 리뷰 타입 */
+/** 화면에서 사용할 리뷰 타입 (모바일과 동일 구조) */
 type Review = {
   id: string;
   brand: string;
@@ -39,26 +38,23 @@ type Review = {
 };
 
 export default function WebView() {
-  const nav = useNavigate();
-  const onBack = useCallback(() => nav(-1), [nav]);
-
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
 
   const hasReviews = !loading && reviews.length > 0;
 
-  /** API 응답 → UI 모델 매핑 */
+  /** API 응답 → UI 모델 매핑 (모바일 mapToReview 기반, 웹에서는 createdAgo 계산만 추가) */
   const mapToReview = (item: ReviewApiResponseItem): Review => ({
     id: String(item.id),
     brand: item.title || "상품명 미지정",
-    category: item.category || "", // 아직 없으면 빈 값
+    category: item.category || "",
     rating: typeof item.star === "number" ? item.star : 0,
     createdAgo: formatAgo(item.createdAt),
     content: item.comment || "",
     thumbnail: item.imageUrl || "",
   });
 
-  /** 내 리뷰 목록 조회 */
+  /** 내 리뷰 목록 조회 (모바일과 동일 엔드포인트/파라미터) */
   useEffect(() => {
     const fetchMyReviews = async () => {
       try {
@@ -87,7 +83,7 @@ export default function WebView() {
     fetchMyReviews();
   }, []);
 
-  /** 리뷰 삭제 */
+  /** 리뷰 삭제 (모바일과 동일 로직) */
   const handleDelete = useCallback(async (id: string) => {
     try {
       await api.delete(`/api/v1/reviews/${id}`);
@@ -100,34 +96,7 @@ export default function WebView() {
   }, []);
 
   return (
-    <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 상단 고정 헤더 */}
-      <header className="w-full bg-white border-b border-[#E5E6EB] sticky top-0 z-30">
-        <div className="max-w-[1200px] mx-auto flex items-center justify-between py-4 px-6">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onBack}
-              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#F3F4F5] transition"
-            >
-              <Icon
-                icon="solar:alt-arrow-left-linear"
-                className="w-6 h-6 text-black"
-              />
-            </button>
-            <h1 className="text-[22px] font-semibold tracking-[-0.3px] text-black">
-              리뷰 내역
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2 text-[13px] text-[#999999]">
-            <span>마이페이지</span>
-            <span className="w-[1px] h-3 bg-[#E5E6EB]" />
-            <span>리뷰 관리</span>
-          </div>
-        </div>
-      </header>
-
+    <div className="w-full min-h-screen bg-[#F6F7FB] mt-15">
       {/* 콘텐츠 영역 */}
       <main className="max-w-[1200px] mx-auto px-6 pt-6 pb-10">
         {/* 상단 정보 */}
@@ -169,7 +138,7 @@ export default function WebView() {
                 <ReviewRow
                   key={r.id}
                   review={r}
-                  withSoftBackground={index === 1}
+                  withSoftBackground={index % 2 === 1}
                   onDelete={handleDelete}
                 />
               ))}

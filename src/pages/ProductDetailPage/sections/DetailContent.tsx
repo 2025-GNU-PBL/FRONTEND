@@ -1,16 +1,15 @@
 // sections/DetailContent.tsx
-import type { Category, NormalizedDetail } from "../../../type/product";
+import type { NormalizedDetail } from "../../../type/product";
 
 /* ========================= Props ========================= */
 
 type DetailContentProps = {
   data: NormalizedDetail;
-  category: Category;
 };
 
 /* ========================= 컴포넌트 ========================= */
 
-export const DetailContent = ({ data, category }: DetailContentProps) => {
+export const DetailContent = ({ data }: DetailContentProps) => {
   // 필요하면 category / data.detail 등을 사용해서
   // 카테고리별로 다른 설명을 노출할 수 있음.
 

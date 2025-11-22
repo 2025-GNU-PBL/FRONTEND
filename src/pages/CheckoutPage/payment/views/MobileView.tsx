@@ -2,12 +2,9 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import api from "../../../../lib/api/axios";
+import { useAppSelector } from "../../../../store/hooks";
 
-// ⚠️ 여기 clientKey는 "API 개별 연동 키 > 클라이언트 키 (결제창용)"으로 교체해야 합니다.
 const clientKey = "test_ck_24xLea5zVAJWDaom1EBmrQAMYNwW";
-
-// 결제창에서도 customerKey는 필수 (결제창 초기화에 필요)
-const customerKey = "4518539793";
 
 // 서버에서 가져오는 주문 타입
 type OrderSummary = {
@@ -25,6 +22,11 @@ type PaymentLocationState = {
 
 const MobileView = () => {
   const location = useLocation();
+  const socialId = useAppSelector((state) => state.user.userData?.socialId);
+
+  // ❗ socialId가 undefined일 수 있으므로 그대로 전달하지 말고
+  //   아래 useEffect에서 가드로 체크해서 사용
+  const customerKey = socialId;
 
   const [amount, setAmount] = useState({
     currency: "KRW" as const,
@@ -94,12 +96,24 @@ const MobileView = () => {
   // 2) 토스 결제창(payment) 인스턴스 초기화
   useEffect(() => {
     async function initPayment() {
+      // 🔥 여기서 customerKey가 없으면 바로 막아주면,
+      //    이 아래에서는 customerKey가 string 타입으로 좁혀져서
+      //    TypeScript 에러가 사라집니다.
+      if (!customerKey) {
+        console.error(
+          "[INIT_PAYMENT_BLOCKED]",
+          "customerKey가 없습니다. socialId를 확인해 주세요."
+        );
+        setReady(false);
+        return;
+      }
+
       try {
         const tossPayments = await loadTossPayments(clientKey);
 
         // API 개별 연동 키 → payment() 사용
         const paymentInstance = tossPayments.payment({
-          customerKey,
+          customerKey, // 여기서는 string으로 안전하게 전달
         });
 
         setPayment(paymentInstance);
@@ -111,7 +125,7 @@ const MobileView = () => {
     }
 
     initPayment();
-  }, []);
+  }, [customerKey]); // socialId가 나중에 세팅되어 customerKey가 바뀌면 다시 시도
 
   // 3) 결제 요청 핸들러 (토스 결제창 띄우기)
   const handleRequestPayment = async () => {

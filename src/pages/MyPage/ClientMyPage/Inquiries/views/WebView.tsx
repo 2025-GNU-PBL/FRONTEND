@@ -1,14 +1,7 @@
 // src/pages/MyPage/ClientMyPage/Reservation/WebView.tsx
-import React, {
-  useMemo,
-  useState,
-  useCallback,
-  useRef,
-  useEffect,
-} from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import { Icon } from "@iconify/react";
-import api from "../../../../lib/api/axios";
+import api from "../../../../../lib/api/axios";
 
 /** UI에서 사용하는 상태값 */
 type InquiryStatus = "대기" | "확정" | "취소";
@@ -35,10 +28,46 @@ type Inquiry = {
   createdAt: string; // YYYY-MM-DD
 };
 
-export default function WebView() {
-  const nav = useNavigate();
-  const onBack = useCallback(() => nav(-1), [nav]);
+/* ---------- 컴포넌트 밖 유틸 함수들 (eslint 의존성 경고 방지) ---------- */
 
+/** 서버 status -> 화면 status 매핑 */
+const mapStatus = (status: string): InquiryStatus => {
+  switch (status) {
+    case "APPROVE":
+    case "APPROVED":
+    case "CONFIRM":
+    case "CONFIRMED":
+      return "확정";
+    case "CANCEL":
+    case "CANCELED":
+      return "취소";
+    default:
+      return "대기"; // WAITING 등 기본값
+  }
+};
+
+/** Reservation DTO -> Inquiry 뷰 모델 변환 */
+const toInquiry = (r: ReservationApiResponse): Inquiry => {
+  const createdAt = (r.reservationTime || "").slice(0, 10) || "";
+  return {
+    id: String(r.id),
+    // 업체명 정보가 별도 필드에 없다면 title/기본값 사용
+    partner: r.title || "예약 업체",
+    // 문의/예약 내용
+    title: r.content || "",
+    status: mapStatus(r.status),
+    createdAt,
+  };
+};
+
+/** YYYY-MM-DD → YYYY.MM.DD 포맷 */
+function formatDate(date: string) {
+  if (!date) return "";
+  const [y, m, d] = date.split("-");
+  return `${y}.${m}.${d}`;
+}
+
+export default function WebView() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("전체");
   const [sort, setSort] = useState<"최신순" | "오래된순">("최신순");
 
@@ -50,36 +79,6 @@ export default function WebView() {
 
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(false);
-
-  /** 서버 status -> 화면 status 매핑 */
-  const mapStatus = (status: string): InquiryStatus => {
-    switch (status) {
-      case "APPROVE":
-      case "APPROVED":
-      case "CONFIRM":
-      case "CONFIRMED":
-        return "확정";
-      case "CANCEL":
-      case "CANCELED":
-        return "취소";
-      default:
-        return "대기"; // WAITING 등 기본값
-    }
-  };
-
-  /** Reservation DTO -> Inquiry 뷰 모델 변환 */
-  const toInquiry = (r: ReservationApiResponse): Inquiry => {
-    const createdAt = (r.reservationTime || "").slice(0, 10) || "";
-    return {
-      id: String(r.id),
-      // 업체명 정보가 별도 필드에 없다면 title/기본값 사용
-      partner: r.title || "예약 업체",
-      // 문의/예약 내용
-      title: r.content || "",
-      status: mapStatus(r.status),
-      createdAt,
-    };
-  };
 
   /** 예약(문의) 목록 조회 */
   useEffect(() => {
@@ -139,35 +138,8 @@ export default function WebView() {
 
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 상단 고정 헤더 */}
-      <header className="w-full bg-white border-b border-[#E5E6EB] sticky top-0 z-30">
-        <div className="max-w-[1200px] mx-auto flex items-center justify-between py-4 px-6">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onBack}
-              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#F3F4F5] transition"
-            >
-              <Icon
-                icon="solar:alt-arrow-left-linear"
-                className="w-6 h-6 text-black"
-              />
-            </button>
-            <h1 className="text-[22px] font-semibold tracking-[-0.3px] text-black">
-              문의 내역
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2 text-[13px] text-[#999999]">
-            <span>고객 센터</span>
-            <span className="w-[1px] h-3 bg-[#E5E6EB]" />
-            <span>1:1 문의하기</span>
-          </div>
-        </div>
-      </header>
-
       {/* 콘텐츠 영역 */}
-      <main className="max-w-[1200px] mx-auto px-6 pt-6 pb-10">
+      <main className="max-w-[1200px] mx-auto px-6 pt-25 pb-10">
         {/* 필터/정렬 바 */}
         <div className="flex items-center justify-between gap-4 mb-4">
           <div className="flex items-baseline gap-2">
@@ -302,12 +274,8 @@ export default function WebView() {
             </div>
 
             <div>
-              {filtered.map((q, index) => (
-                <WebInquiryRow
-                  key={q.id}
-                  q={q}
-                  withSoftBackground={index === 1}
-                />
+              {filtered.map((q) => (
+                <WebInquiryRow key={q.id} q={q} />
               ))}
             </div>
           </section>
@@ -363,20 +331,9 @@ function StatusBadge({ status }: { status: InquiryStatus }) {
 }
 
 /** 웹용 문의 리스트 행 */
-function WebInquiryRow({
-  q,
-  withSoftBackground,
-}: {
-  q: Inquiry;
-  withSoftBackground?: boolean;
-}) {
+function WebInquiryRow({ q }: { q: Inquiry }) {
   return (
-    <div
-      className={[
-        "grid grid-cols-[1.5fr_3fr_1.2fr_1.2fr] gap-3 px-6 py-4 border-t border-[#F3F4F5] items-center",
-        withSoftBackground ? "bg-[#F6F7FB]" : "bg-white",
-      ].join(" ")}
-    >
+    <div className="grid grid-cols-[1.5fr_3fr_1.2fr_1.2fr] gap-3 px-6 py-4 border-t border-[#F3F4F5] items-center bg-white">
       <div className="text-[14px] font-semibold text-[#111827]">
         {q.partner}
       </div>
@@ -411,11 +368,4 @@ function WebEmptyState() {
       </div>
     </section>
   );
-}
-
-/** YYYY-MM-DD → YYYY.MM.DD 포맷 */
-function formatDate(date: string) {
-  if (!date) return "";
-  const [y, m, d] = date.split("-");
-  return `${y}.${m}.${d}`;
 }

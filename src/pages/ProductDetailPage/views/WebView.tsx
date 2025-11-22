@@ -1,11 +1,9 @@
-// WebView.tsx
 import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import api from "../../../lib/api/axios";
 import { BasicInfoContent } from "../sections/BasicInfoContent";
 import { DetailContent } from "../sections/DetailContent";
-import { ReviewContent } from "../sections/ReviewContent";
 import { useAppSelector } from "../../../store/hooks";
 import type {
   Category,
@@ -17,6 +15,7 @@ import type {
   Coupon,
   MyCoupon,
 } from "../../../type/product";
+import ReviewContent from "../sections/ReviewContent";
 
 /* 날짜 포맷: 2025-11-19 -> 25.11.19 */
 const formatDate = (dateStr: string) => {
@@ -62,8 +61,12 @@ const WebView = () => {
 
   /* ========================= 네비게이션 ========================= */
 
-  const handleGoCart = () => {
-    navigate("/cart");
+  /* ========= 장바구니 버튼용 (알럿 O) ========= */
+  const addToCart = async () => {
+    const ok = await addToCartCore();
+    if (!ok) return;
+    // 장바구니 버튼에서는 기존 알럿 유지
+    alert("상품이 장바구니에 담겼습니다.");
   };
 
   /* ========= 장바구니 공용 로직 (알럿 X) ========= */
@@ -367,11 +370,37 @@ const WebView = () => {
 
   const displayRating =
     detailData && "averageRating" in detailData
-      ? Number(detailData.averageRating || 0).toFixed(1)
+      ? Number(detailData.starCount || 0).toFixed(1)
       : undefined;
 
   const displayReviewCount =
-    detailData && "starCount" in detailData ? detailData.starCount : undefined;
+    detailData && "starCount" in detailData
+      ? detailData.averageRating
+      : undefined;
+
+  /* ========================= 탭 이동 핸들러 ========================= */
+
+  const handleGoDetailTab = () => {
+    setActiveTab("detail");
+    if (typeof window !== "undefined") {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      });
+    }
+  };
+
+  const handleGoReviewTab = () => {
+    setActiveTab("review");
+    if (typeof window !== "undefined") {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      });
+    }
+  };
 
   /* ========================= JSX ========================= */
 
@@ -480,23 +509,18 @@ const WebView = () => {
                   {activeTab === "basic" && (
                     <BasicInfoContent
                       data={detailData}
-                      category={detailData._category}
                       onOpenCoupon={handleOpenCoupon}
+                      onGoDetailTab={handleGoDetailTab} // ✅ 상품 상세 사진 전체보기 → 상품상세 탭 이동
+                      onGoReviewTab={handleGoReviewTab} // (필요시 리뷰 전체보기도 동일하게 사용 가능)
                     />
                   )}
 
                   {activeTab === "detail" && (
-                    <DetailContent
-                      data={detailData}
-                      category={detailData._category}
-                    />
+                    <DetailContent data={detailData} />
                   )}
 
                   {activeTab === "review" && (
-                    <ReviewContent
-                      targetId={detailData.id}
-                      category={detailData._category}
-                    />
+                    <ReviewContent targetId={detailData.id} />
                   )}
                 </div>
               </div>
@@ -577,7 +601,7 @@ const WebView = () => {
                     <button
                       type="button"
                       className="w-full h-12 rounded-xl border border-[#D1D5DB] flex items-center justify-center gap-2 text-[14px] font-semibold text-[#111827] hover:bg-[#F9FAFB] transition-colors"
-                      onClick={handleGoCart}
+                      onClick={addToCart}
                     >
                       <Icon
                         icon="solar:cart-large-minimalistic-linear"

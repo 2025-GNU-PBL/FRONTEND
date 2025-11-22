@@ -43,8 +43,8 @@ import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
 import ProductInquiryPage from "./pages/ProductInquiryPage/InquiryPage";
 import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
-import PaymentListPage from "./pages/MyPage/ClientMyPage/Payments/PaymentListPage";
-import PaymentDetailPage from "./pages/MyPage/ClientMyPage/Payments/PaymentDetailPage";
+import PaymentListPage from "./pages/MyPage/ClientMyPage/Payments/ListPage/PaymentListPage";
+import PaymentDetailPage from "./pages/MyPage/ClientMyPage/Payments/DetailPage/PaymentDetailPage";
 import OwnerMyPageMain from "./pages/MyPage/OwnerMyPage/Main/OwnerMyPageMain";
 import OwnerSignupPage from "./pages/SignupPage/owner/step1/OwnerSignupPage";
 import BusinessAddressPage from "./pages/SignupPage/owner/step2/BusinessAddressPage";
@@ -78,6 +78,7 @@ import ReviewCreate from "./pages/ReviewCreatePage/ReviewCreate";
 import ClientProfileEdit from "./pages/MyPage/ClientMyPage/ProfileEdit/ClientProfileEdit";
 import { useRefreshAuth } from "./hooks/useRefreshAuth";
 import TestPage from "./pages/TestPage/TestPage";
+import SupportPage from "./pages/SupportPage/SupportPage";
 
 function Layout() {
   const location = useLocation();
@@ -122,8 +123,8 @@ function Layout() {
     "/success",
     "/fail",
     "/my-page/owner/coupons/register", // 쿠폰 등록 페이지에 Footer 숨김
-    "/review",
     "/my-page/client/profile/edit",
+    "/my-page/client/payments/review",
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)
@@ -221,7 +222,8 @@ const App = () => {
         <Route path="/checkout/payment" element={<PaymentPage />} />
         <Route path="/success" element={<Success />} />
         <Route path="/fail" element={<Fail />} />
-        <Route path="/review" element={<ReviewCreate />} />
+        <Route path="/support" element={<SupportPage />} />
+
         <Route path="/test" element={<TestPage />} />
 
         {/* 로그인한 사람만 접근 가능 */}
@@ -256,7 +258,11 @@ const App = () => {
             element={<PaymentListPage />}
           />
           <Route
-            path="/my-page/client/payments/detail"
+            path="/my-page/client/payments/review"
+            element={<ReviewCreate />}
+          />
+          <Route
+            path="/my-page/client/payments/:paymentKey"
             element={<PaymentDetailPage />}
           />
           <Route path="/sign-up/client/step1" element={<ClientSignupPage />} />

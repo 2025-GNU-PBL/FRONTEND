@@ -1,8 +1,8 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { useAppDispatch, useAppSelector } from "../../../../store/hooks";
-import { logoutUser } from "../../../../store/thunkFunctions";
+import { useAppDispatch, useAppSelector } from "../../../../../store/hooks";
+import { logoutUser } from "../../../../../store/thunkFunctions";
 
 export default function WebView() {
   const nav = useNavigate();
@@ -72,7 +72,7 @@ export default function WebView() {
               <MenuTile
                 label="스케줄 내역"
                 icon="mdi:calendar-clock-outline"
-                onClick={() => go("/my-page/client/schedules")}
+                onClick={() => go("/calendar")}
               />
               <MenuTile
                 label="문의 내역"
