@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import MyPageHeader from "../../../../../components/MyPageHeader";
-import api from "../../../../../lib/api/axios";
+import MyPageHeader from "../../../components/MyPageHeader";
+import api from "../../../lib/api/axios";
 
 /** ====== 유틸 ====== */
 
@@ -45,6 +45,14 @@ function formatTime12h(timeStr: string) {
   return `${hh}:${mStr}`;
 }
 
+/** 서버 HH:mm:ss → input용 HH:mm 으로 변환 */
+function normalizeTimeToMinutes(time?: string | null): string {
+  if (!time) return "";
+  const [h, m] = time.split(":");
+  if (!h || !m) return time;
+  return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
+}
+
 /** ====== 서버 DTO ====== */
 
 /** 단건 조회 응답 (GET /api/v1/schedule/{id}) */
@@ -52,7 +60,10 @@ type ScheduleDetailResponse = {
   id: number;
   title: string;
   content: string;
-  scheduleDate: string; // "2025-11-19"
+  startScheduleDate: string; // "2025-11-24"
+  endScheduleDate: string; // "2025-11-25"
+  startTime: string; // "11:00:00"
+  endTime: string; // "16:00:00"
   scheduleFiles?: {
     id: number;
     name: string;
@@ -60,12 +71,14 @@ type ScheduleDetailResponse = {
   }[];
 };
 
-/** 수정 요청 바디 (PATCH /api/v1/schedule/{id}) */
+/** 수정 요청 바디 (PATCH /api/v1/schedule/{id}) — 등록 DTO와 동일 구조 */
 type ScheduleUpdateRequest = {
   title: string;
   content: string;
-  scheduleDate: string; // yyyy-MM-dd
-  keepFileIds: number[];
+  startScheduleDate: string; // yyyy-MM-dd
+  endScheduleDate: string; // yyyy-MM-dd
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
 };
 
 /** ====== 컴포넌트 (Web View) ====== */
@@ -106,13 +119,19 @@ export default function PersonalScheduleEditWebView() {
           `/api/v1/schedule/${scheduleId}`
         );
 
-        const date = data.scheduleDate; // yyyy-MM-dd
-
         setTitle(data.title ?? "");
         setMemo(data.content ?? "");
-        setStartDate(date);
-        setEndDate(date);
-        // 시간 필드는 백엔드에 없으니 기본값 유지 (추후 필드 생기면 여기서 파싱)
+
+        setStartDate(data.startScheduleDate || defaultDate);
+        setEndDate(
+          data.endScheduleDate || data.startScheduleDate || defaultDate
+        );
+
+        const normalizedStartTime = normalizeTimeToMinutes(data.startTime);
+        const normalizedEndTime = normalizeTimeToMinutes(data.endTime);
+
+        if (normalizedStartTime) setStartTime(normalizedStartTime);
+        if (normalizedEndTime) setEndTime(normalizedEndTime);
       } catch (e) {
         console.error("[PersonalScheduleEditWebView] fetch detail error:", e);
         alert("일정 정보를 불러오는 중 오류가 발생했습니다.");
@@ -123,9 +142,9 @@ export default function PersonalScheduleEditWebView() {
     };
 
     fetchDetail();
-  }, [scheduleId, nav]);
+  }, [scheduleId, nav, defaultDate]);
 
-  /** ====== 유효성 검사 ====== */
+  /** ====== 유효성 검사 — 모바일과 동일 규칙 ====== */
   const validate = useCallback(() => {
     const next: Record<string, string> = {};
 
@@ -142,9 +161,6 @@ export default function PersonalScheduleEditWebView() {
 
       if (sd > ed) {
         next.endDate = "종료일은 시작일 이후여야 합니다.";
-      } else if (sd.getTime() !== ed.getTime()) {
-        // 서버는 LocalDate 하나만 받으므로, 지금은 하루 단위 일정만 허용
-        next.endDate = "현재는 하루 단위 일정만 등록할 수 있어요.";
       }
     }
 
@@ -162,7 +178,8 @@ export default function PersonalScheduleEditWebView() {
     }
     const sd = new Date(startDate);
     const ed = new Date(endDate);
-    return sd <= ed && sd.getTime() === ed.getTime();
+    // 여러 날짜 허용: sd <= ed 만 체크
+    return sd <= ed;
   }, [title, startDate, endDate, startTime, endTime]);
 
   /** ====== 2) 수정 요청 (PATCH /api/v1/schedule/{id}) ====== */
@@ -174,8 +191,10 @@ export default function PersonalScheduleEditWebView() {
     const requestPayload: ScheduleUpdateRequest = {
       title: title.trim(),
       content: memo.trim(),
-      scheduleDate: startDate,
-      keepFileIds: [], // 기존 파일 유지 시 여기 채우면 됨
+      startScheduleDate: startDate,
+      endScheduleDate: endDate,
+      startTime,
+      endTime,
     };
 
     const formData = new FormData();
@@ -186,8 +205,7 @@ export default function PersonalScheduleEditWebView() {
         type: "application/json",
       })
     );
-
-    // 현재는 새 파일 업로드 UI 없음 → file 파트 생략
+    // 웹 뷰도 현재는 파일 업로드 없음 (필요 시 file append 추가)
 
     try {
       setSubmitting(true);
@@ -204,7 +222,18 @@ export default function PersonalScheduleEditWebView() {
     } finally {
       setSubmitting(false);
     }
-  }, [submitting, validate, title, memo, startDate, scheduleId, nav]);
+  }, [
+    submitting,
+    validate,
+    title,
+    memo,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    scheduleId,
+    nav,
+  ]);
 
   /** 날짜/시간 라벨 + 표시용 값 */
   const startDateLabel = formatKoreanDateLabel(startDate) || "날짜 선택";

@@ -60,8 +60,6 @@ import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/CouponManagement/Coup
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
 import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEditPage";
 import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
-import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleCreatePage";
-import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
 import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
 import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
@@ -73,15 +71,14 @@ import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import Success from "./pages/CheckoutPage/Success/Success";
 import Fail from "./pages/CheckoutPage/Fail/Fail";
 import ProductEdit from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductEdit/ProductEdit";
-import OwnerPersonalScheduleEditPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleEditPage";
 import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
 import ReviewCreate from "./pages/ReviewCreatePage/ReviewCreate";
 import ClientProfileEdit from "./pages/MyPage/ClientMyPage/ProfileEdit/ClientProfileEdit";
 import { useRefreshAuth } from "./hooks/useRefreshAuth";
 import TestPage from "./pages/TestPage/TestPage";
-import { subscribeToNotifications } from './lib/api/notificationService';
-import type { Notification } from './type/notification';
-import CustomNotificationToast from './components/CustomNotificationToast/CustomNotificationToast'; // CustomNotificationToast 가져오기
+import PersonalScheduleCreatePage from "./pages/CalendarPage/PersonalScheduleCreatePage";
+import PersonalScheduleEditPage from "./pages/CalendarPage/PersonalScheduleEditPage";
+import SharedScheduleEditPage from "./pages/CalendarPage/SharedScheduleEdigPage";
 
 function Layout() {
   const location = useLocation();
@@ -311,6 +308,18 @@ const App = () => {
             path="/product-inquiry"
             element={<ProductInquiryPage />}
           />{" "}
+          <Route
+            path="/calendar/personal"
+            element={<PersonalScheduleCreatePage />}
+          />
+          <Route
+            path="/calendar/personal/edit/:id"
+            element={<PersonalScheduleEditPage />}
+          />
+          <Route
+            path="/calendar/shared/edit/:id"
+            element={<SharedScheduleEditPage />}
+          />
           {/* 고객 마이페이지 */}
           <Route path="/my-page/client" element={<ClientMyPageMain />} />
           <Route
@@ -348,18 +357,6 @@ const App = () => {
           <Route
             path="/my-page/owner/profile/edit"
             element={<OwnerProfileEditPage />}
-          />
-          <Route
-            path="/my-page/owner/schedules/personal"
-            element={<OwnerPersonalScheduleCreatePage />}
-          />
-          <Route
-            path="/my-page/owner/schedules/personal/edit/:id"
-            element={<OwnerPersonalScheduleEditPage />}
-          />
-          <Route
-            path="/my-page/owner/schedules/shared"
-            element={<OwnerSharedScheduleCreatePage />}
           />
           <Route path="/my-page/owner/coupons" element={<CouponListPage />} />
           <Route

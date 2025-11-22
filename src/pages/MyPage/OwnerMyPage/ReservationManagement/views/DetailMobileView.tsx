@@ -173,12 +173,6 @@ export default function DetailMobileView() {
     if (!detail) return;
     if (detail.status !== "예약중") return; // 이미 확정/취소된 건 처리 X
 
-    // 간단 검증
-    if (!startDate || !endDate || !startTime || !endTime) {
-      window.alert("예약 시작/종료 날짜와 시간을 모두 입력해주세요.");
-      return;
-    }
-
     const ok = window.confirm("해당 예약을 거절하시겠습니까?");
     if (!ok) return;
 
@@ -194,13 +188,24 @@ export default function DetailMobileView() {
         body
       );
 
-      // 응답 기준으로 상태 갱신
-      setDetail(mapApiToUi(data));
+      // 응답 기준으로 상태 갱신하되, 기존 값은 유지
+      setDetail((prev) => {
+        const nextFromApi = mapApiToUi(data);
+        if (!prev) return nextFromApi;
+
+        return {
+          ...prev,
+          status: nextFromApi.status,
+          rawStatus: nextFromApi.rawStatus,
+          date: nextFromApi.date,
+          reservationDateIso: nextFromApi.reservationDateIso,
+        };
+      });
 
       window.alert("예약이 거절되었습니다.");
       // 상태가 DENY으로 바뀌면서 버튼은 자동으로 사라짐
     } catch (e) {
-      console.error("[Reservation/DetailMobileView] approve error:", e);
+      console.error("[Reservation/DetailMobileView] reject error:", e);
       window.alert("예약 거절 중 오류가 발생했습니다.");
     } finally {
       setActionLoading(false);
@@ -237,8 +242,19 @@ export default function DetailMobileView() {
         body
       );
 
-      // 응답 기준으로 상태 갱신
-      setDetail(mapApiToUi(data));
+      // 응답 기준으로 상태 갱신하되, 기존 값은 유지
+      setDetail((prev) => {
+        const nextFromApi = mapApiToUi(data);
+        if (!prev) return nextFromApi;
+
+        return {
+          ...prev,
+          status: nextFromApi.status,
+          rawStatus: nextFromApi.rawStatus,
+          date: nextFromApi.date,
+          reservationDateIso: nextFromApi.reservationDateIso,
+        };
+      });
 
       window.alert("예약이 승인되었습니다.");
       // 상태가 '확정'으로 바뀌면서 버튼은 자동으로 사라짐
@@ -451,8 +467,7 @@ export default function DetailMobileView() {
           </div>
         </div>
 
-        {/* 하단 버튼 영역 - 거절하기 / 승인하기
-           예약 상태가 '예약중'일 때만 노출 (확정/취소면 버튼 숨김) */}
+        {/* 하단 버튼 영역 */}
         {!loading && !error && detail && detail.status === "예약중" && (
           <div className="absolute bottom-[60px] left-1/2 z-20 w-[350px] -translate-x-1/2">
             <div className="flex w-full flex-row items-center gap-[12px] px-4 py-3">
