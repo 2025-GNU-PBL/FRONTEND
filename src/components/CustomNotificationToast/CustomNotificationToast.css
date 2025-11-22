@@ -1,0 +1,61 @@
+.custom-toast-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center; /* 아이템을 중앙 정렬 (한 줄 텍스트에 적합) */
+  padding: 12px 20px;
+  gap: 18px;
+  position: relative;
+  width: 350px; /* Figma 디자인 너비로 고정 */
+  height: 48px; /* Figma 디자인 높이로 고정 */
+  background: rgba(77, 77, 77, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 30px; /* Figma 디자인 border-radius */
+  box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.4);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  /* word-break: keep-all; */ /* 단어 단위 줄바꿈 제거 */
+}
+
+.custom-toast-icon-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  background: #3DC061;
+  border-radius: 50%;
+  order: 0;
+  flex-grow: 0;
+  /* margin-top: 2px; */ /* 중앙 정렬로 변경했으므로 제거 */
+}
+
+.custom-toast-icon-wrapper svg {
+  width: 20px;
+  height: 20px;
+}
+
+.custom-toast-icon-wrapper svg path {
+  stroke: #FFFFFF;
+  stroke-width: 2;
+}
+
+.custom-toast-message {
+  width: calc(100% - 24px - 18px); /* 아이콘과 gap을 뺀 남은 공간 */
+  height: 24px; /* 한 줄 높이로 고정 */
+  font-family: 'Pretendard', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.5; /* 줄 간격 */
+  letter-spacing: -0.2px;
+  color: #FFFFFF;
+  flex: none;
+  order: 1;
+  flex-grow: 0; /* 공간을 채우지 않음 */
+  white-space: nowrap; /* 무조건 한 줄로 표시 */
+  overflow: hidden; /* 넘치는 부분 숨김 */
+  text-overflow: ellipsis; /* 넘치는 텍스트는 ...으로 표시 */
+}

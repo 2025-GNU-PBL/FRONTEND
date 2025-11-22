@@ -1,167 +1,181 @@
 /* 전체 페이지 */
 .inform-page {
-    max-width: 430px; /* 모바일 최대 너비 (iPhone 14 Pro Max 너비) */
-    width: 100%; /* 부모 너비에 맞게 설정 */
-    min-height: 100vh; /* 화면 높이에 맞춰 최소 높이 설정 */
-    background: #f8f8f8;
-    margin: 0 auto; /* 가운데 정렬 */
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box; /* 패딩이 너비에 포함되도록 */
-    overflow-x: hidden;
-  }
-  
-  /* 헤더 */
-  .inform-header {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 20px;
-    gap: 4px;
-    width: 100%; /* 부모 너비에 맞춤 */
-    height: 60px;
-    background: #f8f8f8;
-    position: sticky; /* 스크롤 시 상단 고정 */
-    top: 0;
-    max-width: 430px; /* .inform-page와 동일한 최대 너비 */
-    z-index: 100;
-    margin: 0 auto; /* 가운데 정렬 */
-  }
-  
-  /* 중앙 제목 */
-  .inform-title {
-    font-family: 'Pretendard';
-    font-weight: 600;
-    font-size: 18px;
-    line-height: 160%;
-    color: #000;
-    text-align: center;
-    flex-grow: 1;
-  }
-  
-  /* 뒤로가기 / 빈 공간 */
-  .back-arrow, .empty-space {
-    width: 32px;
-    height: 32px;
-    flex-shrink: 0;
-    display: flex; /* SVG 중앙 정렬을 위해 추가 */
-    justify-content: center; /* SVG 중앙 정렬을 위해 추가 */
-    align-items: center; /* SVG 중앙 정렬을 위해 추가 */
-    cursor: pointer; /* 클릭 가능하도록 */
-  }
-  
-  /* 필터 버튼 */
-  .filter-buttons {
-    display: flex;
-    gap: 8px;
-    margin-top: 20px;
-    margin-bottom: 10px; /* 알림 개수와의 간격 */
-    overflow-x: auto;
-    padding: 0 20px; /* 좌우 패딩만 유지 */
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-    border-bottom: none; /* 혹시 모를 하단 테두리 제거 */
-    /* 스크롤바 숨기기 (기능은 유지) */
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-  }
-  
-  .filter-buttons::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera*/
-  }
-  
-  .filter-button {
-    flex-shrink: 0;
-    padding: 8px 12px;
-    background: #fff;
-    border: 1px solid #d9d9d9;
-    border-radius: 20px;
-    font-size: 14px;
-    cursor: pointer; /* 클릭 가능하도록 */
-    transition: all 0.2s ease; /* 부드러운 전환 효과 */
-  }
-  
-  .filter-button.active {
-    background: #000;
-    color: #fff;
-    border-color: #000;
-  }
-  
-  /* 알림 개수 */
-  .notification-count {
-    margin-top: 0; /* 필터 버튼 아래 여백은 filter-buttons에서 처리 */
-    font-size: 14px;
-    color: #000;
-    padding: 0 20px; /* 좌우 패딩 추가 */
-  }
-  
-  /* 알림 리스트 */
-  .notification-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-top: 10px;
-    padding: 0 20px; /* 좌우 패딩 추가 */
-    padding-bottom: 20px; /* 하단 패딩 추가 */
-  }
-  
-  /* 알림 카드 */
-  .notification-card {
-    display: flex;
-    align-items: center;
-    padding: 20px;
-    width: 100%;
-    background: #fff;
-    border-radius: 12px;
-    position: relative;
-    box-sizing: border-box;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* 카드 그림자 추가 */
-  }
-  
-  .notification-icon {
-    width: 44px;
-    height: 44px;
-    margin-right: 18px;
-    flex-shrink: 0;
-    display: flex; /* SVG 중앙 정렬을 위해 추가 */
-    justify-content: center; /* SVG 중앙 정렬을 위해 추가 */
-    align-items: center; /* SVG 중앙 정렬을 위해 추가 */
-  }
-  
-  .notification-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    flex-grow: 1;
-  }
-  
-  .notification-message {
-    font-weight: 600;
-    font-size: 14px;
-    color: rgba(0,0,0,0.8);
-    margin-bottom: 4px; /* 메시지와 시간 사이 간격 */
-  }
-  
-  .notification-time {
-    font-size: 12px;
-    color: #999;
-  }
-  
-  .notification-dot {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    right: 20px;
-    top: 20px;
-    background: #f11f2f;
-    border-radius: 50%;
-  }
-  
-  .no-notifications {
-    text-align: center;
-    padding: 40px 0;
-    color: #888;
-    font-size: 16px;
-  }
+  /* Modern, clean font applied globally for consistency */
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  max-width: 430px;
+  width: 100%;
+  min-height: 100vh;
+  background: #f0f2f5; /* Softer, lighter background */
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.inform-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  gap: 4px;
+  width: 100%;
+  height: 60px;
+  background: #ffffff; /* White header background */
+  position: sticky;
+  top: 0;
+  max-width: 430px;
+  z-index: 100;
+  margin: 0 auto;
+  border-bottom: 1px solid #e0e0e0; /* Subtle separator */
+}
+
+.inform-title {
+  font-family: 'Pretendard';
+  font-weight: 700; /* Bolder title */
+  font-size: 20px; /* Slightly larger title */
+  line-height: 160%;
+  color: #222; /* Darker, more prominent title */
+  text-align: center;
+  flex-grow: 1;
+}
+
+.back-arrow, .empty-space {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* Filter buttons container */
+.filter-buttons {
+  display: flex;
+  gap: 10px; /* Increased gap */
+  margin-top: 20px;
+  margin-bottom: 15px; /* More space below filter buttons */
+  overflow-x: auto;
+  padding: 0 20px;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.filter-buttons::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-button {
+  flex-shrink: 0;
+  padding: 10px 16px; /* Increased padding */
+  background: #ffffff; /* White background for buttons */
+  border: 1px solid #dcdcdc; /* Lighter border */
+  border-radius: 25px; /* More rounded pills shape */
+  font-size: 15px; /* Slightly larger font */
+  font-weight: 500; /* Medium font weight */
+  color: #555; /* Softer text color */
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-button.active {
+  background: #333; /* Darker active background */
+  color: #fff;
+  border-color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for active button */
+}
+
+/* Notification count */
+.notification-count {
+  margin-top: 0;
+  font-size: 15px; /* Slightly larger font */
+  color: #444; /* Darker text */
+  padding: 0 20px;
+  margin-bottom: 20px; /* Space between count and list */
+}
+
+/* Notification list */
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* Reduced gap between cards for a denser list */
+  margin-top: 0; /* Remove top margin, handled by count margin-bottom */
+  padding: 0 20px;
+  padding-bottom: 20px;
+}
+
+/* Notification card */
+.notification-card {
+  display: flex;
+  align-items: center;
+  padding: 18px 20px; /* Refined padding */
+  width: 100%;
+  background: #ffffff;
+  border-radius: 14px; /* More rounded corners */
+  position: relative;
+  box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); /* Enhanced shadow for depth */
+  transition: transform 0.2s ease, box-shadow 0.2s ease; /* Smooth hover/tap effect */
+}
+
+.notification-card:active {
+  transform: translateY(1px); /* Slight press effect on tap */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.notification-icon {
+  width: 48px; /* Slightly larger icon area */
+  height: 48px;
+  margin-right: 15px; /* Adjusted margin */
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f0f2f5; /* Light background for icons */
+  border-radius: 50%; /* Circular icons */
+}
+
+.notification-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex-grow: 1;
+}
+
+.notification-message {
+  font-weight: 600;
+  font-size: 15px; /* Slightly larger message font */
+  color: #333; /* Darker message color */
+  margin-bottom: 6px; /* Increased gap */
+  line-height: 1.4; /* Improved readability */
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #888; /* Softer time color */
+}
+
+.notification-dot {
+  position: absolute;
+  width: 7px; /* Slightly smaller dot */
+  height: 7px;
+  right: 18px;
+  top: 18px;
+  background: #ff4d4f; /* Vibrant red */
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(255, 77, 79, 0.4); /* Subtle glow */
+}
+
+.no-notifications {
+  text-align: center;
+  padding: 60px 0; /* More vertical padding */
+  color: #999; /* Softer color */
+  font-size: 16px;
+  font-weight: 500; /* Medium font weight */
+}
   

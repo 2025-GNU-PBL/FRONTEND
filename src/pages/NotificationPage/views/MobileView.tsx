@@ -43,29 +43,34 @@ const MobileView: React.FC<MobileViewProps> = ({ liveNotifications }) => {
     return false;
   });
 
-  const handleNotificationClick = async (notificationId: number) => {
+  const handleNotificationClick = async (notification: Notification) => { // notification 객체를 받도록 수정
     try {
-      await markNotificationAsRead(notificationId);
+      await markNotificationAsRead(notification.id);
       // Update the local state to reflect the change
       setNotifications(prev =>
         prev.map(n =>
-          n.id === notificationId ? { ...n, isRead: true } : n
+          n.id === notification.id ? { ...n, isRead: true } : n
         )
       );
-      // Also update liveNotifications if necessary, assuming it's managed externally or needs similar update
-      // For now, we'll assume liveNotifications are refreshed by parent or are short-lived.
-      // If liveNotifications also needs to be updated here, a prop or context would be needed.
+
+      if (notification.type === 'PAYMENT_REQUIRED') {
+        navigate('/checkout'); // 결제 요청 알림일 경우 리다이렉트
+      } else if (notification.actionUrl) {
+        // 다른 알림 타입에 대한 특정 동작이 필요하면 여기에 추가
+        // 예: navigate(notification.actionUrl); // actionUrl이 있다면 해당 URL로 이동
+      }
+
     } catch (error) {
-      console.error("Failed to mark notification as read:", error);
+      console.error("Failed to mark notification as read or navigate:", error);
     }
   };
 
   if (loading) {
-    return <div className='inform-page'>Loading notifications...</div>;
+    return <div className='inform-page'>알림을 불러오는 중...</div>;
   }
 
   if (error) {
-    return <div className='inform-page'>Error: {error}</div>;
+    return <div className='inform-page'>오류: {error}</div>;
   }
 
   return (
@@ -98,7 +103,7 @@ const MobileView: React.FC<MobileViewProps> = ({ liveNotifications }) => {
             <div
               className='notification-card'
               key={notification.id}
-              onClick={() => handleNotificationClick(notification.id)}
+              onClick={() => handleNotificationClick(notification)} // notification 객체를 전달하도록 수정
             >
               <div className={`notification-icon`}>
                 {notification.type === 'RESERVATION_APPROVED' ? (
