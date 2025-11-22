@@ -37,7 +37,6 @@ export function subscribeToNotifications(onNotification: (notification: any) => 
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          console.log("SSE stream closed.");
           break;
         }
 
