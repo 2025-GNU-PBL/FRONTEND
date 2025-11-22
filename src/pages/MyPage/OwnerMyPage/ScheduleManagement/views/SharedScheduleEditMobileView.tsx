@@ -43,10 +43,6 @@ function formatTime12h(timeStr: string) {
   return `${hh}:${mStr}`;
 }
 
-/** ====== 서버 DTO (Swagger 기준 schedule 등록) ======
- * request: { "title": "...", "content": "...", "scheduleDate": "2025-11-15" }
- * file: [ ... ]
- */
 type ScheduleCreateRequest = {
   title: string;
   content: string;
@@ -112,7 +108,7 @@ export default function SharedScheduleCreateMobileView() {
         next.endDate = "종료일은 시작일 이후여야 합니다.";
       } else if (sd.getTime() !== ed.getTime()) {
         // 현재는 하루 단위 일정만 허용
-        next.endDate = "현재는 하루 단위 일정만 등록할 수 있어요.";
+        next.endDate = "현재는 하루 단위 일정만 수정할 수 있어요.";
       }
     }
 
@@ -151,7 +147,7 @@ export default function SharedScheduleCreateMobileView() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  /** 등록 버튼 */
+  /** 수정 버튼 */
   const handleSubmit = useCallback(async () => {
     if (submitting) return;
     if (!validate()) return;
@@ -193,11 +189,11 @@ export default function SharedScheduleCreateMobileView() {
           "Content-Type": "multipart/form-data",
         },
       });
-      alert("공유 일정이 등록되었습니다.");
+      alert("공유 일정이 수정되었습니다.");
       nav(-1);
     } catch (e) {
       console.error("[SharedScheduleCreate] create error:", e);
-      alert("일정 등록 중 오류가 발생했습니다. 입력값을 확인해 주세요.");
+      alert("일정 수정 중 오류가 발생했습니다. 입력값을 확인해 주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -222,10 +218,10 @@ export default function SharedScheduleCreateMobileView() {
     <div className="w-full bg-[#F4F6FB]">
       {/* 390 × 844 고정 프레임 */}
       <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col relative">
-        {/* 상단 헤더 (커스텀 헤더 사용, iOS 인디케이터 X) */}
+        {/* 상단 헤더  */}
         <div className="sticky top-0 z-20 bg-white">
           <MyPageHeader
-            title="공유 일정 추가"
+            title="공유 일정 수정"
             onBack={onBack}
             showMenu={false}
           />
@@ -233,7 +229,7 @@ export default function SharedScheduleCreateMobileView() {
 
         {/* 콘텐츠 스크롤 영역 */}
         <div className="flex-1 overflow-y-auto">
-          <div className="px-5 pt-6 pb-6">
+          <div className="px-5 pt-18 pb-6">
             {/* 제목 입력 */}
             <div className="mt-4 mb-6 flex items-center gap-3">
               <div className="w-1 h-8 rounded-[3px] bg-[#FF2233]" />
@@ -419,7 +415,8 @@ export default function SharedScheduleCreateMobileView() {
                   </span>
                 </div>
               </div>
-              <div className="ml-9 w-[350px] max-w-full">
+
+              <div className="ml-9 w-full max-w-[310px]">
                 <textarea
                   className="w-full h-[56px] bg-transparent border border-[#E5E7EB] rounded-[12px] px-4 py-3 text-[13px] leading-[20px] resize-none outline-none text-[#111827] placeholder:text-[#C4C4C4]"
                   placeholder="업체 상호 / 주소 등을 입력해 주세요"
@@ -440,9 +437,10 @@ export default function SharedScheduleCreateMobileView() {
                   메모
                 </span>
               </div>
-              <div className="ml-9 w-[350px] max-w-full h-[120px] bg-[#F6F7FB] rounded-[12px] px-4 py-3">
+
+              <div className="ml-9 w-full max-w-[310px] bg-[#F6F7FB] rounded-[12px] px-4 py-3">
                 <textarea
-                  className="w-full h-full bg-transparent resize-none outline-none text-[14px] text-[#1E2124] placeholder:text-[#C4C4C4]"
+                  className="w-full h-[96px] bg-transparent resize-none outline-none text-[14px] text-[#1E2124] placeholder:text-[#C4C4C4]"
                   placeholder="메모를 입력해 주세요"
                   value={memo}
                   onChange={(e) => setMemo(e.target.value)}
@@ -460,7 +458,7 @@ export default function SharedScheduleCreateMobileView() {
               </div>
 
               {/* 파일 추가 버튼 & 숨겨진 input */}
-              <div className="ml-9 w-[350px] max-w-full">
+              <div className="ml-9 w-[310px] max-w-full">
                 <label className="inline-flex items-center justify-center px-4 h-[40px] rounded-[12px] bg-[#F6F7FB] border border-dashed border-[#E5E7EB] text-[13px] text-[#4B5563] cursor-pointer">
                   <span>파일 추가</span>
                   <input
@@ -501,8 +499,8 @@ export default function SharedScheduleCreateMobileView() {
           </div>
         </div>
 
-        {/* 하단 등록 버튼 */}
-        <div className="px-5 pb-6 pt-3">
+        {/* 하단 수정 버튼 */}
+        <div className="px-5 pb-18 pt-3">
           <button
             type="button"
             onClick={handleSubmit}
@@ -515,7 +513,7 @@ export default function SharedScheduleCreateMobileView() {
                 : "bg-[#F6F6F6] text-[#ADB3B6]",
             ].join(" ")}
           >
-            {submitting ? "등록 중..." : "등록하기"}
+            {submitting ? "수정 중..." : "수정하기"}
           </button>
         </div>
       </div>

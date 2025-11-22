@@ -45,6 +45,14 @@ function formatTime12h(timeStr: string) {
   return `${hh}:${mStr}`;
 }
 
+/** 서버에서 오는 HH:mm:ss → input용 HH:mm 로 변환 */
+function normalizeTimeToMinutes(time?: string | null): string {
+  if (!time) return "";
+  const [h, m] = time.split(":");
+  if (!h || !m) return time;
+  return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
+}
+
 /** ====== 서버 DTO ====== */
 
 /** 단건 조회 응답 (GET /api/v1/schedule/{id}) */
@@ -52,7 +60,10 @@ type ScheduleDetailResponse = {
   id: number;
   title: string;
   content: string;
-  scheduleDate: string; // "2025-11-19"
+  startScheduleDate: string; // "2025-11-24"
+  endScheduleDate: string; // "2025-11-25"
+  startTime: string; // "11:00:00"
+  endTime: string; // "16:00:00"
   scheduleFiles?: {
     id: number;
     name: string;
@@ -64,11 +75,11 @@ type ScheduleDetailResponse = {
 type ScheduleUpdateRequest = {
   title: string;
   content: string;
-  scheduleDate: string; // yyyy-MM-dd
-  keepFileIds: number[];
+  startScheduleDate: string; // yyyy-MM-dd
+  endScheduleDate: string; // yyyy-MM-dd
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
 };
-
-/** ====== 컴포넌트 ====== */
 
 export default function PersonalScheduleEditMobileView() {
   const nav = useNavigate();
@@ -77,7 +88,7 @@ export default function PersonalScheduleEditMobileView() {
 
   const onBack = useCallback(() => nav(-1), [nav]);
 
-  /** 기본 값: 오늘 기준 (상세 조회 성공하면 이 값은 덮어씀) */
+  /** 기본 값: 오늘 (상세 조회 성공하면 덮어씀) */
   const today = useMemo(() => new Date(), []);
   const defaultDate = useMemo(() => toDateInput(today), [today]);
 
@@ -88,14 +99,13 @@ export default function PersonalScheduleEditMobileView() {
   const [endTime, setEndTime] = useState("13:00");
   const [memo, setMemo] = useState("");
 
-  const [loading, setLoading] = useState(true); // 🔹 상세 조회 로딩
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   /** ====== 1) 상세 조회로 폼 초기값 세팅 ====== */
   useEffect(() => {
     if (!scheduleId || Number.isNaN(scheduleId)) {
-      // id 없으면 뒤로 보내버리기
       nav(-1);
       return;
     }
@@ -107,14 +117,19 @@ export default function PersonalScheduleEditMobileView() {
           `/api/v1/schedule/${scheduleId}`
         );
 
-        // 날짜: yyyy-MM-dd 그대로 사용
-        const date = data.scheduleDate;
-
         setTitle(data.title ?? "");
         setMemo(data.content ?? "");
-        setStartDate(date);
-        setEndDate(date);
-        // 시간은 아직 백엔드에 없으니 기본값 유지 (나중에 필드 생기면 여기서 파싱)
+
+        setStartDate(data.startScheduleDate || defaultDate);
+        setEndDate(
+          data.endScheduleDate || data.startScheduleDate || defaultDate
+        );
+
+        const normalizedStartTime = normalizeTimeToMinutes(data.startTime);
+        const normalizedEndTime = normalizeTimeToMinutes(data.endTime);
+
+        if (normalizedStartTime) setStartTime(normalizedStartTime);
+        if (normalizedEndTime) setEndTime(normalizedEndTime);
       } catch (e) {
         console.error("[PersonalScheduleEdit] fetch detail error:", e);
         alert("일정 정보를 불러오는 중 오류가 발생했습니다.");
@@ -125,7 +140,7 @@ export default function PersonalScheduleEditMobileView() {
     };
 
     fetchDetail();
-  }, [scheduleId, nav]);
+  }, [scheduleId, nav, defaultDate]);
 
   /** ====== 유효성 검사 ====== */
   const validate = useCallback(() => {
@@ -144,9 +159,6 @@ export default function PersonalScheduleEditMobileView() {
 
       if (sd > ed) {
         next.endDate = "종료일은 시작일 이후여야 합니다.";
-      } else if (sd.getTime() !== ed.getTime()) {
-        // 서버는 LocalDate 하나만 받으므로, 지금은 하루 단위 일정만 허용
-        next.endDate = "현재는 하루 단위 일정만 등록할 수 있어요.";
       }
     }
 
@@ -164,7 +176,7 @@ export default function PersonalScheduleEditMobileView() {
     }
     const sd = new Date(startDate);
     const ed = new Date(endDate);
-    return sd <= ed && sd.getTime() === ed.getTime();
+    return sd <= ed;
   }, [title, startDate, endDate, startTime, endTime]);
 
   /** ====== 수정 요청 (PATCH /api/v1/schedule/{id}) ====== */
@@ -176,21 +188,19 @@ export default function PersonalScheduleEditMobileView() {
     const requestPayload: ScheduleUpdateRequest = {
       title: title.trim(),
       content: memo.trim(),
-      scheduleDate: startDate,
-      keepFileIds: [], // 기존 파일 유지하고 싶으면 여기다가 ids 넣으면 됨
+      startScheduleDate: startDate,
+      endScheduleDate: endDate,
+      startTime,
+      endTime,
     };
 
     const formData = new FormData();
-
     formData.append(
       "request",
       new Blob([JSON.stringify(requestPayload)], {
         type: "application/json",
       })
     );
-
-    // 지금은 새 파일 업로드 UI가 없으니 file 파트는 비워둠
-    // formData.append("file", ...)
 
     try {
       setSubmitting(true);
@@ -207,7 +217,18 @@ export default function PersonalScheduleEditMobileView() {
     } finally {
       setSubmitting(false);
     }
-  }, [submitting, validate, title, memo, startDate, scheduleId, nav]);
+  }, [
+    submitting,
+    validate,
+    title,
+    memo,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    scheduleId,
+    nav,
+  ]);
 
   /** 날짜/시간 라벨 */
   const startDateLabel = formatKoreanDateLabel(startDate) || "날짜 선택";
@@ -266,7 +287,6 @@ export default function PersonalScheduleEditMobileView() {
 
               {/* 날짜 선택 라인 */}
               <div className="mt-2">
-                {/* 상단 라벨 영역 */}
                 <div className="flex items-center gap-4">
                   <Icon
                     icon="ant-design:calendar-outlined"
@@ -315,7 +335,6 @@ export default function PersonalScheduleEditMobileView() {
 
               {/* 시간 선택 라인 */}
               <div className="mt-6">
-                {/* 상단 라벨: 11:00  >  13:00 */}
                 <div className="flex items-center gap-4">
                   <Icon icon="prime:clock" className="w-5 h-5 text-[#333333]" />
 
@@ -332,12 +351,10 @@ export default function PersonalScheduleEditMobileView() {
                   </div>
                 </div>
 
-                {/* 이 시간이 어떤 날짜인지 설명 */}
                 <p className="mt-1 ml-9 text-[12px] text-[#9CA3AF]">
                   {timeDateHint}
                 </p>
 
-                {/* 시간 pill */}
                 <div className="mt-3 ml-9 flex items-center gap-3">
                   {/* 시작 시간 */}
                   <button
@@ -356,7 +373,6 @@ export default function PersonalScheduleEditMobileView() {
                       icon="mdi:clock-time-four-outline"
                       className="w-4 h-4 text-[#9CA3AF]"
                     />
-                    {/* 실제 입력은 숨김 */}
                     <input
                       type="time"
                       value={startTime}

@@ -60,7 +60,7 @@ import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductLis
 import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEditPage";
 import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
 import OwnerPersonalScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerPersonalScheduleCreatePage";
-import OwnerSharedScheduleCreatePage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleCreatePage";
+import OwnerSharedScheduleEditPage from "./pages/MyPage/OwnerMyPage/ScheduleManagement/OwnerSharedScheduleEdigPage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
 import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
 import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
@@ -283,7 +283,7 @@ const App = () => {
           />
           <Route
             path="/my-page/owner/schedules/shared"
-            element={<OwnerSharedScheduleCreatePage />}
+            element={<OwnerSharedScheduleEditPage />}
           />
           <Route path="/my-page/owner/coupons" element={<CouponListPage />} />
           <Route

@@ -45,14 +45,24 @@ function formatTime12h(timeStr: string) {
 
 /** ====== 서버 DTO 맞춘 생성 요청 타입 ======
  * {
- *   "request": { "title": "...", "content": "...", "scheduleDate": "2025-11-15" },
+ *   "request": {
+ *     "title": "...",
+ *     "content": "...",
+ *     "startScheduleDate": "2025-11-21",
+ *     "endScheduleDate":   "2025-11-21",
+ *     "startTime": "11:00",
+ *     "endTime":   "13:00"
+ *   },
  *   "file": [...]
  * }
  */
 type ScheduleCreateRequest = {
   title: string;
   content: string;
-  scheduleDate: string; // yyyy-MM-dd
+  startScheduleDate: string; // yyyy-MM-dd
+  endScheduleDate: string; // yyyy-MM-dd
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
 };
 
 export default function PersonalScheduleCreateWebView() {
@@ -90,10 +100,8 @@ export default function PersonalScheduleCreateWebView() {
 
       if (sd > ed) {
         next.endDate = "종료일은 시작일 이후여야 합니다.";
-      } else if (sd.getTime() !== ed.getTime()) {
-        // 서버는 LocalDate 하나만 받으므로, 지금은 하루 단위 일정만 허용
-        next.endDate = "현재는 하루 단위 일정만 등록할 수 있어요.";
       }
+      // 여러 날짜 허용 → 같은 날짜인지까지는 검사하지 않음
     }
 
     if (!startTime || !endTime) {
@@ -110,7 +118,8 @@ export default function PersonalScheduleCreateWebView() {
     }
     const sd = new Date(startDate);
     const ed = new Date(endDate);
-    return sd <= ed && sd.getTime() === ed.getTime();
+    // sd <= ed 만 체크
+    return sd <= ed;
   }, [title, startDate, endDate, startTime, endTime]);
 
   /** 등록 버튼 */
@@ -121,7 +130,10 @@ export default function PersonalScheduleCreateWebView() {
     const requestPayload: ScheduleCreateRequest = {
       title: title.trim(),
       content: memo.trim(),
-      scheduleDate: startDate, // yyyy-MM-dd
+      startScheduleDate: startDate,
+      endScheduleDate: endDate,
+      startTime,
+      endTime,
     };
 
     const formData = new FormData();
@@ -132,6 +144,7 @@ export default function PersonalScheduleCreateWebView() {
         type: "application/json",
       })
     );
+    // 현재는 파일 업로드 UI 없음 → file 파트 생략
 
     try {
       setSubmitting(true);
@@ -148,7 +161,17 @@ export default function PersonalScheduleCreateWebView() {
     } finally {
       setSubmitting(false);
     }
-  }, [submitting, validate, title, memo, startDate, nav]);
+  }, [
+    submitting,
+    validate,
+    title,
+    memo,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    nav,
+  ]);
 
   /** 날짜/시간 라벨 + 표시용 값 */
   const startDateLabel = formatKoreanDateLabel(startDate) || "날짜 선택";

@@ -7,8 +7,8 @@ import api from "../../../../../lib/api/axios";
 /** ====== 유틸 ====== */
 const toDateInput = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getMonth() + 1
-  ).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    d.getDate()
+  ).padStart(2, "0")}`;
 
 const weekdayKo = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -43,17 +43,14 @@ function formatTime12h(timeStr: string) {
   return `${hh}:${mStr}`;
 }
 
-/** ====== 서버 DTO 맞춘 생성 요청 타입 ======
- * Swagger 예시:
- * {
- *   "request": { "title": "...", "content": "...", "scheduleDate": "2025-11-15" },
- *   "file": [...]
- * }
- */
+/** ====== 서버 DTO ====== */
 type ScheduleCreateRequest = {
   title: string;
   content: string;
-  scheduleDate: string; // yyyy-MM-dd
+  startScheduleDate: string; // yyyy-MM-dd
+  endScheduleDate: string; // yyyy-MM-dd
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
 };
 
 export default function PersonalScheduleCreateMobileView() {
@@ -91,9 +88,6 @@ export default function PersonalScheduleCreateMobileView() {
 
       if (sd > ed) {
         next.endDate = "종료일은 시작일 이후여야 합니다.";
-      } else if (sd.getTime() !== ed.getTime()) {
-        // 서버는 LocalDate 하나만 받으므로, 지금은 하루 단위 일정만 허용
-        next.endDate = "현재는 하루 단위 일정만 등록할 수 있어요.";
       }
     }
 
@@ -111,7 +105,7 @@ export default function PersonalScheduleCreateMobileView() {
     }
     const sd = new Date(startDate);
     const ed = new Date(endDate);
-    return sd <= ed && sd.getTime() === ed.getTime();
+    return sd <= ed;
   }, [title, startDate, endDate, startTime, endTime]);
 
   /** 등록 버튼 */
@@ -119,23 +113,24 @@ export default function PersonalScheduleCreateMobileView() {
     if (submitting) return;
     if (!validate()) return;
 
-    // 서버 DTO 형태에 맞게 request 객체 구성
     const requestPayload: ScheduleCreateRequest = {
       title: title.trim(),
       content: memo.trim(),
-      scheduleDate: startDate, // yyyy-MM-dd
+      startScheduleDate: startDate, // yyyy-MM-dd
+      endScheduleDate: endDate, // yyyy-MM-dd
+      startTime,
+      endTime,
     };
 
-    // multipart/form-data 로 FormData 구성
     const formData = new FormData();
 
-    // "request" 파트에 JSON 넣기
     formData.append(
       "request",
       new Blob([JSON.stringify(requestPayload)], {
         type: "application/json",
       })
     );
+    // file 필드는 현재 개인 일정에서는 사용 안 해서 append 안 함
 
     try {
       setSubmitting(true);
@@ -152,7 +147,17 @@ export default function PersonalScheduleCreateMobileView() {
     } finally {
       setSubmitting(false);
     }
-  }, [submitting, validate, title, memo, startDate, nav]);
+  }, [
+    submitting,
+    validate,
+    title,
+    memo,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    nav,
+  ]);
 
   /** 날짜/시간 라벨 */
   const startDateLabel = formatKoreanDateLabel(startDate) || "날짜 선택";
@@ -204,7 +209,6 @@ export default function PersonalScheduleCreateMobileView() {
 
             {/* 날짜 선택 라인 */}
             <div className="mt-2">
-              {/* 상단 라벨 영역 */}
               <div className="flex items-center gap-4">
                 <Icon
                   icon="ant-design:calendar-outlined"
@@ -224,7 +228,6 @@ export default function PersonalScheduleCreateMobileView() {
                 </div>
               </div>
 
-              {/* 날짜 입력 pill (캘린더 아이콘 하나만 - 기본 브라우저 아이콘 사용) */}
               <div className="mt-3 ml-9 flex flex-col gap-2">
                 <div className="w-[260px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
                   <input
@@ -253,7 +256,6 @@ export default function PersonalScheduleCreateMobileView() {
 
             {/* 시간 선택 라인 */}
             <div className="mt-6">
-              {/* 상단 라벨: 11:00  >  13:00 */}
               <div className="flex items-center gap-4">
                 <Icon icon="prime:clock" className="w-5 h-5 text-[#333333]" />
 
@@ -270,12 +272,10 @@ export default function PersonalScheduleCreateMobileView() {
                 </div>
               </div>
 
-              {/* 이 시간이 어떤 날짜인지 설명 */}
               <p className="mt-1 ml-9 text-[12px] text-[#9CA3AF]">
                 {timeDateHint}
               </p>
 
-              {/* 시간 pill */}
               <div className="mt-3 ml-9 flex items-center gap-3">
                 {/* 시작 시간 */}
                 <button
@@ -294,7 +294,6 @@ export default function PersonalScheduleCreateMobileView() {
                     icon="mdi:clock-time-four-outline"
                     className="w-4 h-4 text-[#9CA3AF]"
                   />
-                  {/* 실제 입력은 숨김 */}
                   <input
                     type="time"
                     value={startTime}
@@ -338,7 +337,7 @@ export default function PersonalScheduleCreateMobileView() {
               )}
             </div>
 
-            {/* 메모 입력 (완전 하나의 필드로) */}
+            {/* 메모 입력 */}
             <div className="mt-8">
               <div className="w-full h-[160px] bg-[#F6F7FB] rounded-[12px] px-4 py-3">
                 <textarea
