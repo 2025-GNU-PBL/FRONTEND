@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, Route, Routes, useLocation, useMatch } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { jwtDecode } from 'jwt-decode'; // jwtDecode import
+import { jwtDecode } from "jwt-decode"; // jwtDecode import
 
 import ClientLoginPage from "./pages/LoginPage/client/ClientLoginPage";
 import OwnerLoginPage from "./pages/LoginPage/owner/OwnerLoginPage";
@@ -79,6 +79,8 @@ import TestPage from "./pages/TestPage/TestPage";
 import PersonalScheduleCreatePage from "./pages/CalendarPage/PersonalScheduleCreatePage";
 import PersonalScheduleEditPage from "./pages/CalendarPage/PersonalScheduleEditPage";
 import SharedScheduleEditPage from "./pages/CalendarPage/SharedScheduleEdigPage";
+import { subscribeToNotifications } from "./lib/api/notificationService";
+import CustomNotificationToast from "./components/CustomNotificationToast/CustomNotificationToast";
 
 function Layout() {
   const location = useLocation();
@@ -193,8 +195,12 @@ const App = () => {
   const { isAuth } = useAppSelector((state) => state.user); // isAuth만 가져오도록 수정
   const rehydrated = useAppSelector((state) => state._persist?.rehydrated);
 
-  const [currentAccessToken, setCurrentAccessToken] = useState<string | null>(localStorage.getItem("accessToken"));
-  const [liveNotifications, setLiveNotifications] = useState<Notification[]>([]);
+  const [currentAccessToken, setCurrentAccessToken] = useState<string | null>(
+    localStorage.getItem("accessToken")
+  );
+  const [liveNotifications, setLiveNotifications] = useState<Notification[]>(
+    []
+  );
   const [currentUserId, setCurrentUserId] = useState<number | null>(null); // userId 상태 추가
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null); // userRole 상태 추가
 
@@ -207,7 +213,8 @@ const App = () => {
 
     if (token) {
       try {
-        const decodedToken: { user_id: number; user_role: string; } = jwtDecode(token); // 토큰 디코딩
+        const decodedToken: { user_id: number; user_role: string } =
+          jwtDecode(token); // 토큰 디코딩
         setCurrentUserId(decodedToken.user_id);
         setCurrentUserRole(decodedToken.user_role);
       } catch (error) {
@@ -233,28 +240,37 @@ const App = () => {
     let cleanup: () => void = () => {};
 
     // accessToken, userId, userRole이 모두 있을 때만 구독 시작
-    if (currentAccessToken && currentUserId !== null && currentUserRole !== null) {
+    if (
+      currentAccessToken &&
+      currentUserId !== null &&
+      currentUserRole !== null
+    ) {
       cleanup = subscribeToNotifications(
         (newNotification) => {
           // 현재 로그인한 사용자가 알림의 대상인지 확인
-          const isTargetUser = newNotification.recipientId === currentUserId && newNotification.recipientRole === currentUserRole;
+          const isTargetUser =
+            newNotification.recipientId === currentUserId &&
+            newNotification.recipientRole === currentUserRole;
 
           if (isTargetUser) {
             setLiveNotifications((prev) => [newNotification, ...prev]);
-            toast(<CustomNotificationToast message={newNotification.message} />, {
-              onClick: () => {
-                if (newNotification.type === 'PAYMENT_REQUIRED') {
-                  window.location.href = '/checkout';
-                } else if (newNotification.actionUrl) {
-                  window.location.href = newNotification.actionUrl;
-                } else {
-                  window.location.href = '/notification';
-                }
-              },
-              hideProgressBar: true,
-              closeButton: false,
-              className: "custom-toastify-toast", // CustomNotificationToast의 루트 요소에 적용
-            });
+            toast(
+              <CustomNotificationToast message={newNotification.message} />,
+              {
+                onClick: () => {
+                  if (newNotification.type === "PAYMENT_REQUIRED") {
+                    window.location.href = "/checkout";
+                  } else if (newNotification.actionUrl) {
+                    window.location.href = newNotification.actionUrl;
+                  } else {
+                    window.location.href = "/notification";
+                  }
+                },
+                hideProgressBar: true,
+                closeButton: false,
+                className: "custom-toastify-toast", // CustomNotificationToast의 루트 요소에 적용
+              }
+            );
           }
         },
         (error) => {
@@ -284,7 +300,10 @@ const App = () => {
         <Route path="/makeup" element={<MakeupPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/quotation" element={<QuotationPage />} />
-        <Route path="/notification" element={<NotificationPage liveNotifications={liveNotifications} />} />
+        <Route
+          path="/notification"
+          element={<NotificationPage liveNotifications={liveNotifications} />}
+        />
         <Route path="/wedding/:id" element={<ProductDetailPage />} />
         <Route path="/studio/:id" element={<ProductDetailPage />} />
         <Route path="/dress/:id" element={<ProductDetailPage />} />
