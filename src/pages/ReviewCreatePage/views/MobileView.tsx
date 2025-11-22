@@ -1,9 +1,36 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { multipartApi } from "../../../lib/api/multipartApi";
 
 const MAX_REVIEW_LENGTH = 200;
 const MAX_IMAGES = 5;
+
+interface ReviewLocationState {
+  productId?: number;
+  shopName?: string;
+  productName?: string;
+  thumbnailUrl?: string;
+}
+
+type ImageStateItem = { id: number; url: string; file: File };
+
+const JSON_PART_KEY = "request";
+const FILE_PART_KEY = "images";
+
+// 만족도 매핑 (필요하면 백엔드 enum에 맞춰 여기만 수정하면 됨)
+function mapSatisfaction(answer: string | null): string {
+  switch (answer) {
+    case "만족해요":
+      return "SATISFIED";
+    case "보통이에요":
+      return "NEUTRAL";
+    case "별로에요":
+      return "UNSATISFIED";
+    default:
+      return "SATISFIED";
+  }
+}
 
 const MobileView: React.FC = () => {
   const [rating, setRating] = useState<number>(0);
@@ -13,12 +40,16 @@ const MobileView: React.FC = () => {
 
   const [review, setReview] = useState<string>("");
 
-  const [images, setImages] = useState<
-    { id: number; url: string; file: File }[]
-  >([]);
+  const [images, setImages] = useState<ImageStateItem[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageIdRef = useRef<number>(0);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { productId, shopName, productName, thumbnailUrl } =
+    (location.state as ReviewLocationState) || {};
 
   // 이미지 URL 정리
   useEffect(() => {
@@ -26,8 +57,6 @@ const MobileView: React.FC = () => {
       images.forEach((img) => URL.revokeObjectURL(img.url));
     };
   }, [images]);
-
-  const navigate = useNavigate();
 
   const handleGoBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -89,17 +118,61 @@ const MobileView: React.FC = () => {
   const isFormValid =
     rating > 0 && !!q1Answer && !!q2Answer && review.trim().length > 0;
 
-  const handleSubmit = () => {
-    if (!isFormValid) return;
+  const handleSubmit = async () => {
+    if (!isFormValid || submitting) return;
 
-    // 아직 API 연동 전이므로, 일단 콘솔로 확인
-    console.log("리뷰 제출", {
-      rating,
-      q1Answer,
-      q2Answer,
-      review,
-      images,
+    if (!productId) {
+      alert("상품 정보가 없습니다. 다시 시도해주세요.");
+      return;
+    }
+
+    const satisfaction = mapSatisfaction(q1Answer);
+
+    const requestBody = {
+      title: productName,
+      star: rating,
+      comment: review.trim(),
+      satisfaction,
+    };
+
+    const jsonBlob = new Blob([JSON.stringify(requestBody)], {
+      type: "application/json",
     });
+
+    const formData = new FormData();
+    formData.append(JSON_PART_KEY, jsonBlob, "request.json");
+
+    images.forEach((image) => {
+      if (image.file) {
+        formData.append(FILE_PART_KEY, image.file, image.file.name);
+      }
+    });
+
+    // 디버그용 로그
+    console.group("[리뷰 작성] FormData 디버그");
+    console.log("endpoint:", `/api/v1/products/${productId}/reviews`);
+    console.log("JSON:", requestBody);
+    console.log(
+      "images:",
+      images.map((i) => i.file?.name)
+    );
+    console.groupEnd();
+
+    try {
+      setSubmitting(true);
+      const res = await multipartApi.post(
+        `/api/v1/products/${productId}/reviews`,
+        formData
+      );
+      console.log("리뷰 작성 성공:", res.data);
+      alert("리뷰가 등록되었습니다.");
+      navigate(-1);
+    } catch (err) {
+      console.error("리뷰 작성 실패:", err);
+      alert("리뷰 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -129,13 +202,21 @@ const MobileView: React.FC = () => {
       <main className="px-5 pb-32">
         {/* 상품 정보 영역 */}
         <section className="mt-4 flex gap-3">
-          <div className="w-[68px] h-[68px] rounded-[6px] border border-[#F5F5F5] bg-gray-100" />
+          <div className="w-[68px] h-[68px] rounded-[6px] border border-[#F5F5F5] bg-gray-100 overflow-hidden">
+            {thumbnailUrl && (
+              <img
+                src={thumbnailUrl}
+                alt="상품 썸네일"
+                className="w-full h-full object-cover"
+              />
+            )}
+          </div>
           <div className="flex flex-col justify-center">
             <p className="text-[14px] leading-[1.5] tracking-[-0.2px] text-[rgba(0,0,0,0.4)] text-left">
-              제이바이로이스타
+              {shopName ?? "상점명"}
             </p>
             <p className="mt-1 text-[14px] leading-[1.5] tracking-[-0.2px] text-[#1E2124]">
-              [촬영] 신부신랑 헤어메이크업 (부원장)
+              {productName ?? "상품명"}
             </p>
           </div>
         </section>
@@ -339,7 +420,7 @@ const MobileView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleClickUpload}
-                disabled={images.length >= MAX_IMAGES}
+                disabled={images.length >= MAX_IMAGES || submitting}
                 className="inline-flex flex-shrink-0 items-center justify-center px-[27px] py-4 gap-2 w-[82px] h-[82px] border border-dashed border-[#E1E4E6] rounded-[8px] bg-white"
               >
                 <div className="flex flex-col items-center">
@@ -410,18 +491,18 @@ const MobileView: React.FC = () => {
         <div className="px-5 pb-5">
           <button
             type="button"
-            disabled={!isFormValid}
+            disabled={!isFormValid || submitting}
             onClick={handleSubmit}
             className={`w-full h-14 rounded-[12px] flex items-center justify-center ${
-              isFormValid ? "bg-[#FF2233]" : "bg-[#F6F6F6]"
+              isFormValid && !submitting ? "bg-[#FF2233]" : "bg-[#F6F6F6]"
             }`}
           >
             <span
               className={`text-[16px] font-semibold leading-[1.5] tracking-[-0.2px] ${
-                isFormValid ? "text-white" : "text-[#ADB3B6]"
+                isFormValid && !submitting ? "text-white" : "text-[#ADB3B6]"
               }`}
             >
-              작성 완료
+              {submitting ? "작성 중..." : "작성 완료"}
             </span>
           </button>
         </div>

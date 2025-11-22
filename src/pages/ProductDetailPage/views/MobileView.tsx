@@ -1,10 +1,10 @@
-// MobileView.tsx
 import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import api from "../../../lib/api/axios";
 import { BasicInfoContent } from "../sections/BasicInfoContent";
-import { ReviewContent } from "../sections/ReviewContent";
+import { DetailContent } from "../sections/DetailContent";
+import ReviewContent from "../sections/ReviewContent"; // ✅ default import
 import { useAppSelector } from "../../../store/hooks";
 import type {
   Category,
@@ -36,7 +36,9 @@ const MobileView = () => {
   const { id } = useParams<{ id: string }>();
   const isAuth = useAppSelector((s) => s.user.isAuth);
 
-  const [activeTab, setActiveTab] = useState<"basic" | "review">("basic");
+  const [activeTab, setActiveTab] = useState<"basic" | "detail" | "review">(
+    "basic"
+  );
   const [isCouponOpen, setIsCouponOpen] = useState(false);
   const [showCouponToast, setShowCouponToast] = useState(false);
   const [cartCount, setCartCount] = useState<number>(0); // 장바구니 상품 개수 상태
@@ -126,9 +128,7 @@ const MobileView = () => {
   const handleShare = async () => {
     const url = window.location.href;
     const title =
-      (detailData as any)?.name ||
-      (detailData as any)?.title ||
-      "웨딩 상품 상세";
+      detailData?.name || (detailData as any)?.title || "웨딩 상품 상세";
 
     if (navigator.share) {
       try {
@@ -385,6 +385,30 @@ const MobileView = () => {
 
   const handleGoReviewTab = () => {
     setActiveTab("review");
+
+    // ✅ 평점후기 탭으로 전환하면서 화면 최상단으로 스크롤
+    if (typeof window !== "undefined") {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto", // 필요하면 'smooth' 로 변경 가능
+      });
+    }
+  };
+
+  /* ========================= 핸들러: 상품상세 탭으로 이동 ========================= */
+
+  const handleGoDetailTab = () => {
+    setActiveTab("detail");
+
+    // ✅ 상품상세 탭으로 전환하면서 화면 최상단으로 스크롤
+    if (typeof window !== "undefined") {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto", // 필요하면 'smooth' 로 변경 가능
+      });
+    }
   };
 
   /* ========================= 렌더 ========================= */
@@ -454,7 +478,7 @@ const MobileView = () => {
           </div>
         </header>
 
-        {/* 탭 바: 기본정보 / 평점후기 */}
+        {/* 탭 바: 기본정보 / 상세설명·사진 / 평점후기 */}
         <div className="w-full h-12 flex bg-white border-b border-[#E0E5EB]">
           <button
             type="button"
@@ -466,6 +490,17 @@ const MobileView = () => {
             }`}
           >
             기본정보
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("detail")}
+            className={`flex-1 flex items-center justify-center text-[15px] font-medium transition-all ${
+              activeTab === "detail"
+                ? "border-b-2 border-[#1E2124] text-[#1E2124]"
+                : "text-[#999999]"
+            }`}
+          >
+            상품상세
           </button>
           <button
             type="button"
@@ -498,17 +533,16 @@ const MobileView = () => {
               {activeTab === "basic" && (
                 <BasicInfoContent
                   data={detailData}
-                  category={detailData._category}
                   onOpenCoupon={handleOpenCoupon}
-                  onGoReviewTab={handleGoReviewTab} // ✅ 리뷰 전체보기 -> 평점후기 탭 이동
+                  onGoReviewTab={handleGoReviewTab} // ✅ 리뷰 전체보기 -> 평점후기 탭 이동 + 상단 스크롤
+                  onGoDetailTab={handleGoDetailTab} // ✅ 상품 상세 사진 전체보기 -> 상품상세 탭 이동 + 상단 스크롤
                 />
               )}
 
+              {activeTab === "detail" && <DetailContent data={detailData} />}
+
               {activeTab === "review" && (
-                <ReviewContent
-                  targetId={detailData.id}
-                  category={detailData._category}
-                />
+                <ReviewContent targetId={detailData.id} />
               )}
             </>
           )}
@@ -583,7 +617,7 @@ const MobileView = () => {
             ${isCouponOpen ? "translate-y-0" : "translate-y-full"}
           `}
         >
-          <div className="w-full flex itemscenter justify-between px-5 my-6">
+          <div className="w-full flex items-center justify-between px-5 my-6">
             <span className="text-[18px] font-semibold text-[#1E2124]">
               사용 가능한 쿠폰
             </span>
@@ -600,85 +634,107 @@ const MobileView = () => {
           </div>
 
           <div className="px-5 pb-6 max-h-[60vh] overflow-y-auto">
-            {/* ✅ 디자인은 그대로, 내용만 API + 내 쿠폰 상태로 렌더링 */}
-            {coupons.map((coupon, index) => {
-              const isFirst = index === 0;
-              const isLast = index === coupons.length - 1;
-
-              // 서버에서 조회한 내 쿠폰 + 현재 세션 다운로드 내역 둘 다 고려
-              const isDownloaded =
-                downloadedCouponIds.includes(coupon.id) ||
-                myCouponIds.has(coupon.id);
-
-              const wrapperMargin = [
-                isFirst ? "mt-5" : "mt-4",
-                isLast ? "mb-2" : "",
-              ]
-                .filter(Boolean)
-                .join(" ");
-
-              const isRate = coupon.discountType === "RATE";
-              const discountText = isRate
-                ? `${coupon.discountValue}% 할인`
-                : `${coupon.discountValue.toLocaleString()}원 할인`;
-
-              const line1 =
-                coupon.minPurchaseAmount > 0
-                  ? `${coupon.minPurchaseAmount.toLocaleString()}원 이상 구매 시${
-                      coupon.maxDiscountAmount > 0
-                        ? ` 최대 ${coupon.maxDiscountAmount.toLocaleString()}원 할인`
-                        : ""
-                    }`
-                  : coupon.couponDetail;
-
-              const line2 =
-                coupon.startDate && coupon.expirationDate
-                  ? `사용기간 : ${formatDate(coupon.startDate)} ~ ${formatDate(
-                      coupon.expirationDate
-                    )}`
-                  : "";
-
-              return (
-                <div
-                  key={coupon.id}
-                  className={`w-full flex items-stretch ${wrapperMargin}`}
-                >
-                  <div className="flex-1 border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-2">
-                    <div className="text-[14px] text-[#000000]">
-                      {coupon.couponName}
-                    </div>
-                    <div className="text-[20px] font-bold text-[#000000] leading-[1.4]">
-                      {discountText}
-                    </div>
-                    <div className="flex flex-col gap-[2px] text-[12px] text-[#999999]">
-                      {line1 && <span>{line1}</span>}
-                      {line2 && <span>{line2}</span>}
-                    </div>
-                  </div>
-                  <div className="w-[72px] bg-[#F6F7FB] border border-l-0 border-[#F2F2F2] rounded-r-[16px] flex items-center justify-center">
-                    <button
-                      type="button"
-                      className="w-9 h-9 rounded-full bg-white flex items-center justify-center"
-                      onClick={
-                        isDownloaded
-                          ? undefined
-                          : () => handleCouponDownload(coupon.id)
-                      }
-                      disabled={isDownloaded}
-                    >
-                      <Icon
-                        icon={
-                          isDownloaded
-                            ? "material-symbols:check-rounded" // 다운로드 완료 상태 아이콘
-                            : "streamline:arrow-down-2" // 다운로드 전 아이콘
-                        }
-                        className="w-4 h-4 text-[#000000]"
-                      />
-                    </button>
-                  </div>
+            {/* ✅ 쿠폰이 없을 때 Empty State */}
+            {coupons.length === 0 ? (
+              <div className="w-full flex flex-col items-center justify-center py-10">
+                <div className="w-[64px] h-[64px] rounded-full bg-[#F6F7FB] flex items-center justify-center mb-4">
+                  <Icon
+                    icon="solar:ticket-sale-linear"
+                    className="w-7 h-7 text-[#B0B5C0]"
+                  />
                 </div>
-              );
-            })}
+                <p className="text-[15px] font-semibold text-[#1E2124] mb-1 text-center">
+                  받을 수 있는 쿠폰이 없어요
+                </p>
+                <p className="text-[13px] text-[#999999] leading-[1.6] text-center">
+                  이 상품에는 현재 사용 가능한 쿠폰이 없어요.
+                  <br />
+                  추후 이벤트나 프로모션이 열리면 쿠폰이 추가될 수 있어요.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* ✅ 디자인은 그대로, 내용만 API + 내 쿠폰 상태로 렌더링 */}
+                {coupons.map((coupon, index) => {
+                  const isFirst = index === 0;
+                  const isLast = index === coupons.length - 1;
+
+                  // 서버에서 조회한 내 쿠폰 + 현재 세션 다운로드 내역 둘 다 고려
+                  const isDownloaded =
+                    downloadedCouponIds.includes(coupon.id) ||
+                    myCouponIds.has(coupon.id);
+
+                  const wrapperMargin = [
+                    isFirst ? "mt-5" : "mt-4",
+                    isLast ? "mb-2" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+
+                  const isRate = coupon.discountType === "RATE";
+                  const discountText = isRate
+                    ? `${coupon.discountValue}% 할인`
+                    : `${coupon.discountValue.toLocaleString()}원 할인`;
+
+                  const line1 =
+                    coupon.minPurchaseAmount > 0
+                      ? `${coupon.minPurchaseAmount.toLocaleString()}원 이상 구매 시${
+                          coupon.maxDiscountAmount > 0
+                            ? ` 최대 ${coupon.maxDiscountAmount.toLocaleString()}원 할인`
+                            : ""
+                        }`
+                      : coupon.couponDetail;
+
+                  const line2 =
+                    coupon.startDate && coupon.expirationDate
+                      ? `사용기간 : ${formatDate(
+                          coupon.startDate
+                        )} ~ ${formatDate(coupon.expirationDate)}`
+                      : "";
+
+                  return (
+                    <div
+                      key={coupon.id}
+                      className={`w-full flex items-stretch ${wrapperMargin}`}
+                    >
+                      <div className="flex-1 border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-2">
+                        <div className="text-[14px] text-[#000000]">
+                          {coupon.couponName}
+                        </div>
+                        <div className="text-[20px] font-bold text-[#000000] leading-[1.4]">
+                          {discountText}
+                        </div>
+                        <div className="flex flex-col gap-[2px] text-[12px] text-[#999999]">
+                          {line1 && <span>{line1}</span>}
+                          {line2 && <span>{line2}</span>}
+                        </div>
+                      </div>
+                      <div className="w-[72px] bg-[#F6F7FB] border border-l-0 border-[#F2F2F2] rounded-r-[16px] flex items-center justify-center">
+                        <button
+                          type="button"
+                          className="w-9 h-9 rounded-full bg-white flex items-center justify-center"
+                          onClick={
+                            isDownloaded
+                              ? undefined
+                              : () => handleCouponDownload(coupon.id)
+                          }
+                          disabled={isDownloaded}
+                        >
+                          <Icon
+                            icon={
+                              isDownloaded
+                                ? "material-symbols:check-rounded" // 다운로드 완료 상태 아이콘
+                                : "streamline:arrow-down-2" // 다운로드 전 아이콘
+                            }
+                            className="w-4 h-4 text-[#000000]"
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         </div>
 
@@ -736,7 +792,7 @@ const MobileView = () => {
                   예약이 확정돼요
                 </p>
 
-                {/* 일러스트 영역 (image 3204 자리) */}
+                {/* 일러스트 영역 */}
                 <img
                   className="w-[204px] h-[204px] mb-6 flex items-center justify-center"
                   src="/images/reservation.png"

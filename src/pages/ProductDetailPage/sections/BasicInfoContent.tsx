@@ -1,23 +1,45 @@
-// sections/BasicInfoContent.tsx
+import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
-import type { Category, NormalizedDetail } from "../../../type/product";
+import type { NormalizedDetail } from "../../../type/product";
 
-/* ========================= Props ========================= */
+/* ========================= Types ========================= */
 
 type BasicInfoContentProps = {
   data: NormalizedDetail;
-  category: Category;
   onOpenCoupon?: () => void;
   onGoReviewTab?: () => void; // 평점후기 탭 이동용 콜백
+  onGoDetailTab?: () => void; // 상품상세 탭 이동용 콜백
+};
+
+type ReviewItem = {
+  id: number;
+  customerId: number;
+  customerName: string;
+  productId: number;
+  star: number;
+  title: string;
+  comment: string;
+  imageUrl?: string | null;
+  satisfaction: "SATISFIED" | "NEUTRAL" | "DISSATISFIED" | string;
+};
+
+type ReviewResponse = {
+  content: ReviewItem[];
+  page?: {
+    size: number;
+    number: number;
+    totalElements: number;
+    totalPages: number;
+  };
 };
 
 /* ========================= 컴포넌트 ========================= */
 
 export const BasicInfoContent = ({
   data,
-  category,
   onOpenCoupon,
   onGoReviewTab,
+  onGoDetailTab,
 }: BasicInfoContentProps) => {
   const handleOpenCouponClick = () => {
     if (onOpenCoupon) onOpenCoupon();
@@ -26,6 +48,13 @@ export const BasicInfoContent = ({
   const handleReviewAllClick = () => {
     if (onGoReviewTab) onGoReviewTab();
   };
+
+  const handleDetailAllClick = () => {
+    if (onGoDetailTab) onGoDetailTab();
+  };
+
+  // ✅ productId (리뷰 API 호출용)
+  const productId = (data as any).id as number | string | undefined;
 
   // 메인 이미지 (첫 번째 이미지 사용)
   const mainImageUrl =
@@ -38,8 +67,6 @@ export const BasicInfoContent = ({
       : "";
 
   // ✅ 태그 정리
-  // 주신 예시: tags: ["SMALL"]
-  // 혹시 다른 카테고리가 객체 배열(tagName 등)일 수도 있으니 둘 다 처리
   const rawTags = (data.tags ?? []) as any[];
   const tagLabels: string[] = rawTags
     .map((t) =>
@@ -56,18 +83,65 @@ export const BasicInfoContent = ({
   const primaryTag = tagLabels[0];
   const secondaryTag = tagLabels[1];
 
-  // ✅ 평점 / 리뷰 수
-  // 예시 데이터:
+  // ✅ 평점 / 리뷰 수 (상단 요약 영역)
+  // 기존 데이터 예시:
   // "starCount": 4.9,
-  // "averageRating": 5
-  // => 4.9점, 리뷰 5개로 해석
+  // "averageRating": 5   => 4.9점, 리뷰 5개
   const averageRating = (data as any).averageRating;
   const starCount = (data as any).starCount;
+  const hasRating = typeof starCount === "number";
 
-  const hasRating = typeof averageRating === "number";
-  const ratingValue = hasRating ? averageRating.toFixed(1) : null;
-  const reviewCount =
-    typeof starCount === "number" ? (starCount as number) : null;
+  // ✅ 하단 리뷰 영역용 상태
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [reviewTotalCount, setReviewTotalCount] = useState<number>(0);
+  const [isReviewLoading, setIsReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  /* ========================= 리뷰 불러오기 ========================= */
+
+  useEffect(() => {
+    if (!productId) return;
+
+    const controller = new AbortController();
+
+    const fetchReviews = async () => {
+      try {
+        setIsReviewLoading(true);
+        setReviewError(null);
+
+        // 필요하면 여기 fetch 대신 프로젝트 api.get으로 변경해서 사용
+        const res = await fetch(`/api/v1/products/${productId}/reviews`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to load reviews: ${res.status}`);
+        }
+
+        const json: ReviewResponse = await res.json();
+
+        const list = Array.isArray(json.content) ? json.content : [];
+        setReviews(list);
+        setReviewTotalCount(
+          typeof json.page?.totalElements === "number"
+            ? json.page.totalElements
+            : list.length
+        );
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        console.error(err);
+        setReviewError("리뷰 정보를 불러오지 못했어요.");
+      } finally {
+        setIsReviewLoading(false);
+      }
+    };
+
+    fetchReviews();
+
+    return () => {
+      controller.abort();
+    };
+  }, [productId]);
 
   return (
     <>
@@ -112,15 +186,18 @@ export const BasicInfoContent = ({
         </h1>
 
         {/* 평점 / 리뷰 */}
-        {hasRating && ratingValue && (
+        {hasRating && (
           <div className="mt-1 flex items-center gap-1">
             <img src="/images/star4.png" alt="평점" className="h-3 w-3" />
-            <span className="text-[12px] text-[#999999]">{ratingValue}</span>
-            {typeof reviewCount === "number" && (
-              <span className="text-[12px] text-[#999999] ml-1">
-                리뷰 {reviewCount}개
-              </span>
-            )}
+            <span className="text-[12px] text-[#999999]">
+              {typeof starCount === "number" ? starCount.toFixed(1) : starCount}
+            </span>
+            <span className="text-[12px] text-[#999999] ml-1">
+              리뷰{" "}
+              {reviewTotalCount ||
+                (typeof averageRating === "number" ? averageRating : 0)}
+              개
+            </span>
           </div>
         )}
 
@@ -196,6 +273,7 @@ export const BasicInfoContent = ({
             <button
               type="button"
               className="flex items-center gap-1 text-[14px] text-[#666666]"
+              onClick={handleDetailAllClick}
             >
               <span>전체보기</span>
               <Icon
@@ -234,7 +312,7 @@ export const BasicInfoContent = ({
         <span className="text-[16px] font-semibold text-[#000000]">Banner</span>
       </div>
 
-      {/* 리뷰 요약 */}
+      {/* ========================= 리뷰 섹션 (가로 스크롤 카드) ========================= */}
       <div className="px-5 pt-4 pb-6">
         <section className="mt-6">
           <div className="flex items-center justify-between">
@@ -242,7 +320,7 @@ export const BasicInfoContent = ({
               <h2 className="text-[16px] font-semibold text-[#1E2124]">리뷰</h2>
               <div className="flex items-center gap-1">
                 <span className="text-[14px] font-semibold text-[#999999]">
-                  {typeof reviewCount === "number" ? `${reviewCount}개` : "0개"}
+                  {reviewTotalCount}개
                 </span>
                 <Icon
                   icon="mingcute:down-line"
@@ -263,10 +341,85 @@ export const BasicInfoContent = ({
             </button>
           </div>
 
-          <div className="mt-3 space-y-2 text-[12px] text-[#666666]">
-            <div className="p-3 bg-[#F7F9FA] rounded-[8px]">
-              실제 이용 고객들의 후기가 여기에 노출됩니다.
-            </div>
+          {/* 내용 영역 */}
+          <div className="mt-3">
+            {/* 로딩 */}
+            {isReviewLoading && (
+              <div className="p-3 bg-[#F7F9FA] rounded-[8px] text-[12px] text-[#999999]">
+                리뷰를 불러오는 중입니다...
+              </div>
+            )}
+
+            {/* 에러 */}
+            {!isReviewLoading && reviewError && (
+              <div className="p-3 bg-[#F7F9FA] rounded-[8px] text-[12px] text-[#FF4D4F]">
+                {reviewError}
+              </div>
+            )}
+
+            {/* 데이터 없음 */}
+            {!isReviewLoading && !reviewError && reviews.length === 0 && (
+              <div className="p-3 bg-[#F7F9FA] rounded-[8px] text-[12px] text-[#666666]">
+                아직 등록된 리뷰가 없습니다.
+              </div>
+            )}
+
+            {/* ✅ 리뷰 리스트: 가로 스크롤 카드 (디자인: F6F7FB, radius 8) */}
+            {!isReviewLoading && !reviewError && reviews.length > 0 && (
+              <div className="-mx-5 px-5">
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {reviews.map((review) => (
+                    <div
+                      key={review.id}
+                      className="min-w-[237px] max-w-[237px] bg-[#F6F7FB] rounded-[8px] p-3 flex-shrink-0"
+                    >
+                      {/* 상단: 별점 + 작성자 */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1">
+                          <Icon
+                            icon="mdi:star"
+                            className="w-4 h-4 text-[#FFC93A]"
+                          />
+                          <span className="text-[12px] font-semibold text-[#1E2124]">
+                            {review.star?.toFixed
+                              ? review.star.toFixed(1)
+                              : review.star}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-[#999999] max-w-[120px] truncate text-right">
+                          {review.customerName || "익명"}
+                        </span>
+                      </div>
+
+                      {/* 타이틀 */}
+                      {review.title && (
+                        <p className="text-[12px] font-semibold text-[#1E2124] mb-1 truncate">
+                          {review.title}
+                        </p>
+                      )}
+
+                      {/* 코멘트 */}
+                      {review.comment && (
+                        <p className="text-[12px] text-[#666666] leading-[1.5] max-h-[54px] overflow-hidden">
+                          {review.comment}
+                        </p>
+                      )}
+
+                      {/* 이미지가 있는 경우 썸네일 */}
+                      {review.imageUrl && (
+                        <div className="mt-2 w-full h-[72px] rounded-[4px] overflow-hidden bg_white">
+                          <img
+                            src={review.imageUrl}
+                            alt="리뷰 이미지"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </div>

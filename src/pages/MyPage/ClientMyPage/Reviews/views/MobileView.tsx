@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import MyPageHeader from "../../../../components/MyPageHeader";
-import api from "../../../../lib/api/axios";
+import MyPageHeader from "../../../../../components/MyPageHeader";
+import api from "../../../../../lib/api/axios";
 
 /** 서버 응답 DTO  */
 type ReviewApiResponseItem = {
@@ -74,6 +74,7 @@ export default function MobileView() {
             },
           }
         );
+        console.log(data);
 
         const list = (data?.content || []).map(mapToReview);
         setReviews(list);
@@ -105,13 +106,13 @@ export default function MobileView() {
           <MyPageHeader title="리뷰 내역" onBack={onBack} showMenu={false} />
         </div>
 
-        <div className="flex-1 w-full overflow-y-auto mt-30">
+        <div className="flex-1 w-full overflow-y-auto">
           {loading ? (
-            <div className="flex-1 flex items-center justify-center text-[14px] text-[#999999]">
+            <div className=" mt-30 flex-1 flex items-center justify-center text-[14px] text-[#999999]">
               리뷰 내역을 불러오는 중입니다...
             </div>
           ) : hasReviews ? (
-            <>
+            <div className="mt-15">
               <div className="px-5 pt-5">
                 <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
                   리뷰 내역 {reviews.length}
@@ -123,9 +124,9 @@ export default function MobileView() {
                   <ReviewRow key={r.id} review={r} onDelete={handleDelete} />
                 ))}
               </div>
-            </>
+            </div>
           ) : (
-            <div className="mt-35">
+            <div className="mt-65">
               <EmptyState />
             </div>
           )}
@@ -212,42 +213,16 @@ function EmptyState() {
         className="w-[72px] h-[72px] text-[#D3D4D6] mb-4"
       />
       <div className="flex flex-col items-center">
-        <p className="text-[16px] leading-[24px] font-semibold tracking-[-0.2px] text-black mb-2">
+        <p className="text-[18px] leading-[24px] font-semibold tracking-[-0.2px] text-black mb-2">
           작성한 리뷰 내역이 없어요
         </p>
-        <p className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
+        <p className="mb-1 text-[14px] leading-[18px] tracking-[-0.1px] text-[#999999]">
           이용한 상품의 리뷰를
         </p>
-        <p className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
+        <p className="text-[14px] leading-[18px] tracking-[-0.1px] text-[#999999]">
           작성해주세요
         </p>
       </div>
     </div>
   );
-}
-
-/** createdAt → "n일 전" 변환 */
-function formatAgo(iso?: string): string {
-  if (!iso) return "";
-  const created = new Date(iso);
-  if (Number.isNaN(created.getTime())) return "";
-
-  const now = new Date();
-  const diffMs = now.getTime() - created.getTime();
-
-  const diffMin = Math.floor(diffMs / (1000 * 60));
-  if (diffMin < 1) return "방금 전";
-  if (diffMin < 60) return `${diffMin}분 전`;
-
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간 전`;
-
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 30) return `${diffDay}일 전`;
-
-  const diffMonth = Math.floor(diffDay / 30);
-  if (diffMonth < 12) return `${diffMonth}개월 전`;
-
-  const diffYear = Math.floor(diffMonth / 12);
-  return `${diffYear}년 전`;
 }

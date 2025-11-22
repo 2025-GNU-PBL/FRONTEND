@@ -148,7 +148,7 @@ const MobileView: React.FC = () => {
             {/* 로딩 중일 때는 아무것도 표시하지 않음 */}
             {!isLoaded ? null : coupons.length === 0 ? (
               // 쿠폰이 하나도 없을 때 Empty State
-              <div className="flex-1 flex flex-col items-center justify-center pt-[80px] pb-10">
+              <div className="mt-40 flex-1 flex flex-col items-center justify-center pt-[80px] pb-10">
                 <div className="flex flex-col items-center gap-4">
                   {/* 이미지 영역 */}
                   {/* TODO: 실제 에셋 경로로 src 수정 */}

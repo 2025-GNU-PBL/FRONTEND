@@ -12,30 +12,82 @@ import { Icon } from "@iconify/react";
 import api from "../../../../../lib/api/axios";
 import { useAppSelector } from "../../../../../store/hooks";
 
-/** 백엔드 CustomerCouponResponseDto 구조 기준 */
-type UserCoupon = {
+/** 모바일 뷰와 동일한 Coupon 타입 */
+interface Coupon {
   userCouponId: number;
-  status: "AVAILABLE" | "USED" | "EXPIRED" | string;
+  status: "AVAILABLE" | "USED" | "EXPIRED" | "CANCELLED" | string;
   downloadedAt: string;
   usedAt: string | null;
   couponId: number;
   couponCode: string;
   couponName: string;
   couponDetail: string;
-  discountType: string; // PERCENT, AMOUNT 등
+  discountType: string;
   discountValue: number;
   maxDiscountAmount: number;
   minPurchaseAmount: number;
   startDate: string;
   expirationDate: string;
-  category: string; // "웨딩홀" | "스튜디오" | ...
+  category: string; // 백엔드에서 오는 RAW 값 (예: "DRESS", "WEDDING_HALL")
   canUse: boolean;
   daysUntilExpiration: number;
   productId: number | null;
   productName: string | null;
+}
+
+type CouponCategory = "전체" | "웨딩홀" | "스튜디오" | "드레스" | "메이크업";
+
+// 백엔드 category → 프론트 탭 한글 카테고리 매핑 (모바일과 동일)
+const BACKEND_CATEGORY_TO_KO: Record<string, CouponCategory> = {
+  WEDDING_HALL: "웨딩홀",
+  HALL: "웨딩홀",
+  STUDIO: "스튜디오",
+  DRESS: "드레스",
+  MAKEUP: "메이크업",
+  // 백엔드에서 혹시 한글로 내려오는 경우도 대비
+  웨딩홀: "웨딩홀",
+  스튜디오: "스튜디오",
+  드레스: "드레스",
+  메이크업: "메이크업",
 };
 
-type CategoryFilter = "전체" | "웨딩홀" | "스튜디오" | "드레스" | "메이크업";
+/* ----- 공통 포맷 함수 (모바일과 동일) ----- */
+
+// 숫자 포맷
+const formatNumber = (value: number) => {
+  if (value == null) return "";
+  return new Intl.NumberFormat("ko-KR").format(value);
+};
+
+// 할인 표시
+const formatDiscount = (discountType: string, discountValue: number) => {
+  if (!discountValue) return "0원";
+
+  if (discountType === "PERCENT" || discountType === "RATE") {
+    return `${discountValue}%`;
+  }
+
+  return `${formatNumber(discountValue)}원`;
+};
+
+// 최소금액 조건
+const formatCondition = (minPurchaseAmount: number) => {
+  if (!minPurchaseAmount || minPurchaseAmount <= 0) {
+    return "최소 주문금액 제한 없음";
+  }
+  return `최소 ${formatNumber(minPurchaseAmount)}원 이상 구매 시`;
+};
+
+// 날짜 포맷: 2025-01-01 -> 2025.01.01
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return "";
+  return dateStr.replace(/-/g, ".");
+};
+
+// 쿠폰의 실제(한글) 카테고리값으로 변환
+const getCouponKoCategory = (rawCategory: string): CouponCategory | null => {
+  return BACKEND_CATEGORY_TO_KO[rawCategory] ?? null;
+};
 
 export default function WebView() {
   const nav = useNavigate();
@@ -43,9 +95,9 @@ export default function WebView() {
 
   const isAuth = useAppSelector((s) => s.user.isAuth);
 
-  const [category, setCategory] = useState<CategoryFilter>("전체");
+  const [category, setCategory] = useState<CouponCategory>("전체");
   const [sort, setSort] = useState<"최신순" | "오래된순">("최신순");
-  const [coupons, setCoupons] = useState<UserCoupon[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(false);
 
   // 정렬 드롭다운 상태
@@ -66,7 +118,7 @@ export default function WebView() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [sortOpen]);
 
-  /** 내 사용 가능한 쿠폰 조회 */
+  /** 내 쿠폰 전체 조회 (모바일과 동일 엔드포인트) */
   useEffect(() => {
     if (!isAuth) {
       setCoupons([]);
@@ -76,9 +128,7 @@ export default function WebView() {
     const fetchMyCoupons = async () => {
       try {
         setLoading(true);
-        const res = await api.get<UserCoupon[]>(
-          "/api/v1/customer/coupon/my/available"
-        );
+        const res = await api.get<Coupon[]>("/api/v1/customer/coupon/my");
         setCoupons(res.data || []);
       } catch (err) {
         console.error("[Coupon/WebView] fetchMyCoupons error:", err);
@@ -90,36 +140,14 @@ export default function WebView() {
     fetchMyCoupons();
   }, [isAuth]);
 
-  /** 쿠폰 재다운로드 (또는 발급) */
-  const handleDownload = useCallback(async (couponId: number) => {
-    try {
-      const res = await api.post<UserCoupon>(
-        `/api/v1/customer/coupon/${couponId}/download`
-      );
-      if (!res.data) return;
-
-      setCoupons((prev) => {
-        const idx = prev.findIndex(
-          (c) => c.userCouponId === res.data.userCouponId
-        );
-        if (idx === -1) return [...prev, res.data];
-        const copy = [...prev];
-        copy[idx] = res.data;
-        return copy;
-      });
-
-      // TODO: 토스트 "쿠폰이 발급되었습니다."
-    } catch (err) {
-      console.error("[Coupon/WebView] handleDownload error:", err);
-      // TODO: 토스트 에러 안내
-    }
-  }, []);
-
-  /** 카테고리 + 정렬 적용 리스트 */
+  /** 카테고리 + 정렬 적용 리스트 (카테고리는 RAW → 한글 매핑) */
   const filtered = useMemo(() => {
-    const list = coupons.filter((c) =>
-      category === "전체" ? true : c.category === category
-    );
+    const list = coupons.filter((c) => {
+      if (category === "전체") return true;
+      const koCategory = getCouponKoCategory(c.category);
+      if (!koCategory) return false;
+      return koCategory === category;
+    });
 
     list.sort((a, b) => {
       const da = +new Date(a.downloadedAt || a.startDate);
@@ -132,7 +160,7 @@ export default function WebView() {
 
   return (
     <div className="w-full min-h-screen bg-[#F3F5F9]">
-      <div className="mx-auto max-w-[960px] px-6 lg:px-8 pt-10 pb-24">
+      <div className="mx-auto max-w-[960px] px-6 lg:px-8 pt-5 pb-24">
         {/* 상단 타이틀 & 뒤로가기 */}
         <div className="flex items-center gap-3 mt-20 mb-6">
           <button
@@ -234,13 +262,7 @@ export default function WebView() {
           ) : filtered.length === 0 ? (
             <EmptyState />
           ) : (
-            filtered.map((c) => (
-              <CouponCard
-                key={c.userCouponId}
-                c={c}
-                onDownload={handleDownload}
-              />
-            ))
+            filtered.map((c) => <CouponCard key={c.userCouponId} c={c} />)
           )}
         </section>
       </div>
@@ -298,61 +320,65 @@ function SortItem({
   );
 }
 
-function CouponCard({
-  c,
-  onDownload,
-}: {
-  c: UserCoupon;
-  onDownload: (couponId: number) => void;
-}) {
-  const period = `사용기간 : ${c.startDate} ~ ${c.expirationDate}`;
-  const discountLabel =
-    c.discountType === "PERCENT"
-      ? `${c.discountValue}%`
-      : `${c.discountValue.toLocaleString()}원`;
+function CouponCard({ c }: { c: Coupon }) {
+  const discountLabel = formatDiscount(c.discountType, c.discountValue);
+  const conditionLabel = formatCondition(c.minPurchaseAmount);
+  const periodLabel = `${formatDate(c.startDate)} ~ ${formatDate(
+    c.expirationDate
+  )}`;
+  const isUsed = c.status === "USED";
 
   return (
-    <article className="relative overflow-hidden rounded-2xl bg-white border border-[#E6E9EF] shadow-sm px-6 py-5">
-      {/* 오른쪽 은은한 스트립 */}
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-[96px] bg-[#F6F7FB]" />
+    <article className="relative flex overflow-hidden rounded-2xl bg-white border border-[#E6E9EF] shadow-sm">
+      {/* 왼쪽: 쿠폰 정보 */}
+      <div className="flex-1 px-6 py-3">
+        {/* 타이틀 */}
+        <div className="flex items-start gap-2">
+          <Icon
+            icon="solar:ticket-sale-linear"
+            className="mt-1 w-5 h-5 text-[#6B7280]"
+            aria-hidden
+          />
+          <h3 className="text-[16px] leading-[22px] font-medium tracking-[-0.2px] text-[#111827]">
+            {c.couponName}
+          </h3>
+        </div>
 
-      {/* 상단: 타이틀 */}
-      <div className="relative flex items-start gap-2 pr-[110px]">
-        <Icon
-          icon="solar:ticket-sale-linear"
-          className="mt-1 w-5 h-5 text-[#6B7280]"
-          aria-hidden
-        />
-        <h3 className="text-[16px] leading-[22px] font-medium tracking-[-0.2px] text-[#111827]">
-          {c.couponName}
-        </h3>
-      </div>
-
-      {/* 본문: 할인값 / 설명 */}
-      <div className="relative mt-2 pr-[110px]">
-        <div className="text-[22px] leading-[32px] font-bold tracking-[-0.2px] text-[#111827]">
+        {/* 할인값 */}
+        <div className="mt-2 text-[22px] leading-[32px] font-bold tracking-[-0.2px] text-[#111827]">
           {discountLabel}
         </div>
+
+        {/* 조건 & 기간 */}
         <div className="mt-2 space-y-1 text-[13px] leading-[18px] tracking-[-0.1px] text-[#6B7280]">
-          <p className="line-clamp-1">{c.couponDetail}</p>
-          <p>{period}</p>
+          <p className="line-clamp-1">{conditionLabel}</p>
+          <p>{periodLabel}</p>
         </div>
       </div>
 
-      {/* 다운로드 / 재발급 버튼 */}
-      <div className="absolute right-6 top-1/2 -translate-y-1/2">
-        <button
-          type="button"
-          className="w-10 h-10 rounded-full bg-white shadow-md ring-1 ring-black/5 flex items-center justify-center hover:translate-y-[-1px] transition-transform disabled:opacity-40"
-          aria-label="쿠폰 다운로드"
-          onClick={() => onDownload(c.couponId)}
-          disabled={!c.canUse}
-        >
-          <Icon
-            icon="mdi:download-outline"
-            className="w-5 h-5 text-[#111827]"
-          />
-        </button>
+      {/* 오른쪽: 사용 여부 영역 (모바일 로직과 동일 컨셉) */}
+      <div className="flex w-[120px] items-center justify-center bg-[#F6F7FB] border-l border-[#E6E9EF]">
+        <div className="flex flex-col items-center gap-2">
+          <div
+            className={`flex items-center justify-center w-[40px] h-[40px] rounded-full ${
+              isUsed ? "bg-[#F3F4F6]" : "bg-[#ECFDF3]"
+            }`}
+          >
+            <Icon
+              icon={isUsed ? "mdi:check-all" : "mdi:check-circle-outline"}
+              className={`w-5 h-5 ${
+                isUsed ? "text-[#6B7280]" : "text-[#16A34A]"
+              }`}
+            />
+          </div>
+          <span
+            className={`whitespace-nowrap text-[13px] font-medium ${
+              isUsed ? "text-[#6B7280]" : "text-[#16A34A]"
+            }`}
+          >
+            {isUsed ? "사용됨" : "사용 가능"}
+          </span>
+        </div>
       </div>
     </article>
   );

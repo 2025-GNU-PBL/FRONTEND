@@ -7,8 +7,8 @@ import React, {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import MyPageHeader from "../../../../components/MyPageHeader";
-import api from "../../../../lib/api/axios";
+import MyPageHeader from "../../../../../components/MyPageHeader";
+import api from "../../../../../lib/api/axios";
 
 /** UI에 쓰는 상태값 */
 type ReservationStatus = "대기" | "확정" | "취소";
@@ -35,6 +35,43 @@ type Reservation = {
   createdAt: string; // YYYY-MM-DD
 };
 
+/** ----- 컴포넌트 밖으로 뺀 유틸 함수들 ----- */
+
+/** 서버 status → UI status 매핑 */
+const mapStatus = (status: string): ReservationStatus => {
+  switch (status) {
+    case "APPROVE":
+    case "APPROVED":
+    case "CONFIRM":
+    case "CONFIRMED":
+      return "확정";
+    case "CANCEL":
+    case "CANCELED":
+      return "취소";
+    default:
+      return "대기";
+  }
+};
+
+/** 응답 DTO → 화면용 모델 변환 */
+const toReservation = (r: ReservationApiResponse): Reservation => {
+  const dateOnly = (r.reservationTime || "").slice(0, 10) || "";
+  return {
+    id: String(r.id),
+    partner: r.title || "예약 업체",
+    title: r.content || "",
+    status: mapStatus(r.status),
+    createdAt: dateOnly,
+  };
+};
+
+/** YYYY-MM-DD → YYYY.MM.DD 포맷 */
+function formatDate(date: string) {
+  if (!date) return "";
+  const [y, m, d] = date.split("-");
+  return `${y}.${m}.${d}`;
+}
+
 export default function MobileView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
@@ -50,34 +87,6 @@ export default function MobileView() {
 
   const statusRef = useRef<HTMLDivElement | null>(null);
   const sortRef = useRef<HTMLDivElement | null>(null);
-
-  /** 서버 status → UI status 매핑 */
-  const mapStatus = (status: string): ReservationStatus => {
-    switch (status) {
-      case "APPROVE":
-      case "APPROVED":
-      case "CONFIRM":
-      case "CONFIRMED":
-        return "확정";
-      case "CANCEL":
-      case "CANCELED":
-        return "취소";
-      default:
-        return "대기";
-    }
-  };
-
-  /** 응답 DTO → 화면용 모델 변환 */
-  const toReservation = (r: ReservationApiResponse): Reservation => {
-    const dateOnly = (r.reservationTime || "").slice(0, 10) || "";
-    return {
-      id: String(r.id),
-      partner: r.title || "예약 업체",
-      title: r.content || "",
-      status: mapStatus(r.status),
-      createdAt: dateOnly,
-    };
-  };
 
   /** 예약 목록 조회 */
   useEffect(() => {
@@ -261,15 +270,11 @@ export default function MobileView() {
                 예약 정보를 불러오는 중입니다...
               </div>
             ) : filtered.length === 0 ? (
-              <EmptyState />
+              <div className="mt-35">
+                <EmptyState />
+              </div>
             ) : (
-              filtered.map((r, index) => (
-                <ReservationRow
-                  key={r.id}
-                  r={r}
-                  withSoftBackground={index === 1}
-                />
-              ))
+              filtered.map((r) => <ReservationRow key={r.id} r={r} />)
             )}
           </div>
         </div>
@@ -324,20 +329,9 @@ function StatusBadge({ status }: { status: ReservationStatus }) {
 }
 
 /** 예약 리스트 행 */
-function ReservationRow({
-  r,
-  withSoftBackground,
-}: {
-  r: Reservation;
-  withSoftBackground?: boolean;
-}) {
+function ReservationRow({ r }: { r: Reservation }) {
   return (
-    <div
-      className={[
-        "w-full px-5",
-        withSoftBackground ? "bg-[#F6F7FB]" : "bg-white",
-      ].join(" ")}
-    >
+    <div className="w-full px-5 bg-white">
       <div className="w-full max-w-[350px] mx-auto flex items-center justify-between gap-[40px] border-b border-[#F3F4F5] py-4">
         {/* 좌측 텍스트 */}
         <div className="flex flex-col gap-1 w-[207px]">
@@ -362,26 +356,22 @@ function ReservationRow({
 /** 빈 상태 뷰 */
 function EmptyState() {
   return (
-    <div className="w-full h-[489px] flex flex-col items-center justify-center gap-6">
-      <img src="/images/document.png" className="w-20 h-20 text-[#DADADA]" />
-      <div className="flex flex-col items-center gap-1">
-        <p className="text-[16px] leading-[24px] font-semibold tracking-[-0.2px] text-black">
-          예약 내역이 없어요
+    <div className="flex-1 flex flex-col items-center justify-center py-10">
+      <img
+        src="/images/document.png"
+        className="w-[72px] h-[72px] text-[#D3D4D6] mb-4"
+      />
+      <div className="flex flex-col items-center">
+        <p className="text-[18px] leading-[24px] font-semibold tracking-[-0.2px] text-black mb-2">
+          1개월 내 예약 내역이 없어요
         </p>
-        <p className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
+        <p className="mb-1 text-[14px] leading-[18px] tracking-[-0.1px] text-[#999999]">
           마음에 드는 상품 상세에서
         </p>
-        <p className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
+        <p className="text-[14px] leading-[18px] tracking-[-0.1px] text-[#999999]">
           예약을 등록해 보세요
         </p>
       </div>
     </div>
   );
-}
-
-/** YYYY-MM-DD → YYYY.MM.DD 포맷 */
-function formatDate(date: string) {
-  if (!date) return "";
-  const [y, m, d] = date.split("-");
-  return `${y}.${m}.${d}`;
 }

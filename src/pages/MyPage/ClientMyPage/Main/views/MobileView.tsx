@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { useAppDispatch, useAppSelector } from "../../../../store/hooks";
-import { logoutUser } from "../../../../store/thunkFunctions";
-import SideMenu from "../../../../components/SideMenu";
+import { useAppDispatch, useAppSelector } from "../../../../../store/hooks";
+import { logoutUser } from "../../../../../store/thunkFunctions";
+import SideMenu from "../../../../../components/SideMenu";
 
 // 메인 페이지처럼 메뉴 상태를 부모에서 내려받도록 Props 정의
 type Props = {

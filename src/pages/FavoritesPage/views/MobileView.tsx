@@ -35,165 +35,212 @@ const MobileView = ({
   onClear,
 }: Props) => {
   return (
-    // 배경을 깔끔한 단색으로 변경
-    <div className="min-h-screen bg-gray-50">
-      {/* 헤더: 전체적인 높이(패딩) 축소 */}
-      <section className="px-4 pt-6 pb-4 bg-gradient-to-r from-pink-400 via-rose-400 to-fuchsia-400 text-white rounded-b-3xl shadow-lg sticky top-0 z-10">
-        {/* 타이틀 크기 축소 */}
-        <h1 className="text-2xl font-bold">찜 목록</h1>
-        <p className="mt-1.5 text-white/90 text-sm">{totalCount}개 저장됨</p>
-
-        {/* 검색: 높이(py) 축소 */}
-        <div className="mt-4 relative">
-          <Icon
-            icon="mdi:magnify"
-            className="absolute left-3 top-2.5 text-white/70"
-            fontSize={18}
-          />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="원하는 항목을 검색하세요"
-            className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white/30 backdrop-blur-md placeholder-white/80 border border-white/30 outline-none focus:ring-2 focus:ring-white transition-all"
-          />
-          {query && (
-            <button
-              className="absolute right-2 top-1.5 p-2 rounded-xl hover:bg-white/20"
-              onClick={() => setQuery("")}
-              aria-label="검색 지우기"
-            >
-              <Icon icon="mdi:close" fontSize={18} />
-            </button>
-          )}
-        </div>
-
-        {/* 카테고리 칩: 높이(py) 및 간격(mt) 축소 */}
-        <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {categories.map((c) => {
-            const active = c.key === category;
-            return (
-              <button
-                key={c.key}
-                onClick={() => setCategory(c.key)}
-                className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-full border backdrop-blur-md transition-all duration-200 ${
-                  active
-                    ? "bg-white text-rose-500 border-white shadow-md font-semibold"
-                    : "bg-white/10 text-white border-white/40 hover:bg-white/20"
-                }`}
-              >
-                <Icon icon={c.icon} className="text-sm" />
-                <span className="text-sm">{c.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* 정렬 & 비우기: 높이(py) 및 간격(mt) 축소 */}
-        <div className="mt-3 flex items-center gap-2">
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as Props["sort"])}
-            className="flex-1 rounded-lg bg-white/20 text-white px-3 py-2 border border-white/40 outline-none font-medium text-sm"
-          >
-            <option value="recent">최신순</option>
-            <option value="priceAsc">가격 낮은순</option>
-            <option value="priceDesc">가격 높은순</option>
-          </select>
-          <button
-            onClick={onClear}
-            className="px-3 py-2 rounded-lg bg-white text-rose-500 border border-white hover:bg-rose-50 active:scale-95 transition font-semibold"
-            title="전체 비우기"
-          >
-            <div className="flex items-center gap-1.5">
-              <Icon icon="mdi:trash-can-outline" fontSize={16} />
-              <span className="text-sm">비우기</span>
+    <div className="min-h-screen bg-gradient-to-b from-[#F5F2FF] via-[#F9F5FF] to-[#FFF7FB] text-[13px] text-black/80 mb-15">
+      {/* 상단 헤더 영역 */}
+      <section className="sticky top-0 z-10 bg-gradient-to-r from-[#7B61D1] via-[#A26DFF] to-[#FF7DA8] text-white shadow-md">
+        <div className="px-4 pt-7 pb-5 rounded-b-3xl bg-gradient-to-b from-black/5 to-transparent">
+          {/* 타이틀 + 카운트 */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-[22px] font-bold tracking-tight">
+                나의 찜 목록
+              </h1>
+              <p className="mt-1 text-xs text-white/80">
+                총{" "}
+                <span className="font-semibold text-white">
+                  {totalCount.toLocaleString()}
+                </span>
+                개의 항목이 저장되어 있어요
+              </p>
             </div>
-          </button>
+
+            <div className="flex flex-col items-end text-xs text-white/80">
+              <span className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 backdrop-blur-sm">
+                <Icon
+                  icon="solar:heart-bold-duotone"
+                  className="mr-1.5 h-3.5 w-3.5"
+                />
+                웨딩 PICK
+              </span>
+            </div>
+          </div>
+
+          {/* 검색 입력 */}
+          <div className="mt-4">
+            <div className="relative">
+              <Icon
+                icon="tabler:search"
+                className="pointer-events-none absolute left-3 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-white/80"
+              />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="원하는 스튜디오 · 드레스 등을 검색해보세요"
+                className="w-full rounded-2xl border border-white/30 bg-white/15 px-9 pr-10 py-2.5 text-[13px] placeholder:text-white/70 outline-none backdrop-blur-md focus:border-white focus:ring-2 focus:ring-white/60"
+              />
+              {query && (
+                <button
+                  className="absolute right-2.5 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full p-1.5 text-white/80 hover:bg-white/10 active:scale-95"
+                  onClick={() => setQuery("")}
+                  aria-label="검색 지우기"
+                >
+                  <Icon icon="mdi:close" className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 카테고리 칩 */}
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {categories.map((c) => {
+              const active = c.key === category;
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => setCategory(c.key)}
+                  className={[
+                    "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] transition-all duration-200 whitespace-nowrap backdrop-blur-md",
+                    active
+                      ? "bg-white text-[#7B61D1] border-white shadow-md"
+                      : "bg-white/5 border-white/30 text-white hover:bg-white/15",
+                  ].join(" ")}
+                >
+                  <Icon icon={c.icon} className="h-3.5 w-3.5" />
+                  <span>{c.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 정렬 / 전체삭제 */}
+          <div className="mt-3 flex items-center gap-2">
+            <div className="flex-1 rounded-2xl bg-white/10 p-[2px]">
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as Props["sort"])}
+                className="w-full rounded-[14px] border border-white/25 bg-white/20 px-3 py-2 text-[12px] font-medium text-white outline-none backdrop-blur-md focus:border-white focus:ring-2 focus:ring-white/60"
+              >
+                <option value="recent">최근에 추가된 순</option>
+                <option value="priceAsc">가격 낮은순</option>
+                <option value="priceDesc">가격 높은순</option>
+              </select>
+            </div>
+            <button
+              onClick={onClear}
+              className="flex items-center gap-1.5 rounded-2xl border border-white/80 bg-white/95 px-3.5 py-2 text-[12px] font-semibold text-[#DF3B3B] shadow-sm hover:bg-white active:scale-95"
+              title="전체 비우기"
+            >
+              <Icon icon="mdi:trash-can-outline" className="h-4 w-4" />
+              <span>전체 비우기</span>
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* 리스트: 전체적인 패딩(px, py) 축소 */}
+      {/* 리스트 영역 */}
       <section className="px-4 py-5">
         {items.length === 0 ? (
-          // 빈 화면 UI: 크기 및 패딩 축소
-          <div className="text-center text-gray-500 pt-16 pb-20">
-            <div className="mx-auto w-24 h-24 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-inner">
+          <div className="flex flex-col items-center justify-center pt-16 pb-20 text-center text-gray-500">
+            <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-[#F0EBFF] via-[#FFE4F2] to-[#FFF4E5] shadow-inner">
               <Icon
-                icon="mdi:heart-outline"
-                className="text-4xl text-pink-500"
+                icon="solar:heart-linear"
+                className="h-10 w-10 text-[#7B61D1]"
               />
             </div>
-            <p className="mt-4 text-base font-semibold">
+            <p className="mt-4 text-[15px] font-semibold text-black/70">
               아직 찜한 항목이 없어요
             </p>
-            <p className="mt-1 text-sm text-gray-400">
-              마음에 드는 항목에 하트를 눌러 저장하세요.
+            <p className="mt-1 text-[12px] text-black/40">
+              마음에 드는 웨딩홀 · 스튜디오 · 드레스를 찜해두면
+              <br />한 번에 비교하기 훨씬 쉬워져요.
             </p>
           </div>
         ) : (
-          // 카드 간격(gap) 축소
           <ul className="grid grid-cols-1 gap-4">
             {items.map((it) => (
               <li
                 key={it.id}
-                // 카드: 둥근 모서리(rounded), 그림자(shadow) 조정
-                className="group rounded-xl bg-white shadow-md border border-gray-100/80 transition-all duration-300 overflow-hidden active:shadow-lg"
+                className="group overflow-hidden rounded-2xl border border-[#ECE7FF] bg-white/95 shadow-[0_6px_20px_rgba(123,97,209,0.10)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(123,97,209,0.16)]"
               >
                 <div className="relative">
-                  {/* 이미지 비율: 4:3으로 변경 (모바일에서 더 안정적) */}
-                  <div className="aspect-[4/3] bg-gray-100 overflow-hidden">
+                  {/* 이미지 */}
+                  <div className="aspect-[4/3] w-full overflow-hidden bg-[#F4F4F8]">
                     {it.imageUrl ? (
                       <img
                         src={it.imageUrl}
                         alt={it.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300">
+                      <div className="flex h-full w-full items-center justify-center text-xs text-[#B0B0B0]">
                         <Icon
                           icon="mdi:image-off-outline"
-                          className="text-4xl"
+                          className="h-8 w-8"
                         />
                       </div>
                     )}
                   </div>
 
-                  {/* 찜 해제 버튼: 스타일 변경 (이미지 위에서 더 잘보이게) 및 크기/위치 조정 */}
+                  {/* 상단 그라데이션 */}
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/20 via-black/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+                  {/* 우상단 찜 해제 버튼 */}
                   <button
                     onClick={() => onRemove(it.id)}
-                    className="absolute right-3 top-3 p-1.5 rounded-full bg-black/40 text-white backdrop-blur-sm hover:bg-black/60 active:scale-95 transition-all duration-200"
+                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-[#DF3B3B] shadow-sm backdrop-blur-md hover:bg-[#FFF1F1] active:scale-95"
                     title="찜 해제"
                     aria-label="찜 해제"
                   >
-                    <Icon icon="mdi:close" className="text-lg" />
+                    <Icon
+                      icon="mdi:heart-off-outline"
+                      className="h-4.5 w-4.5"
+                    />
                   </button>
+
+                  {/* 좌상단 카테고리 뱃지 */}
+                  {it.category && (
+                    <div className="absolute left-3 top-3">
+                      <span className="inline-flex items-center rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                        <Icon
+                          icon={
+                            categories.find((c) => c.key === it.category)
+                              ?.icon ?? "mdi:tag-outline"
+                          }
+                          className="mr-1 h-3.5 w-3.5"
+                        />
+                        {it.category}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {/* 콘텐츠 영역: 패딩(p), 폰트 크기, 간격(mb, mt) 축소 */}
-                <div className="p-4">
-                  <div className="flex items-center justify-between gap-3 mb-1">
-                    <h3 className="text-base font-semibold text-gray-900 truncate">
+                {/* 텍스트 영역 */}
+                <div className="space-y-1.5 px-3.5 pb-3.5 pt-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="line-clamp-2 flex-1 text-[14px] font-semibold text-black/85">
                       {it.title}
                     </h3>
-                    {/* 카테고리 태그: 더 컴팩트하게 */}
-                    {it.category && (
-                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 font-medium whitespace-nowrap">
-                        {it.category}
+                    {typeof it.price === "number" && (
+                      <span className="ml-1 shrink-0 rounded-full bg-[#FFF1F1] px-2.5 py-1 text-[12px] font-bold text-[#DF3B3B] shadow-sm">
+                        {it.price.toLocaleString()}원
                       </span>
                     )}
                   </div>
+
                   {it.subtitle && (
-                    <p className="text-sm text-gray-600 line-clamp-2">
+                    <p className="line-clamp-2 text-[12px] text-black/50">
                       {it.subtitle}
                     </p>
                   )}
-                  {/* 가격: 폰트 크기 및 색상 조정 */}
-                  {typeof it.price === "number" && (
-                    <p className="mt-2 text-lg font-bold text-gray-900">
-                      {it.price.toLocaleString()}원
-                    </p>
-                  )}
+
+                  {/* 하단 메타 (필요하면 추후 확장) */}
+                  <div className="mt-1 flex items-center justify-between text-[11px] text-black/40">
+                    <span className="inline-flex items-center gap-1">
+                      <Icon icon="solar:clock-linear" className="h-3.5 w-3.5" />
+                      <span>최근에 찜한 항목이에요</span>
+                    </span>
+                  </div>
                 </div>
               </li>
             ))}
