@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import MobileView from './views/MobileView';
 import WebView from './views/WebView';
-import { subscribeToNotifications } from '../../lib/api/notificationService';
 import type { Notification } from '../../type/notification';
 
-const NotificationPage: React.FC = () => {
+interface NotificationPageProps {
+  liveNotifications: Notification[];
+}
+
+const NotificationPage: React.FC<NotificationPageProps> = ({ liveNotifications }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [liveNotifications, setLiveNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -17,19 +19,6 @@ const NotificationPage: React.FC = () => {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
-
-  useEffect(() => {
-    const cleanup = subscribeToNotifications(
-      (newNotification) => {
-        setLiveNotifications((prev) => [newNotification, ...prev]);
-      },
-      (error) => {
-        console.error("SSE subscription error:", error);
-      }
-    );
-
-    return cleanup; // Cleanup EventSource on unmount
   }, []);
 
   return isMobile ? <MobileView liveNotifications={liveNotifications} /> : <WebView liveNotifications={liveNotifications} />;
