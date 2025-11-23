@@ -1,5 +1,3 @@
-// src/pages/mypage/customer/payment/ListWebView.tsx
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
@@ -7,7 +5,6 @@ import type { UserRole } from "../../../../../../store/thunkFunctions";
 import type { UserData } from "../../../../../../store/userSlice";
 import { useAppSelector } from "../../../../../../store/hooks";
 import api from "../../../../../../lib/api/axios";
-import MyPageHeader from "../../../../../../components/MyPageHeader";
 
 /* -------------------------------------------------------------------------- */
 /*  타입 정의                                                                 */
@@ -28,8 +25,7 @@ export interface PaymentMeItem {
   thumbnailUrl?: string; // 썸네일 URL
 }
 
-/** 화면에서 사용하는 상태 라벨 - 모바일과 동일 */
-type PaymentStatus = "취소완료" | "취소요청" | "결제완료" | "결제실패";
+type PaymentStatus = "취소완료" | "취소요청됨" | "결제완료" | "결제실패";
 
 interface PaymentItem {
   id: string; // orderCode
@@ -53,7 +49,7 @@ function mapStatusToLabel(status: string): PaymentStatus {
     case "CANCELED":
       return "취소완료";
     case "CANCEL_REQUESTED":
-      return "취소요청";
+      return "취소요청됨";
     case "DONE":
       return "결제완료";
     case "FAILED":
@@ -62,7 +58,7 @@ function mapStatusToLabel(status: string): PaymentStatus {
   }
 }
 
-/** ISO 날짜 → YYYY.MM.DD (모바일과 동일) */
+/** ISO 날짜 → YYYY.MM.DD  */
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -73,7 +69,7 @@ function formatDate(iso: string | null | undefined): string {
   return `${y}.${m}.${day}`;
 }
 
-/** API DTO → 화면용 아이템 변환 (모바일과 동일 필드) */
+/** API DTO → 화면용 아이템 변환 */
 function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
   return {
     id: dto.orderCode,
@@ -101,6 +97,8 @@ function PaymentCard({
   onCancelRequest: (item: PaymentItem) => void;
 }) {
   const nav = useNavigate();
+
+  const isCancelable = item.status !== "취소요청됨";
 
   return (
     <div className="w-full border border-[#E5E7EB] rounded-xl bg-white px-5 py-4 flex flex-col gap-3">
@@ -135,14 +133,15 @@ function PaymentCard({
       </div>
 
       <div className="flex justify-end gap-2">
-        {/* 모바일과 동일: 취소 요청 → 환불 요청 페이지로 이동 */}
-        <button
-          type="button"
-          className="px-3 py-2 border border-[#E4E4E4] rounded-lg text-[13px] text-[#333333] tracking-[-0.2px]"
-          onClick={() => onCancelRequest(item)}
-        >
-          취소 요청
-        </button>
+        {isCancelable && (
+          <button
+            type="button"
+            className="px-3 py-2 border border-[#E4E4E4] rounded-lg text-[13px] text-[#333333] tracking-[-0.2px]"
+            onClick={() => onCancelRequest(item)}
+          >
+            취소 요청
+          </button>
+        )}
         <button
           type="button"
           className="px-3 py-2 border border-[#E4E4E4] rounded-lg text-[13px] text-[#333333] tracking-[-0.2px]"
@@ -233,7 +232,7 @@ export default function ListWebView() {
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    // 모바일과 동일: CUSTOMER가 아니면 호출 안 함
+    // CUSTOMER가 아니면 호출 안 함
     if (!role || role !== "CUSTOMER") {
       setPayments([]);
       return;
@@ -259,16 +258,15 @@ export default function ListWebView() {
     fetchPayments();
   }, [role]);
 
-  // 상태별 분류 (모바일과 동일)
+  // 상태별 분류
   const canceled = payments.filter((p) => p.status === "취소완료");
-  const cancelRequested = payments.filter((p) => p.status === "취소요청");
+  const cancelRequested = payments.filter((p) => p.status === "취소요청됨");
   const completed = payments.filter((p) => p.status === "결제완료");
   const failed = payments.filter((p) => p.status === "결제실패");
 
   const hasPayments = payments.length > 0;
   const isNotCustomer = role && role !== "CUSTOMER";
 
-  /* 모바일과 동일: 취소 요청 버튼 클릭 → 환불 요청 페이지로 이동 */
   const handleGoRefundRequest = (item: PaymentItem) => {
     nav(`/my-page/client/payments/refund/${item.paymentKey}`, {
       state: {
@@ -277,7 +275,6 @@ export default function ListWebView() {
         productName: item.productName,
         amount: item.price,
         thumbnailUrl: item.thumbnail,
-        // 필요하면 쿠폰/환불 예상 금액/수단 등 추가
       },
     });
   };
@@ -321,7 +318,7 @@ export default function ListWebView() {
           <>
             {cancelRequested.length > 0 && (
               <PaymentSection
-                status="취소요청"
+                status="취소요청됨"
                 items={cancelRequested}
                 onCancelRequest={handleGoRefundRequest}
               />

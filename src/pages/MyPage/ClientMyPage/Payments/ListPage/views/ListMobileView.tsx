@@ -1,4 +1,3 @@
-// src/pages/Customer/Payments/ListMobileView.tsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
@@ -28,7 +27,7 @@ export interface PaymentMeItem {
 }
 
 /** 화면 상태 라벨 */
-type PaymentStatus = "취소완료" | "취소요청" | "결제완료" | "결제실패";
+type PaymentStatus = "취소완료" | "취소요청됨" | "결제완료" | "결제실패";
 
 interface PaymentItem {
   id: string;
@@ -63,7 +62,7 @@ function mapStatusToLabel(status: string): PaymentStatus {
     case "CANCELED":
       return "취소완료";
     case "CANCEL_REQUESTED":
-      return "취소요청";
+      return "취소요청됨";
     case "DONE":
       return "결제완료";
     case "FAILED":
@@ -107,6 +106,9 @@ function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
 function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
   const nav = useNavigate();
 
+  // 취소 요청 상태면 취소 요청 버튼 숨김
+  const isCancelable = item.status !== "취소요청됨";
+
   return (
     <div className="w-full">
       <div className="flex">
@@ -138,14 +140,16 @@ function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
       </div>
 
       <div className="mt-4 flex gap-[6px]">
-        {/* 취소 요청 → 환불 요청 페이지로 이동 */}
-        <button
-          type="button"
-          className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333]"
-          onClick={() => onCancelRequest(item)}
-        >
-          취소 요청
-        </button>
+        {/* 취소 요청 → 환불 요청 페이지로 이동 (취소요청됨 상태에서는 숨김) */}
+        {isCancelable && (
+          <button
+            type="button"
+            className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333]"
+            onClick={() => onCancelRequest(item)}
+          >
+            취소 요청
+          </button>
+        )}
 
         <button
           type="button"
@@ -188,7 +192,7 @@ function PaymentSection({
 
   return (
     <section className="mb-6">
-      <div className="w-full flex items-center justify-between mb-3">
+      <div className="w-full flex items-center mb-3">
         <div className="flex items-center gap-3">
           <span className="text-[18px] leading-[29px] font-semibold text-[#1E2124]">
             {status}
@@ -199,12 +203,6 @@ function PaymentSection({
             </span>
           )}
         </div>
-        <button
-          type="button"
-          className="w-5 h-5 rounded-full flex items-center justify-center"
-        >
-          <Icon icon="meteor-icons:xmark" className="w-5 h-5 text-[#999999]" />
-        </button>
       </div>
 
       {items.map((item) => (
@@ -260,7 +258,7 @@ export default function ListMobileView() {
 
   // 상태별 분류
   const canceled = payments.filter((p) => p.status === "취소완료");
-  const cancelRequested = payments.filter((p) => p.status === "취소요청");
+  const cancelRequested = payments.filter((p) => p.status === "취소요청됨");
   const completed = payments.filter((p) => p.status === "결제완료");
   const failed = payments.filter((p) => p.status === "결제실패");
 
@@ -276,7 +274,6 @@ export default function ListMobileView() {
         productName: item.productName,
         amount: item.price,
         thumbnailUrl: item.thumbnail,
-        // 필요하면 쿠폰/환불 예상 금액/수단 등 추가
       },
     });
   };
@@ -323,7 +320,7 @@ export default function ListMobileView() {
             <>
               {cancelRequested.length > 0 && (
                 <PaymentSection
-                  status="취소요청"
+                  status="취소요청됨"
                   items={cancelRequested}
                   onCancelRequest={handleGoRefundRequest}
                 />

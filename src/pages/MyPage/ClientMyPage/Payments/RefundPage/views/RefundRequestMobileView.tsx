@@ -239,7 +239,7 @@ export default function RefundRequestMobileView() {
                     <span className="text-[#1E2124]">
                       {couponDiscount
                         ? `-${formatMoney(couponDiscount)}`
-                        : "-0원"}
+                        : "0원"}
                     </span>
                   </div>
                 </div>

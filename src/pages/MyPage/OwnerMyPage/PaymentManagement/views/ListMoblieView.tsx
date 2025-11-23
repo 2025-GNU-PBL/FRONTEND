@@ -177,26 +177,6 @@ export default function MobileView() {
             </div>
           </section>
 
-          {/* 여기 수정됨 */}
-          <button
-            type="button"
-            onClick={() => nav("/my-page/owner/cancel")}
-            className="w-full rounded-lg bg-[#F6F7FB] px-5 h-[50px] flex items-center justify-between"
-          >
-            <span className="text-[16px] font-normal text-[#333333] tracking-[-0.2px]">
-              취소 내역
-            </span>
-            <div className="flex items-center gap-1">
-              <span className="text-[14px] text-[#999999]">
-                {cancelCount}건
-              </span>
-              <Icon
-                icon="solar:alt-arrow-left-linear"
-                className="w-4 h-4 rotate-180 text-[#C5C5C5]"
-              />
-            </div>
-          </button>
-
           <div className="w-[390px] -mx-5 h-2 bg-[#F7F9FA]" />
 
           <div className="flex items-center justify-between mt-2">
