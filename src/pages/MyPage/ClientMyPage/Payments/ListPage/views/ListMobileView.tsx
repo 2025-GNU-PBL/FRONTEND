@@ -16,7 +16,7 @@ export interface PaymentMeItem {
   orderCode: string;
   productName: string;
   amount: number;
-  status: string;
+  status: string; // "CANCELED" | "CANCEL_REQUESTED" | "DONE" | "FAILED" ...
   approvedAt: string;
   shopName: string;
   paymentKey: string;
@@ -27,7 +27,7 @@ export interface PaymentMeItem {
 }
 
 /** 화면 상태 라벨 */
-type PaymentStatus = "예약중" | "예약완료" | "이용완료";
+type PaymentStatus = "취소완료" | "취소요청됨" | "결제완료" | "결제실패";
 
 interface PaymentItem {
   id: string;
@@ -56,20 +56,18 @@ interface PaymentSectionProps {
 /*  유틸 함수                                                                 */
 /* -------------------------------------------------------------------------- */
 
-/** status → 라벨 */
+/** 백엔드 status → 화면 라벨 */
 function mapStatusToLabel(status: string): PaymentStatus {
   switch (status) {
-    case "READY":
-      return "예약중";
-    case "PAID":
-      return "예약완료";
-    case "COMPLETED":
-    case "SUCCESS":
-    case "APPROVED":
+    case "CANCELED":
+      return "취소완료";
+    case "CANCEL_REQUESTED":
+      return "취소요청됨";
     case "DONE":
-      return "이용완료";
+      return "결제완료";
+    case "FAILED":
     default:
-      return "예약중";
+      return "결제실패";
   }
 }
 
@@ -108,6 +106,9 @@ function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
 function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
   const nav = useNavigate();
 
+  // 취소 요청 상태면 취소 요청 버튼 숨김
+  const isCancelable = item.status !== "취소요청됨";
+
   return (
     <div className="w-full">
       <div className="flex">
@@ -139,13 +140,16 @@ function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
       </div>
 
       <div className="mt-4 flex gap-[6px]">
-        <button
-          type="button"
-          className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333]"
-          onClick={() => onCancelRequest(item)}
-        >
-          취소 요청
-        </button>
+        {/* 취소 요청 → 환불 요청 페이지로 이동 (취소요청됨 상태에서는 숨김) */}
+        {isCancelable && (
+          <button
+            type="button"
+            className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333]"
+            onClick={() => onCancelRequest(item)}
+          >
+            취소 요청
+          </button>
+        )}
 
         <button
           type="button"
@@ -188,7 +192,7 @@ function PaymentSection({
 
   return (
     <section className="mb-6">
-      <div className="w-full flex items-center justify-between mb-3">
+      <div className="w-full flex items-center mb-3">
         <div className="flex items-center gap-3">
           <span className="text-[18px] leading-[29px] font-semibold text-[#1E2124]">
             {status}
@@ -199,12 +203,6 @@ function PaymentSection({
             </span>
           )}
         </div>
-        <button
-          type="button"
-          className="w-5 h-5 rounded-full flex items-center justify-center"
-        >
-          <Icon icon="meteor-icons:xmark" className="w-5 h-5 text-[#999999]" />
-        </button>
       </div>
 
       {items.map((item) => (
@@ -232,14 +230,6 @@ export default function ListMobileView() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // 취소 요청 모달 관련 상태
-  const [cancelModalOpen, setCancelModalOpen] = React.useState(false);
-  const [selectedPayment, setSelectedPayment] =
-    React.useState<PaymentItem | null>(null);
-  const [cancelReason, setCancelReason] = React.useState("");
-  const [cancelLoading, setCancelLoading] = React.useState(false);
-  const [cancelError, setCancelError] = React.useState<string | null>(null);
-
   React.useEffect(() => {
     if (!role || role !== "CUSTOMER") {
       setPayments([]);
@@ -266,62 +256,26 @@ export default function ListMobileView() {
     fetchPayments();
   }, [role]);
 
-  const reserved = payments.filter(
-    (p) => p.status === "예약중" || p.status === "예약완료"
-  );
-  const completed = payments.filter((p) => p.status === "이용완료");
+  // 상태별 분류
+  const canceled = payments.filter((p) => p.status === "취소완료");
+  const cancelRequested = payments.filter((p) => p.status === "취소요청됨");
+  const completed = payments.filter((p) => p.status === "결제완료");
+  const failed = payments.filter((p) => p.status === "결제실패");
+
   const hasPayments = payments.length > 0;
   const isNotCustomer = role && role !== "CUSTOMER";
 
-  // 취소 요청 버튼 클릭 → 모달 열기
-  const handleOpenCancelModal = (item: PaymentItem) => {
-    setSelectedPayment(item);
-    setCancelReason("");
-    setCancelError(null);
-    setCancelModalOpen(true);
-  };
-
-  const handleCloseCancelModal = () => {
-    if (cancelLoading) return;
-    setCancelModalOpen(false);
-    setSelectedPayment(null);
-    setCancelReason("");
-    setCancelError(null);
-  };
-
-  // 취소 요청 API 호출
-  const handleSubmitCancel = async () => {
-    if (!selectedPayment) return;
-
-    if (!cancelReason.trim()) {
-      setCancelError("취소 사유를 입력해주세요.");
-      return;
-    }
-
-    try {
-      setCancelLoading(true);
-      setCancelError(null);
-
-      await api.post("/api/v1/payments/cancel-request", {
-        paymentKey: selectedPayment.paymentKey,
-        cancelReason: cancelReason.trim(),
-      });
-
-      window.alert("취소 요청이 접수되었습니다.");
-
-      // 필요 시: 결제 목록 재조회도 가능
-      // const { data } = await api.get<PaymentMeItem[]>("/api/v1/payments/me");
-      // setPayments((data || []).map(mapToPaymentItem));
-
-      setCancelModalOpen(false);
-      setSelectedPayment(null);
-      setCancelReason("");
-    } catch (e) {
-      console.log(e);
-      setCancelError("취소 요청 중 오류가 발생했습니다. 다시 시도해주세요.");
-    } finally {
-      setCancelLoading(false);
-    }
+  /* 취소 요청 버튼 클릭 → 환불 요청 페이지로 이동 */
+  const handleGoRefundRequest = (item: PaymentItem) => {
+    nav(`/my-page/client/payments/refund/${item.paymentKey}`, {
+      state: {
+        paymentKey: item.paymentKey,
+        shopName: item.shopName,
+        productName: item.productName,
+        amount: item.price,
+        thumbnailUrl: item.thumbnail,
+      },
+    });
   };
 
   return (
@@ -364,21 +318,37 @@ export default function ListMobileView() {
           {/* 데이터 있을 때 */}
           {!isNotCustomer && !loading && !error && hasPayments && (
             <>
-              <PaymentSection
-                status="예약중"
-                items={reserved}
-                onCancelRequest={handleOpenCancelModal}
-              />
-
-              {reserved.length > 0 && completed.length > 0 && (
-                <div className="w-[390px] h-2 bg-[#F7F9FA] -mx-5 my-4" />
+              {cancelRequested.length > 0 && (
+                <PaymentSection
+                  status="취소요청됨"
+                  items={cancelRequested}
+                  onCancelRequest={handleGoRefundRequest}
+                />
               )}
 
-              <PaymentSection
-                status="이용완료"
-                items={completed}
-                onCancelRequest={handleOpenCancelModal}
-              />
+              {canceled.length > 0 && (
+                <PaymentSection
+                  status="취소완료"
+                  items={canceled}
+                  onCancelRequest={handleGoRefundRequest}
+                />
+              )}
+
+              {completed.length > 0 && (
+                <PaymentSection
+                  status="결제완료"
+                  items={completed}
+                  onCancelRequest={handleGoRefundRequest}
+                />
+              )}
+
+              {failed.length > 0 && (
+                <PaymentSection
+                  status="결제실패"
+                  items={failed}
+                  onCancelRequest={handleGoRefundRequest}
+                />
+              )}
             </>
           )}
 
@@ -395,105 +365,6 @@ export default function ListMobileView() {
             </div>
           )}
         </div>
-
-        {/* 취소 요청 모달 - 중앙 정렬 */}
-        {cancelModalOpen && selectedPayment && (
-          <div className="absolute inset-0 z-30 bg-[rgba(0,0,0,0.45)] flex items-center justify-center px-5">
-            <div className="w-full max-w-[390px] rounded-[24px] bg-white px-5 pt-5 pb-4 shadow-[0_8px_40px_rgba(0,0,0,0.25)]">
-              {/* 헤더 */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex flex-col">
-                  <span className="text-[14px] text-[rgba(0,0,0,0.45)] mb-0.5">
-                    예약 결제 취소
-                  </span>
-                  <span className="text-[18px] font-semibold text-[#1E2124]">
-                    취소 사유를 알려주세요
-                  </span>
-                </div>
-              </div>
-
-              {/* 결제 정보 카드 */}
-              <div className="mb-4 rounded-[12px] border border-[#F0F0F0] bg-[#F9FAFB] px-3 py-2.5 flex">
-                <div
-                  className="w-[52px] h-[52px] rounded-[6px] bg-[#F0F0F0] bg-cover bg-center border border-[#F2F2F2] mr-3 flex-shrink-0"
-                  style={
-                    selectedPayment.thumbnail
-                      ? {
-                          backgroundImage: `url("${selectedPayment.thumbnail}")`,
-                        }
-                      : undefined
-                  }
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] text-[rgba(0,0,0,0.45)] truncate mb-0.5">
-                    {selectedPayment.shopName}
-                  </p>
-                  <p className="text-[14px] font-medium text-[#1E2124] line-clamp-2 mb-1">
-                    {selectedPayment.productName}
-                  </p>
-                  <p className="text-[13px] text-[#333333] font-semibold">
-                    {selectedPayment.price.toLocaleString()}원
-                  </p>
-                </div>
-              </div>
-
-              {/* 안내 문구 */}
-              <p className="text-[13px] leading-[19px] text-[rgba(0,0,0,0.6)] mb-2">
-                취소 요청 사유를 작성해 주세요.
-                <br />
-                매장 검토 후 승인 여부가 확정됩니다.
-              </p>
-
-              {/* 취소 사유 입력 */}
-              <div className="mb-2">
-                <div className="relative">
-                  <textarea
-                    className="w-full h-32 rounded-[12px] border border-[#E4E4E4] bg-[#FFFFFF] px-3.5 py-2.5 text-[13px] text-[#1E2124] resize-none outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
-                    placeholder="예) 일정이 변경되어 방문이 어려워 취소가 필요합니다."
-                    value={cancelReason}
-                    onChange={(e) => setCancelReason(e.target.value)}
-                    maxLength={300}
-                    disabled={cancelLoading}
-                  />
-                  <div className="pointer-events-none absolute bottom-1.5 right-2.5 text-[11px] text-[rgba(0,0,0,0.35)]">
-                    {cancelReason.length} / 300
-                  </div>
-                </div>
-              </div>
-
-              {/* 에러 메시지 */}
-              {cancelError && (
-                <div className="mb-2 text-[12px] text-red-500">
-                  {cancelError}
-                </div>
-              )}
-
-              {/* 버튼 영역 */}
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  className="flex-1 h-11 rounded-[10px] border border-[#E4E4E4] text-[14px] text-[#555555] flex items-center justify-center"
-                  onClick={handleCloseCancelModal}
-                  disabled={cancelLoading}
-                >
-                  닫기
-                </button>
-                <button
-                  type="button"
-                  className={`flex-1 h-11 rounded-[10px] text-[14px] font-semibold flex items-center justify-center ${
-                    cancelLoading
-                      ? "bg-[#D0D3DA] text-white"
-                      : "bg-[#111111] text-white"
-                  }`}
-                  onClick={handleSubmitCancel}
-                  disabled={cancelLoading}
-                >
-                  {cancelLoading ? "요청 중..." : "취소 요청 보내기"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
