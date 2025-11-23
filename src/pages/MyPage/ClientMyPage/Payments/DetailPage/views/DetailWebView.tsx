@@ -26,77 +26,31 @@ interface PaymentDetailResponse {
   rejectReason: string | null;
   rejectedAt: string | null;
   shopName: string; // "(주) 성우"
-  status:
-    | "DONE"
-    | "CANCELED"
-    | "READY"
-    | "PAID"
-    | "COMPLETED"
-    | "CANCELLED"
-    | "CANCEL_REQUEST"
-    | string;
+  status: "DONE" | "CANCELED" | "FAILED" | "CANCEL_REQUEST" | string;
   thumbnailUrl?: string; // "https://...jpg"
   totalPrice: number;
 }
 
 /** 화면 상태 라벨 */
-type PaymentStatusLabel =
-  | "예약중"
-  | "예약완료"
-  | "이용완료"
-  | "취소요청"
-  | "취소완료";
+type PaymentStatusLabel = "실패" | "결제완료" | "취소요청됨" | "취소완료";
 
-/** 개발용 더미 상세 (DEV에서만 사용) */
-const DEV_MOCK_DETAIL: PaymentDetailResponse = {
-  approvedAt: "2025-11-22T19:13:00",
-  cancelReason: null,
-  canceledAt: null,
-  customerEmail: "dev@example.com",
-  customerName: "개발자",
-  customerPhoneNumber: "010-0000-0000",
-  discountAmount: 32300,
-  orderCode: "TEST-ORDER-DETAIL-001",
-  originalPrice: 323000,
-  paidAmount: 290700,
-  paymentKey: "tviva20251122191219bgDx5",
-  paymentMethod: "간편결제",
-  pgProvider: "tosspayments",
-  productName: "[촬영] 신부신랑 헤어메이크업 (부원장)",
-  receiptUrl: "https://dashboard-sandbox.tosspayments.com/receipt/test",
-  rejectReason: null,
-  rejectedAt: null,
-  shopName: "제이바이로이스타",
-  status: "DONE",
-  thumbnailUrl:
-    "https://gnubucketgnu.s3.ap-northeast-2.amazonaws.com/STUDIO/4518539793-studio3_c575c1a4.jpg",
-  totalPrice: 323000,
-};
-
-/** 백엔드 status → 라벨 (모바일과 동일) */
+/** 백엔드 status → 라벨 */
 function mapStatusToLabel(
-  status: PaymentDetailResponse["status"]
+  status?: PaymentDetailResponse["status"]
 ): PaymentStatusLabel {
   switch (status) {
-    case "READY":
-      return "예약중";
-    case "PAID":
-      return "예약완료";
-    case "DONE": // 결제 성공
-      return "예약완료";
-    case "COMPLETED":
-      return "이용완료";
-    case "CANCEL_REQUEST":
-      return "취소요청";
-    case "CANCELLED":
+    case "DONE":
+      return "결제완료";
+    case "CANCEL_REQUESTED":
+      return "취소요청됨";
     case "CANCELED":
       return "취소완료";
     default:
-      return "예약중";
+      return "실패"; // fallback
   }
 }
 
-/** PG provider → 화면 표시용 라벨 (모바일과 동일) */
+/** PG provider → 화면 표시용 라벨 */
 function mapPgProvider(pg?: string): string {
   if (!pg) return "토스페이먼츠";
   const lower = pg.toLowerCase();
@@ -119,7 +73,7 @@ function formatCurrency(value?: number): string {
   return `${value.toLocaleString()}원`;
 }
 
-/** 고객 마이페이지 결제 내역 상세 (Web) - 모바일과 동일 로직 적용 */
+/** 고객 마이페이지 결제 내역 상세 */
 export default function DetailWebView() {
   const { paymentKey } = useParams<{ paymentKey: string }>();
 
@@ -157,14 +111,30 @@ export default function DetailWebView() {
           `/api/v1/payments/${paymentKey}`
         );
 
-        if (
-          import.meta.env.DEV &&
-          (!data || !data.orderCode || !data.productName || !data.shopName)
-        ) {
+        if (!data || !data.orderCode || !data.productName || !data.shopName) {
+          // 모바일과 동일하게 최소 안전 기본값 제공
           setDetail({
-            ...DEV_MOCK_DETAIL,
+            approvedAt: "",
+            cancelReason: null,
+            canceledAt: null,
+            customerEmail: "",
+            customerName: "",
+            customerPhoneNumber: "",
+            discountAmount: 0,
             orderCode: paymentKey,
+            originalPrice: 0,
+            paidAmount: 0,
             paymentKey,
+            paymentMethod: "",
+            pgProvider: "",
+            productName: "",
+            receiptUrl: "",
+            rejectReason: null,
+            rejectedAt: null,
+            shopName: "",
+            status: "FAILED",
+            thumbnailUrl: "",
+            totalPrice: 0,
           });
         } else {
           setDetail(data);
@@ -182,10 +152,10 @@ export default function DetailWebView() {
     fetchDetail();
   }, [paymentKey, isNotCustomer]);
 
-  const statusLabel = detail ? mapStatusToLabel(detail.status) : "예약중";
+  const statusLabel = mapStatusToLabel(detail?.status);
   const dateLabel = detail ? formatDate(detail.approvedAt) : "";
 
-  // 금액 매핑 (모바일과 동일 로직)
+  // 금액 매핑
   const productAmount = detail?.originalPrice ?? detail?.totalPrice ?? 0; // "상품 금액"
   const couponDiscount = detail?.discountAmount ?? 0; // "쿠폰 할인"
   const paymentAmount =
