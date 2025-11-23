@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import api from "../../../../../../lib/api/axios";
 
-/** 결제 상세 DTO (백엔드 응답 스펙) */
+/** 결제 상세 DTO  */
 interface PaymentDetailResponse {
   approvedAt: string; // "2025-11-22T19:13:00"
   cancelReason: string | null;
@@ -23,70 +23,24 @@ interface PaymentDetailResponse {
   rejectReason: string | null;
   rejectedAt: string | null;
   shopName: string; // "(주) 성우"
-  status:
-    | "DONE"
-    | "CANCELED"
-    | "READY"
-    | "PAID"
-    | "COMPLETED"
-    | "CANCELLED"
-    | "CANCEL_REQUEST"
-    | string;
+  status: "DONE" | "CANCELED" | "FAILED" | "CANCEL_REQUEST" | string;
   thumbnailUrl?: string; // "https://...jpg"
   totalPrice: number;
 }
 
 /** 화면 상태 라벨 */
-type PaymentStatusLabel =
-  | "예약중"
-  | "예약완료"
-  | "이용완료"
-  | "취소요청"
-  | "취소완료";
-
-/** 개발용 더미 상세 (DEV에서만 사용) */
-const DEV_MOCK_DETAIL: PaymentDetailResponse = {
-  approvedAt: "2025-11-22T19:13:00",
-  cancelReason: null,
-  canceledAt: null,
-  customerEmail: "dev@example.com",
-  customerName: "개발자",
-  customerPhoneNumber: "010-0000-0000",
-  discountAmount: 32300,
-  orderCode: "TEST-ORDER-DETAIL-001",
-  originalPrice: 323000,
-  paidAmount: 290700,
-  paymentKey: "tviva20251122191219bgDx5",
-  paymentMethod: "간편결제",
-  pgProvider: "tosspayments",
-  productName: "[촬영] 신부신랑 헤어메이크업 (부원장)",
-  receiptUrl: "https://dashboard-sandbox.tosspayments.com/receipt/test",
-  rejectReason: null,
-  rejectedAt: null,
-  shopName: "제이바이로이스타",
-  status: "DONE",
-  thumbnailUrl:
-    "https://gnubucketgnu.s3.ap-northeast-2.amazonaws.com/STUDIO/4518539793-studio3_c575c1a4.jpg",
-  totalPrice: 323000,
-};
+type PaymentStatusLabel = "예약중" | "결제완료" | "취소요청" | "취소완료";
 
 /** 백엔드 status → 라벨 */
 function mapStatusToLabel(
   status: PaymentDetailResponse["status"]
 ): PaymentStatusLabel {
   switch (status) {
-    case "READY":
-      return "예약중";
-    case "PAID":
-      return "예약완료";
-    case "DONE": // 새 상태 값 (결제 성공)
-      return "예약완료";
-    case "COMPLETED":
-      return "이용완료";
+    case "DONE":
+      return "결제완료";
     case "CANCEL_REQUEST":
       return "취소요청";
-    case "CANCELLED":
-    case "CANCELED": // 영문/한글 혼용 방지
+    case "CANCELED":
       return "취소완료";
     default:
       return "예약중";
@@ -116,7 +70,7 @@ function formatCurrency(value?: number): string {
   return `${value.toLocaleString()}원`;
 }
 
-/** 고객 마이페이지 결제 내역 상세 (모바일) - 최종 디자인 이식 버전 */
+/** 고객 마이페이지 결제 내역 상세 - 최종 디자인 이식 버전 */
 export default function DetailMobileView() {
   const nav = useNavigate();
   const { paymentKey } = useParams<{ paymentKey: string }>();
@@ -143,14 +97,30 @@ export default function DetailMobileView() {
           `/api/v1/payments/${paymentKey}`
         );
 
-        if (
-          import.meta.env.DEV &&
-          (!data || !data.orderCode || !data.productName || !data.shopName)
-        ) {
+        if (!data || !data.orderCode || !data.productName || !data.shopName) {
+          // 최소 안전 기본값 제공 (디자인 변화 없음)
           setDetail({
-            ...DEV_MOCK_DETAIL,
+            approvedAt: "",
+            cancelReason: null,
+            canceledAt: null,
+            customerEmail: "",
+            customerName: "",
+            customerPhoneNumber: "",
+            discountAmount: 0,
             orderCode: paymentKey,
+            originalPrice: 0,
+            paidAmount: 0,
             paymentKey,
+            paymentMethod: "",
+            pgProvider: "",
+            productName: "",
+            receiptUrl: "",
+            rejectReason: null,
+            rejectedAt: null,
+            shopName: "",
+            status: "DONE", // 기본값
+            thumbnailUrl: "",
+            totalPrice: 0,
           });
         } else {
           setDetail(data);
@@ -182,7 +152,7 @@ export default function DetailMobileView() {
     <div className="w-full min-h-screen bg-[#F5F6F8] flex justify-center">
       {/* 390px 고정 모바일 래퍼 */}
       <div className="w-[390px] min-h-screen bg-[#F5F6F8] flex flex-col">
-        {/* 상단 헤더 (노치/StatusBar 없음) */}
+        {/* 상단 헤더 */}
         <header className="h-[60px] bg-white flex items-center px-5 relative">
           <button
             type="button"
@@ -387,7 +357,7 @@ export default function DetailMobileView() {
             />
           </button>
 
-          {/* 마이페이지 (현재 탭 강조) */}
+          {/* 마이페이지 */}
           <button
             type="button"
             className="w-6 h-6 flex items-center justify-center"

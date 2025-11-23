@@ -82,6 +82,7 @@ import SharedScheduleEditPage from "./pages/CalendarPage/SharedScheduleEdigPage"
 import { subscribeToNotifications } from "./lib/api/notificationService";
 import CustomNotificationToast from "./components/CustomNotificationToast/CustomNotificationToast";
 import SupportPage from "./pages/SupportPage/SupportPage";
+import RefundRequestPage from "./pages/MyPage/ClientMyPage/Payments/RefundPage/RefundRequestPage";
 
 function Layout() {
   const location = useLocation();
@@ -360,6 +361,10 @@ const App = () => {
           <Route
             path="/my-page/client/payments"
             element={<PaymentListPage />}
+          />
+          <Route
+            path="/my-page/client/payments/refund/:paymentKey"
+            element={<RefundRequestPage />}
           />
           <Route
             path="/my-page/client/payments/review"
