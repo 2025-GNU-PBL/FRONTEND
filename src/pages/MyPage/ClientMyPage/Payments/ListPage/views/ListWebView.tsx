@@ -18,7 +18,7 @@ export interface PaymentMeItem {
   orderCode: string; // 결제/주문 식별자
   productName: string; // 상품명
   amount: number; // 결제 금액
-  status: string; // 결제 상태 (READY, PAID, COMPLETED, ...)
+  status: string; // "CANCELED" | "CANCEL_REQUESTED" | "DONE" | "FAILED" ...
   approvedAt: string; // 결제 승인 일시 (ISO)
   shopName: string; // 업체명
   paymentKey: string; // 결제 키
@@ -28,8 +28,8 @@ export interface PaymentMeItem {
   thumbnailUrl?: string; // 썸네일 URL
 }
 
-/** 화면에서 사용하는 상태 라벨 */
-type PaymentStatus = "예약중" | "예약완료" | "이용완료";
+/** 화면에서 사용하는 상태 라벨 - 모바일과 동일 */
+type PaymentStatus = "취소완료" | "취소요청" | "결제완료" | "결제실패";
 
 interface PaymentItem {
   id: string; // orderCode
@@ -50,17 +50,15 @@ interface PaymentItem {
 /** 백엔드 status → 화면 라벨 매핑 (모바일과 동일) */
 function mapStatusToLabel(status: string): PaymentStatus {
   switch (status) {
-    case "READY":
-      return "예약중";
-    case "PAID":
-      return "예약완료";
-    case "COMPLETED":
-    case "SUCCESS":
-    case "APPROVED":
+    case "CANCELED":
+      return "취소완료";
+    case "CANCEL_REQUESTED":
+      return "취소요청";
     case "DONE":
-      return "이용완료";
+      return "결제완료";
+    case "FAILED":
     default:
-      return "예약중";
+      return "결제실패";
   }
 }
 
@@ -175,7 +173,7 @@ function PaymentCard({
   );
 }
 
-/** 상태별 섹션 (예약중/예약완료/이용완료) */
+/** 상태별 섹션 */
 function PaymentSection({
   status,
   items,
@@ -261,10 +259,12 @@ export default function ListWebView() {
     fetchPayments();
   }, [role]);
 
-  const reserved = payments.filter(
-    (p) => p.status === "예약중" || p.status === "예약완료"
-  );
-  const completed = payments.filter((p) => p.status === "이용완료");
+  // 상태별 분류 (모바일과 동일)
+  const canceled = payments.filter((p) => p.status === "취소완료");
+  const cancelRequested = payments.filter((p) => p.status === "취소요청");
+  const completed = payments.filter((p) => p.status === "결제완료");
+  const failed = payments.filter((p) => p.status === "결제실패");
+
   const hasPayments = payments.length > 0;
   const isNotCustomer = role && role !== "CUSTOMER";
 
@@ -319,21 +319,37 @@ export default function ListWebView() {
 
         {!isNotCustomer && !loading && !error && hasPayments && (
           <>
-            <PaymentSection
-              status="예약중"
-              items={reserved}
-              onCancelRequest={handleGoRefundRequest}
-            />
-
-            {reserved.length > 0 && completed.length > 0 && (
-              <div className="h-[1px] bg-[#E5E7EB] my-6" />
+            {cancelRequested.length > 0 && (
+              <PaymentSection
+                status="취소요청"
+                items={cancelRequested}
+                onCancelRequest={handleGoRefundRequest}
+              />
             )}
 
-            <PaymentSection
-              status="이용완료"
-              items={completed}
-              onCancelRequest={handleGoRefundRequest}
-            />
+            {canceled.length > 0 && (
+              <PaymentSection
+                status="취소완료"
+                items={canceled}
+                onCancelRequest={handleGoRefundRequest}
+              />
+            )}
+
+            {completed.length > 0 && (
+              <PaymentSection
+                status="결제완료"
+                items={completed}
+                onCancelRequest={handleGoRefundRequest}
+              />
+            )}
+
+            {failed.length > 0 && (
+              <PaymentSection
+                status="결제실패"
+                items={failed}
+                onCancelRequest={handleGoRefundRequest}
+              />
+            )}
           </>
         )}
 
