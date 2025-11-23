@@ -23,6 +23,11 @@ interface PaymentDetailResponse {
   pgProvider: string;
 }
 
+/** 리스트 → 상세로 넘어올 때 사용하는 state 타입 */
+type PaymentDetailLocationState = {
+  paymentKey?: string;
+};
+
 /** 금액 포맷터: 123456 -> "123,456원" */
 function formatAmount(amount?: number): string {
   if (amount == null) return "0원";
@@ -59,15 +64,12 @@ function getStatusLabel(status?: ApiPaymentStatus): string {
 
 export default function PaymentDetailMobileView() {
   const nav = useNavigate();
-  const { paymentKey: paymentKeyFromParams } = useParams<{
-    paymentKey: string;
-  }>();
   const location = useLocation();
 
-  const paymentKeyFromQuery = new URLSearchParams(location.search).get(
-    "paymentKey"
-  );
-  const paymentKey = paymentKeyFromParams || paymentKeyFromQuery || "";
+  const state = location.state as PaymentDetailLocationState | undefined;
+  const paymentKeyFromState = state?.paymentKey;
+
+  const paymentKey = paymentKeyFromState || "";
 
   const [payment, setPayment] = useState<PaymentDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);

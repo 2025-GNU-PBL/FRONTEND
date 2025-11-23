@@ -106,8 +106,9 @@ function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
 function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
   const nav = useNavigate();
 
-  // 취소 요청 상태면 취소 요청 버튼 숨김
-  const isCancelable = item.status !== "취소요청됨";
+  // ✅ 취소 요청 상태 + 취소 완료 상태 모두 취소 요청 버튼 숨김
+  const isCancelable =
+    item.status !== "취소요청됨" && item.status !== "취소완료";
 
   return (
     <div className="w-full">
@@ -140,7 +141,7 @@ function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
       </div>
 
       <div className="mt-4 flex gap-[6px]">
-        {/* 취소 요청 → 환불 요청 페이지로 이동 (취소요청됨 상태에서는 숨김) */}
+        {/* 취소 요청 → 환불 요청 페이지로 이동 (취소요청됨/취소완료 상태에서는 숨김) */}
         {isCancelable && (
           <button
             type="button"
@@ -291,7 +292,7 @@ export default function ListMobileView() {
         </div>
 
         {/* 컨텐츠 */}
-        <div className="flex-1 overflow-y-auto px-5 pt-8 pb-0">
+        <div className="flex-1 overflow-y-auto px-5 pt-8 pb-15">
           <div className="w-[390px] h-2 bg-[#F7F9FA] -mx-5 mb-5" />
 
           {/* 고객이 아닌 경우 */}

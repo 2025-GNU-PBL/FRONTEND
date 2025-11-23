@@ -26,7 +26,7 @@ function ensureOwner(userData: UserData | null): OwnerData | null {
   return null;
 }
 
-/** 결제 취소 요청 & 완료 리스트 API 응답 아이템 타입 */
+/** 결제 취소 요청 리스트 API 응답 아이템 타입 */
 interface CancelPaymentItem {
   orderCode: string;
   paymentKey: string; // 취소 상세 페이지로 넘길 paymentKey
@@ -34,7 +34,7 @@ interface CancelPaymentItem {
   productName: string;
   status: ApiPaymentStatus;
   cancelReason: string;
-  canceledAt: string; // ISO 문자열
+  createdAt: string; // ✅ 작성일(요청일) DTO에서 받아올 값
 }
 
 /** 작성일 YYYY.MM.DD 포맷 */
@@ -141,39 +141,36 @@ export default function WebView() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("DESC");
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
 
-  /** 취소 요청 + 취소 완료 목록 조회 (모바일과 동일하게 2개 엔드포인트 합치기) */
+  /** 취소 요청 목록 조회 (모바일처럼 취소 요청만) */
   useEffect(() => {
-    const fetchAllCancels = async () => {
+    const fetchCancelRequests = async () => {
       try {
         setIsLoading(true);
         setErrorMsg(null);
 
-        const [reqRes, doneRes] = await Promise.all([
-          api.get<CancelPaymentItem[]>("/api/v1/payments/cancel-requests/me"),
-          api.get<CancelPaymentItem[]>("/api/v1/payments/cancels/me"),
-        ]);
+        const res = await api.get<CancelPaymentItem[]>(
+          "/api/v1/payments/cancel-requests/me"
+        );
 
-        const reqData = Array.isArray(reqRes.data) ? reqRes.data : [];
-        const doneData = Array.isArray(doneRes.data) ? doneRes.data : [];
-
-        setItems([...reqData, ...doneData]);
+        const data = Array.isArray(res.data) ? res.data : [];
+        setItems(data);
       } catch (error) {
-        console.error("[취소 내역 웹] fetchAllCancels error:", error);
-        setErrorMsg("취소 내역을 불러오는 중 오류가 발생했습니다.");
+        console.error("[취소 요청 내역 웹] fetchCancelRequests error:", error);
+        setErrorMsg("취소 요청 내역을 불러오는 중 오류가 발생했습니다.");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchAllCancels();
+    fetchCancelRequests();
   }, []);
 
-  /** 최신/오래된 순 정렬된 전체 리스트 */
+  /** 최신/오래된 순 정렬된 전체 리스트 (createdAt 기준) */
   const sortedItems = useMemo(
     () =>
       [...items].sort((a, b) => {
-        const da = new Date(a.canceledAt).getTime();
-        const db = new Date(b.canceledAt).getTime();
+        const da = new Date(a.createdAt).getTime();
+        const db = new Date(b.createdAt).getTime();
         // DESC: 최신순, ASC: 오래된 순
         return sortOrder === "DESC" ? db - da : da - db;
       }),
@@ -194,17 +191,16 @@ export default function WebView() {
   const filteredCount = filteredItems.length;
 
   /** 카드 클릭 → 취소 상세 페이지로 이동
-   *  - 모바일 뷰와 동일하게 paymentKey + paymentStatus를 state로 전달
+   *
    */
   const handleCardClick = (item: CancelPaymentItem) => {
     const detailStatus: DetailPaymentStatus =
       item.status === "CANCELED" ? "CANCELED" : "CANCEL_REQUESTED";
 
-    nav("/my-page/owner/cancels/detail", {
+    nav("/my-page/owner/cancels/detail/request", {
       state: {
         paymentKey: item.paymentKey,
         paymentStatus: detailStatus,
-        // 필요하면 product / customer / cancelReason 도 같이 넘길 수 있음
       },
     });
   };
@@ -248,7 +244,7 @@ export default function WebView() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-[26px] font-semibold tracking-[-0.4px] text-gray-900">
-                취소 내역
+                취소 요청 내역
               </h1>
               <p className="mt-1 text-sm tracking-[-0.2px] text-gray-500">
                 {displayStoreName}의 결제 취소 요청 내역을 확인할 수 있습니다.
@@ -261,7 +257,7 @@ export default function WebView() {
             title="결제 취소 요청 내역"
             subtitle={`총 ${filteredCount}건의 취소 요청을 확인할 수 있습니다.`}
           >
-            {/* 필터 라인 - 모바일 상단 라인과 비슷한 구조 */}
+            {/* 필터 라인 */}
             <div className="mb-4 flex items-center justify-between">
               <span className="text-[14px] text-gray-700">
                 취소 내역 {filteredCount}
@@ -387,7 +383,7 @@ export default function WebView() {
                   </div>
                 ) : (
                   filteredItems.map((item, index) => {
-                    const writtenDate = formatWrittenDate(item.canceledAt);
+                    const writtenDate = formatWrittenDate(item.createdAt); // ✅ createdAt 사용
                     const badge = getStatusBadge(item.status);
                     const rowBg = index % 2 === 0 ? "bg-white" : "bg-[#F9FAFB]";
 

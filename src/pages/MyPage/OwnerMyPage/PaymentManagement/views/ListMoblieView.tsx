@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { useNavigate } from "react-router-dom";
 import MyPageHeader from "../../../../../components/MyPageHeader";
 import { useAppSelector } from "../../../../../store/hooks";
 import api from "../../../../../lib/api/axios";
@@ -122,7 +122,10 @@ export default function MobileView() {
       );
 
       setSummary(res.data.summary);
-      setItems(res.data.items || []);
+
+      // ✅ 모든 상태를 그대로 사용 (CANCEL_REQUESTED 포함)
+      const rawItems = res.data.items || [];
+      setItems(rawItems);
     } catch (error) {
       console.error(error);
       setErrorMsg("매출 데이터를 불러오는 중 오류가 발생했습니다.");
@@ -143,7 +146,6 @@ export default function MobileView() {
   };
 
   const totalSalesText = formatAmount(summary?.totalSalesAmount);
-  const cancelCount = summary?.cancelCount ?? 0;
 
   return (
     <div className="w-full bg-white">
@@ -236,21 +238,45 @@ export default function MobileView() {
 
                   const isCanceled = item.status === "CANCELED";
 
+                  // DONE, CANCELED, CANCEL_REQUESTED 모두 클릭 가능
+                  const isClickable =
+                    item.status === "DONE" ||
+                    item.status === "CANCELED" ||
+                    item.status === "CANCEL_REQUESTED";
+
                   const handleClick = () => {
-                    if (item.status !== "DONE") return;
-                    nav(
-                      `/my-page/owner/payments/detail?paymentKey=${item.paymentKey}`
-                    );
+                    if (item.status === "DONE") {
+                      // 결제 완료 상세
+                      nav("/my-page/owner/payments/detail", {
+                        state: { paymentKey: item.paymentKey },
+                      });
+                    } else if (item.status === "CANCELED") {
+                      // 취소 완료 상세
+                      nav("/my-page/owner/cancels/detail/done", {
+                        state: { paymentKey: item.paymentKey },
+                      });
+                    } else if (item.status === "CANCEL_REQUESTED") {
+                      // 취소 요청 상세
+                      nav("/my-page/owner/cancels/detail/request", {
+                        state: {
+                          paymentKey: item.paymentKey,
+                          paymentStatus: "CANCEL_REQUESTED" as const,
+                          canApprove: false,
+                        },
+                      });
+                    } else {
+                      return;
+                    }
                   };
 
                   return (
                     <div
                       key={item.orderCode}
-                      onClick={handleClick}
+                      onClick={isClickable ? handleClick : undefined}
                       className={[
                         "flex flex-col border-b border-[#F0F0F0] first:pt-4 last:border-b-0",
                         "py-5",
-                        item.status === "DONE"
+                        isClickable
                           ? "cursor-pointer active:bg-gray-50"
                           : "cursor-default",
                       ].join(" ")}
@@ -283,7 +309,7 @@ export default function MobileView() {
                           </span>
                           {isCanceled && (
                             <span className="text-[14px] text-[#999999] tracking-[-0.2px] leading-[21px]">
-                              {item.status === "FAILED" ? "실패" : "취소"}
+                              취소
                             </span>
                           )}
                         </div>

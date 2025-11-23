@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../../../../../lib/api/axios";
 
-/** 상품 정보 타입 (모바일과 동일) */
+/** 상품 정보 타입 */
 type ProductInfo = {
   shopName: string;
   productName: string;
@@ -11,17 +11,17 @@ type ProductInfo = {
   thumbnailUrl: string;
 };
 
-/** 고객 정보 타입 (모바일과 동일) */
+/** 고객 정보 타입 */
 type CustomerInfo = {
   name: string;
   phone: string;
   customerEmail: string;
 };
 
-/** 서버 결제 상태 타입 (모바일과 동일, 필요 시 확장용) */
+/** 서버 결제 상태 타입  */
 type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
 
-/** 상세 화면에서 실제로 쓸 상태 (모바일과 동일) */
+/** 상세 화면에서 실제로 쓸 상태  */
 type DetailPaymentStatus = "CANCEL_REQUESTED" | "CANCELED";
 
 /** 리스트 → 상세로 전달되는 state 타입
@@ -35,6 +35,8 @@ type CancelDetailLocationState = {
   product?: ProductInfo;
   customer?: CustomerInfo;
   cancelReason?: string;
+  /** 매출 관리 등에서 읽기 전용으로 열 때 승인 버튼 숨기기 용도 */
+  canApprove?: boolean;
 };
 
 /** 취소 상세 조회 API 응답 DTO (모바일과 동일) */
@@ -57,6 +59,8 @@ interface WebCancelDetailViewProps {
   product?: ProductInfo;
   customer?: CustomerInfo;
   cancelReason?: string;
+  /** 상위에서 강제로 승인 버튼 노출 여부 제어하고 싶을 때 */
+  canApprove?: boolean;
   /** 승인 완료 후 상위에서 추가 작업이 필요하면 사용 */
   onApproved?: () => void;
 }
@@ -113,6 +117,9 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
     state?.paymentStatus ??
     "CANCEL_REQUESTED") as DetailPaymentStatus;
 
+  /** 승인 가능 여부 (기본 true, 매출관리에서 canApprove: false 넘기면 read-only) */
+  const canApprove = props.canApprove ?? state?.canApprove ?? true;
+
   /** product / customer / cancelReason 은 내부 state 로 관리 */
   const [product, setProduct] = useState<ProductInfo | undefined>(
     props.product ?? state?.product
@@ -137,13 +144,13 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
   const [approveLoading, setApproveLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
-  /** 금액 포맷 (모바일과 동일) */
+  /** 금액 포맷  */
   const formattedPrice =
     product?.paidAmount != null
       ? product.paidAmount.toLocaleString("ko-KR") + "원"
       : "-";
 
-  /** 취소 상세 정보 조회 (모바일과 동일한 분기: 요청/완료에 따라 엔드포인트 변경) */
+  /** 취소 상세 정보 조회 (요청/완료에 따라 엔드포인트 변경) */
   useEffect(() => {
     if (!paymentKey) return;
 
@@ -191,9 +198,13 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
     fetchDetail();
   }, [paymentKey, paymentStatus, product, customer, cancelReason]);
 
-  /** 승인 버튼 클릭 (요청 건에서만 의미 있음, 모바일과 동일) */
+  const isRequested = paymentStatus === "CANCEL_REQUESTED";
+  /** 실제로 승인 UI를 보여줄지 여부 */
+  const showApproveUI = isRequested && canApprove;
+
+  /** 승인 버튼 클릭 (요청 + canApprove=true 인 경우에만 의미 있음) */
   const handleApproveClick = () => {
-    if (paymentStatus !== "CANCEL_REQUESTED") return;
+    if (!showApproveUI) return;
     setConfirmOpen(true);
   };
 
@@ -203,7 +214,7 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
 
   const handleApproveConfirm = async () => {
     if (!paymentKey) return;
-    if (paymentStatus !== "CANCEL_REQUESTED") return;
+    if (!showApproveUI) return;
 
     try {
       setApproveLoading(true);
@@ -288,8 +299,6 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
     );
   }
 
-  const isRequested = paymentStatus === "CANCEL_REQUESTED";
-
   return (
     <>
       {/* 전체 웹 레이아웃 */}
@@ -304,7 +313,7 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
               <div className="flex items-center gap-3">
                 <div>
                   <h1 className="text-[24px] font-semibold tracking-[-0.4px] text-gray-900">
-                    취소 상세 내역
+                    취소 요청 상세 내역
                   </h1>
                   <p className="mt-1 text-sm tracking-[-0.2px] text-gray-500">
                     고객의 결제 취소 요청 정보를 확인하고 승인할 수 있습니다.
@@ -315,7 +324,7 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
 
             {/* 상세 카드 */}
             <SectionCard
-              title="결제 취소 상세"
+              title="취소 요청 상세"
               subtitle="상품 정보, 고객 정보, 취소 사유를 확인 후 승인해 주세요."
               icon="solar:document-text-bold-duotone"
             >
@@ -412,8 +421,8 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
                     </p>
                   </div>
 
-                  {/* 승인 버튼 영역 (요청 건일 때만 의미 있음) */}
-                  {isRequested && (
+                  {/* 승인 버튼 영역 (요청 상태 + canApprove=true 일 때만 노출) */}
+                  {showApproveUI && (
                     <div className="mt-auto rounded-2xl bg-white px-5 py-4 shadow-[0_4px_18px_rgba(15,23,42,0.06)]">
                       <div className="flex items-center justify-between gap-4">
                         <div className="space-y-1">
@@ -443,8 +452,8 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
         </div>
       </main>
 
-      {/* 승인 확인 모달 */}
-      {confirmOpen && (
+      {/* 승인 확인 모달 (canApprove=true 일 때만 의미 있음) */}
+      {confirmOpen && canApprove && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
           <div className="relative h-[188px] w-[335px] rounded-[14px] bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]">
             {/* 상단 내용 */}

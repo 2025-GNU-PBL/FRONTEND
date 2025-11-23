@@ -98,7 +98,8 @@ function PaymentCard({
 }) {
   const nav = useNavigate();
 
-  const isCancelable = item.status !== "취소요청됨";
+  const isCancelable =
+    item.status !== "취소요청됨" && item.status !== "취소완료";
 
   return (
     <div className="w-full border border-[#E5E7EB] rounded-xl bg-white px-5 py-4 flex flex-col gap-3">

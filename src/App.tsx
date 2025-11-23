@@ -83,6 +83,7 @@ import { subscribeToNotifications } from "./lib/api/notificationService";
 import CustomNotificationToast from "./components/CustomNotificationToast/CustomNotificationToast";
 import SupportPage from "./pages/SupportPage/SupportPage";
 import RefundRequestPage from "./pages/MyPage/ClientMyPage/Payments/RefundPage/RefundRequestPage";
+import CanceledDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CanceledDetailPage";
 
 function Layout() {
   const location = useLocation();
@@ -427,8 +428,12 @@ const App = () => {
           />
           <Route path="/my-page/owner/cancels" element={<CancelListPage />} />
           <Route
-            path="/my-page/owner/cancels/detail"
+            path="/my-page/owner/cancels/detail/request"
             element={<CancelDetailPage />}
+          />
+          <Route
+            path="/my-page/owner/cancels/detail/done"
+            element={<CanceledDetailPage />}
           />
           <Route path="/sign-up/owner/step1" element={<OwnerSignupPage />} />
           <Route
