@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import api from "../../../../../lib/api/axios";
 
@@ -22,6 +22,11 @@ interface PaymentDetailResponse {
   paymentMethod: string;
   pgProvider: string;
 }
+
+/** 리스트 → 상세로 넘어올 때 사용하는 state 타입 (모바일과 동일) */
+type PaymentDetailLocationState = {
+  paymentKey?: string;
+};
 
 /** 금액 포맷터: 123456 -> "123,456원" */
 function formatAmount(amount?: number): string {
@@ -125,15 +130,11 @@ function SectionCard({
 /* 결제 내역 상세 */
 export default function WebView() {
   const nav = useNavigate();
-  const { paymentKey: paymentKeyFromParams } = useParams<{
-    paymentKey: string;
-  }>();
   const location = useLocation();
 
-  const paymentKeyFromQuery = new URLSearchParams(location.search).get(
-    "paymentKey"
-  );
-  const paymentKey = paymentKeyFromParams || paymentKeyFromQuery || "";
+  const state = location.state as PaymentDetailLocationState | undefined;
+  const paymentKeyFromState = state?.paymentKey;
+  const paymentKey = paymentKeyFromState || "";
 
   const [payment, setPayment] = useState<PaymentDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -165,10 +166,6 @@ export default function WebView() {
 
     fetchPaymentDetail();
   }, [paymentKey]);
-
-  const dateLabel = formatDateLabel(payment?.approvedAt);
-  const statusLabel = getStatusLabel(payment?.status);
-  const statusBadgeClass = getStatusBadgeClass(payment?.status);
 
   const productPrice = formatAmount(payment?.originalPrice);
   const discountAmount = payment?.discountAmount ?? 0;
@@ -335,7 +332,7 @@ export default function WebView() {
                 </div>
               </SectionCard>
 
-              {/* 하단 안내 + 뒤로가기 버튼 (모바일에서도 보이도록) */}
+              {/* 하단 안내 + 뒤로가기 버튼 */}
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-2 text-[11px] text-gray-400">
                   <Icon

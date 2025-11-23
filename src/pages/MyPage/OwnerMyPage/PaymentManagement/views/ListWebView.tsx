@@ -17,7 +17,7 @@ interface SettlementSummary {
 
 interface SettlementItem {
   orderCode: string;
-  paymentKey: string; // ✅ 모바일과 동일하게 paymentKey 사용
+  paymentKey: string;
   customerName: string;
   amount: number;
   status: ApiPaymentStatus;
@@ -34,7 +34,6 @@ interface SettlementsResponse {
 function ensureOwner(userData: UserData | null): OwnerData | null {
   if (!userData) return null;
   if ("bzNumber" in userData && userData.userRole === "OWNER") {
-    // ✅ 모바일뷰와 동일한 체크 방식
     return userData as OwnerData;
   }
   return null;
@@ -71,10 +70,8 @@ function formatApprovedAt(iso?: string): {
 /* ----------------------------- 상태 뱃지 ----------------------------- */
 
 function StatusBadge({ status }: { status: ApiPaymentStatus }) {
-  const isCanceled =
-    status === "CANCELED" ||
-    status === "FAILED" ||
-    status === "CANCEL_REQUESTED";
+  // ❌ 더 이상 CANCEL_REQUESTED 를 취소로 보지 않음
+  const isCanceled = status === "CANCELED" || status === "FAILED";
 
   if (isCanceled) {
     return (
@@ -84,6 +81,7 @@ function StatusBadge({ status }: { status: ApiPaymentStatus }) {
     );
   }
 
+  // DONE, CANCEL_REQUESTED 는 동일하게 "결제완료" 스타일
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E5F0FF] text-[#4170FF]">
       결제완료
@@ -154,7 +152,7 @@ export default function WebView() {
   const [summary, setSummary] = useState<SettlementSummary | null>(null);
   const [items, setItems] = useState<SettlementItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null); // ✅ 모바일과 동일
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   /* ------- API 호출 ------- */
   const fetchSettlements = useCallback(async () => {
@@ -169,7 +167,7 @@ export default function WebView() {
             year,
             month,
             page: 0,
-            size: 20, // ✅ 모바일과 동일한 페이지 사이즈
+            size: 20,
           },
         }
       );
@@ -178,7 +176,7 @@ export default function WebView() {
       setItems(res.data.items || []);
     } catch (err) {
       console.error("웹뷰 settlements api 에러:", err);
-      setErrorMsg("매출 데이터를 불러오는 중 오류가 발생했습니다."); // ✅ 모바일과 동일 메시지
+      setErrorMsg("매출 데이터를 불러오는 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -244,7 +242,7 @@ export default function WebView() {
             </div>
           </div>
 
-          {/* 1. 매출 요약 + 취소 내역 버튼(모바일 맞춤) */}
+          {/* 1. 매출 요약 + 취소 내역 버튼 */}
           <SectionCard
             title={storeName}
             subtitle="월간 매출 요약"
@@ -259,7 +257,7 @@ export default function WebView() {
                   icon="solar:alt-arrow-left-linear"
                   className="w-3.5 h-3.5 rotate-180"
                 />
-                취소 내역
+                취소완료 내역
                 <span className="ml-0.5 text-[10px] text-gray-200">
                   {cancelCount}건
                 </span>
@@ -278,7 +276,7 @@ export default function WebView() {
                 <div className="h-12 w-px bg-gray-200 hidden sm:block" />
 
                 <div>
-                  <div className="text-xs text-gray-500">취소 건수</div>
+                  <div className="text-xs text-gray-500">취소완료 건수</div>
                   <div className="mt-1 flex items-center gap-2">
                     <span className="text-[16px] font-medium text-gray-900">
                       {cancelCount}건
@@ -330,7 +328,6 @@ export default function WebView() {
                 </button>
               </div>
 
-              {/* 모바일의 '전체' 필터와 톤 맞춘 드롭다운 버튼 (동작은 아직 없음) */}
               <button
                 type="button"
                 className="flex items-center gap-1 text-[14px] text-black tracking-[-0.2px]"
@@ -376,24 +373,45 @@ export default function WebView() {
                         item.approvedAt
                       );
 
+                      // ❌ CANCEL_REQUESTED 는 더 이상 취소 취급 X
                       const isCanceled =
+                        item.status === "CANCELED" || item.status === "FAILED";
+
+                      // DONE / CANCELED / CANCEL_REQUESTED 모두 클릭 가능 (로직은 그대로 유지)
+                      const isClickable =
+                        item.status === "DONE" ||
                         item.status === "CANCELED" ||
-                        item.status === "FAILED" ||
                         item.status === "CANCEL_REQUESTED";
 
-                      const isClickable = item.status === "DONE";
-
                       const handleClick = () => {
-                        if (!isClickable) return;
-                        nav(
-                          `/my-page/owner/payments/detail?paymentKey=${item.paymentKey}`
-                        );
+                        if (item.status === "DONE") {
+                          // 결제 완료 상세
+                          nav("/my-page/owner/payments/detail", {
+                            state: { paymentKey: item.paymentKey },
+                          });
+                        } else if (item.status === "CANCELED") {
+                          // 취소 완료 상세
+                          nav("/my-page/owner/cancels/detail/done", {
+                            state: { paymentKey: item.paymentKey },
+                          });
+                        } else if (item.status === "CANCEL_REQUESTED") {
+                          // 취소 요청 상세 내역
+                          nav("/my-page/owner/cancels/detail/request", {
+                            state: {
+                              paymentKey: item.paymentKey,
+                              paymentStatus: "CANCEL_REQUESTED" as const,
+                              canApprove: false,
+                            },
+                          });
+                        } else {
+                          return;
+                        }
                       };
 
                       return (
                         <div
                           key={item.orderCode}
-                          onClick={handleClick}
+                          onClick={isClickable ? handleClick : undefined}
                           className={[
                             "grid grid-cols-[90px_minmax(0,1.6fr)_minmax(0,1.2fr)_80px] px-5 py-4 text-sm items-center",
                             idx !== items.length - 1

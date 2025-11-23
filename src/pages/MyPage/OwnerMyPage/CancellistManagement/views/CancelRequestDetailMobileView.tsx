@@ -17,23 +17,24 @@ type CustomerInfo = {
   customerEmail: string;
 };
 
-/** 서버 결제 상태 타입 */
-type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
-
 /** 상세 화면에서 실제로 쓸 상태 */
 type DetailPaymentStatus = "CANCEL_REQUESTED" | "CANCELED";
 
 /** 리스트 → 상세로 전달되는 state 타입 */
 type CancelDetailLocationState = {
   paymentKey?: string;
-  paymentStatus?: DetailPaymentStatus; // 어떤 상태인지 같이 전달
+  paymentStatus?: DetailPaymentStatus; // 어떤 상태인지 같이 전달(요청/완료)
   product?: ProductInfo;
   customer?: CustomerInfo;
   cancelReason?: string;
   customerEmail?: string;
+  /** 매출 관리에서 읽기 전용으로 열 때 승인 버튼 숨기기 용도 */
+  canApprove?: boolean;
 };
 
-/** 취소 상세 조회 API 응답 DTO */
+/** 취소 요청 상세 조회 API 응답 DTO
+ *  (GET /api/v1/payments/cancel-requests/{paymentKey})
+ */
 type CancelDetailApiResponse = {
   paymentKey: string;
   shopName: string;
@@ -53,10 +54,13 @@ interface MobileCancelDetailViewProps {
   product?: ProductInfo;
   customer?: CustomerInfo;
   cancelReason?: string;
-  /** 승인 완료 후 상위에서 추가 작업이 필요하면 넘겨서 사용 */
+  /** 상위에서 강제로 승인 버튼 노출 여부 제어하고 싶을 때 */
+  canApprove?: boolean;
+  /** 승인/거절 완료 후 상위에서 추가 작업이 필요하면 넘겨서 사용 */
   onApproved?: () => void;
 }
 
+/** 사장님 - 결제 취소요청 상세 (모바일) */
 const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
   props
 ) => {
@@ -66,10 +70,13 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
 
   const paymentKey = props.paymentKey ?? state?.paymentKey ?? "";
 
-  /** 처음 넘어온 상태값 */
+  /** 처음 넘어온 상태값 (요청/완료) */
   const initialStatus: DetailPaymentStatus = (props.paymentStatus ??
     state?.paymentStatus ??
     "CANCEL_REQUESTED") as DetailPaymentStatus;
+
+  /** 승인 버튼 노출 여부 (매출관리 → 상세는 false로 들어옴) */
+  const canApprove = props.canApprove ?? state?.canApprove ?? true;
 
   /** product / customer / cancelReason 은 내부 state 로 관리 */
   const [product, setProduct] = useState<ProductInfo | undefined>(
@@ -94,6 +101,7 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [approveLoading, setApproveLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string>("");
 
   /** 금액 포맷 */
   const formattedPrice =
@@ -101,6 +109,9 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
       ? product.paidAmount.toLocaleString("ko-KR") + "원"
       : "-";
 
+  /** 취소 요청 상세 조회
+   *  -> 항상 /api/v1/payments/cancel-requests/{paymentKey} 만 호출
+   */
   useEffect(() => {
     if (!paymentKey) return;
 
@@ -112,12 +123,9 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
         setDetailLoading(true);
         setDetailError(null);
 
-        const endpoint =
-          paymentStatus === "CANCELED"
-            ? `/api/v1/payments/cancels/${paymentKey}`
-            : `/api/v1/payments/cancel-requests/${paymentKey}`;
-
-        const { data } = await api.get<CancelDetailApiResponse>(endpoint);
+        const { data } = await api.get<CancelDetailApiResponse>(
+          `/api/v1/payments/cancel-requests/${paymentKey}`
+        );
 
         const mappedProduct: ProductInfo = {
           shopName: data.shopName,
@@ -146,28 +154,36 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
     };
 
     fetchDetail();
-  }, [paymentKey, paymentStatus, product, customer, cancelReason]);
+  }, [paymentKey, product, customer, cancelReason]);
 
-  /** 승인 버튼 클릭 (요청 건에서만 의미 있음) */
+  const isRequested = paymentStatus === "CANCEL_REQUESTED";
+  /** 실제로 승인/거절 UI를 보여줄지 여부 */
+  const showApproveUI = isRequested && canApprove;
+
+  /** 승인 버튼 클릭 (요청 건 + canApprove=true 일 때만 의미 있음) */
   const handleApproveClick = () => {
-    if (paymentStatus !== "CANCEL_REQUESTED") return;
+    if (!showApproveUI) return;
     setConfirmOpen(true);
   };
 
+  /** 모달 닫기만 할 때 사용 (거절 API 호출 X) */
   const handleCancelConfirm = () => {
     setConfirmOpen(false);
   };
 
-  /** 승인 확정 */
+  /** 승인 확정
+   *  POST /api/v1/payments/{paymentKey}/cancel-approve
+   */
   const handleApproveConfirm = async () => {
     if (!paymentKey) return;
-    if (paymentStatus !== "CANCEL_REQUESTED") return;
+    if (!showApproveUI) return;
 
     try {
       setApproveLoading(true);
       await api.post(`/api/v1/payments/${paymentKey}/cancel-approve`);
 
       setConfirmOpen(false);
+      setToastMessage("취소요청이 승인 됐어요");
       setShowToast(true);
       setPaymentStatus("CANCELED"); // 이제 완료 상태로 전환
       props.onApproved?.();
@@ -178,6 +194,37 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
     } catch (error) {
       console.error(error);
       alert("승인 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setApproveLoading(false);
+    }
+  };
+
+  /** 취소 요청 거절
+   *  POST /api/v1/payments/{paymentKey}/cancel-reject
+   */
+  const handleRejectConfirm = async () => {
+    if (!paymentKey) return;
+    if (!showApproveUI) return;
+
+    try {
+      setApproveLoading(true);
+      await api.post(`/api/v1/payments/${paymentKey}/cancel-reject`, {
+        rejectReason: "사장님이 취소 요청을 거절했습니다.",
+      });
+
+      setConfirmOpen(false);
+      setToastMessage("취소요청을 거절했어요");
+      setShowToast(true);
+      // 이 화면에서는 더 이상 승인 버튼이 보이지 않도록 상태 변경
+      setPaymentStatus("CANCELED");
+      props.onApproved?.();
+
+      setTimeout(() => {
+        setShowToast(false);
+      }, 2500);
+    } catch (error) {
+      console.error(error);
+      alert("취소 요청 거절 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
     } finally {
       setApproveLoading(false);
     }
@@ -239,22 +286,20 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
     );
   }
 
-  const isRequested = paymentStatus === "CANCEL_REQUESTED";
-
   return (
     <>
       {/* 전체 화면 컨테이너 */}
-      <div className="relative mx-auto min-h-screen w-full max-w-[390px] bg-[#F5F6F8] pb-32">
+      <div className="relative mx-auto min-h-screen w/full max-w-[390px] bg-[#F5F6F8] pb-32">
         {/* 헤더 */}
         <div className="sticky top-0 z-20 bg-white">
           <MyPageHeader
-            title="취소 상세 내역"
+            title="취소요청 상세내역"
             onBack={() => nav(-1)}
             showMenu={false}
           />
         </div>
 
-        {/* 상단 여백 */}
+        {/* 상단 여백 + 본문 */}
         <div className="px-5 pt-20">
           {/* 상품정보 카드 */}
           <section className="relative mb-4 h-[150px] w-full rounded-[12px] border border-[#F3F4F5] bg-white shadow-[0_0_0_rgba(0,0,0,0.06)]">
@@ -276,7 +321,7 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
 
               {/* 텍스트 영역 */}
               <div className="ml-4 flex w-[159px] flex-col justify-between">
-                <p className="h-[21px] ml-0 text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-black/40">
+                <p className="h-[21px] text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-black/40">
                   {product?.shopName}
                 </p>
                 <p className="mt-1 h-[42px] text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-[#1E2124]">
@@ -320,15 +365,15 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
             </div>
 
             <div className="flex min-h-[61px] w-full items-center justify-center rounded-[8px] bg-[#F6F7FB] px-4 py-5">
-              <p className="w-full text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-black whitespace-pre-line">
+              <p className="w-full whitespace-pre-line text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-black">
                 {cancelReason}
               </p>
             </div>
           </section>
         </div>
 
-        {/* 하단 승인하기 버튼 영역 */}
-        {isRequested && (
+        {/* 하단 승인하기 버튼 영역 (요청 상태 + canApprove=true 일 때만 노출) */}
+        {showApproveUI && (
           <div className="pointer-events-none fixed bottom-15 left-0 right-0 z-20 flex justify-center">
             <div className="pointer-events-auto w-full max-w-[390px] px-5 pb-6 pt-4">
               <button
@@ -344,8 +389,8 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
         )}
       </div>
 
-      {/* 승인 확인 모달 */}
-      {confirmOpen && (
+      {/* 승인 / 거절 확인 모달 (canApprove=true 일 때만 의미 있음) */}
+      {confirmOpen && canApprove && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
           <div className="relative h-[188px] w-[335px] rounded-[14px] bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]">
             {/* 상단 내용 */}
@@ -364,14 +409,17 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
 
             {/* 하단 버튼 영역 */}
             <div className="absolute bottom-0 flex h-[78px] w-full items-center gap-2 px-5 pb-6 pt-2">
+              {/* 취소 요청 거절 버튼 */}
               <button
                 type="button"
-                onClick={handleCancelConfirm}
+                onClick={handleRejectConfirm}
                 disabled={approveLoading}
                 className="flex h-11 w-[142px] items-center justify-center rounded-[10px] bg-[#F3F4F5] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999] disabled:opacity-60"
               >
-                취소하기
+                {approveLoading ? "처리 중..." : "취소하기"}
               </button>
+
+              {/* 취소 요청 승인 버튼 */}
               <button
                 type="button"
                 onClick={handleApproveConfirm}
@@ -385,7 +433,7 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
         </div>
       )}
 
-      {/* 승인 완료 토스트 */}
+      {/* 승인 / 거절 완료 토스트 */}
       {showToast && (
         <div className="fixed bottom-6 left-1/2 z-40 w-[350px] -translate-x-1/2 rounded-[30px] bg-[#4D4D4D] px-5 py-3">
           <div className="flex items-center gap-[8px]">
@@ -396,7 +444,7 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
               />
             </div>
             <span className="text-[16px] font-semibold leading-[24px] tracking-[-0.2px] text-white">
-              취소요청이 승인 됐어요
+              {toastMessage || "처리가 완료됐어요"}
             </span>
           </div>
         </div>

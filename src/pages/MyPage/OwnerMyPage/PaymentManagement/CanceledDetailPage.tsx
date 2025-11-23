@@ -1,7 +1,7 @@
-import MobileView from "./views/CancelRequestDetailMobileView";
-import WebView from "./views/CancelRequestDetailWebView";
+import MobileView from "./views/CanceledDetailMobileView";
+import WebView from "./views/CanceledDetailWebView";
 
-export default function CancelDetailPage() {
+export default function CanceledDetailPage() {
   return (
     <div className="w-full bg-[#F6F7FB]">
       <div className="md:hidden">
