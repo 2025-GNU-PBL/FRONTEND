@@ -63,6 +63,19 @@ interface CouponPageState {
   purchaseAmount?: number;
 }
 
+// 🔹 모바일과 동일: 금액 포맷 ("10만원" / "10,500원")
+const formatKoreanMoney = (amount: number): string => {
+  if (!amount || amount <= 0) return "0원";
+
+  if (amount % 10000 === 0) {
+    // 딱 떨어지면 "10만원"
+    return `${amount / 10000}만원`;
+  }
+
+  // 애매한 값이면 그냥 "10,500원"
+  return `${amount.toLocaleString("ko-KR")}원`;
+};
+
 const WebView: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -87,12 +100,12 @@ const WebView: React.FC = () => {
     [products]
   );
 
-  // 기준 금액: purchaseAmount(전체 금액) 우선, 없으면 현재 상품 lineTotal
+  // ✅ 기준 금액: "현재 상품(lineTotal)" 우선, 없으면 purchaseAmount
   const effectiveAmount = useMemo(() => {
-    if (purchaseAmount !== undefined) return purchaseAmount;
     if (currentProduct) return currentProduct.lineTotal;
+    if (purchaseAmount !== undefined) return purchaseAmount;
     return 0;
-  }, [purchaseAmount, currentProduct]);
+  }, [currentProduct, purchaseAmount]);
 
   // 쿠폰 조회 (모바일 로직 그대로)
   useEffect(() => {
@@ -160,16 +173,40 @@ const WebView: React.FC = () => {
     return `${coupon.discountValue.toLocaleString("ko-KR")}원`;
   };
 
-  // 조건 텍스트 포맷팅
+  // ✅ 조건 텍스트 포맷팅
+  // 예: "10만원 이상 구매 시 최대 1만원 할인"
   const formatCondition = (coupon: Coupon) => {
-    return `최소 ${coupon.minPurchaseAmount.toLocaleString(
-      "ko-KR"
-    )}원 이상 구매 시`;
+    const minText = formatKoreanMoney(coupon.minPurchaseAmount);
+
+    // 퍼센트(비율) 쿠폰인 경우 → maxDiscountAmount 사용
+    if (coupon.discountType === "RATE") {
+      if (coupon.maxDiscountAmount && coupon.maxDiscountAmount > 0) {
+        const maxText = formatKoreanMoney(coupon.maxDiscountAmount);
+        return `${minText} 이상 구매 시 최대 ${maxText} 할인`;
+      }
+      // max 값이 없으면 그냥 "이상 구매 시 할인" 형태로만
+      return `${minText} 이상 구매 시 할인`;
+    }
+
+    // 정액(FIXED) 쿠폰인 경우 → discountValue 사용
+    const discountText = formatKoreanMoney(coupon.discountValue);
+    return `${minText} 이상 구매 시 ${discountText} 할인`;
   };
 
-  // 기간 텍스트 포맷팅
+  // 기간 텍스트 포맷팅 (YY.MM.DD 형태)
   const formatPeriod = (coupon: Coupon) => {
-    return `${coupon.startDate} ~ ${coupon.expirationDate}`;
+    const formatDate = (dateStr: string) => {
+      if (!dateStr) return "";
+      const yyyy = dateStr.substring(2, 4);
+      const mm = dateStr.substring(5, 7);
+      const dd = dateStr.substring(8, 10);
+      return `${yyyy}.${mm}.${dd}`;
+    };
+
+    const start = formatDate(coupon.startDate);
+    const end = formatDate(coupon.expirationDate);
+
+    return `사용기간 : ${start}~${end}`;
   };
 
   const filteredCoupons =
@@ -250,7 +287,7 @@ const WebView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 -mt-3">
       {/* 상단 헤더 */}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
@@ -379,142 +416,135 @@ const WebView: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* 쿠폰 그리드 */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {filteredCoupons.map((coupon) => {
-                  const isApplicable = applicableCouponIds.has(
-                    coupon.userCouponId
-                  );
-                  const isSelected =
-                    selectedUserCouponId === coupon.userCouponId;
+              {/* ✅ 스크롤 가능한 쿠폰 그리드 (대략 4개 정도가 한 화면에 보이도록 높이 제한) */}
+              <div className="max-h-[450px] overflow-y-auto pr-1 scrollbar-hide">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {filteredCoupons.map((coupon) => {
+                    const isApplicable = applicableCouponIds.has(
+                      coupon.userCouponId
+                    );
+                    const isSelected =
+                      selectedUserCouponId === coupon.userCouponId;
 
-                  return (
-                    <article
-                      key={coupon.userCouponId}
-                      className={`relative cursor-pointer overflow-hidden rounded-2xl border bg-white shadow-sm transition ${
-                        isSelected
-                          ? "border-slate-900 shadow-md"
-                          : "border-slate-200 hover:-translate-y-0.5 hover:shadow-md"
-                      } ${!isApplicable ? "opacity-70" : ""}`}
-                      onClick={() => handleSelectCoupon(coupon, isApplicable)}
-                    >
-                      {/* 왼쪽 컬러 바: 적용 가능 여부 기준 */}
-                      <div
-                        className={`absolute inset-y-0 left-0 w-1 ${
-                          isApplicable ? "bg-emerald-500" : "bg-slate-300"
-                        }`}
-                      />
+                    return (
+                      <article
+                        key={coupon.userCouponId}
+                        className={`relative cursor-pointer overflow-hidden rounded-2xl border bg-white shadow-sm transition ${
+                          isSelected
+                            ? "border-slate-900 shadow-md"
+                            : "border-slate-200 hover:-translate-y-0.5 hover:shadow-md"
+                        } ${!isApplicable ? "opacity-70" : ""}`}
+                        onClick={() => handleSelectCoupon(coupon, isApplicable)}
+                      >
+                        {/* 왼쪽 컬러 바: 적용 가능 여부 기준 */}
+                        <div
+                          className={`absolute inset-y-0 left-0 w-1 ${
+                            isApplicable ? "bg-emerald-500" : "bg-slate-300"
+                          }`}
+                        />
 
-                      {/* 상단 상태 뱃지 */}
-                      <div className="absolute right-3 top-3 flex items-center gap-2">
-                        {!isApplicable && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-                            <Icon
-                              icon="mdi:close-circle-outline"
-                              className="h-3 w-3"
-                            />
-                            조건 미충족
-                          </span>
-                        )}
-                        {isSelected && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-medium text-white shadow-sm">
-                            <Icon
-                              icon="mdi:check-bold"
-                              className="h-3 w-3 text-white"
-                            />
-                            선택됨
-                          </span>
-                        )}
-                      </div>
+                        {/* 상단 상태 뱃지 */}
+                        <div className="absolute right-3 top-3 flex items-center gap-2">
+                          {!isApplicable && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                              <Icon
+                                icon="mdi:close-circle-outline"
+                                className="h-3 w-3"
+                              />
+                              조건 미충족
+                            </span>
+                          )}
+                        </div>
 
-                      <div className="p-4 pl-5 pr-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="space-y-1">
-                            {/* 쿠폰명 + 할인 텍스트 */}
-                            <p className="text-[13px] font-medium text-slate-900 line-clamp-2">
-                              {coupon.couponName}
-                            </p>
-                            <p className="text-[20px] font-bold text-slate-900">
-                              {formatRate(coupon)}
-                            </p>
+                        <div className="p-4 pl-5 pr-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-1">
+                              {/* 쿠폰명 + 할인 텍스트 */}
+                              <p className="text-[13px] font-medium text-slate-900 line-clamp-2">
+                                {coupon.couponName}
+                              </p>
+                              <p className="text-[20px] font-bold text-slate-900">
+                                {formatRate(coupon)}
+                              </p>
+                            </div>
+
+                            {/* 선택 상태 표시 라디오 */}
+                            <div className="flex items-center justify-center">
+                              <div
+                                className={`flex h-7 w-7 items-center justify-center rounded-full border ${
+                                  isSelected
+                                    ? "border-slate-900 bg-slate-900"
+                                    : "border-slate-300 bg-white"
+                                }`}
+                              >
+                                {isSelected ? (
+                                  <Icon
+                                    icon="mdi:check"
+                                    className="h-4 w-4 text-white"
+                                  />
+                                ) : (
+                                  <div className="h-2.5 w-2.5 rounded-full border border-slate-700" />
+                                )}
+                              </div>
+                            </div>
                           </div>
 
-                          {/* 선택 상태 표시 라디오 */}
-                          <div className="flex items-center justify-center">
-                            <div
-                              className={`flex h-7 w-7 items-center justify-center rounded-full border ${
-                                isSelected
-                                  ? "border-slate-900 bg-slate-900"
-                                  : "border-slate-300 bg-white"
-                              }`}
-                            >
-                              {isSelected ? (
+                          {/* 상세 설명 */}
+                          {coupon.couponDetail && (
+                            <p className="mt-2 text-xs text-slate-600 line-clamp-2">
+                              {coupon.couponDetail}
+                            </p>
+                          )}
+
+                          <div className="mt-3 flex items-end justify-between text-[11px] text-slate-500">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5">
                                 <Icon
-                                  icon="mdi:check"
-                                  className="h-4 w-4 text-white"
+                                  icon="mdi:cash-multiple"
+                                  className="h-3.5 w-3.5"
                                 />
-                              ) : (
-                                <div className="h-2.5 w-2.5 rounded-full border border-slate-700" />
-                              )}
+                                <span>{formatCondition(coupon)}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <Icon
+                                  icon="mdi:calendar-range"
+                                  className="h-3.5 w-3.5"
+                                />
+                                <span>{formatPeriod(coupon)}</span>
+                              </div>
+                            </div>
+
+                            {/* 카테고리/만료정보 간단 뱃지 */}
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">
+                                <Icon
+                                  icon="mdi:storefront-outline"
+                                  className="h-3.5 w-3.5"
+                                />
+                                <span>
+                                  {coupon.category
+                                    ? convertCategory(coupon.category)
+                                    : "전체"}
+                                </span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
+                                <Icon
+                                  icon="mdi:clock-outline"
+                                  className="h-3.5 w-3.5"
+                                />
+                                <span>
+                                  {coupon.daysUntilExpiration >= 0
+                                    ? `D-${coupon.daysUntilExpiration}`
+                                    : "만료됨"}
+                                </span>
+                              </span>
                             </div>
                           </div>
                         </div>
-
-                        {/* 상세 설명 */}
-                        {coupon.couponDetail && (
-                          <p className="mt-2 text-xs text-slate-600 line-clamp-2">
-                            {coupon.couponDetail}
-                          </p>
-                        )}
-
-                        <div className="mt-3 flex items-end justify-between text-[11px] text-slate-500">
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-1.5">
-                              <Icon
-                                icon="mdi:cash-multiple"
-                                className="h-3.5 w-3.5"
-                              />
-                              <span>{formatCondition(coupon)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <Icon
-                                icon="mdi:calendar-range"
-                                className="h-3.5 w-3.5"
-                              />
-                              <span>{formatPeriod(coupon)}</span>
-                            </div>
-                          </div>
-
-                          {/* 카테고리/만료정보 간단 뱃지 */}
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">
-                              <Icon
-                                icon="mdi:storefront-outline"
-                                className="h-3.5 w-3.5"
-                              />
-                              <span>
-                                {coupon.category
-                                  ? convertCategory(coupon.category)
-                                  : "전체"}
-                              </span>
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
-                              <Icon
-                                icon="mdi:clock-outline"
-                                className="h-3.5 w-3.5"
-                              />
-                              <span>
-                                {coupon.daysUntilExpiration >= 0
-                                  ? `D-${coupon.daysUntilExpiration}`
-                                  : "만료됨"}
-                              </span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* 하단 적용 버튼 */}
@@ -526,7 +556,7 @@ const WebView: React.FC = () => {
                 >
                   <Icon
                     icon="mdi:close"
-                    className="mr-1.5 h-4 w-4 text-slate-400"
+                    className="mr-1.5 h-6 w-6 text-slate-400"
                   />
                   쿠폰 사용 안함
                 </button>
