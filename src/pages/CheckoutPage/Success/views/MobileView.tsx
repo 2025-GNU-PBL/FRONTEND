@@ -124,7 +124,7 @@ const MobileView = ({
   };
 
   const handleGoOrders = () => {
-    navigate("/mypage/orders", { replace: true });
+    navigate("/checkout");
   };
 
   return (
@@ -317,7 +317,7 @@ const MobileView = ({
             className="flex h-12 flex-1 items-center justify-center rounded-[12px] bg-[#111827]"
           >
             <span className="text-[14px] font-semibold text-white">
-              주문내역 보기
+              결제 계속하기
             </span>
           </button>
         </div>

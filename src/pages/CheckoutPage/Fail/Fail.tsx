@@ -10,7 +10,7 @@ const Fail = () => {
       </div>
 
       {/* 웹 뷰 */}
-      <div className="hidden md:block">
+      <div className="hidden md:block mt-15 -mb-40">
         <WebView />
       </div>
     </div>

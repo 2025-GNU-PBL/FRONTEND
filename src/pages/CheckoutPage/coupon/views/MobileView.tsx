@@ -19,7 +19,7 @@ type CouponCategory =
   | "메이크업"
   | string;
 
-// API 응답 구조에 맞춘 Coupon 타입 (형님이 준 스펙 기반)
+// API 응답 구조에 맞춘 Coupon 타입
 interface Coupon {
   userCouponId: number;
   status: string;
@@ -54,6 +54,19 @@ interface CouponPageState {
   purchaseAmount?: number;
 }
 
+// 금액을 "10만원" / "10,500원" 이런 식으로 예쁘게 포맷
+const formatKoreanMoney = (amount: number): string => {
+  if (!amount || amount <= 0) return "0원";
+
+  if (amount % 10000 === 0) {
+    // 딱 떨어지면 "10만원"
+    return `${amount / 10000}만원`;
+  }
+
+  // 애매한 값이면 그냥 "10,500원"
+  return `${amount.toLocaleString("ko-KR")}원`;
+};
+
 const MobileView: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<CouponCategory>("전체");
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -78,12 +91,12 @@ const MobileView: React.FC = () => {
     [products]
   );
 
-  // 기준 금액: purchaseAmount(전체 금액) 우선, 없으면 현재 상품 lineTotal
+  // ✅ 기준 금액: 현재 상품(lineTotal) 우선, 없으면 purchaseAmount
   const effectiveAmount = useMemo(() => {
-    if (purchaseAmount !== undefined) return purchaseAmount;
     if (currentProduct) return currentProduct.lineTotal;
+    if (purchaseAmount !== undefined) return purchaseAmount;
     return 0;
-  }, [purchaseAmount, currentProduct]);
+  }, [currentProduct, purchaseAmount]);
 
   useEffect(() => {
     const fetchCoupons = async () => {
@@ -116,7 +129,7 @@ const MobileView: React.FC = () => {
           );
           setApplicableCouponIds(idSet);
 
-          // ✅ 자동 선택 제거: 그냥 선택 초기화
+          // ✅ 자동 선택 제거: 선택 초기화
           setSelectedUserCouponId(null);
         } else {
           // 상품/금액 정보 없으면 일단 전부 적용 가능 처리
@@ -150,16 +163,40 @@ const MobileView: React.FC = () => {
     return `${coupon.discountValue.toLocaleString("ko-KR")}원`;
   };
 
-  // 조건 텍스트 포맷팅
+  // ✅ 조건 텍스트 포맷팅
+  // 예: "10만원 이상 구매 시 최대 1만원 할인"
   const formatCondition = (coupon: Coupon) => {
-    return `최소 ${coupon.minPurchaseAmount.toLocaleString(
-      "ko-KR"
-    )}원 이상 구매 시`;
+    const minText = formatKoreanMoney(coupon.minPurchaseAmount);
+
+    // 퍼센트(비율) 쿠폰인 경우 → maxDiscountAmount 사용
+    if (coupon.discountType === "RATE") {
+      if (coupon.maxDiscountAmount && coupon.maxDiscountAmount > 0) {
+        const maxText = formatKoreanMoney(coupon.maxDiscountAmount);
+        return `${minText} 이상 구매 시 최대 ${maxText} 할인`;
+      }
+      // max 값이 없으면 그냥 "이상 구매 시 할인" 형태로만
+      return `${minText} 이상 구매 시 할인`;
+    }
+
+    // 정액(FIXED) 쿠폰인 경우 → discountValue 사용
+    const discountText = formatKoreanMoney(coupon.discountValue);
+    return `${minText} 이상 구매 시 ${discountText} 할인`;
   };
 
-  // 기간 텍스트 포맷팅
+  // 기간 텍스트 포맷팅 (YY.MM.DD 형태)
   const formatPeriod = (coupon: Coupon) => {
-    return `${coupon.startDate} ~ ${coupon.expirationDate}`;
+    const formatDate = (dateStr: string) => {
+      if (!dateStr) return "";
+      const yyyy = dateStr.substring(2, 4);
+      const mm = dateStr.substring(5, 7);
+      const dd = dateStr.substring(8, 10);
+      return `${yyyy}.${mm}.${dd}`;
+    };
+
+    const start = formatDate(coupon.startDate);
+    const end = formatDate(coupon.expirationDate);
+
+    return `사용기간 : ${start}~${end}`;
   };
 
   const filteredCoupons =
@@ -236,10 +273,12 @@ const MobileView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex justify-center bg-[#F5F5F5]">
-      <div className="w-full max-w-[390px] min-h-screen bg-white flex flex-col">
-        {/* 헤더 */}
-        <header className="relative flex h-[60px] items-center justify-between px-5">
+    // 🔹 전체 화면 기준으로 높이를 고정
+    <div className="h-screen flex justify-center bg-[#F5F5F5]">
+      {/* 🔹 내부 컨테이너: 세로 전체, 가운데만 스크롤 되도록 overflow-hidden */}
+      <div className="w-full max-w-[390px] h-full bg-white flex flex-col overflow-hidden">
+        {/* 헤더 (고정 영역 상단) */}
+        <header className="relative flex h-[60px] items-center justify-between px-5 shrink-0">
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -258,9 +297,9 @@ const MobileView: React.FC = () => {
           <div className="h-6 w-6" />
         </header>
 
-        {/* 컨텐츠 */}
-        <main className="flex-1 px-5 pt-5 pb-4 overflow-y-auto">
-          <div className="w-full max-w-[350px] mx-auto flex flex-col gap-6">
+        {/* 상단 개수 + 카테고리 탭 (고정 영역, 스크롤 안 됨) */}
+        <section className="px-5 pt-5 shrink-0">
+          <div className="w-full max-w-[350px] mx-auto flex flex-col gap-4">
             {/* 상단 개수 */}
             <div className="flex items-center justify-between h-[21px]">
               <span className="text-[14px]">
@@ -300,8 +339,12 @@ const MobileView: React.FC = () => {
                 }
               )}
             </div>
+          </div>
+        </section>
 
-            {/* 로딩 / 에러 / 리스트 */}
+        {/* 🔹 쿠폰 리스트 스크롤 영역 (중앙만 스크롤) */}
+        <main className="flex-1 px-5 pt-5 pb-4 overflow-y-auto scrollbar-hide">
+          <div className="w-full max-w-[350px] mx-auto">
             {loading ? (
               <div className="text-[13px] text-[#999999]">
                 쿠폰을 불러오는 중입니다...
@@ -334,7 +377,7 @@ const MobileView: React.FC = () => {
                         }`}
                       >
                         <div className="flex flex-col items-start gap-1 w-[222px] h-[97px]">
-                          <p className="text-[14px] text-[#000000]">
+                          <p className="text-[14px] text-[#000000] w-full truncate">
                             {coupon.couponName}
                           </p>
 
@@ -386,8 +429,8 @@ const MobileView: React.FC = () => {
           </div>
         </main>
 
-        {/* 하단 적용 버튼 */}
-        <div className="px-5 pb-5 pt-1">
+        {/* 🔹 하단 적용 버튼 (푸터처럼 고정, 가운데만 스크롤) */}
+        <div className="px-5 pb-5 pt-3 border-t border-[#F2F2F2] bg-white shrink-0">
           <div className="w-full max-w-[350px] mx-auto">
             <button
               type="button"

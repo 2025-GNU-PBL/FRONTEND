@@ -1,4 +1,5 @@
 import type { ConfirmResponse, PaymentDetail } from "../Success";
+import { useNavigate } from "react-router-dom";
 
 interface WebViewProps {
   loading: boolean; // confirm 로딩
@@ -19,6 +20,16 @@ const WebView = ({
   detailLoading,
   detailError,
 }: WebViewProps) => {
+  const navigate = useNavigate();
+
+  const handleGoHome = () => {
+    navigate("/", { replace: true });
+  };
+
+  const handleGoOrders = () => {
+    navigate("/checkout");
+  };
+
   // confirm 로딩이거나, detail 로딩 중이면 로딩 화면
   if (loading || detailLoading) {
     return (
@@ -86,7 +97,8 @@ const WebView = ({
   const isDone = status === "DONE";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#e5f1ff] to-[#f9fafb] flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-gradient-to-b from-[#e5f1ff] to-[#f9fafb] flex flex-col items-center px-4 py-10">
+      {/* 메인 카드 */}
       <div className="w-full max-w-xl bg-white rounded-2xl shadow-[0_18px_45px_rgba(15,23,42,0.09)] border border-[#e5e7eb] px-6 py-7 sm:px-8 sm:py-9">
         {/* 상단 헤더 */}
         <div className="flex flex-col items-center text-center">
@@ -256,6 +268,24 @@ const WebView = ({
           주문 내역 및 결제 취소가 필요하신 경우, 서비스 내 주문/결제 내역에서
           상세 정보를 확인하시거나 고객센터로 문의해 주세요.
         </p>
+      </div>
+
+      {/* 하단 버튼 영역 (웹 스타일) */}
+      <div className="mt-6 w-full max-w-xl flex gap-3">
+        <button
+          type="button"
+          onClick={handleGoHome}
+          className="flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white text-[14px] font-medium text-[#111827] hover:bg-[#f9fafb] transition-colors"
+        >
+          홈으로
+        </button>
+        <button
+          type="button"
+          onClick={handleGoOrders}
+          className="flex h-11 flex-1 items-center justify-center rounded-xl bg-[#111827] text-[14px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.25)] hover:bg-[#020617] transition-colors"
+        >
+          결제 계속하기
+        </button>
       </div>
     </div>
   );

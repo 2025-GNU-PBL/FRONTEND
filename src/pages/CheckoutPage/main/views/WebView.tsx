@@ -111,11 +111,20 @@ const WebView: React.FC = () => {
     [orders]
   );
 
-  // ✅ 우리 서비스 기준: 기본 할인 없음 → originalPrice만 신뢰
+  // ✅ 우리 서비스 기준: 기본 할인 없음 → originalPrice만 신뢰 (합산용)
   const totalOriginalPrice = React.useMemo(
     () => orders.reduce((sum, order) => sum + order.originalPrice, 0),
     [orders]
   );
+
+  // ✅ 가장 상단에 있는 상품 (있다면)
+  const topProduct = React.useMemo(
+    () => (products.length > 0 ? products[0] : null),
+    [products]
+  );
+
+  // ✅ 가장 상단 상품 한 개의 가격 (없으면 0)
+  const topProductAmount = topProduct?.lineTotal ?? 0;
 
   const formatPrice = (value: number) => `${value.toLocaleString("ko-KR")}원`;
 
@@ -133,24 +142,22 @@ const WebView: React.FC = () => {
   const finalDiscountAmount = couponDiscountAmount;
   const finalPayAmount = Math.max(totalOriginalPrice - couponDiscountAmount, 0);
 
-  // ✅ 최초 진입 시, 맨 위 상품 + 전체 결제 금액 기준으로 사용 가능한 쿠폰 개수 조회
+  // ✅ 최초 진입 시, "맨 위 상품 + 그 상품 가격" 기준으로 사용 가능한 쿠폰 개수 조회
   React.useEffect(() => {
     const fetchApplicableCoupons = async () => {
       try {
-        if (products.length === 0 || totalOriginalPrice <= 0) {
+        if (!topProduct || topProductAmount <= 0) {
           setApplicableCouponCount(0);
           return;
         }
-
-        const firstProduct = products[0];
 
         const res = await api.get<Coupon[]>(
           "/api/v1/customer/coupon/my/applicable",
           {
             params: {
-              productId: firstProduct.productId,
-              // ✅ 기본 할인 없음 → 원가 기준으로 쿠폰 가능 여부 체크
-              purchaseAmount: totalOriginalPrice,
+              productId: topProduct.productId,
+              // ✅ 가장 상단 상품 하나의 lineTotal 기준
+              purchaseAmount: topProductAmount,
             },
           }
         );
@@ -162,7 +169,7 @@ const WebView: React.FC = () => {
     };
 
     fetchApplicableCoupons();
-  }, [products, totalOriginalPrice]);
+  }, [topProduct, topProductAmount]);
 
   // ✅ 결제 버튼 클릭 시: 주문에 쿠폰 먼저 적용 → 그 다음 결제 페이지로 이동
   const handleClickPayment = async () => {
@@ -346,7 +353,8 @@ const WebView: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  const firstProduct = products[0];
                   navigate("/checkout/coupon", {
                     state: {
                       products: products.map((p) => ({
@@ -355,11 +363,11 @@ const WebView: React.FC = () => {
                         lineTotal: p.lineTotal,
                         shopName: p.shopName,
                       })),
-                      // ✅ 쿠폰 페이지에도 원가 기준으로 넘김
-                      purchaseAmount: totalOriginalPrice,
+                      // ✅ 쿠폰 페이지에도 "가장 상단 상품 1개 금액" 기준으로 넘김
+                      purchaseAmount: firstProduct ? firstProduct.lineTotal : 0,
                     },
-                  })
-                }
+                  });
+                }}
                 className="flex h-[52px] w-full items-center justify-between rounded-[14px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-left transition-all hover:border-[#FF2233] hover:bg-[#FFF5F5]"
               >
                 {/* 디자인 유지하면서 내용만 쿠폰 선택/적용 상태에 맞게 변경 */}
@@ -414,17 +422,20 @@ const WebView: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-[14px] leading-[1.6] tracking-[-0.2px] text-[rgba(0,0,0,0.7)]">
-                    총 할인금액
-                  </span>
-                  <span className="text-[14px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#16A34A]">
-                    -{formatPrice(finalDiscountAmount)}
-                  </span>
-                </div>
+                {/* ✅ 모바일과 동일하게: 할인금액이 0원일 때는 이 줄 자체를 숨김 */}
+                {finalDiscountAmount > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[14px] leading-[1.6] tracking-[-0.2px] text-[rgba(0,0,0,0.7)]">
+                      총 할인금액
+                    </span>
+                    <span className="text-[14px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#16A34A]">
+                      -{formatPrice(finalDiscountAmount)}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <div className="mt-4 mb-3 flex items-center justify-between">
+              <div className="mt-4 mb-3 flex items-center justify-between gap-4">
                 <div className="flex flex-col">
                   <span className="text-[13px] font-semibold text-[#111827]">
                     결제금액(합산 기준)
