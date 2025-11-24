@@ -11,9 +11,8 @@ type ScheduleApiItem = {
   content: string;
   startScheduleDate: string; // "2025-11-21"
   endScheduleDate: string;
-  startTime: string; // "HH:mm" 형태
-  endTime: string; // "HH:mm" 형태
-  /** 공유/개인 구분 (없으면 기본 PERSONAL 취급) */
+  startTime: string; // "HH:mm"
+  endTime: string; // "HH:mm"
   scheduleType?: "PERSONAL" | "SHARED" | string;
 };
 
@@ -25,7 +24,27 @@ function formatDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** 선택된 날짜 텍스트: 2025년 4월 9일 */
+/** "YYYY-MM-DD" → Date */
+function parseYmdToDate(ymd: string): Date {
+  const [y, m, d] = ymd.split("-").map((v) => Number(v));
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+/** 시작~끝 날짜 범위 key 배열 */
+function buildDateRangeKeys(startYmd: string, endYmd?: string): string[] {
+  const result: string[] = [];
+  const start = parseYmdToDate(startYmd);
+  const end = endYmd ? parseYmdToDate(endYmd) : parseYmdToDate(startYmd);
+
+  const cur = new Date(start.getTime());
+  while (cur.getTime() <= end.getTime()) {
+    result.push(formatDateKey(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return result;
+}
+
+/** 선택된 날짜 텍스트 */
 function formatKoreanDate(d: Date): string {
   const y = d.getFullYear();
   const m = d.getMonth() + 1;
@@ -35,7 +54,6 @@ function formatKoreanDate(d: Date): string {
 
 /** 월 텍스트: 4월 */
 function formatKoreanMonth(year: number, monthIndex: number): string {
-  // monthIndex: 0 = 1월
   return `${monthIndex + 1}월`;
 }
 
@@ -48,7 +66,7 @@ function isSameDate(a: Date, b: Date): boolean {
   );
 }
 
-/** 시간 텍스트: 11:00AM (startTime / endTime "HH:mm" 기준) */
+/** 시간 텍스트: 11:00AM */
 function formatTimeText(time: string): string | null {
   if (!time) return null;
 
@@ -65,18 +83,15 @@ function formatTimeText(time: string): string | null {
   return `${hour12}:${mm}${ampm}`;
 }
 
-/** 한 달 캘린더용 날짜 배열 생성(월~일, 6주 고정) */
+/** 한 달 캘린더용 날짜 배열 (6주) */
 type CalendarCell = {
   date: Date;
   isCurrentMonth: boolean;
 };
 
 function buildCalendarMatrix(year: number, monthIndex: number): CalendarCell[] {
-  // monthIndex: 0 = 1월
   const firstOfMonth = new Date(year, monthIndex, 1);
-
-  // Monday-first 보정 (JS는 일요일=0)
-  const weekdayOfFirst = (firstOfMonth.getDay() + 6) % 7; // 0=월, 6=일
+  const weekdayOfFirst = (firstOfMonth.getDay() + 6) % 7; // 월=0
 
   const startDate = new Date(year, monthIndex, 1 - weekdayOfFirst);
 
@@ -92,12 +107,43 @@ function buildCalendarMatrix(year: number, monthIndex: number): CalendarCell[] {
   return cells;
 }
 
-/** ====== 캘린더 모바일 뷰 ====== */
+/** 공유/개인에 따른 리스트용 색상
+ *  - SHARED: 빨강
+ *  - 그 외(개인): 파랑
+ */
+function getScheduleColor(type?: string) {
+  if (type === "SHARED") {
+    return {
+      barClass: "bg-[#FF2233]", // 공유 일정: 빨간색
+    };
+  }
+  return {
+    barClass: "bg-[#4F46E5]", // 개인 일정: 파란색
+  };
+}
+
+/** 달력 셀 막대 색상
+ *  - SHARED: 빨강
+ *  - 그 외(개인): 파랑
+ */
+function getCellBarColor(type?: string): string {
+  if (type === "SHARED") return "#FF2233"; // 공유 일정 빨강
+  return "#4F46E5"; // 개인 일정 파랑
+}
+
+/** 주 단위 연속막대 정보 */
+type WeekBar = {
+  scheduleId: number;
+  colStart: number; // 0 ~ 6
+  colEnd: number; // 0 ~ 6
+  color: string;
+};
+
 export default function CalendarMobileView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
 
-  /** accessor 쿼리 파라미터 (고객/사장 구분용이라면 여기서 같이 전송) */
+  /** accessor param */
   const accessorParam = useMemo(() => {
     try {
       const raw = localStorage.getItem("accessor");
@@ -109,30 +155,33 @@ export default function CalendarMobileView() {
     }
   }, []);
 
-  /** 현재 보고 있는 월 (year, monthIndex) */
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
-
-  /** 캘린더에서 선택된 날짜 */
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
 
-  /** 월별 일정: key(YYYY-MM-DD) → ScheduleApiItem[] */
+  /** 날짜별 일정 */
   const [scheduleByDate, setScheduleByDate] = useState<
     Record<string, ScheduleApiItem[]>
   >({});
 
+  /** 주별 연속 막대 */
+  const [weekBars, setWeekBars] = useState<WeekBar[][]>(() =>
+    Array.from({ length: 6 }, () => [])
+  );
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const currentYear = currentDate.getFullYear();
-  const currentMonthIndex = currentDate.getMonth(); // 0 ~ 11
+  const [swipedScheduleId, setSwipedScheduleId] = useState<number | null>(null);
 
-  /** 한 달 캘린더 셀 */
+  const currentYear = currentDate.getFullYear();
+  const currentMonthIndex = currentDate.getMonth();
+
   const calendarCells = useMemo(
     () => buildCalendarMatrix(currentYear, currentMonthIndex),
     [currentYear, currentMonthIndex]
   );
 
-  /** ====== 월별 일정 조회 API 연동 ====== */
+  /** ====== 월별 일정 조회 ====== */
   useEffect(() => {
     const fetchSchedules = async () => {
       try {
@@ -143,35 +192,79 @@ export default function CalendarMobileView() {
           year: currentYear,
           month: currentMonthIndex + 1,
         };
+        if (accessorParam) params.accessor = accessorParam;
 
-        if (accessorParam) {
-          params.accessor = accessorParam;
-        }
-
-        // GET /api/v1/schedule?year=2025&month=11
         const { data } = await api.get<ScheduleApiItem[]>("/api/v1/schedule", {
           params,
         });
 
-        // 날짜별로 그룹핑 (YYYY-MM-DD 단위, 시작일 기준)
+        /** 날짜별 그룹핑 */
         const grouped: Record<string, ScheduleApiItem[]> = {};
         (data || []).forEach((item) => {
-          const key = (item.startScheduleDate || "").slice(0, 10); // YYYY-MM-DD
-          if (!grouped[key]) grouped[key] = [];
-          grouped[key].push(item);
-        });
+          const start = (item.startScheduleDate || "").slice(0, 10);
+          const end = (item.endScheduleDate || "").slice(0, 10) || start;
+          const dateKeys = buildDateRangeKeys(start, end);
 
+          dateKeys.forEach((key) => {
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(item);
+          });
+        });
         setScheduleByDate(grouped);
 
-        // 선택된 날짜가 이번 달이 아니면 이번 달 1일로 맞춰줌
+        /** 연속 일정용 주별 막대 계산 */
+        const dateIndexMap: Record<string, number> = {};
+        calendarCells.forEach((cell, idx) => {
+          const key = formatDateKey(cell.date);
+          dateIndexMap[key] = idx;
+        });
+
+        const newWeekBars: WeekBar[][] = Array.from({ length: 6 }, () => []);
+
+        (data || []).forEach((item) => {
+          const start = (item.startScheduleDate || "").slice(0, 10);
+          const end = (item.endScheduleDate || "").slice(0, 10) || start;
+          const dateKeys = buildDateRangeKeys(start, end);
+
+          const indices: number[] = [];
+          dateKeys.forEach((key) => {
+            const idx = dateIndexMap[key];
+            if (idx !== undefined) indices.push(idx);
+          });
+          if (indices.length === 0) return;
+
+          const firstIdx = Math.min(...indices);
+          const lastIdx = Math.max(...indices);
+          const color = getCellBarColor(item.scheduleType);
+
+          for (let row = 0; row < 6; row += 1) {
+            const rowStart = row * 7;
+            const rowEnd = rowStart + 6;
+            const overlapStart = Math.max(firstIdx, rowStart);
+            const overlapEnd = Math.min(lastIdx, rowEnd);
+            if (overlapStart <= overlapEnd) {
+              newWeekBars[row].push({
+                scheduleId: item.id,
+                colStart: overlapStart - rowStart,
+                colEnd: overlapEnd - rowStart,
+                color,
+              });
+            }
+          }
+        });
+
+        setWeekBars(newWeekBars);
+
+        /** 선택 날짜 월 보정 */
         if (
           !selectedDate ||
           selectedDate.getFullYear() !== currentYear ||
           selectedDate.getMonth() !== currentMonthIndex
         ) {
-          const firstDay = new Date(currentYear, currentMonthIndex, 1);
-          setSelectedDate(firstDay);
+          setSelectedDate(new Date(currentYear, currentMonthIndex, 1));
         }
+
+        setSwipedScheduleId(null);
       } catch (e) {
         console.error("[Schedule/CalendarMobileView] fetchSchedules error:", e);
         setError("일정 목록을 불러오는 중 오류가 발생했습니다.");
@@ -182,15 +275,16 @@ export default function CalendarMobileView() {
 
     fetchSchedules();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentYear, currentMonthIndex, accessorParam]);
+  }, [currentYear, currentMonthIndex, accessorParam, calendarCells]);
 
-  /** 이전/다음 달 이동 */
+  /** 이전/다음 달 */
   const goPrevMonth = useCallback(() => {
     setCurrentDate((prev) => {
       const y = prev.getFullYear();
       const m = prev.getMonth();
       return new Date(y, m - 1, 1);
     });
+    setSwipedScheduleId(null);
   }, []);
 
   const goNextMonth = useCallback(() => {
@@ -199,42 +293,72 @@ export default function CalendarMobileView() {
       const m = prev.getMonth();
       return new Date(y, m + 1, 1);
     });
+    setSwipedScheduleId(null);
   }, []);
 
-  /** 날짜 선택 */
   const handleSelectDate = useCallback((date: Date) => {
     setSelectedDate(date);
+    setSwipedScheduleId(null);
   }, []);
 
-  /** 일정 추가하기 클릭 → 개인 일정 추가 페이지로 이동 (App.tsx 새 경로 기준) */
   const handleAddSchedule = useCallback(() => {
+    setSwipedScheduleId(null);
     nav("/calendar/personal");
   }, [nav]);
 
-  /** 일정 클릭 → 공유/개인에 따라 각각 수정 페이지로 이동 (새 경로 기준) */
   const handleClickSchedule = useCallback(
     (item: ScheduleApiItem) => {
       if (item.scheduleType === "SHARED") {
         nav(`/calendar/shared/edit/${item.id}`);
       } else {
-        // 기본은 개인 일정
         nav(`/calendar/personal/edit/${item.id}`);
       }
     },
     [nav]
   );
 
-  /** 선택된 날짜의 일정 목록 */
+  const handleDeleteSchedule = useCallback(async (item: ScheduleApiItem) => {
+    if (!window.confirm("해당 일정을 삭제하시겠습니까?")) return;
+
+    try {
+      await api.delete(`/api/v1/schedule/${item.id}`);
+
+      setScheduleByDate((prev) => {
+        const next: Record<string, ScheduleApiItem[]> = {};
+        Object.entries(prev).forEach(([key, list]) => {
+          const filtered = list.filter((s) => s.id !== item.id);
+          if (filtered.length > 0) next[key] = filtered;
+        });
+        return next;
+      });
+
+      setSwipedScheduleId(null);
+    } catch (e) {
+      console.error("[Schedule/CalendarMobileView] deleteSchedule error:", e);
+      setError("일정 삭제 중 오류가 발생했습니다.");
+    }
+  }, []);
+
+  /** 카드 클릭 → 슬라이더 / 수정 이동 */
+  const handleSchedulePress = useCallback(
+    (item: ScheduleApiItem) => {
+      if (swipedScheduleId === item.id) {
+        handleClickSchedule(item);
+      } else {
+        setSwipedScheduleId(item.id);
+      }
+    },
+    [swipedScheduleId, handleClickSchedule]
+  );
+
   const selectedDateKey = formatDateKey(selectedDate);
   const selectedSchedules: ScheduleApiItem[] =
     scheduleByDate[selectedDateKey] || [];
 
-  /** 요일 헤더 텍스트 (월~일) */
   const weekdayLabels = ["월", "화", "수", "목", "금", "토", "일"];
 
   return (
     <div className="w-full bg-white">
-      {/* 390 × 844 프레임 */}
       <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col relative">
         {/* 헤더 */}
         <div className="sticky top-0 z-20 bg-white">
@@ -277,55 +401,79 @@ export default function CalendarMobileView() {
               ))}
             </div>
 
-            {/* 캘린더 날짜 그리드 (6주) */}
+            {/* 캘린더 (날짜 + 연속 막대) */}
             <div className="w-[350px] mx-auto">
               {Array.from({ length: 6 }).map((_, rowIndex) => (
                 <div
                   key={rowIndex}
-                  className="flex flex-row justify-between h-[56.35px]"
+                  className="relative w-full h-[62px] mb-[4px]"
                 >
-                  {calendarCells
-                    .slice(rowIndex * 7, rowIndex * 7 + 7)
-                    .map((cell) => {
-                      const { date, isCurrentMonth } = cell;
-                      const isSelected = isSameDate(date, selectedDate);
-                      const isToday = isSameDate(date, new Date());
+                  {/* 연속 일정 막대 (얇은 선) */}
+                  {weekBars[rowIndex] &&
+                    weekBars[rowIndex].map((bar, idx) => (
+                      <div
+                        key={`${bar.scheduleId}-${idx}`}
+                        className="absolute h-[3px] rounded-full"
+                        style={{
+                          left: `${(bar.colStart / 7) * 100}%`,
+                          width: `${
+                            ((bar.colEnd - bar.colStart + 1) / 7) * 100
+                          }%`,
+                          top: 38 + idx * 5, // 날짜 아래 얇게
+                          backgroundColor: bar.color,
+                          opacity: 0.8,
+                        }}
+                      />
+                    ))}
 
-                      const baseTextClass =
-                        "text-[15px] leading-[24px] tracking-[-0.22px]";
-                      const textColor = isCurrentMonth
-                        ? "text-[#1E2124]"
-                        : "text-[#C5C5C5]";
+                  {/* 날짜 버튼들 */}
+                  <div className="relative flex flex-row justify-between h-full">
+                    {calendarCells
+                      .slice(rowIndex * 7, rowIndex * 7 + 7)
+                      .map((cell) => {
+                        const { date, isCurrentMonth } = cell;
+                        const isSelected = isSameDate(date, selectedDate);
+                        const isToday = isSameDate(date, new Date());
 
-                      return (
-                        <button
-                          key={formatDateKey(date)}
-                          type="button"
-                          onClick={() => handleSelectDate(date)}
-                          className="w-[50px] h-[56.35px] flex items-center justify-center"
-                        >
-                          <div className="flex items-center justify-center">
-                            {isSelected ? (
-                              <div className="w-[30px] h-[30px] rounded-full bg-[#FF2233] flex items-center justify-center">
+                        const baseTextClass =
+                          "text-[15px] leading-[24px] tracking-[-0.22px]";
+                        const textColor = isCurrentMonth
+                          ? "text-[#1E2124]"
+                          : "text-[#C5C5C5]";
+
+                        const key = formatDateKey(date);
+
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => handleSelectDate(date)}
+                            className="w-[50px] h-full flex items-start justify-center pt-[6px]"
+                          >
+                            <div className="flex flex-col items-center">
+                              {/* 날짜 숫자 */}
+                              {isSelected ? (
+                                <div className="w-[32px] h-[32px] rounded-full bg-[#FF2233] flex items-center justify-center">
+                                  <span
+                                    className={`${baseTextClass} text-white font-medium`}
+                                  >
+                                    {date.getDate()}
+                                  </span>
+                                </div>
+                              ) : (
                                 <span
-                                  className={`${baseTextClass} text-white font-medium`}
+                                  className={`${baseTextClass} ${textColor} ${
+                                    isToday ? "font-semibold" : "font-normal"
+                                  }`}
                                 >
                                   {date.getDate()}
                                 </span>
-                              </div>
-                            ) : (
-                              <span
-                                className={`${baseTextClass} ${textColor} ${
-                                  isToday ? "font-semibold" : "font-normal"
-                                }`}
-                              >
-                                {date.getDate()}
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
                 </div>
               ))}
             </div>
@@ -349,7 +497,7 @@ export default function CalendarMobileView() {
               </span>
             </div>
 
-            {/* 선택된 날짜의 일정 카드들 */}
+            {/* 선택 날짜 일정 카드들 */}
             {!loading && !error && (
               <>
                 {selectedSchedules.length === 0 ? (
@@ -361,36 +509,66 @@ export default function CalendarMobileView() {
                     {selectedSchedules.map((item) => {
                       const timeText = formatTimeText(item.startTime);
                       const hasTime = !!timeText;
+                      const { barClass } = getScheduleColor(item.scheduleType);
+                      const isSwiped = swipedScheduleId === item.id;
 
                       return (
-                        <button
+                        <div
                           key={item.id}
-                          type="button"
-                          onClick={() => handleClickSchedule(item)}
-                          className="w-[350px] min-h-[52px] bg-[#F6F7FB] rounded-[12px] px-4 py-[11px] flex items-center justify-between active:scale-[0.99] transition-transform"
+                          className="relative w-[350px] min-h-[52px] overflow-hidden rounded-[12px]"
                         >
-                          {/* 왼쪽: 시간 + 제목 */}
-                          <div className="flex items-center gap-4 flex-1 min-w-0">
-                            {/* 시간 영역 */}
-                            <div className="w-[70px] shrink-0">
-                              {hasTime && (
-                                <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
-                                  {timeText}
-                                </span>
-                              )}
-                            </div>
+                          {/* 뒤: 삭제 버튼 영역*/}
+                          <div className="absolute inset-y-0 right-0 flex items-stretch">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSchedule(item)}
+                              className="w-[84px] flex items-center justify-center bg-[#F6F7FB] active:opacity-90"
+                            >
+                              <div className="flex flex-col items-center gap-1">
+                                <Icon
+                                  icon="solar:trash-bin-minimalistic-bold"
+                                  className="w-5 h-5 text-[#FF2233]"
+                                />
+                              </div>
+                            </button>
+                          </div>
 
-                            {/* 세로 바 + 제목 */}
-                            <div className="flex items-center gap-[9.6px] flex-1 min-w-0">
-                              <div className="w-[3.2px] h-[25.6px] rounded-[2.4px] bg-[#FF2233]" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[14px] font-semibold leading-[22px] tracking-[-0.16px] text-[#1E2124] truncate text-left">
-                                  {item.title}
-                                </p>
+                          {/* 앞: 일정 카드 (슬라이드) */}
+                          <button
+                            type="button"
+                            onClick={() => handleSchedulePress(item)}
+                            className="w-full bg-[#F6F7FB] px-4 py-[11px] flex items-center justify-between active:scale-[0.99] transition-transform"
+                            style={{
+                              transform: isSwiped
+                                ? "translateX(-84px)"
+                                : "translateX(0px)",
+                              transition: "transform 0.18s ease-out",
+                            }}
+                          >
+                            <div className="flex items-center gap-4 flex-1 min-w-0">
+                              {/* 시간 */}
+                              <div className="w-[70px] shrink-0">
+                                {hasTime && (
+                                  <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                                    {timeText}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* 세로 바 + 제목 */}
+                              <div className="flex items-center gap-[9.6px] flex-1 min-w-0">
+                                <div
+                                  className={`w-[3.2px] h-[25.6px] rounded-[2.4px] ${barClass}`}
+                                />
+                                <div className="flex-1 min-w-0 text-left">
+                                  <p className="text-[14px] font-semibold leading-[22px] tracking-[-0.16px] text-[#1E2124] truncate">
+                                    {item.title}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </button>
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
