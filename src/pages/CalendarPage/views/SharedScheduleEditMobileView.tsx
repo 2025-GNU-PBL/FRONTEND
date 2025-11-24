@@ -31,7 +31,7 @@ function getAmPmLabel(timeStr: string) {
   return h < 12 ? "오전" : "오후";
 }
 
-/** 12시간제로 보여줄 시간 (예: "04:00", "01:30") */
+/** 12시간제 포맷 */
 function formatTime12h(timeStr: string) {
   if (!timeStr) return "";
   const [hStr, mStr] = timeStr.split(":");
@@ -43,7 +43,7 @@ function formatTime12h(timeStr: string) {
   return `${hh}:${mStr}`;
 }
 
-/** ====== 단건 조회 응답 DTO (GET /api/v1/schedule/{id}) ====== */
+/** ====== 단건 조회 응답 DTO ====== */
 type ScheduleDetailResponse = {
   id: number;
   title: string;
@@ -64,25 +64,30 @@ type ScheduleDetailResponse = {
   }[];
 };
 
-/** ====== 수정 요청 DTO (request.request) ====== */
+/** ====== 수정 요청 DTO ====== */
 type ScheduleUpdateRequest = {
   title: string;
   content: string;
-  startScheduleDate: string; // yyyy-MM-dd
-  endScheduleDate: string; // yyyy-MM-dd
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
-  keepFileIds: number[]; // 유지할 기존 파일 id
+  startScheduleDate: string;
+  endScheduleDate: string;
+  startTime: string;
+  endTime: string;
+  scheduleType: "PERSONAL" | "SHARED" | string;
+  productName: string;
+  customerName: string;
+  bzName: string;
+  address: string;
+  keepFileIds: number[];
 };
 
-export default function SharedScheduleCreateMobileView() {
+export default function SharedScheduleEditMobileView() {
   const nav = useNavigate();
   const { id } = useParams<{ id: string }>();
   const scheduleId = id ? Number(id) : NaN;
 
   const onBack = useCallback(() => nav(-1), [nav]);
 
-  /** 기본 값: 오늘 날짜, 11:00 ~ 13:00 */
+  /** 기본 값 */
   const today = useMemo(() => new Date(), []);
   const defaultDate = useMemo(() => toDateInput(today), [today]);
 
@@ -91,6 +96,9 @@ export default function SharedScheduleCreateMobileView() {
   const [companyName, setCompanyName] = useState(""); // bzName
   const [customerName, setCustomerName] = useState(""); // customerName
   const [locationText, setLocationText] = useState(""); // address
+  const [productName, setProductName] = useState(""); // productName
+  const [scheduleType, setScheduleType] =
+    useState<ScheduleDetailResponse["scheduleType"]>("SHARED");
 
   const [startDate, setStartDate] = useState(defaultDate);
   const [endDate, setEndDate] = useState(defaultDate);
@@ -98,25 +106,27 @@ export default function SharedScheduleCreateMobileView() {
   const [endTime, setEndTime] = useState("13:00");
   const [memo, setMemo] = useState("");
 
+  /** 기존 파일 + 새 파일 */
+  const [existingFiles, setExistingFiles] = useState<
+    ScheduleDetailResponse["scheduleFiles"]
+  >([]);
+  const [keepFileIds, setKeepFileIds] = useState<number[]>([]);
   const [files, setFiles] = useState<File[]>([]);
-  const [keepFileIds, setKeepFileIds] = useState<number[]>([]); // 기존 파일 id 목록
 
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  /** ====== id가 있으면 단건 조회해서 폼 초기값 세팅 ====== */
+  /** ====== 상세 조회 ====== */
   useEffect(() => {
-    if (!scheduleId || Number.isNaN(scheduleId)) {
-      return;
-    }
+    if (!scheduleId || Number.isNaN(scheduleId)) return;
 
     const normalizeDate = (d?: string) =>
       d && d.length >= 10 ? d.slice(0, 10) : defaultDate;
 
     const normalizeTime = (t?: string, fallback: string) => {
       if (!t) return fallback;
-      return t.slice(0, 5); // "HH:mm"만 사용
+      return t.slice(0, 5);
     };
 
     const fetchDetail = async () => {
@@ -132,16 +142,17 @@ export default function SharedScheduleCreateMobileView() {
         setCompanyName(data.bzName ?? "");
         setCustomerName(data.customerName ?? "");
         setLocationText(data.address ?? "");
+        setProductName(data.productName ?? "");
+        setScheduleType(data.scheduleType ?? "SHARED");
 
         setStartDate(normalizeDate(data.startScheduleDate));
         setEndDate(normalizeDate(data.endScheduleDate));
-
         setStartTime(normalizeTime(data.startTime, "11:00"));
         setEndTime(normalizeTime(data.endTime, "13:00"));
 
-        // 기존 파일 유지용 id 저장
-        const ids = (data.scheduleFiles || []).map((f) => f.id);
-        setKeepFileIds(ids);
+        const serverFiles = data.scheduleFiles || [];
+        setExistingFiles(serverFiles);
+        setKeepFileIds(serverFiles.map((f) => f.id));
       } catch (e) {
         console.error("[SharedScheduleEditMobileView] fetch detail error:", e);
         alert("일정 정보를 불러오는 중 오류가 발생했습니다.");
@@ -172,7 +183,7 @@ export default function SharedScheduleCreateMobileView() {
     ? `${startDateLabel} 일정의 시간입니다.`
     : `${startDateLabel} ~ ${endDateLabel} 일정의 시간입니다.`;
 
-  /** 유효성 검사 */
+  /** ====== 유효성 검사 (실제 저장 시) ====== */
   const validate = useCallback(() => {
     const next: Record<string, string> = {};
 
@@ -189,9 +200,8 @@ export default function SharedScheduleCreateMobileView() {
 
       if (sd > ed) {
         next.endDate = "종료일은 시작일 이후여야 합니다.";
-      } else if (sd.getTime() !== ed.getTime()) {
-        next.endDate = "현재는 하루 단위 일정만 수정할 수 있어요.";
       }
+      // 여러 날짜 범위 허용 (하루로 제한 X)
     }
 
     if (!startTime || !endTime) {
@@ -202,16 +212,16 @@ export default function SharedScheduleCreateMobileView() {
     return Object.keys(next).length === 0;
   }, [title, startDate, endDate, startTime, endTime]);
 
-  const isValid = useMemo(() => {
-    if (!title.trim() || !startDate || !endDate || !startTime || !endTime) {
-      return false;
-    }
-    const sd = new Date(startDate);
-    const ed = new Date(endDate);
-    return sd <= ed && sd.getTime() === ed.getTime();
-  }, [title, startDate, endDate, startTime, endTime]);
+  /** ====== 저장 버튼 활성 여부 ======
+   *  -> 필수 값이 비어있지만 않으면 true 로, 날짜 비교는 validate 안에서만 체크
+   */
+  const isValid = useMemo(
+    () =>
+      !!title.trim() && !!startDate && !!endDate && !!startTime && !!endTime,
+    [title, startDate, endDate, startTime, endTime]
+  );
 
-  /** 파일 추가 */
+  /** ====== 파일 관련 ====== */
   const handleFilesChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const fileList = e.target.files;
@@ -223,36 +233,46 @@ export default function SharedScheduleCreateMobileView() {
     []
   );
 
-  /** 파일 삭제 (현재는 새로 업로드한 파일만 삭제, 기존 파일은 keepFileIds 그대로 유지) */
-  const handleRemoveFile = useCallback((index: number) => {
+  const handleRemoveNewFile = useCallback((index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  /** 수정 버튼 */
+  const toggleKeepExistingFile = useCallback((fileId: number) => {
+    setKeepFileIds((prev) =>
+      prev.includes(fileId)
+        ? prev.filter((id) => id !== fileId)
+        : [...prev, fileId]
+    );
+  }, []);
+
+  /** 기존 파일 다운로드 (s3Key 가 URL 이라고 가정) */
+  const handleDownloadExistingFile = useCallback(
+    (file: { id: number; name: string; s3Key: string }) => {
+      if (!file.s3Key) return;
+      window.open(file.s3Key, "_blank");
+    },
+    []
+  );
+
+  /** ====== 수정 요청 ====== */
   const handleSubmit = useCallback(async () => {
     if (submitting) return;
     if (!scheduleId || Number.isNaN(scheduleId)) return;
     if (!validate()) return;
 
-    // content 에 부가 정보들을 합쳐서 넣음
-    const contentLines = [
-      companyName && `업체명: ${companyName}`,
-      customerName && `고객명: ${customerName}`,
-      locationText && `위치: ${locationText}`,
-      sameDay
-        ? `시간: ${startTime} ~ ${endTime} (${startDate})`
-        : `시간: ${startTime} ~ ${endTime} (${startDate} ~ ${endDate})`,
-      memo && `메모: ${memo}`,
-    ].filter(Boolean);
-
     const requestBody: ScheduleUpdateRequest = {
       title: title.trim(),
-      content: contentLines.join("\n"),
+      content: memo.trim(),
       startScheduleDate: startDate,
       endScheduleDate: endDate,
       startTime,
       endTime,
-      keepFileIds, // 기존 파일 유지
+      scheduleType,
+      productName,
+      customerName,
+      bzName: companyName,
+      address: locationText,
+      keepFileIds,
     };
 
     const formData = new FormData();
@@ -263,14 +283,13 @@ export default function SharedScheduleCreateMobileView() {
       })
     );
 
-    // 새로 첨부한 파일
     files.forEach((file) => {
+      // 서버가 받는 필드명이 "file" 이라고 들었어서 그대로 사용
       formData.append("file", file);
     });
 
     try {
       setSubmitting(true);
-      // PATCH /api/v1/schedule/{id}
       await api.patch(`/api/v1/schedule/${scheduleId}`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -289,15 +308,16 @@ export default function SharedScheduleCreateMobileView() {
     scheduleId,
     validate,
     title,
-    companyName,
-    customerName,
-    locationText,
     memo,
-    sameDay,
-    startTime,
-    endTime,
     startDate,
     endDate,
+    startTime,
+    endTime,
+    scheduleType,
+    productName,
+    customerName,
+    companyName,
+    locationText,
     keepFileIds,
     files,
     nav,
@@ -305,9 +325,8 @@ export default function SharedScheduleCreateMobileView() {
 
   return (
     <div className="w-full bg-[#F4F6FB]">
-      {/* 390 × 844 고정 프레임 */}
       <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col relative">
-        {/* 상단 헤더 */}
+        {/* 헤더 */}
         <div className="sticky top-0 z-20 bg-white">
           <MyPageHeader
             title="공유 일정 수정"
@@ -316,7 +335,7 @@ export default function SharedScheduleCreateMobileView() {
           />
         </div>
 
-        {/* 콘텐츠 스크롤 영역 */}
+        {/* 콘텐츠 */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex h-full w-full items-center justify-center text-[14px] text-[#9CA3AF]">
@@ -324,7 +343,7 @@ export default function SharedScheduleCreateMobileView() {
             </div>
           ) : (
             <div className="px-5 pt-18 pb-6">
-              {/* 제목 입력 */}
+              {/* 제목 */}
               <div className="mt-4 mb-6 flex items-center gap-3">
                 <div className="w-1 h-8 rounded-[3px] bg-[#FF2233]" />
                 <input
@@ -347,7 +366,7 @@ export default function SharedScheduleCreateMobileView() {
                     업체명
                   </span>
                   <input
-                    className="w-full bg-transparent outline-none text-[14px] leading-[21px] text-[#949494] placeholder:text-[#C4C4C4]"
+                    className="w-full bg-transparent outline-none text-[14px] leading-[21px] text-[#111827] placeholder:text-[#C4C4C4]"
                     placeholder="업체명을 입력하세요"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
@@ -359,7 +378,7 @@ export default function SharedScheduleCreateMobileView() {
                     고객명
                   </span>
                   <input
-                    className="w-full bg-transparent outline-none text-[14px] leading-[21px] text-[#949494] placeholder:text-[#C4C4C4]"
+                    className="w-full bg-transparent outline-none text-[14px] leading-[21px] text-[#111827] placeholder:text-[#C4C4C4]"
                     placeholder="고객명을 입력하세요"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
@@ -367,7 +386,7 @@ export default function SharedScheduleCreateMobileView() {
                 </div>
               </div>
 
-              {/* 날짜 선택 */}
+              {/* 날짜 */}
               <div className="mt-2">
                 <div className="flex items-center gap-4 mb-2">
                   <Icon
@@ -378,7 +397,7 @@ export default function SharedScheduleCreateMobileView() {
                     <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                       {startDateLabel}
                     </span>
-                    <span className="text-[16px] text-[#1E2124]">{">"}</span>
+                    <span className="text-[16px] text-[#1E2124]">{" > "}</span>
                     <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                       {endDateLabel}
                     </span>
@@ -386,7 +405,7 @@ export default function SharedScheduleCreateMobileView() {
                 </div>
 
                 <div className="ml-9 flex flex-col gap-2">
-                  <div className="w-[260px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
+                  <div className="w-[260px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center px-4">
                     <input
                       type="date"
                       className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
@@ -394,7 +413,7 @@ export default function SharedScheduleCreateMobileView() {
                       onChange={(e) => setStartDate(e.target.value)}
                     />
                   </div>
-                  <div className="w-[260px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
+                  <div className="w-[260px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center px-4">
                     <input
                       type="date"
                       className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
@@ -411,19 +430,13 @@ export default function SharedScheduleCreateMobileView() {
                 )}
               </div>
 
-              {/* 시간 선택 */}
+              {/* 시간 */}
               <div className="mt-6">
                 <div className="flex items-center gap-4">
                   <Icon icon="prime:clock" className="w-5 h-5 text-[#333333]" />
-                  <div className="flex items-center gap-6">
-                    <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
-                      {startTimeLabel}
-                    </span>
-                    <span className="text-[16px] text-[#1E2124]">{">"}</span>
-                    <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
-                      {endTimeLabel}
-                    </span>
-                  </div>
+                  <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                    {startTimeLabel} {" > "} {endTimeLabel}
+                  </span>
                 </div>
 
                 <p className="mt-1 ml-9 text-[12px] text-[#9CA3AF]">
@@ -434,7 +447,7 @@ export default function SharedScheduleCreateMobileView() {
                   {/* 시작 시간 */}
                   <button
                     type="button"
-                    className="relative w-[150px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
+                    className="relative w-[150px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center justify-between px-4"
                   >
                     <div className="flex flex-col text-left">
                       <span className="text-[11px] text-[#9CA3AF]">
@@ -461,7 +474,7 @@ export default function SharedScheduleCreateMobileView() {
                   {/* 종료 시간 */}
                   <button
                     type="button"
-                    className="relative w-[150px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
+                    className="relative w-[150px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center justify-between px-4"
                   >
                     <div className="flex flex-col text-left">
                       <span className="text-[11px] text-[#9CA3AF]">
@@ -498,16 +511,14 @@ export default function SharedScheduleCreateMobileView() {
                     icon="solar:map-linear"
                     className="w-5 h-5 text-[#333333]"
                   />
-                  <div className="flex flex-col">
-                    <span className="text-[12px] text-[#999999] leading-[18px]">
-                      위치
-                    </span>
-                  </div>
+                  <span className="text-[12px] text-[#999999] leading-[18px]">
+                    위치
+                  </span>
                 </div>
 
                 <div className="ml-9 w-full max-w-[310px]">
                   <textarea
-                    className="w-full h-[56px] bg-transparent border border-[#E5E7EB] rounded-[12px] px-4 py-3 text-[13px] leading-[20px] resize-none outline-none text-[#111827] placeholder:text-[#C4C4C4]"
+                    className="w-full h-[56px] bg-white border border-[#E5E7EB] rounded-[12px] px-4 py-3 text-[13px] leading-[20px] resize-none outline-none text-[#111827] placeholder:text-[#C4C4C4]"
                     placeholder="업체 상호 / 주소 등을 입력해 주세요"
                     value={locationText}
                     onChange={(e) => setLocationText(e.target.value)}
@@ -527,9 +538,9 @@ export default function SharedScheduleCreateMobileView() {
                   </span>
                 </div>
 
-                <div className="ml-9 w-full max-w-[310px] bg-[#F6F7FB] rounded-[12px] px-4 py-3">
+                <div className="ml-9 w-full max-w-[310px]">
                   <textarea
-                    className="w-full h-[96px] bg-transparent resize-none outline-none text-[14px] text-[#1E2124] placeholder:text-[#C4C4C4]"
+                    className="w-full h-[96px] bg-white border border-[#E5E7EB] rounded-[12px] px-4 py-3 resize-none outline-none text-[14px] text-[#1E2124] placeholder:text-[#C4C4C4]"
                     placeholder="메모를 입력해 주세요"
                     value={memo}
                     onChange={(e) => setMemo(e.target.value)}
@@ -546,8 +557,45 @@ export default function SharedScheduleCreateMobileView() {
                   </span>
                 </div>
 
-                <div className="ml-9 w-[310px] max-w-full">
-                  <label className="inline-flex items-center justify-center px-4 h-[40px] rounded-[12px] bg-[#F6F7FB] border border-dashed border-[#E5E7EB] text-[13px] text-[#4B5563] cursor-pointer">
+                <div className="ml-9 w-[310px] max-w-full space-y-3">
+                  {/* 기존 파일 목록 */}
+                  {existingFiles.length > 0 && (
+                    <div className="space-y-2">
+                      {existingFiles.map((file) => {
+                        const kept = keepFileIds.includes(file.id);
+                        return (
+                          <div
+                            key={file.id}
+                            className="w-full h-[40px] bg-white border border-[#E5E7EB] rounded-[12px] px-4 flex items-center justify-between"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadExistingFile(file)}
+                              className="flex-1 text-left text-[13px] text-[#111827] truncate underline-offset-2 hover:underline"
+                            >
+                              {file.name}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleKeepExistingFile(file.id)}
+                              className={`ml-3 w-7 h-7 rounded-full border flex items-center justify-center ${
+                                kept
+                                  ? "bg-[#FF2233] border-[#FF2233]"
+                                  : "bg-white border-[#E5E7EB]"
+                              }`}
+                            >
+                              <span className="text-[10px] text-white">
+                                {kept ? "ON" : ""}
+                              </span>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* 새 파일 추가 */}
+                  <label className="inline-flex items-center justify-center px-4 h-[40px] rounded-[12px] bg-white border border-dashed border-[#E5E7EB] text-[13px] text-[#4B5563] cursor-pointer">
                     <span>파일 추가</span>
                     <input
                       type="file"
@@ -558,18 +606,18 @@ export default function SharedScheduleCreateMobileView() {
                   </label>
 
                   {files.length > 0 && (
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-2 space-y-2">
                       {files.map((file, index) => (
                         <div
                           key={`${file.name}-${index}`}
-                          className="w-full h-[40px] bg-[#F6F7FB] rounded-[12px] px-4 flex items-center justify-between"
+                          className="w-full h-[40px] bg-white border border-[#E5E7EB] rounded-[12px] px-4 flex items-center justify-between"
                         >
                           <span className="text-[13px] text-[#111827] truncate">
                             {file.name}
                           </span>
                           <button
                             type="button"
-                            onClick={() => handleRemoveFile(index)}
+                            onClick={() => handleRemoveNewFile(index)}
                             className="ml-2 w-6 h-6 flex items-center justify-center rounded-full bg-[#E5E7EB]"
                           >
                             <Icon
@@ -587,7 +635,7 @@ export default function SharedScheduleCreateMobileView() {
           )}
         </div>
 
-        {/* 하단 수정 버튼 */}
+        {/* 하단 저장 버튼 */}
         <div className="px-5 pb-18 pt-3">
           <button
             type="button"
@@ -601,7 +649,7 @@ export default function SharedScheduleCreateMobileView() {
                 : "bg-[#F6F6F6] text-[#ADB3B6]",
             ].join(" ")}
           >
-            {submitting ? "수정 중..." : "수정하기"}
+            {submitting ? "저장 중..." : "저장하기"}
           </button>
         </div>
       </div>

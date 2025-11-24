@@ -123,7 +123,6 @@ export default function MobileView() {
 
       setSummary(res.data.summary);
 
-      // ✅ 모든 상태를 그대로 사용 (CANCEL_REQUESTED 포함)
       const rawItems = res.data.items || [];
       setItems(rawItems);
     } catch (error) {

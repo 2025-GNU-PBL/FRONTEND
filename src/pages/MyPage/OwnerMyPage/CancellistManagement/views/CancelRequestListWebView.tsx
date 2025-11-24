@@ -31,7 +31,7 @@ interface CancelPaymentItem {
   productName: string;
   status: ApiPaymentStatus;
   cancelReason: string;
-  createdAt: string; // 작성일(요청일)
+  requestedAt: string;
 }
 
 /** 작성일 YYYY.MM.DD 포맷 */
@@ -76,7 +76,7 @@ function getSortOrderLabel(order: SortOrder) {
   return order === "DESC" ? "최신순" : "오래된 순";
 }
 
-/** 웹용 섹션 카드 (심플 버전) */
+/** 웹용 섹션 카드  */
 function SectionCard({
   title,
   subtitle,
@@ -106,7 +106,6 @@ function SectionCard({
   );
 }
 
-/** 사장(OWNER) 마이페이지 - 취소 내역 (Web, 깔끔한 리스트 버전) */
 export default function WebView() {
   const nav = useNavigate();
   const rawUserData = useAppSelector((state) => state.user.userData);
@@ -120,7 +119,7 @@ export default function WebView() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("DESC");
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
 
-  /** 취소 요청 목록 조회 (모바일처럼 취소 요청만) */
+  /** 취소 요청 목록 조회 */
   useEffect(() => {
     const fetchCancelRequests = async () => {
       try {
@@ -144,12 +143,12 @@ export default function WebView() {
     fetchCancelRequests();
   }, []);
 
-  /** 최신/오래된 순 정렬된 리스트 (createdAt 기준) */
+  /** 최신/오래된 순 정렬된 리스트 (requestedAt 기준) */
   const sortedItems = useMemo(
     () =>
       [...items].sort((a, b) => {
-        const da = new Date(a.createdAt).getTime();
-        const db = new Date(b.createdAt).getTime();
+        const da = new Date(a.requestedAt).getTime();
+        const db = new Date(b.requestedAt).getTime();
         // DESC: 최신순, ASC: 오래된 순
         return sortOrder === "DESC" ? db - da : da - db;
       }),
@@ -295,7 +294,7 @@ export default function WebView() {
                   </div>
                 ) : (
                   sortedItems.map((item, index) => {
-                    const writtenDate = formatWrittenDate(item.createdAt);
+                    const writtenDate = formatWrittenDate(item.requestedAt);
                     const badge = getStatusBadge(item.status);
                     const rowBg = index % 2 === 0 ? "bg-white" : "bg-[#F9FAFB]";
 

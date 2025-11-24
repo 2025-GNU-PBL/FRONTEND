@@ -103,6 +103,14 @@ export default function PersonalScheduleEditMobileView() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  /** 보기 모드 / 수정 모드 플래그 */
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  /** 👉 라우트 진입할 때마다 무조건 조회 모드로 초기화 */
+  useEffect(() => {
+    setIsEditMode(false);
+  }, [scheduleId]);
+
   /** ====== 1) 상세 조회로 폼 초기값 세팅 ====== */
   useEffect(() => {
     if (!scheduleId || Number.isNaN(scheduleId)) {
@@ -130,6 +138,9 @@ export default function PersonalScheduleEditMobileView() {
 
         if (normalizedStartTime) setStartTime(normalizedStartTime);
         if (normalizedEndTime) setEndTime(normalizedEndTime);
+
+        /** 👉 데이터 불러온 뒤에도 한 번 더 조회 모드로 맞춰줌 */
+        setIsEditMode(false);
       } catch (e) {
         console.error("[PersonalScheduleEdit] fetch detail error:", e);
         alert("일정 정보를 불러오는 중 오류가 발생했습니다.");
@@ -230,6 +241,17 @@ export default function PersonalScheduleEditMobileView() {
     nav,
   ]);
 
+  /** 보기 모드 / 수정 모드에 따라 하단 버튼 동작 */
+  const onBottomClick = () => {
+    if (!isEditMode) {
+      // 👉 처음 클릭: 조회 모드 → 수정 모드 전환만
+      setIsEditMode(true);
+      return;
+    }
+    // 수정 모드 → 실제 저장
+    handleSubmit();
+  };
+
   /** 날짜/시간 라벨 */
   const startDateLabel = formatKoreanDateLabel(startDate) || "날짜 선택";
   const endDateLabel = formatKoreanDateLabel(endDate) || "날짜 선택";
@@ -248,6 +270,10 @@ export default function PersonalScheduleEditMobileView() {
     ? `${startDateLabel} 일정의 시간입니다.`
     : `${startDateLabel} ~ ${endDateLabel} 일정의 시간입니다.`;
 
+  /** 하단 버튼 disabled 여부 (보기 모드에선 항상 클릭 가능) */
+  const bottomDisabled =
+    loading || submitting || (isEditMode && !isValid && !submitting);
+
   return (
     <div className="w-full bg-[#F4F6FB]">
       {/* 390 × 844 프레임 */}
@@ -255,7 +281,7 @@ export default function PersonalScheduleEditMobileView() {
         {/* 상단 헤더 */}
         <div className="sticky top-0 z-20 bg-white">
           <MyPageHeader
-            title="개인 일정 수정"
+            title={isEditMode ? "공유 일정 수정" : "공유 일정"}
             onBack={onBack}
             showMenu={false}
           />
@@ -269,23 +295,29 @@ export default function PersonalScheduleEditMobileView() {
             </div>
           ) : (
             <div className="px-5 pt-20 pb-6">
-              {/* 제목 입력 섹션 */}
+              {/* 제목: 조회 / 수정 모드 분리 */}
               <div className="mt-4 mb-8 flex items-center gap-3">
                 <div className="w-1 h-8 rounded-[3px] bg-[#FF2233]" />
-                <input
-                  className="flex-1 bg-transparent outline-none text-[20px] font-semibold leading-[32px] tracking-[-0.2px] placeholder:text-[#D9D9D9] text-[#1E2124]"
-                  placeholder="제목을 입력하세요"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
+                {isEditMode ? (
+                  <input
+                    className="flex-1 bg-transparent outline-none text-[20px] font-semibold leading-[32px] tracking-[-0.2px] placeholder:text-[#D9D9D9] text-[#1E2124]"
+                    placeholder="제목을 입력하세요"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                ) : (
+                  <div className="flex-1 text-[20px] font-semibold leading-[32px] tracking-[-0.2px] text-[#1E2124]">
+                    {title || "제목 없음"}
+                  </div>
+                )}
               </div>
-              {errors.title && (
+              {errors.title && isEditMode && (
                 <p className="mb-3 text-[12px] text-[#EB5147]">
                   {errors.title}
                 </p>
               )}
 
-              {/* 날짜 선택 라인 */}
+              {/* 날짜 영역 */}
               <div className="mt-2">
                 <div className="flex items-center gap-4">
                   <Icon
@@ -306,34 +338,45 @@ export default function PersonalScheduleEditMobileView() {
                   </div>
                 </div>
 
-                {/* 날짜 입력 pill */}
                 <div className="mt-3 ml-9 flex flex-col gap-2">
                   <div className="w-[260px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
-                    <input
-                      type="date"
-                      className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                    />
+                    {isEditMode ? (
+                      <input
+                        type="date"
+                        className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                      />
+                    ) : (
+                      <span className="text-[14px] text-[#111827]">
+                        {startDate}
+                      </span>
+                    )}
                   </div>
                   <div className="w-[260px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
-                    <input
-                      type="date"
-                      className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                    />
+                    {isEditMode ? (
+                      <input
+                        type="date"
+                        className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                      />
+                    ) : (
+                      <span className="text-[14px] text-[#111827]">
+                        {endDate}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {(errors.startDate || errors.endDate) && (
+                {(errors.startDate || errors.endDate) && isEditMode && (
                   <p className="mt-2 ml-9 text-[12px] text-[#EB5147]">
                     {errors.startDate || errors.endDate}
                   </p>
                 )}
               </div>
 
-              {/* 시간 선택 라인 */}
+              {/* 시간 영역 */}
               <div className="mt-6">
                 <div className="flex items-center gap-4">
                   <Icon icon="prime:clock" className="w-5 h-5 text-[#333333]" />
@@ -357,95 +400,137 @@ export default function PersonalScheduleEditMobileView() {
 
                 <div className="mt-3 ml-9 flex items-center gap-3">
                   {/* 시작 시간 */}
-                  <button
-                    type="button"
-                    className="relative w-[150px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
-                  >
-                    <div className="flex flex-col text-left">
-                      <span className="text-[11px] text-[#9CA3AF]">
-                        {startAmPm}
-                      </span>
-                      <span className="text-[14px] font-medium text-[#111827]">
-                        {startDisplayTime}
-                      </span>
+                  {isEditMode ? (
+                    <button
+                      type="button"
+                      className="relative w-[150px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
+                    >
+                      <div className="flex flex-col text-left">
+                        <span className="text-[11px] text-[#9CA3AF]">
+                          {startAmPm}
+                        </span>
+                        <span className="text-[14px] font-medium text-[#111827]">
+                          {startDisplayTime}
+                        </span>
+                      </div>
+                      <Icon
+                        icon="mdi:clock-time-four-outline"
+                        className="w-4 h-4 text-[#9CA3AF]"
+                      />
+                      <input
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                    </button>
+                  ) : (
+                    <div className="w-[150px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4">
+                      <div className="flex flex-col text-left">
+                        <span className="text-[11px] text-[#9CA3AF]">
+                          {startAmPm}
+                        </span>
+                        <span className="text-[14px] font-medium text-[#111827]">
+                          {startDisplayTime}
+                        </span>
+                      </div>
+                      <Icon
+                        icon="mdi:clock-time-four-outline"
+                        className="w-4 h-4 text-[#9CA3AF]"
+                      />
                     </div>
-                    <Icon
-                      icon="mdi:clock-time-four-outline"
-                      className="w-4 h-4 text-[#9CA3AF]"
-                    />
-                    <input
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                    />
-                  </button>
+                  )}
 
                   <span className="text-[14px] text-[#9CA3AF]">~</span>
 
                   {/* 종료 시간 */}
-                  <button
-                    type="button"
-                    className="relative w-[150px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
-                  >
-                    <div className="flex flex-col text-left">
-                      <span className="text-[11px] text-[#9CA3AF]">
-                        {endAmPm}
-                      </span>
-                      <span className="text-[14px] font-medium text-[#111827]">
-                        {endDisplayTime}
-                      </span>
+                  {isEditMode ? (
+                    <button
+                      type="button"
+                      className="relative w-[150px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
+                    >
+                      <div className="flex flex-col text-left">
+                        <span className="text-[11px] text-[#9CA3AF]">
+                          {endAmPm}
+                        </span>
+                        <span className="text-[14px] font-medium text-[#111827]">
+                          {endDisplayTime}
+                        </span>
+                      </div>
+                      <Icon
+                        icon="mdi:clock-time-four-outline"
+                        className="w-4 h-4 text-[#9CA3AF]"
+                      />
+                      <input
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                    </button>
+                  ) : (
+                    <div className="w-[150px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4">
+                      <div className="flex flex-col text-left">
+                        <span className="text-[11px] text-[#9CA3AF]">
+                          {endAmPm}
+                        </span>
+                        <span className="text-[14px] font-medium text-[#111827]">
+                          {endDisplayTime}
+                        </span>
+                      </div>
+                      <Icon
+                        icon="mdi:clock-time-four-outline"
+                        className="w-4 h-4 text-[#9CA3AF]"
+                      />
                     </div>
-                    <Icon
-                      icon="mdi:clock-time-four-outline"
-                      className="w-4 h-4 text-[#9CA3AF]"
-                    />
-                    <input
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                    />
-                  </button>
+                  )}
                 </div>
 
-                {errors.time && (
+                {errors.time && isEditMode && (
                   <p className="mt-2 ml-9 text-[12px] text-[#EB5147]">
                     {errors.time}
                   </p>
                 )}
               </div>
 
-              {/* 메모 입력 */}
+              {/* 메모 영역 */}
               <div className="mt-8">
-                <div className="w-full h-[160px] bg-[#F6F7FB] rounded-[12px] px-4 py-3">
-                  <textarea
-                    className="w-full h-full bg-transparent resize-none outline-none text-[14px] text-[#1E2124]"
-                    placeholder="메모를 입력해 주세요"
-                    value={memo}
-                    onChange={(e) => setMemo(e.target.value)}
-                  />
+                <div className="w-full min-h-[120px] bg-[#F6F7FB] rounded-[12px] px-4 py-3">
+                  {isEditMode ? (
+                    <textarea
+                      className="w-full h-full bg-transparent resize-none outline-none text-[14px] text-[#1E2124]"
+                      placeholder="메모를 입력해 주세요"
+                      value={memo}
+                      onChange={(e) => setMemo(e.target.value)}
+                    />
+                  ) : (
+                    <div className="text-[14px] text-[#1E2124] whitespace-pre-wrap">
+                      {memo || "메모가 없습니다."}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* 하단 수정 버튼 */}
+        {/* 하단 버튼 */}
         <div className="px-5 pb-20 pt-3">
           <button
             type="button"
-            onClick={handleSubmit}
-            disabled={!isValid || submitting || loading}
+            onClick={onBottomClick}
+            disabled={bottomDisabled}
             className={[
               "w-[350px] h-[56px] mx-auto rounded-[12px] flex items-center justify-center",
               "text-[16px] font-semibold tracking-[-0.2px]",
-              isValid && !submitting && !loading
-                ? "bg-[#FF2233] text-white active:scale-95"
-                : "bg-[#F6F6F6] text-[#ADB3B6]",
+              !isEditMode
+                ? "bg-[#FF2233] text-white active:scale-95 disabled:opacity-70"
+                : bottomDisabled
+                ? "bg-[#F6F6F6] text-[#ADB3B6]"
+                : "bg-[#FF2233] text-white active:scale-95",
             ].join(" ")}
           >
-            {submitting ? "수정 중..." : "수정하기"}
+            {!isEditMode ? "수정하기" : submitting ? "수정 중..." : "저장하기"}
           </button>
         </div>
       </div>
