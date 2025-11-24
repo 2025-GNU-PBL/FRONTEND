@@ -11,9 +11,6 @@ type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
 /** 상세 화면에서 실제로 쓸 상태(둘만 구분하면 되니까) */
 type DetailPaymentStatus = "CANCEL_REQUESTED" | "CANCELED";
 
-/** 상태 필터 타입 */
-type StatusFilter = "ALL" | "CANCEL_REQUESTED" | "CANCELED";
-
 /** 정렬 순서 타입 */
 type SortOrder = "DESC" | "ASC";
 
@@ -34,7 +31,7 @@ interface CancelPaymentItem {
   productName: string;
   status: ApiPaymentStatus;
   cancelReason: string;
-  createdAt: string; // ✅ 작성일(요청일) DTO에서 받아올 값
+  createdAt: string; // 작성일(요청일)
 }
 
 /** 작성일 YYYY.MM.DD 포맷 */
@@ -72,20 +69,6 @@ function getStatusBadge(status: ApiPaymentStatus) {
     label: "완료",
     className: "bg-[#10B981] text-white",
   };
-}
-
-/** 상태 필터 라벨 */
-function getStatusFilterLabel(filter: StatusFilter) {
-  switch (filter) {
-    case "ALL":
-      return "상태별";
-    case "CANCEL_REQUESTED":
-      return "대기";
-    case "CANCELED":
-      return "취소완료";
-    default:
-      return "상태별";
-  }
 }
 
 /** 정렬 순서 라벨 */
@@ -133,10 +116,6 @@ export default function WebView() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  /** 상태 필터(전체 / 대기 / 취소 완료) */
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
-  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
-
   /** 정렬 순서(최신순 / 오래된 순) */
   const [sortOrder, setSortOrder] = useState<SortOrder>("DESC");
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
@@ -165,7 +144,7 @@ export default function WebView() {
     fetchCancelRequests();
   }, []);
 
-  /** 최신/오래된 순 정렬된 전체 리스트 (createdAt 기준) */
+  /** 최신/오래된 순 정렬된 리스트 (createdAt 기준) */
   const sortedItems = useMemo(
     () =>
       [...items].sort((a, b) => {
@@ -177,22 +156,10 @@ export default function WebView() {
     [items, sortOrder]
   );
 
-  /** 상태 필터 적용된 리스트 */
-  const filteredItems = useMemo(
-    () =>
-      sortedItems.filter((item) => {
-        if (statusFilter === "ALL") return true;
-        return item.status === statusFilter;
-      }),
-    [sortedItems, statusFilter]
-  );
-
   /** 상단에 보여줄 개수 */
-  const filteredCount = filteredItems.length;
+  const totalCount = sortedItems.length;
 
-  /** 카드 클릭 → 취소 상세 페이지로 이동
-   *
-   */
+  /** 카드 클릭 → 취소 상세 페이지로 이동 */
   const handleCardClick = (item: CancelPaymentItem) => {
     const detailStatus: DetailPaymentStatus =
       item.status === "CANCELED" ? "CANCELED" : "CANCEL_REQUESTED";
@@ -230,7 +197,6 @@ export default function WebView() {
   const displayStoreName =
     storeName && storeName.trim() !== "" ? storeName : "내 매장";
 
-  const statusFilterLabel = getStatusFilterLabel(statusFilter);
   const sortOrderLabel = getSortOrderLabel(sortOrder);
 
   return (
@@ -255,75 +221,21 @@ export default function WebView() {
           {/* 리스트 섹션 */}
           <SectionCard
             title="결제 취소 요청 내역"
-            subtitle={`총 ${filteredCount}건의 취소 요청을 확인할 수 있습니다.`}
+            subtitle={`총 ${totalCount}건의 취소 요청을 확인할 수 있습니다.`}
           >
-            {/* 필터 라인 */}
+            {/* 상단 정보 + 정렬 라인 */}
             <div className="mb-4 flex items-center justify-between">
               <span className="text-[14px] text-gray-700">
-                취소 내역 {filteredCount}
+                취소 내역 {totalCount}
               </span>
 
               <div className="flex items-center gap-3 text-[13px] text-gray-800">
-                {/* 상태별 드롭다운 */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsStatusMenuOpen((prev) => !prev);
-                      setIsSortMenuOpen(false);
-                    }}
-                    className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
-                  >
-                    <span>{statusFilterLabel}</span>
-                    <Icon
-                      icon="solar:alt-arrow-down-linear"
-                      className="h-4 w-4 text-[#999999]"
-                    />
-                  </button>
-
-                  {isStatusMenuOpen && (
-                    <div className="absolute right-0 z-10 mt-1 w-[110px] rounded-[10px] border border-[#E5E7EB] bg-white shadow-[0_8px_18px_rgba(15,23,42,0.12)]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStatusFilter("ALL");
-                          setIsStatusMenuOpen(false);
-                        }}
-                        className="flex w-full items-center px-3 py-2 text-left text-[13px] text-[#111827] hover:bg-[#F3F4F6]"
-                      >
-                        전체
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStatusFilter("CANCEL_REQUESTED");
-                          setIsStatusMenuOpen(false);
-                        }}
-                        className="flex w-full items-center px-3 py-2 text-left text-[13px] text-[#111827] hover:bg-[#F3F4F6]"
-                      >
-                        대기
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStatusFilter("CANCELED");
-                          setIsStatusMenuOpen(false);
-                        }}
-                        className="flex w-full items-center px-3 py-2 text-left text-[13px] text-[#111827] hover:bg-[#F3F4F6]"
-                      >
-                        취소 완료
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* 정렬 순서 드롭다운 */}
+                {/* 정렬 순서 드롭다운만 유지 */}
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => {
                       setIsSortMenuOpen((prev) => !prev);
-                      setIsStatusMenuOpen(false);
                     }}
                     className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
                   >
@@ -377,13 +289,13 @@ export default function WebView() {
 
             {!isLoading && (
               <div className="mt-2 flex flex-col">
-                {filteredItems.length === 0 ? (
+                {sortedItems.length === 0 ? (
                   <div className="py-10 text-center text-sm text-gray-400">
                     취소 내역이 없습니다.
                   </div>
                 ) : (
-                  filteredItems.map((item, index) => {
-                    const writtenDate = formatWrittenDate(item.createdAt); // ✅ createdAt 사용
+                  sortedItems.map((item, index) => {
+                    const writtenDate = formatWrittenDate(item.createdAt);
                     const badge = getStatusBadge(item.status);
                     const rowBg = index % 2 === 0 ? "bg-white" : "bg-[#F9FAFB]";
 
