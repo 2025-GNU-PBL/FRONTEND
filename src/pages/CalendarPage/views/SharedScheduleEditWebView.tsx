@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import MyPageHeader from "../../../components/MyPageHeader";
 import api from "../../../lib/api/axios";
 
 /** ====== 상수: S3 기본 URL ====== */
@@ -319,78 +318,81 @@ export default function SharedScheduleEditWebView() {
   ]);
 
   return (
-    <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 상단 헤더 */}
-      <div className="w-full bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-[1040px] mx-auto">
-          <MyPageHeader
-            title={mode === "view" ? "공유 일정 상세" : "공유 일정 수정"}
-            onBack={onBack}
-            showMenu={false}
-          />
-        </div>
-      </div>
-
+    <div className="w-full min-h-screen bg-white">
       {/* 본문 */}
-      <div className="max-w-[1040px] mt-20 mx-auto px-6 py-8">
+      <div className="max-w-[1120px] mt-16 mx-auto px-8 py-10">
         {/* 타이틀 */}
-        <div className="mb-6">
-          <h1 className="text-[24px] font-semibold text-[#111827] tracking-[-0.3px]">
+        <div className="mb-8">
+          <h1 className="text-[32px] md:text-[34px] font-semibold text-[#111827] tracking-[-0.4px]">
             {mode === "view" ? "공유 일정 상세" : "공유 일정 수정"}
           </h1>
-          <p className="mt-2 text-[14px] text-[#6B7280] tracking-[-0.2px]">
+          <p className="mt-3 text-[16px] md:text-[18px] text-[#6B7280] tracking-[-0.2px] leading-[26px]">
             날짜와 시간을 확인하고 필요한 정보와 메모를{" "}
             {mode === "view" ? "확인해 보세요." : "수정해 보세요."}
           </p>
         </div>
 
         {/* 메인 카드 */}
-        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-10">
+        <div className="bg-white rounded-[24px] shadow-[0_18px_55px_rgba(15,23,42,0.06)] border border-[#E5E7EB] px-10 py-12">
           {loading ? (
-            <div className="w-full h-[300px] flex items-center justify-center text-[14px] text-[#9CA3AF]">
+            <div className="w-full h-[320px] flex items-center justify-center text-[15px] text-[#9CA3AF]">
               일정 정보를 불러오는 중입니다...
             </div>
           ) : mode === "view" ? (
             <>
               {/* ===== 조회 모드 ===== */}
-              <div className="max-w-[840px] mx-auto">
+              <div className="max-w-[900px] mx-auto">
                 {/* 제목 */}
-                <div className="mt-2 mb-8 flex items-center gap-3">
-                  <div className="w-1 h-8 rounded-[3px] bg-[#FF2233]" />
-                  <p className="flex-1 bg-transparent text-[22px] font-semibold leading-[34px] tracking-[-0.2px] text-[#1E2124]">
+                <div className="mt-1 mb-10 flex items-center gap-4">
+                  <div className="w-1.5 h-10 rounded-[4px] bg-[#FF2233]" />
+                  <p className="flex-1 bg-transparent text-[32px] md:text-[36px] font-semibold leading-[44px] tracking-[-0.4px] text-[#1E2124]">
                     {title || "-"}
                   </p>
                 </div>
 
-                {/* 업체명 / 고객명 */}
-                <div className="space-y-3 mb-6">
-                  <div className="w-full max-w-[600px] min-h-[58px] bg-[#F6F7FB] rounded-[12px] px-5 py-3 flex flex-col justify-center">
-                    <span className="text-[12px] leading-[18px] text-[#6B7280]">
-                      업체명
-                    </span>
-                    <span className="mt-1 text-[14px] leading-[21px] text-[#111827]">
-                      {companyName || "-"}
-                    </span>
+                {/* 업체명 / 고객명 : 아이콘 + 라벨 + 큰 글자 */}
+                <div className="space-y-6 mb-10">
+                  {/* 업체명 */}
+                  <div className="flex items-center gap-5">
+                    <Icon
+                      icon="mdi:store-outline"
+                      className="w-8 h-8 text-[#6B7280]"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-[16px] text-[#6B7280] mb-1">
+                        업체명
+                      </span>
+                      <span className="text-[20px] leading-[40px] text-[#111827]">
+                        {companyName || "-"}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="w-full max-w-[600px] min-h-[58px] bg-[#F6F7FB] rounded-[12px] px-5 py-3 flex flex-col justify-center">
-                    <span className="text-[12px] leading-[18px] text-[#6B7280]">
-                      고객명
-                    </span>
-                    <span className="mt-1 text-[14px] leading-[21px] text-[#111827]">
-                      {customerName || "-"}
-                    </span>
+                  {/* 고객명 */}
+                  <div className="flex items-center gap-5">
+                    <Icon
+                      icon="mdi:account-outline"
+                      className="w-8 h-8 text-[#6B7280]"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-[16px] text-[#6B7280] mb-1">
+                        고객명
+                      </span>
+                      <span className="text-[20px] leading-[40px] text-[#111827]">
+                        {customerName || "-"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* 날짜 */}
                 <div className="mt-4">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-5">
                     <Icon
                       icon="ant-design:calendar-outlined"
-                      className="w-5 h-5 text-[#333333]"
+                      className="w-7 h-7 text-[#333333]"
                     />
-                    <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                    <span className="text-[20px] leading-[40px] tracking-[-0.2px] text-[#1E2124]">
                       {sameDay
                         ? startDateLabel
                         : `${startDateLabel} > ${endDateLabel}`}
@@ -399,65 +401,65 @@ export default function SharedScheduleEditWebView() {
                 </div>
 
                 {/* 시간 */}
-                <div className="mt-6">
-                  <div className="flex items-center gap-4">
+                <div className="mt-7">
+                  <div className="flex items-center gap-5">
                     <Icon
                       icon="prime:clock"
-                      className="w-5 h-5 text-[#333333]"
+                      className="w-7 h-7 text-[#333333]"
                     />
-                    <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                    <span className="text-[20px] leading-[40px] tracking-[-0.2px] text-[#1E2124]">
                       {startTimeLabel} {"-"} {endTimeLabel}
                     </span>
                   </div>
-                  <p className="mt-1 ml-9 text-[12px] text-[#9CA3AF]">
+                  <p className="mt-2 ml-[52px] text-[16px] text-[#9CA3AF] leading-[24px]">
                     {timeDateHint}
                   </p>
                 </div>
 
                 {/* 위치 */}
-                <div className="mt-6">
-                  <div className="flex items-center gap-4 mb-1">
+                <div className="mt-8">
+                  <div className="flex items-center gap-5 mb-3">
                     <Icon
                       icon="solar:map-linear"
-                      className="w-5 h-5 text-[#333333]"
+                      className="w-7 h-7 text-[#333333]"
                     />
-                    <span className="text-[14px] text-[#1E2124] leading-[20px]">
+                    <span className="text-[18px] text-[#1E2124] leading-[26px]">
                       위치
                     </span>
                   </div>
-                  <p className="ml-9 text-[14px] leading-[22px] text-[#111827] whitespace-pre-line">
+                  <p className="ml-[52px] text-[20px] leading-[40px] text-[#111827] whitespace-pre-line">
                     {locationText || "-"}
                   </p>
                 </div>
 
                 {/* 메모 */}
-                <div className="mt-6">
-                  <div className="flex items-center gap-4 mb-1">
+                <div className="mt-8">
+                  <div className="flex items-center gap-5 mb-3">
                     <Icon
                       icon="ph:note-duotone"
-                      className="w-5 h-5 text-[#333333]"
+                      className="w-7 h-7 text-[#333333]"
                     />
-                    <span className="text-[14px] text-[#1E2124] leading-[20px]">
+                    <span className="text-[18px] text-[#1E2124] leading-[26px]">
                       메모
                     </span>
                   </div>
-                  <p className="ml-9 text-[14px] leading-[22px] text-[#111827] whitespace-pre-line">
+                  <p className="ml-[52px] text-[20px] leading-[40px] text-[#111827] whitespace-pre-line">
                     {memo || "-"}
                   </p>
                 </div>
 
                 {/* 파일 첨부 */}
-                <div className="mt-6 mb-2">
-                  <div className="flex items-center gap-4 mb-1">
-                    <Icon icon="f7:link" className="w-5 h-5 text-[#333333]" />
-                    <span className="text-[14px] text-[#1E2124] leading-[20px]">
+                <div className="mt-8 mb-2">
+                  <div className="flex items-center gap-5 mb-3">
+                    <Icon icon="f7:link" className="w-7 h-7 text-[#333333]" />
+                    <span className="text-[18px] text-[#1E2124] leading-[26px]">
                       파일 첨부
                     </span>
                   </div>
 
-                  <div className="ml-9 w-full max-w-[600px] space-y-1">
+                  <div className="ml-[52px] w-full max-w-[640px] space-y-1.5">
                     {existingFiles.length === 0 ? (
-                      <p className="text-[13px] text-[#9CA3AF]">
+                      <p className="text-[20px] text-[#9CA3AF]">
                         첨부된 파일이 없습니다.
                       </p>
                     ) : (
@@ -466,7 +468,7 @@ export default function SharedScheduleEditWebView() {
                           key={file.id}
                           type="button"
                           onClick={() => handleOpenExistingFile(file)}
-                          className="w-full text-left text-[13px] text-[#2563EB] underline underline-offset-2 hover:text-[#1D4ED8] active:scale-[0.99]"
+                          className="w-full text-left text-[20px] leading-[40px] text-[#2563EB] underline underline-offset-2 hover:text-[#1D4ED8] active:scale-[0.99]"
                         >
                           {file.name}
                         </button>
@@ -477,11 +479,11 @@ export default function SharedScheduleEditWebView() {
               </div>
 
               {/* 하단 수정 버튼 (조회 -> 수정 모드 전환) */}
-              <div className="mt-10 flex justify-center">
+              <div className="mt-12 flex justify-center">
                 <button
                   type="button"
                   onClick={() => setMode("edit")}
-                  className="min-w-[260px] h-[52px] rounded-[12px] flex items-center justify-center bg-[#FF2233] text-white text-[16px] font-semibold tracking-[-0.2px] active:scale-95"
+                  className="min-w-[320px] h-[64px] rounded-[16px] flex items-center justify-center bg-[#FF2233] text-white text-[20px] font-semibold tracking-[-0.2px] active:scale-95"
                 >
                   수정하기
                 </button>
@@ -490,43 +492,43 @@ export default function SharedScheduleEditWebView() {
           ) : (
             <>
               {/* ===== 수정 모드 ===== */}
-              <div className="max-w-[840px] mx-auto">
+              <div className="max-w-[900px] mx-auto">
                 {/* 제목 입력 */}
-                <div className="mt-2 mb-8 flex items-center gap-3">
-                  <div className="w-1 h-8 rounded-[3px] bg-[#FF2233]" />
+                <div className="mt-1 mb-10 flex items-center gap-4">
+                  <div className="w-1.5 h-10 rounded-[4px] bg-[#FF2233]" />
                   <input
-                    className="flex-1 bg-transparent outline-none text-[22px] font-semibold leading-[34px] tracking-[-0.2px] placeholder:text-[#D9D9D9] text-[#1E2124]"
+                    className="flex-1 bg-transparent outline-none text-[32px] md:text-[36px] font-semibold leading-[44px] tracking-[-0.4px] placeholder:text-[#D9D9D9] text-[#1E2124]"
                     placeholder="제목을 입력하세요"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                   />
                 </div>
                 {errors.title && (
-                  <p className="mb-3 text-[12px] text-[#EB5147]">
+                  <p className="mb-4 text-[13px] text-[#EB5147]">
                     {errors.title}
                   </p>
                 )}
 
-                {/* 업체명 / 고객명 (연한 회색 유지) */}
-                <div className="space-y-3 mb-6">
-                  <div className="w-full max-w-[600px] h-[58px] bg-[#F6F7FB] rounded-[12px] px-5 py-2 flex flex-col justify-between">
-                    <span className="text-[12px] leading-[18px] text-[#000000]">
+                {/* 업체명 / 고객명 (입력 영역은 기존 그대로 둠) */}
+                <div className="space-y-4 mb-8">
+                  <div className="w-full max-w-[640px] h-[72px] bg-[#F6F7FB] rounded-[14px] px-6 py-3 flex flex-col justify-between">
+                    <span className="text-[13px] leading-[20px] text-[#000000]">
                       업체명
                     </span>
                     <input
-                      className="w-full bg-transparent outline-none text-[14px] leading-[21px] text-[#111827] placeholder:text-[#C4C4C4]"
+                      className="w-full bg-transparent outline-none text-[15px] leading-[22px] text-[#111827] placeholder:text-[#C4C4C4]"
                       placeholder="업체명을 입력하세요"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                     />
                   </div>
 
-                  <div className="w-full max-w-[600px] h-[58px] bg-[#F6F7FB] rounded-[12px] px-5 py-2 flex flex-col justify-between">
-                    <span className="text-[12px] leading-[18px] text-[#000000]">
+                  <div className="w-full max-w-[640px] h-[72px] bg-[#F6F7FB] rounded-[14px] px-6 py-3 flex flex-col justify-between">
+                    <span className="text-[13px] leading-[20px] text-[#000000]">
                       고객명
                     </span>
                     <input
-                      className="w-full bg-transparent outline-none text-[14px] leading-[21px] text-[#111827] placeholder:text-[#C4C4C4]"
+                      className="w-full bg-transparent outline-none text-[15px] leading-[22px] text-[#111827] placeholder:text-[#C4C4C4]"
                       placeholder="고객명을 입력하세요"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
@@ -534,37 +536,37 @@ export default function SharedScheduleEditWebView() {
                   </div>
                 </div>
 
-                {/* 날짜 (텍스트 박스 배경 흰색) */}
+                {/* 날짜 */}
                 <div className="mt-2">
-                  <div className="flex items-center gap-4 mb-2">
+                  <div className="flex items-center gap-4 mb-3">
                     <Icon
                       icon="ant-design:calendar-outlined"
-                      className="w-5 h-5 text-[#333333]"
+                      className="w-[22px] h-[22px] text-[#333333]"
                     />
                     <div className="flex items-center gap-4">
-                      <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                      <span className="text-[18px] leading-[28px] tracking-[-0.2px] text-[#1E2124]">
                         {startDateLabel}
                       </span>
-                      <span className="text-[16px] text-[#1E2124]">{">"}</span>
-                      <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                      <span className="text-[18px] text-[#1E2124]">{">"}</span>
+                      <span className="text-[18px] leading-[28px] tracking-[-0.2px] text-[#1E2124]">
                         {endDateLabel}
                       </span>
                     </div>
                   </div>
 
-                  <div className="mt-3 ml-9 flex gap-3">
-                    <div className="w-[320px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center px-4">
+                  <div className="mt-3 ml-[46px] flex gap-4">
+                    <div className="w-[340px] h-[48px] rounded-[16px] bg-white border border-[#E5E7EB] flex items-center px-4">
                       <input
                         type="date"
-                        className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
+                        className="flex-1 bg-transparent text-[15px] text-[#111827] outline-none"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                       />
                     </div>
-                    <div className="w-[320px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center px-4">
+                    <div className="w-[340px] h-[48px] rounded-[16px] bg-white border border-[#E5E7EB] flex items-center px-4">
                       <input
                         type="date"
-                        className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
+                        className="flex-1 bg-transparent text-[15px] text-[#111827] outline-none"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
                       />
@@ -572,45 +574,45 @@ export default function SharedScheduleEditWebView() {
                   </div>
 
                   {(errors.startDate || errors.endDate) && (
-                    <p className="mt-2 ml-9 text-[12px] text-[#EB5147]">
+                    <p className="mt-2 ml-[46px] text-[13px] text-[#EB5147]">
                       {errors.startDate || errors.endDate}
                     </p>
                   )}
                 </div>
 
-                {/* 시간 (텍스트 박스 배경 흰색) */}
-                <div className="mt-6">
+                {/* 시간 */}
+                <div className="mt-8">
                   <div className="flex items-center gap-4">
                     <Icon
                       icon="prime:clock"
-                      className="w-5 h-5 text-[#333333]"
+                      className="w-[22px] h-[22px] text-[#333333]"
                     />
                     <div className="flex items-center gap-6">
-                      <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                      <span className="text-[18px] leading-[28px] tracking-[-0.2px] text-[#1E2124]">
                         {startTimeLabel}
                       </span>
-                      <span className="text-[16px] text-[#1E2124]">{">"}</span>
-                      <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                      <span className="text-[18px] text-[#1E2124]">{">"}</span>
+                      <span className="text-[18px] leading-[28px] tracking-[-0.2px] text-[#1E2124]">
                         {endTimeLabel}
                       </span>
                     </div>
                   </div>
 
-                  <p className="mt-1 ml-9 text-[12px] text-[#9CA3AF]">
+                  <p className="mt-1.5 ml-[46px] text-[13px] text-[#9CA3AF]">
                     {timeDateHint}
                   </p>
 
-                  <div className="mt-3 ml-9 flex items-center gap-3">
+                  <div className="mt-3 ml-[46px] flex items-center gap-4">
                     {/* 시작 시간 */}
                     <button
                       type="button"
-                      className="relative w-[180px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center justify-between px-4"
+                      className="relative w-[200px] h-[48px] rounded-[16px] bg-white border border-[#E5E7EB] flex items-center justify-between px-4"
                     >
                       <div className="flex flex-col text-left">
-                        <span className="text-[11px] text-[#9CA3AF]">
+                        <span className="text-[12px] text-[#9CA3AF]">
                           {startAmPm}
                         </span>
-                        <span className="text-[14px] font-medium text-[#111827]">
+                        <span className="text-[15px] font-medium text-[#111827]">
                           {startDisplayTime}
                         </span>
                       </div>
@@ -626,18 +628,18 @@ export default function SharedScheduleEditWebView() {
                       />
                     </button>
 
-                    <span className="text-[14px] text-[#9CA3AF]">~</span>
+                    <span className="text-[15px] text-[#9CA3AF]">~</span>
 
                     {/* 종료 시간 */}
                     <button
                       type="button"
-                      className="relative w-[180px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center justify-between px-4"
+                      className="relative w-[200px] h-[48px] rounded-[16px] bg-white border border-[#E5E7EB] flex items-center justify-between px-4"
                     >
                       <div className="flex flex-col text-left">
-                        <span className="text-[11px] text-[#9CA3AF]">
+                        <span className="text-[12px] text-[#9CA3AF]">
                           {endAmPm}
                         </span>
-                        <span className="text-[14px] font-medium text-[#111827]">
+                        <span className="text-[15px] font-medium text-[#111827]">
                           {endDisplayTime}
                         </span>
                       </div>
@@ -655,26 +657,26 @@ export default function SharedScheduleEditWebView() {
                   </div>
 
                   {errors.time && (
-                    <p className="mt-2 ml-9 text-[12px] text-[#EB5147]">
+                    <p className="mt-2 ml-[46px] text-[13px] text-[#EB5147]">
                       {errors.time}
                     </p>
                   )}
                 </div>
 
-                {/* 위치 (텍스트 박스 배경 흰색) */}
-                <div className="mt-6">
+                {/* 위치 */}
+                <div className="mt-8">
                   <div className="flex items-start gap-4 mb-2">
                     <Icon
                       icon="solar:map-linear"
-                      className="w-5 h-5 text-[#333333]"
+                      className="w-[22px] h-[22px] text-[#333333]"
                     />
-                    <span className="text-[12px] text-[#999999] leading-[18px]">
+                    <span className="text-[13px] text-[#999999] leading-[20px]">
                       위치
                     </span>
                   </div>
-                  <div className="ml-9 w-full max-w-[600px]">
+                  <div className="ml-[46px] w-full max-w-[640px]">
                     <textarea
-                      className="w-full h-[56px] bg-white border border-[#E5E7EB] rounded-[12px] px-4 py-3 text-[13px] leading-[20px] resize-none outline-none text-[#111827] placeholder:text-[#C4C4C4]"
+                      className="w-full h-[72px] bg-white border border-[#E5E7EB] rounded-[14px] px-4 py-3 text-[14px] leading-[22px] resize-none outline-none text-[#111827] placeholder:text-[#C4C4C4]"
                       placeholder="업체 상호 / 주소 등을 입력해 주세요"
                       value={locationText}
                       onChange={(e) => setLocationText(e.target.value)}
@@ -682,20 +684,20 @@ export default function SharedScheduleEditWebView() {
                   </div>
                 </div>
 
-                {/* 메모 (텍스트 박스 배경 흰색) */}
-                <div className="mt-6">
+                {/* 메모 */}
+                <div className="mt-8">
                   <div className="flex items-center gap-4 mb-2">
                     <Icon
                       icon="ph:note-duotone"
-                      className="w-5 h-5 text-[#333333]"
+                      className="w-[22px] h-[22px] text-[#333333]"
                     />
-                    <span className="text-[12px] text-[#999999] leading-[18px]">
+                    <span className="text-[13px] text-[#999999] leading-[20px]">
                       메모
                     </span>
                   </div>
-                  <div className="ml-9 w-full max-w-[720px] h-[150px] bg-white border border-[#E5E7EB] rounded-[12px] px-4 py-3">
+                  <div className="ml-[46px] w-full max-w-[760px] h-[180px] bg.white border border-[#E5E7EB] rounded-[14px] px-4 py-3">
                     <textarea
-                      className="w-full h-full bg-transparent resize-none outline-none text-[14px] text-[#1E2124] placeholder:text-[#C4C4C4]"
+                      className="w-full h-full bg-transparent resize-none outline-none text-[15px] text-[#1E2124] placeholder:text-[#C4C4C4]"
                       placeholder="메모를 입력해 주세요"
                       value={memo}
                       onChange={(e) => setMemo(e.target.value)}
@@ -703,35 +705,38 @@ export default function SharedScheduleEditWebView() {
                   </div>
                 </div>
 
-                {/* 파일 첨부 (카드 흰색으로 변경) */}
-                <div className="mt-6 mb-2">
-                  <div className="flex items-center gap-4 mb-2">
-                    <Icon icon="f7:link" className="w-5 h-5 text-[#333333]" />
-                    <span className="text-[12px] text-[#999999] leading-[18px]">
+                {/* 파일 첨부 */}
+                <div className="mt-8 mb-2">
+                  <div className="flex items-center gap-4 mb-3">
+                    <Icon
+                      icon="f7:link"
+                      className="w-[22px] h-[22px] text-[#333333]"
+                    />
+                    <span className="text-[13px] text-[#999999] leading-[20px]">
                       파일 첨부
                     </span>
                   </div>
 
-                  <div className="ml-9 w-full max-w-[720px] space-y-3">
-                    {/* 기존 파일 목록 + 휴지통 아이콘 삭제 */}
+                  <div className="ml-[46px] w-full max-w-[760px] space-y-3">
+                    {/* 기존 파일 목록 */}
                     {existingFiles.length > 0 && (
                       <div className="space-y-2">
                         {existingFiles.map((file) => (
                           <div
                             key={file.id}
-                            className="w-full h-[40px] bg-white border border-[#E5E7EB] rounded-[12px] px-4 flex items-center justify-between"
+                            className="w-full h-[44px] bg-white border border-[#E5E7EB] rounded-[14px] px-4 flex items-center justify-between"
                           >
                             <button
                               type="button"
                               onClick={() => handleOpenExistingFile(file)}
-                              className="flex-1 text-left text-[13px] text-[#111827] truncate underline-offset-2 hover:underline"
+                              className="flex-1 text-left text-[14px] text-[#111827] truncate underline-offset-2 hover:underline"
                             >
                               {file.name}
                             </button>
                             <button
                               type="button"
                               onClick={() => handleRemoveExistingFile(file.id)}
-                              className="ml-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#E5E7EB] active:scale-95"
+                              className="ml-3 w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#E5E7EB] active:scale-95"
                             >
                               <Icon
                                 icon="solar:trash-bin-minimalistic-bold"
@@ -744,7 +749,7 @@ export default function SharedScheduleEditWebView() {
                     )}
 
                     {/* 새 파일 추가 */}
-                    <label className="inline-flex items-center justify-center px-4 h-[40px] rounded-[12px] bg-white border border-dashed border-[#E5E7EB] text-[13px] text-[#4B5563] cursor-pointer">
+                    <label className="inline-flex items-center justify-center px-5 h-[44px] rounded-[14px] bg-white border border-dashed border-[#E5E7EB] text-[14px] text-[#4B5563] cursor-pointer">
                       <span>파일 추가</span>
                       <input
                         type="file"
@@ -760,15 +765,15 @@ export default function SharedScheduleEditWebView() {
                         {files.map((file, index) => (
                           <div
                             key={`${file.name}-${index}`}
-                            className="w-full h-[40px] bg-white border border-[#E5E7EB] rounded-[12px] px-4 flex items-center justify-between"
+                            className="w-full h-[44px] bg-white border border-[#E5E7EB] rounded-[14px] px-4 flex items-center justify-between"
                           >
-                            <span className="text-[13px] text-[#111827] truncate">
+                            <span className="text-[14px] text-[#111827] truncate">
                               {file.name}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleRemoveNewFile(index)}
-                              className="ml-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#E5E7EB] active:scale-95"
+                              className="ml-2 w-9 h-9 flex items.center justify-center rounded-full hover:bg-[#E5E7EB] active:scale-95"
                             >
                               <Icon
                                 icon="solar:trash-bin-minimalistic-bold"
@@ -784,14 +789,14 @@ export default function SharedScheduleEditWebView() {
               </div>
 
               {/* 하단 수정 버튼 (실제 저장) */}
-              <div className="mt-10 flex justify-center">
+              <div className="mt-12 flex justify-center">
                 <button
                   type="button"
                   onClick={handleSubmit}
                   disabled={!isValid || submitting || loading}
                   className={[
-                    "min-w-[260px] h-[52px] rounded-[12px] flex items-center justify-center",
-                    "text-[16px] font-semibold tracking-[-0.2px]",
+                    "min-w-[320px] h-[64px] rounded-[16px] flex items-center justify-center",
+                    "text-[20px] font-semibold tracking-[-0.2px]",
                     isValid && !submitting && !loading
                       ? "bg-[#FF2233] text-white active:scale-95"
                       : "bg-[#F6F6F6] text-[#ADB3B6]",

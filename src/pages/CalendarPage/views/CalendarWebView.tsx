@@ -294,7 +294,7 @@ export default function CalendarWebView() {
   const handlePressCard = (item: ScheduleApiItem) => {
     if (swipedScheduleId === item.id) {
       if (item.scheduleType === "SHARED") nav(`/calendar/shared/${item.id}`);
-      else nav(`/calendar/personal/edit/${item.id}`);
+      else nav(`/calendar/personal/${item.id}`);
     } else {
       setSwipedScheduleId(item.id);
     }
@@ -424,7 +424,7 @@ export default function CalendarWebView() {
                         setSwipedScheduleId(null);
                         if (seg.schedule.scheduleType === "SHARED")
                           nav(`/calendar/shared/${seg.schedule.id}`);
-                        else nav(`/calendar/personal/edit/${seg.schedule.id}`);
+                        else nav(`/calendar/personal/${seg.schedule.id}`);
                       }}
                       className="absolute flex items-center overflow-hidden text-left"
                       style={{

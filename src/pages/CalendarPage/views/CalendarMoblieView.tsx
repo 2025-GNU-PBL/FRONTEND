@@ -311,7 +311,7 @@ export default function CalendarMobileView() {
       if (item.scheduleType === "SHARED") {
         nav(`/calendar/shared/${item.id}`);
       } else {
-        nav(`/calendar/personal/edit/${item.id}`);
+        nav(`/calendar/personal/${item.id}`);
       }
     },
     [nav]

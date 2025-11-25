@@ -336,7 +336,7 @@ const App = () => {
             element={<PersonalScheduleCreatePage />}
           />
           <Route
-            path="/calendar/personal/edit/:id"
+            path="/calendar/personal/:id"
             element={<PersonalScheduleEditPage />}
           />
           <Route
