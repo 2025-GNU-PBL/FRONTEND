@@ -309,7 +309,7 @@ export default function CalendarMobileView() {
   const handleClickSchedule = useCallback(
     (item: ScheduleApiItem) => {
       if (item.scheduleType === "SHARED") {
-        nav(`/my-page/calendar/shared/${item.id}`);
+        nav(`/calendar/shared/${item.id}`);
       } else {
         nav(`/calendar/personal/edit/${item.id}`);
       }

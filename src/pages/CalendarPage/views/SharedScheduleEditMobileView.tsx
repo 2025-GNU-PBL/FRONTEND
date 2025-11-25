@@ -4,6 +4,9 @@ import { Icon } from "@iconify/react";
 import MyPageHeader from "../../../components/MyPageHeader";
 import api from "../../../lib/api/axios";
 
+/** ====== 상수: S3 기본 URL ====== */
+const S3_BASE_URL = "https://gnubucketgnu.s3.ap-northeast-2.amazonaws.com/";
+
 /** ====== 유틸 ====== */
 const toDateInput = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -86,6 +89,9 @@ export default function SharedScheduleEditMobileView() {
   const scheduleId = id ? Number(id) : NaN;
 
   const onBack = useCallback(() => nav(-1), [nav]);
+
+  /** 보기 / 수정 모드 */
+  const [mode, setMode] = useState<"view" | "edit">("view");
 
   /** 기본 값 */
   const today = useMemo(() => new Date(), []);
@@ -183,7 +189,7 @@ export default function SharedScheduleEditMobileView() {
     ? `${startDateLabel} 일정의 시간입니다.`
     : `${startDateLabel} ~ ${endDateLabel} 일정의 시간입니다.`;
 
-  /** ====== 유효성 검사 (실제 저장 시) ====== */
+  /** ====== 유효성 검사 ====== */
   const validate = useCallback(() => {
     const next: Record<string, string> = {};
 
@@ -201,25 +207,31 @@ export default function SharedScheduleEditMobileView() {
       if (sd > ed) {
         next.endDate = "종료일은 시작일 이후여야 합니다.";
       }
-      // 여러 날짜 범위 허용 (하루로 제한 X)
     }
 
     if (!startTime || !endTime) {
       next.time = "시작/종료 시간을 모두 선택해 주세요.";
+    } else {
+      // === 여기 추가: 시작 시간이 종료 시간보다 항상 빠르도록 검사 ===
+      const [sh, sm] = startTime.split(":").map((v) => Number(v));
+      const [eh, em] = endTime.split(":").map((v) => Number(v));
+      if (
+        !Number.isNaN(sh) &&
+        !Number.isNaN(sm) &&
+        !Number.isNaN(eh) &&
+        !Number.isNaN(em)
+      ) {
+        const startTotal = sh * 60 + sm;
+        const endTotal = eh * 60 + em;
+        if (startTotal >= endTotal) {
+          next.time = "종료 시간은 시작 시간보다 늦게 설정해 주세요.";
+        }
+      }
     }
 
     setErrors(next);
     return Object.keys(next).length === 0;
   }, [title, startDate, endDate, startTime, endTime]);
-
-  /** ====== 저장 버튼 활성 여부 ======
-   *  -> 필수 값이 비어있지만 않으면 true 로, 날짜 비교는 validate 안에서만 체크
-   */
-  const isValid = useMemo(
-    () =>
-      !!title.trim() && !!startDate && !!endDate && !!startTime && !!endTime,
-    [title, startDate, endDate, startTime, endTime]
-  );
 
   /** ====== 파일 관련 ====== */
   const handleFilesChange = useCallback(
@@ -237,19 +249,25 @@ export default function SharedScheduleEditMobileView() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  const toggleKeepExistingFile = useCallback((fileId: number) => {
-    setKeepFileIds((prev) =>
-      prev.includes(fileId)
-        ? prev.filter((id) => id !== fileId)
-        : [...prev, fileId]
-    );
+  /** 기존 파일 삭제 (keepFileIds + UI 둘 다에서 제거) */
+  const handleDeleteExistingFile = useCallback((fileId: number) => {
+    setKeepFileIds((prev) => prev.filter((id) => id !== fileId));
+    setExistingFiles((prev) => prev.filter((f) => f.id !== fileId));
   }, []);
 
-  /** 기존 파일 다운로드 (s3Key 가 URL 이라고 가정) */
+  /** 기존 파일 다운로드 (s3Key가 URL이라고 가정) */
   const handleDownloadExistingFile = useCallback(
     (file: { id: number; name: string; s3Key: string }) => {
       if (!file.s3Key) return;
-      window.open(file.s3Key, "_blank");
+
+      // s3Key 가 이미 http 로 시작하면 그대로 사용, 아니면 BASE_URL 과 조합
+      const url = file.s3Key.startsWith("http")
+        ? file.s3Key
+        : `${S3_BASE_URL}${
+            file.s3Key.startsWith("/") ? file.s3Key.slice(1) : file.s3Key
+          }`;
+
+      window.open(url, "_blank");
     },
     []
   );
@@ -265,8 +283,8 @@ export default function SharedScheduleEditMobileView() {
       content: memo.trim(),
       startScheduleDate: startDate,
       endScheduleDate: endDate,
-      startTime,
-      endTime,
+      startTime: startTime,
+      endTime: endTime,
       scheduleType,
       productName,
       customerName,
@@ -283,8 +301,8 @@ export default function SharedScheduleEditMobileView() {
       })
     );
 
+    // 새로 첨부한 파일들
     files.forEach((file) => {
-      // 서버가 받는 필드명이 "file" 이라고 들었어서 그대로 사용
       formData.append("file", file);
     });
 
@@ -323,13 +341,16 @@ export default function SharedScheduleEditMobileView() {
     nav,
   ]);
 
+  /** 저장 버튼 비활성 여부 */
+  const submitDisabled = submitting || loading;
+
   return (
     <div className="w-full bg-[#F4F6FB]">
       <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col relative">
         {/* 헤더 */}
         <div className="sticky top-0 z-20 bg-white">
           <MyPageHeader
-            title="공유 일정 수정"
+            title={mode === "view" ? "공유 일정" : "공유 일정 수정"}
             onBack={onBack}
             showMenu={false}
           />
@@ -341,7 +362,129 @@ export default function SharedScheduleEditMobileView() {
             <div className="flex h-full w-full items-center justify-center text-[14px] text-[#9CA3AF]">
               일정 정보를 불러오는 중입니다...
             </div>
+          ) : mode === "view" ? (
+            /* ===== 조회 전용 화면 ===== */
+            <div className="px-5 pt-18 pb-6">
+              {/* 제목 */}
+              <div className="mt-4 mb-6 flex items-center gap-3">
+                <div className="w-1 h-8 rounded-[3px] bg-[#FF2233]" />
+                <p className="flex-1 bg-transparent text-[20px] font-semibold leading-[32px] tracking-[-0.2px] text-[#1E2124]">
+                  {title}
+                </p>
+              </div>
+
+              {/* 업체명 / 고객명 (읽기 전용 박스) */}
+              <div className="space-y-3 mb-8">
+                <div className="w-[350px] min-h-[58px] bg-[#F6F7FB] rounded-[12px] px-4 py-3 flex flex-col justify-center">
+                  <span className="text-[12px] leading-[18px] text-[#6B7280]">
+                    업체명
+                  </span>
+                  <span className="mt-1 text-[14px] leading-[21px] text-[#111827]">
+                    {companyName || "-"}
+                  </span>
+                </div>
+
+                <div className="w-[350px] min-h-[58px] bg-[#F6F7FB] rounded-[12px] px-4 py-3 flex flex-col justify-center">
+                  <span className="text-[12px] leading-[18px] text-[#6B7280]">
+                    고객명
+                  </span>
+                  <span className="mt-1 text-[14px] leading-[21px] text-[#111827]">
+                    {customerName || "-"}
+                  </span>
+                </div>
+              </div>
+
+              {/* 날짜 */}
+              <div className="mt-2">
+                <div className="flex items센터 gap-4">
+                  <Icon
+                    icon="ant-design:calendar-outlined"
+                    className="w-5 h-5 text-[#333333]"
+                  />
+                  <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                    {sameDay
+                      ? startDateLabel
+                      : `${startDateLabel} > ${endDateLabel}`}
+                  </span>
+                </div>
+              </div>
+
+              {/* 시간 */}
+              <div className="mt-6">
+                <div className="flex items-center gap-4">
+                  <Icon icon="prime:clock" className="w-5 h-5 text-[#333333]" />
+                  <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                    {startTimeLabel} {"-"} {endTimeLabel}
+                  </span>
+                </div>
+                <p className="mt-1 ml-9 text-[12px] text-[#9CA3AF]">
+                  {timeDateHint}
+                </p>
+              </div>
+
+              {/* 위치 */}
+              <div className="mt-6">
+                <div className="flex items-center gap-4 mb-1">
+                  <Icon
+                    icon="solar:map-linear"
+                    className="w-5 h-5 text-[#333333]"
+                  />
+                  <span className="text-[14px] text-[#1E2124] leading-[20px]">
+                    위치
+                  </span>
+                </div>
+                <p className="ml-9 text-[14px] leading-[22px] text-[#111827] whitespace-pre-line">
+                  {locationText || "-"}
+                </p>
+              </div>
+
+              {/* 메모 */}
+              <div className="mt-6">
+                <div className="flex items-center gap-4 mb-1">
+                  <Icon
+                    icon="ph:note-duotone"
+                    className="w-5 h-5 text-[#333333]"
+                  />
+                  <span className="text-[14px] text-[#1E2124] leading-[20px]">
+                    메모
+                  </span>
+                </div>
+                <p className="ml-9 text-[14px] leading-[22px] text-[#111827] whitespace-pre-line">
+                  {memo || "-"}
+                </p>
+              </div>
+
+              {/* 파일 첨부 (조회용: 다운로드 스타일) */}
+              <div className="mt-6 mb-4">
+                <div className="flex items-center gap-4 mb-1">
+                  <Icon icon="f7:link" className="w-5 h-5 text-[#333333]" />
+                  <span className="text-[14px] text-[#1E2124] leading-[20px]">
+                    파일 첨부
+                  </span>
+                </div>
+
+                <div className="ml-9 w-[310px] max-w-full space-y-1">
+                  {existingFiles.length === 0 ? (
+                    <p className="text-[13px] text-[#9CA3AF]">
+                      첨부된 파일이 없습니다.
+                    </p>
+                  ) : (
+                    existingFiles.map((file) => (
+                      <button
+                        key={file.id}
+                        type="button"
+                        onClick={() => handleDownloadExistingFile(file)}
+                        className="w-full text-left text-[13px] text-[#2563EB] underline underline-offset-2 hover:text-[#1D4ED8] active:scale-[0.99]"
+                      >
+                        {file.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
           ) : (
+            /* ===== 수정 화면 ===== */
             <div className="px-5 pt-18 pb-6">
               {/* 제목 */}
               <div className="mt-4 mb-6 flex items-center gap-3">
@@ -548,7 +691,7 @@ export default function SharedScheduleEditMobileView() {
                 </div>
               </div>
 
-              {/* 파일 첨부 */}
+              {/* 파일 첨부 (기존 + 새 파일) */}
               <div className="mt-6 mb-4">
                 <div className="flex items-center gap-4 mb-2">
                   <Icon icon="f7:link" className="w-5 h-5 text-[#333333]" />
@@ -558,39 +701,33 @@ export default function SharedScheduleEditMobileView() {
                 </div>
 
                 <div className="ml-9 w-[310px] max-w-full space-y-3">
-                  {/* 기존 파일 목록 */}
+                  {/* 기존 파일 목록 - 휴지통 아이콘으로 삭제 */}
                   {existingFiles.length > 0 && (
                     <div className="space-y-2">
-                      {existingFiles.map((file) => {
-                        const kept = keepFileIds.includes(file.id);
-                        return (
-                          <div
-                            key={file.id}
-                            className="w-full h-[40px] bg-white border border-[#E5E7EB] rounded-[12px] px-4 flex items-center justify-between"
+                      {existingFiles.map((file) => (
+                        <div
+                          key={file.id}
+                          className="w-full h-[40px] bg-[#F6F7FB] rounded-[12px] px-4 flex items-center justify-between"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadExistingFile(file)}
+                            className="flex-1 text-left text-[13px] text-[#111827] truncate underline-offset-2 hover:underline"
                           >
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadExistingFile(file)}
-                              className="flex-1 text-left text-[13px] text-[#111827] truncate underline-offset-2 hover:underline"
-                            >
-                              {file.name}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => toggleKeepExistingFile(file.id)}
-                              className={`ml-3 w-7 h-7 rounded-full border flex items-center justify-center ${
-                                kept
-                                  ? "bg-[#FF2233] border-[#FF2233]"
-                                  : "bg-white border-[#E5E7EB]"
-                              }`}
-                            >
-                              <span className="text-[10px] text-white">
-                                {kept ? "ON" : ""}
-                              </span>
-                            </button>
-                          </div>
-                        );
-                      })}
+                            {file.name}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteExistingFile(file.id)}
+                            className="ml-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#E5E7EB] active:scale-95"
+                          >
+                            <Icon
+                              icon="solar:trash-bin-minimalistic-bold"
+                              className="w-4 h-4 text-[#9CA3AF]"
+                            />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
 
@@ -605,6 +742,7 @@ export default function SharedScheduleEditMobileView() {
                     />
                   </label>
 
+                  {/* 새로 업로드한 파일 목록 - 휴지통 아이콘으로 삭제 */}
                   {files.length > 0 && (
                     <div className="mt-2 space-y-2">
                       {files.map((file, index) => (
@@ -618,11 +756,11 @@ export default function SharedScheduleEditMobileView() {
                           <button
                             type="button"
                             onClick={() => handleRemoveNewFile(index)}
-                            className="ml-2 w-6 h-6 flex items-center justify-center rounded-full bg-[#E5E7EB]"
+                            className="ml-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#E5E7EB] active:scale-95"
                           >
                             <Icon
-                              icon="mynaui:close"
-                              className="w-3 h-3 text-[#6B7280]"
+                              icon="solar:trash-bin-minimalistic-bold"
+                              className="w-4 h-4 text-[#9CA3AF]"
                             />
                           </button>
                         </div>
@@ -635,22 +773,32 @@ export default function SharedScheduleEditMobileView() {
           )}
         </div>
 
-        {/* 하단 저장 버튼 */}
+        {/* 하단 버튼들 */}
         <div className="px-5 pb-18 pt-3">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!isValid || submitting || loading}
-            className={[
-              "w-[350px] h-[56px] mx-auto rounded-[12px] flex items-center justify-center",
-              "text-[16px] font-semibold tracking-[-0.2px]",
-              isValid && !submitting && !loading
-                ? "bg-[#FF2233] text-white active:scale-95"
-                : "bg-[#F6F6F6] text-[#ADB3B6]",
-            ].join(" ")}
-          >
-            {submitting ? "저장 중..." : "저장하기"}
-          </button>
+          {mode === "view" ? (
+            <button
+              type="button"
+              onClick={() => setMode("edit")}
+              className="w-[350px] h-[56px] mx-auto rounded-[12px] flex items-center justify-center bg-[#FF2233] text-white text-[16px] font-semibold tracking-[-0.2px] active:scale-95"
+            >
+              수정하기
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitDisabled}
+              className={[
+                "w-[350px] h-[56px] mx-auto rounded-[12px] flex items-center justify-center",
+                "text-[16px] font-semibold tracking-[-0.2px]",
+                !submitDisabled
+                  ? "bg-[#FF2233] text-white active:scale-95"
+                  : "bg-[#F6F6F6] text-[#ADB3B6]",
+              ].join(" ")}
+            >
+              {submitting ? "저장 중..." : "저장하기"}
+            </button>
+          )}
         </div>
       </div>
     </div>
