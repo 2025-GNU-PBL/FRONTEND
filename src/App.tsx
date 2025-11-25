@@ -108,7 +108,6 @@ function Layout() {
     "/log-in/client",
     "/log-in/owner",
     "/inquiry", // InquiryPage에 Navbar 숨김
-    "/product-inquiry", // ProductInquiryPage에 Navbar 숨김
   ];
 
   // 푸터 숨길 경로 (정적)
