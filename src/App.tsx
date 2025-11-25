@@ -84,6 +84,7 @@ import CustomNotificationToast from "./components/CustomNotificationToast/Custom
 import SupportPage from "./pages/SupportPage/SupportPage";
 import RefundRequestPage from "./pages/MyPage/ClientMyPage/Payments/RefundPage/RefundRequestPage";
 import CanceledDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CanceledDetailPage";
+import type { Notification } from "./type/notification";
 
 function Layout() {
   const location = useLocation();
@@ -244,6 +245,7 @@ const App = () => {
 
     // accessToken, userId, userRole이 모두 있을 때만 구독 시작
     if (
+      isAuth &&
       currentAccessToken &&
       currentUserId !== null &&
       currentUserRole !== null
@@ -286,7 +288,7 @@ const App = () => {
     }
 
     return cleanup;
-  }, [currentAccessToken, currentUserId, currentUserRole]); // 디코딩된 userId와 userRole을 의존성 배열에 추가
+  }, [isAuth, currentAccessToken, currentUserId, currentUserRole]); // 디코딩된 userId와 userRole을 의존성 배열에 추가
 
   // 리덕스 퍼시스트 완료 전까지 렌더링 지연
   if (!rehydrated) return null;
