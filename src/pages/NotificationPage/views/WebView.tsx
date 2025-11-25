@@ -34,7 +34,6 @@ const WebView: React.FC<WebViewProps> = ({ liveNotifications }) => {
   }, []);
 
   const allNotifications = [...liveNotifications, ...notifications];
-  const unreadCount = allNotifications.filter(n => !n.isRead).length; // 읽지 않은 알림 개수 계산
 
   const handleNotificationClick = async (notification: Notification) => {
     try {
@@ -47,6 +46,8 @@ const WebView: React.FC<WebViewProps> = ({ liveNotifications }) => {
 
       if (notification.type === 'PAYMENT_REQUIRED') {
         navigate('/checkout'); // 결제 요청 알림일 경우 리다이렉트
+      } else if (notification.type === 'PAYMENT_CANCELED') {
+        navigate('/my-page/client/payments'); // PAYMENT_CANCELED 알림일 경우 리다이렉트
       } else if (notification.actionUrl) {
         navigate(notification.actionUrl); // actionUrl이 있다면 해당 URL로 이동
       }

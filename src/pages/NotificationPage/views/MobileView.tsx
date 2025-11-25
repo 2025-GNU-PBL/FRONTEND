@@ -4,6 +4,8 @@ import "./MobileView.css";
 import { getAllNotifications } from "../../../lib/api/axios";
 import { markNotificationAsRead } from "../../../lib/api/notification";
 import type { Notification } from "../../../type/notification";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../../store/store";
 
 interface MobileViewProps {
   liveNotifications: Notification[];
@@ -15,6 +17,7 @@ const MobileView: React.FC<MobileViewProps> = ({ liveNotifications }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState("전체");
+  const userRole = useSelector((state: RootState) => state.user.role);
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -59,7 +62,17 @@ const MobileView: React.FC<MobileViewProps> = ({ liveNotifications }) => {
       if (notification.type === "PAYMENT_REQUIRED") {
         // 결제 요청 알림
         navigate("/checkout");
-      } else if (notification.type === "REFUND" && notification.actionUrl) {
+      } else if (userRole === "CUSTOMER" && (notification.type === "PAYMENT_CANCELED" || notification.type == "PAYMENT_COMPLETED")) {
+        navigate("/my-page/client/payments");
+      }else if (userRole === "OWNER" && (notification.type === "PAYMENT_CANCELED" || notification.type == "PAYMENT_COMPLETED")) {
+        navigate("/my-page/owner/payments");
+      } else if(userRole === "OWNER" && notification.type == "PAYMENT_CANCEL_REQUEST"){
+        navigate("/my-page/owner/cancels")
+      } else if(userRole === "OWNER" && notification.type == "RESERVATION_COMPLETED"){
+        navigate("/my-page/owner/reservations")
+      }
+      
+      else if (notification.type === "REFUND" && notification.actionUrl) {
         // 환불 관련 알림 → 백엔드에서 내려준 환불 요청/내역 페이지로 이동
         navigate(notification.actionUrl);
       } else if (notification.actionUrl) {
