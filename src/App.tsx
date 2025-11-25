@@ -338,11 +338,11 @@ const App = () => {
             element={<PersonalScheduleCreatePage />}
           />
           <Route
-            path="/calendar/personal/edit/:id"
+            path="/calendar/personal/:id"
             element={<PersonalScheduleEditPage />}
           />
           <Route
-            path="/calendar/shared/edit/:id"
+            path="/calendar/shared/:id"
             element={<SharedScheduleEditPage />}
           />
           {/* 고객 마이페이지 */}

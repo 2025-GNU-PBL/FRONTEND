@@ -4,9 +4,10 @@ import { Icon } from "@iconify/react";
 import MyPageHeader from "../../../components/MyPageHeader";
 import api from "../../../lib/api/axios";
 
-/** ====== 유틸 ====== */
+/** ====== 상수: S3 기본 URL ====== */
+const S3_BASE_URL = "https://gnubucketgnu.s3.ap-northeast-2.amazonaws.com/";
 
-/** 날짜를 yyyy-MM-dd 로 변환 */
+/** ====== 유틸 ====== */
 const toDateInput = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate()
@@ -33,7 +34,7 @@ function getAmPmLabel(timeStr: string) {
   return h < 12 ? "오전" : "오후";
 }
 
-/** 12시간제로 보여줄 시간 (예: "04:00", "01:30") */
+/** 12시간제 포맷 */
 function formatTime12h(timeStr: string) {
   if (!timeStr) return "";
   const [hStr, mStr] = timeStr.split(":");
@@ -45,43 +46,37 @@ function formatTime12h(timeStr: string) {
   return `${hh}:${mStr}`;
 }
 
-/** 서버 HH:mm:ss → input용 HH:mm 으로 변환 */
-function normalizeTimeToMinutes(time?: string | null): string {
-  if (!time) return "";
-  const [h, m] = time.split(":");
-  if (!h || !m) return time;
-  return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
-}
-
-/** ====== 서버 DTO ====== */
-
-/** 단건 조회 응답 (GET /api/v1/schedule/{id}) */
+/** ====== 단건 조회 응답 DTO ====== */
 type ScheduleDetailResponse = {
   id: number;
   title: string;
   content: string;
-  startScheduleDate: string; // "2025-11-24"
-  endScheduleDate: string; // "2025-11-25"
-  startTime: string; // "11:00:00"
-  endTime: string; // "16:00:00"
-  scheduleFiles?: {
+  startScheduleDate: string;
+  endScheduleDate: string;
+  startTime: string;
+  endTime: string;
+  scheduleType: "PERSONAL" | "SHARED" | string;
+  productName: string;
+  customerName: string;
+  bzName: string;
+  address: string;
+  scheduleFiles: {
     id: number;
     name: string;
     s3Key: string;
   }[];
 };
 
-/** 수정 요청 바디 (PATCH /api/v1/schedule/{id}) — 등록 DTO와 동일 구조 */
+/** ====== 수정 요청 DTO ====== */
 type ScheduleUpdateRequest = {
   title: string;
   content: string;
-  startScheduleDate: string; // yyyy-MM-dd
-  endScheduleDate: string; // yyyy-MM-dd
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
+  startScheduleDate: string;
+  endScheduleDate: string;
+  startTime: string;
+  endTime: string;
+  keepFileIds: number[];
 };
-
-/** ====== 컴포넌트 (Web View) ====== */
 
 export default function PersonalScheduleEditWebView() {
   const nav = useNavigate();
@@ -90,48 +85,70 @@ export default function PersonalScheduleEditWebView() {
 
   const onBack = useCallback(() => nav(-1), [nav]);
 
-  /** 기본 값: 오늘 기준 (상세 조회 성공하면 이 값은 덮어씀) */
+  /** 보기 / 수정 모드 */
+  const [mode, setMode] = useState<"view" | "edit">("view");
+
+  /** 기본 값 */
   const today = useMemo(() => new Date(), []);
   const defaultDate = useMemo(() => toDateInput(today), [today]);
 
+  /** 폼 상태 */
   const [title, setTitle] = useState("");
+  const [companyName, setCompanyName] = useState(""); // bzName (개인 일정이라 비워져 있을 수 있음)
+  const [customerName, setCustomerName] = useState("");
+  const [locationText, setLocationText] = useState(""); // address
+
   const [startDate, setStartDate] = useState(defaultDate);
   const [endDate, setEndDate] = useState(defaultDate);
   const [startTime, setStartTime] = useState("11:00");
   const [endTime, setEndTime] = useState("13:00");
   const [memo, setMemo] = useState("");
 
-  const [loading, setLoading] = useState(true);
+  /** 파일 상태 */
+  const [existingFiles, setExistingFiles] = useState<
+    ScheduleDetailResponse["scheduleFiles"]
+  >([]);
+  const [keepFileIds, setKeepFileIds] = useState<number[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
+
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
-  /** ====== 1) 상세 조회로 폼 초기값 세팅 (GET /api/v1/schedule/{id}) ====== */
+  /** ====== 상세 조회 ====== */
   useEffect(() => {
-    if (!scheduleId || Number.isNaN(scheduleId)) {
-      nav(-1);
-      return;
-    }
+    if (!scheduleId || Number.isNaN(scheduleId)) return;
+
+    const normalizeDate = (d?: string) =>
+      d && d.length >= 10 ? d.slice(0, 10) : defaultDate;
+
+    const normalizeTime = (t?: string, fallback: string) => {
+      if (!t) return fallback;
+      return t.slice(0, 5);
+    };
 
     const fetchDetail = async () => {
       try {
         setLoading(true);
+
         const { data } = await api.get<ScheduleDetailResponse>(
           `/api/v1/schedule/${scheduleId}`
         );
 
         setTitle(data.title ?? "");
         setMemo(data.content ?? "");
+        setCompanyName(data.bzName ?? "");
+        setCustomerName(data.customerName ?? "");
+        setLocationText(data.address ?? "");
 
-        setStartDate(data.startScheduleDate || defaultDate);
-        setEndDate(
-          data.endScheduleDate || data.startScheduleDate || defaultDate
-        );
+        setStartDate(normalizeDate(data.startScheduleDate));
+        setEndDate(normalizeDate(data.endScheduleDate));
+        setStartTime(normalizeTime(data.startTime, "11:00"));
+        setEndTime(normalizeTime(data.endTime, "13:00"));
 
-        const normalizedStartTime = normalizeTimeToMinutes(data.startTime);
-        const normalizedEndTime = normalizeTimeToMinutes(data.endTime);
-
-        if (normalizedStartTime) setStartTime(normalizedStartTime);
-        if (normalizedEndTime) setEndTime(normalizedEndTime);
+        const serverFiles = data.scheduleFiles || [];
+        setExistingFiles(serverFiles);
+        setKeepFileIds(serverFiles.map((f) => f.id));
       } catch (e) {
         console.error("[PersonalScheduleEditWebView] fetch detail error:", e);
         alert("일정 정보를 불러오는 중 오류가 발생했습니다.");
@@ -142,9 +159,27 @@ export default function PersonalScheduleEditWebView() {
     };
 
     fetchDetail();
-  }, [scheduleId, nav, defaultDate]);
+  }, [scheduleId, defaultDate, nav]);
 
-  /** ====== 유효성 검사 — 모바일과 동일 규칙 ====== */
+  /** 라벨들 */
+  const startDateLabel = formatKoreanDateLabel(startDate) || "날짜 선택";
+  const endDateLabel = formatKoreanDateLabel(endDate) || "날짜 선택";
+
+  const startTimeLabel = startTime || "--:--";
+  const endTimeLabel = endTime || "--:--";
+
+  const startAmPm = getAmPmLabel(startTime);
+  const endAmPm = getAmPmLabel(endTime);
+  const startDisplayTime = formatTime12h(startTime);
+  const endDisplayTime = formatTime12h(endTime);
+
+  const sameDay =
+    new Date(startDate).toDateString() === new Date(endDate).toDateString();
+  const timeDateHint = sameDay
+    ? `${startDateLabel} 일정의 시간입니다.`
+    : `${startDateLabel} ~ ${endDateLabel} 일정의 시간입니다.`;
+
+  /** 유효성 검사 */
   const validate = useCallback(() => {
     const next: Record<string, string> = {};
 
@@ -168,21 +203,64 @@ export default function PersonalScheduleEditWebView() {
       next.time = "시작/종료 시간을 모두 선택해 주세요.";
     }
 
+    // 시작 시간이 항상 종료 시간보다 빠른지 검증
+    if (startDate && endDate && startTime && endTime) {
+      const startDateTime = new Date(`${startDate}T${startTime}:00`);
+      const endDateTime = new Date(`${endDate}T${endTime}:00`);
+
+      if (startDateTime >= endDateTime) {
+        next.time = "종료 시간은 시작 시간보다 늦게 설정해 주세요.";
+      }
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   }, [title, startDate, endDate, startTime, endTime]);
 
-  const isValid = useMemo(() => {
-    if (!title.trim() || !startDate || !endDate || !startTime || !endTime) {
-      return false;
-    }
-    const sd = new Date(startDate);
-    const ed = new Date(endDate);
-    // 여러 날짜 허용: sd <= ed 만 체크
-    return sd <= ed;
-  }, [title, startDate, endDate, startTime, endTime]);
+  const isValid = useMemo(
+    () =>
+      !!title.trim() && !!startDate && !!endDate && !!startTime && !!endTime,
+    [title, startDate, endDate, startTime, endTime]
+  );
 
-  /** ====== 2) 수정 요청 (PATCH /api/v1/schedule/{id}) ====== */
+  /** 파일 추가 */
+  const handleFilesChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const fileList = e.target.files;
+      if (!fileList || fileList.length === 0) return;
+      const newFiles = Array.from(fileList);
+      setFiles((prev) => [...prev, ...newFiles]);
+      e.target.value = "";
+    },
+    []
+  );
+
+  /** 새 파일 삭제 */
+  const handleRemoveNewFile = useCallback((index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  /** 기존 파일 삭제 (수정 모드에서만 사용) */
+  const handleRemoveExistingFile = useCallback((fileId: number) => {
+    setExistingFiles((prev) => prev.filter((f) => f.id !== fileId));
+    setKeepFileIds((prev) => prev.filter((id) => id !== fileId));
+  }, []);
+
+  /** 기존 파일 열기 (조회/수정 공통, S3 URL 조합) */
+  const handleOpenExistingFile = useCallback(
+    (file: { id: number; name: string; s3Key: string }) => {
+      if (!file.s3Key) return;
+      const url = file.s3Key.startsWith("http")
+        ? file.s3Key
+        : `${S3_BASE_URL}${
+            file.s3Key.startsWith("/") ? file.s3Key.slice(1) : file.s3Key
+          }`;
+      window.open(url, "_blank");
+    },
+    []
+  );
+
+  /** 수정 요청 */
   const handleSubmit = useCallback(async () => {
     if (submitting) return;
     if (!scheduleId || Number.isNaN(scheduleId)) return;
@@ -193,19 +271,22 @@ export default function PersonalScheduleEditWebView() {
       content: memo.trim(),
       startScheduleDate: startDate,
       endScheduleDate: endDate,
-      startTime,
-      endTime,
+      startTime: startTime,
+      endTime: endTime,
+      keepFileIds,
     };
 
     const formData = new FormData();
-
     formData.append(
       "request",
       new Blob([JSON.stringify(requestPayload)], {
         type: "application/json",
       })
     );
-    // 웹 뷰도 현재는 파일 업로드 없음 (필요 시 file append 추가)
+
+    files.forEach((file) => {
+      formData.append("file", file);
+    });
 
     try {
       setSubmitting(true);
@@ -224,6 +305,7 @@ export default function PersonalScheduleEditWebView() {
     }
   }, [
     submitting,
+    scheduleId,
     validate,
     title,
     memo,
@@ -231,35 +313,18 @@ export default function PersonalScheduleEditWebView() {
     endDate,
     startTime,
     endTime,
-    scheduleId,
+    keepFileIds,
+    files,
     nav,
   ]);
 
-  /** 날짜/시간 라벨 + 표시용 값 */
-  const startDateLabel = formatKoreanDateLabel(startDate) || "날짜 선택";
-  const endDateLabel = formatKoreanDateLabel(endDate) || "날짜 선택";
-
-  const startTimeLabel = startTime || "--:--";
-  const endTimeLabel = endTime || "--:--";
-
-  const startAmPm = getAmPmLabel(startTime);
-  const endAmPm = getAmPmLabel(endTime);
-  const startDisplayTime = formatTime12h(startTime);
-  const endDisplayTime = formatTime12h(endTime);
-
-  const sameDay =
-    new Date(startDate).toDateString() === new Date(endDate).toDateString();
-  const timeDateHint = sameDay
-    ? `${startDateLabel} 일정의 시간입니다.`
-    : `${startDateLabel} ~ ${endDateLabel} 일정의 시간입니다.`;
-
   return (
-    <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 상단 공통 헤더 영역 */}
+    <div className="w-full min-h-screen bg-white">
+      {/* 상단 헤더 */}
       <div className="w-full bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-[1040px] mx-auto">
+        <div className="max-w-[1120px] mx-auto">
           <MyPageHeader
-            title="개인 일정 수정"
+            title={mode === "view" ? "개인 일정 상세" : "개인 일정 수정"}
             onBack={onBack}
             showMenu={false}
           />
@@ -267,78 +332,175 @@ export default function PersonalScheduleEditWebView() {
       </div>
 
       {/* 본문 */}
-      <div className="max-w-[1040px] mt-20 mx-auto px-6 py-8">
-        {/* 상단 타이틀/설명 */}
-        <div className="mb-6">
-          <h1 className="text-[22px] font-semibold text-[#111827] tracking-[-0.3px]">
-            개인 일정 수정
+      <div className="max-w-[1120px] mt-16 mx-auto px-8 py-10">
+        {/* 타이틀 */}
+        <div className="mb-8">
+          <h1 className="text-[32px] md:text-[34px] font-semibold text-[#111827] tracking-[-0.4px]">
+            {mode === "view" ? "개인 일정 상세" : "개인 일정 수정"}
           </h1>
-          <p className="mt-1 text-[13px] text-[#6B7280] tracking-[-0.2px]">
-            수정할 날짜와 시간을 선택하고 메모를 수정해 보세요.
+          <p className="mt-3 text-[16px] md:text-[18px] text-[#6B7280] tracking-[-0.2px] leading-[26px]">
+            날짜와 시간을 확인하고 필요한 정보와 메모를{" "}
+            {mode === "view" ? "확인해 보세요." : "수정해 보세요."}
           </p>
         </div>
 
         {/* 메인 카드 */}
-        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8">
+        <div className="bg-white rounded-[24px] shadow-[0_18px_55px_rgba(15,23,42,0.06)] border border-[#E5E7EB] px-10 py-12">
           {loading ? (
-            <div className="w-full h-[200px] flex items-center justify-center text-[14px] text-[#9CA3AF]">
+            <div className="w-full h-[320px] flex items-center justify-center text-[15px] text-[#9CA3AF]">
               일정 정보를 불러오는 중입니다...
             </div>
+          ) : mode === "view" ? (
+            <>
+              {/* ===== 조회 모드 ===== */}
+              <div className="max-w-[900px] mx-auto">
+                {/* 제목 */}
+                <div className="mt-1 mb-10 flex items-center gap-4">
+                  <div className="w-1.5 h-10 rounded-[4px] bg-[#FF2233]" />
+                  <p className="flex-1 bg-transparent text-[32px] md:text-[36px] font-semibold leading-[44px] tracking-[-0.4px] text-[#1E2124]">
+                    {title || "-"}
+                  </p>
+                </div>
+
+                {/* 날짜 */}
+                <div className="mt-4">
+                  <div className="flex items-center gap-5">
+                    <Icon
+                      icon="ant-design:calendar-outlined"
+                      className="w-7 h-7 text-[#333333]"
+                    />
+                    <span className="text-[20px] leading-[40px] tracking-[-0.2px] text-[#1E2124]">
+                      {sameDay
+                        ? startDateLabel
+                        : `${startDateLabel} > ${endDateLabel}`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 시간 */}
+                <div className="mt-7">
+                  <div className="flex items-center gap-5">
+                    <Icon
+                      icon="prime:clock"
+                      className="w-7 h-7 text-[#333333]"
+                    />
+                    <span className="text-[20px] leading-[40px] tracking-[-0.2px] text-[#1E2124]">
+                      {startTimeLabel} {"-"} {endTimeLabel}
+                    </span>
+                  </div>
+                  <p className="mt-2 ml-[52px] text-[16px] text-[#9CA3AF] leading-[24px]">
+                    {timeDateHint}
+                  </p>
+                </div>
+
+                {/* 메모 */}
+                <div className="mt-8">
+                  <div className="flex items-center gap-5 mb-3">
+                    <Icon
+                      icon="ph:note-duotone"
+                      className="w-7 h-7 text-[#333333]"
+                    />
+                    <span className="text-[18px] text-[#1E2124] leading-[26px]">
+                      메모
+                    </span>
+                  </div>
+                  <p className="ml-[52px] text-[20px] leading-[32px] text-[#111827] whitespace-pre-line">
+                    {memo || "-"}
+                  </p>
+                </div>
+
+                {/* 파일 첨부 */}
+                <div className="mt-8 mb-2">
+                  <div className="flex items-center gap-5 mb-3">
+                    <Icon icon="f7:link" className="w-7 h-7 text-[#333333]" />
+                    <span className="text-[18px] text-[#1E2124] leading-[26px]">
+                      파일 첨부
+                    </span>
+                  </div>
+
+                  <div className="ml-[52px] w-full max-w-[640px] space-y-1.5">
+                    {existingFiles.length === 0 ? (
+                      <p className="text-[20px] text-[#9CA3AF]">
+                        첨부된 파일이 없습니다.
+                      </p>
+                    ) : (
+                      existingFiles.map((file) => (
+                        <button
+                          key={file.id}
+                          type="button"
+                          onClick={() => handleOpenExistingFile(file)}
+                          className="w-full text-left text-[20px] leading-[32px] text-[#2563EB] underline underline-offset-2 hover:text-[#1D4ED8] active:scale-[0.99]"
+                        >
+                          {file.name}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 하단 수정 버튼 (조회 -> 수정 모드 전환) */}
+              <div className="mt-12 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setMode("edit")}
+                  className="min-w-[320px] h-[64px] rounded-[16px] flex items-center justify-center bg-[#FF2233] text-white text-[20px] font-semibold tracking-[-0.2px] active:scale-95"
+                >
+                  수정하기
+                </button>
+              </div>
+            </>
           ) : (
             <>
-              <div className="max-w-[720px]">
+              {/* ===== 수정 모드 ===== */}
+              <div className="max-w-[900px] mx-auto">
                 {/* 제목 입력 */}
-                <div className="mt-2 mb-8 flex items-center gap-3">
-                  <div className="w-1 h-8 rounded-[3px] bg-[#FF2233]" />
+                <div className="mt-1 mb-10 flex items-center gap-4">
+                  <div className="w-1.5 h-10 rounded-[4px] bg-[#FF2233]" />
                   <input
-                    className="flex-1 bg-transparent outline-none text-[20px] font-semibold leading-[32px] tracking-[-0.2px] placeholder:text-[#D9D9D9] text-[#1E2124]"
+                    className="flex-1 bg-transparent outline-none text-[32px] md:text-[36px] font-semibold leading-[44px] tracking-[-0.4px] placeholder:text-[#D9D9D9] text-[#1E2124]"
                     placeholder="제목을 입력하세요"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                   />
                 </div>
                 {errors.title && (
-                  <p className="mb-3 text-[12px] text-[#EB5147]">
+                  <p className="mb-4 text-[13px] text-[#EB5147]">
                     {errors.title}
                   </p>
                 )}
 
-                {/* 날짜 선택 라인 */}
+                {/* 날짜 */}
                 <div className="mt-2">
-                  {/* 상단 라벨 영역 */}
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 mb-3">
                     <Icon
                       icon="ant-design:calendar-outlined"
-                      className="w-5 h-5 text-[#333333]"
+                      className="w-[22px] h-[22px] text-[#333333]"
                     />
-
                     <div className="flex items-center gap-4">
-                      <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                      <span className="text-[18px] leading-[28px] tracking-[-0.2px] text-[#1E2124]">
                         {startDateLabel}
                       </span>
-
-                      <span className="text-[16px] text-[#1E2124]">{">"}</span>
-
-                      <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                      <span className="text-[18px] text-[#1E2124]">{">"}</span>
+                      <span className="text-[18px] leading-[28px] tracking-[-0.2px] text-[#1E2124]">
                         {endDateLabel}
                       </span>
                     </div>
                   </div>
 
-                  {/* 날짜 입력 pill - 가로 배치 */}
-                  <div className="mt-3 ml-9 flex gap-3">
-                    <div className="w-[320px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
+                  <div className="mt-3 ml-[46px] flex gap-4">
+                    <div className="w-[340px] h-[48px] rounded-[16px] bg-white border border-[#E5E7EB] flex items-center px-4">
                       <input
                         type="date"
-                        className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
+                        className="flex-1 bg-transparent text-[15px] text-[#111827] outline-none"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                       />
                     </div>
-                    <div className="w-[320px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
+                    <div className="w-[340px] h-[48px] rounded-[16px] bg-white border border-[#E5E7EB] flex items-center px-4">
                       <input
                         type="date"
-                        className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
+                        className="flex-1 bg-transparent text-[15px] text-[#111827] outline-none"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
                       />
@@ -346,51 +508,45 @@ export default function PersonalScheduleEditWebView() {
                   </div>
 
                   {(errors.startDate || errors.endDate) && (
-                    <p className="mt-2 ml-9 text-[12px] text-[#EB5147]">
+                    <p className="mt-2 ml-[46px] text-[13px] text-[#EB5147]">
                       {errors.startDate || errors.endDate}
                     </p>
                   )}
                 </div>
 
-                {/* 시간 선택 라인 */}
-                <div className="mt-6">
-                  {/* 상단 라벨 */}
+                {/* 시간 */}
+                <div className="mt-8">
                   <div className="flex items-center gap-4">
                     <Icon
                       icon="prime:clock"
-                      className="w-5 h-5 text-[#333333]"
+                      className="w-[22px] h-[22px] text-[#333333]"
                     />
-
                     <div className="flex items-center gap-6">
-                      <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                      <span className="text-[18px] leading-[28px] tracking-[-0.2px] text-[#1E2124]">
                         {startTimeLabel}
                       </span>
-
-                      <span className="text-[16px] text-[#1E2124]">{">"}</span>
-
-                      <span className="text-[16px] leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                      <span className="text-[18px] text-[#1E2124]">{">"}</span>
+                      <span className="text-[18px] leading-[28px] tracking-[-0.2px] text-[#1E2124]">
                         {endTimeLabel}
                       </span>
                     </div>
                   </div>
 
-                  {/* 이 시간이 어떤 날짜인지 설명 */}
-                  <p className="mt-1 ml-9 text-[12px] text-[#9CA3AF]">
+                  <p className="mt-1.5 ml-[46px] text-[13px] text-[#9CA3AF]">
                     {timeDateHint}
                   </p>
 
-                  {/* 시간 pill */}
-                  <div className="mt-3 ml-9 flex items-center gap-3">
+                  <div className="mt-3 ml-[46px] flex items-center gap-4">
                     {/* 시작 시간 */}
                     <button
                       type="button"
-                      className="relative w-[180px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
+                      className="relative w-[200px] h-[48px] rounded-[16px] bg-white border border-[#E5E7EB] flex items-center justify-between px-4"
                     >
                       <div className="flex flex-col text-left">
-                        <span className="text-[11px] text-[#9CA3AF]">
+                        <span className="text-[12px] text-[#9CA3AF]">
                           {startAmPm}
                         </span>
-                        <span className="text-[14px] font-medium text-[#111827]">
+                        <span className="text-[15px] font-medium text-[#111827]">
                           {startDisplayTime}
                         </span>
                       </div>
@@ -406,18 +562,18 @@ export default function PersonalScheduleEditWebView() {
                       />
                     </button>
 
-                    <span className="text-[14px] text-[#9CA3AF]">~</span>
+                    <span className="text-[15px] text-[#9CA3AF]">~</span>
 
                     {/* 종료 시간 */}
                     <button
                       type="button"
-                      className="relative w-[180px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
+                      className="relative w-[200px] h-[48px] rounded-[16px] bg-white border border-[#E5E7EB] flex items-center justify-between px-4"
                     >
                       <div className="flex flex-col text-left">
-                        <span className="text-[11px] text-[#9CA3AF]">
+                        <span className="text-[12px] text-[#9CA3AF]">
                           {endAmPm}
                         </span>
-                        <span className="text-[14px] font-medium text-[#111827]">
+                        <span className="text-[15px] font-medium text-[#111827]">
                           {endDisplayTime}
                         </span>
                       </div>
@@ -435,7 +591,7 @@ export default function PersonalScheduleEditWebView() {
                   </div>
 
                   {errors.time && (
-                    <p className="mt-2 ml-9 text-[12px] text-[#EB5147]">
+                    <p className="mt-2 ml-[46px] text-[13px] text-[#EB5147]">
                       {errors.time}
                     </p>
                   )}
@@ -443,27 +599,118 @@ export default function PersonalScheduleEditWebView() {
 
                 {/* 메모 입력 */}
                 <div className="mt-8">
-                  <div className="w-full h-[180px] bg-[#F6F7FB] rounded-[12px] px-4 py-3">
+                  <div className="flex items-center gap-4 mb-2">
+                    <Icon
+                      icon="ph:note-duotone"
+                      className="w-[22px] h-[22px] text-[#333333]"
+                    />
+                    <span className="text-[13px] text-[#999999] leading-[20px]">
+                      메모
+                    </span>
+                  </div>
+                  <div className="ml-[46px] w-full max-w-[760px] h-[180px] bg-white border border-[#E5E7EB] rounded-[14px] px-4 py-3">
                     <textarea
-                      className="w-full h-full bg-transparent resize-none outline-none text-[14px] text-[#1E2124]"
+                      className="w-full h-full bg-transparent resize-none outline-none text-[15px] text-[#1E2124] placeholder:text-[#C4C4C4]"
                       placeholder="메모를 입력해 주세요"
                       value={memo}
                       onChange={(e) => setMemo(e.target.value)}
                     />
                   </div>
                 </div>
+
+                {/* 파일 첨부 */}
+                <div className="mt-8 mb-2">
+                  <div className="flex items-center gap-4 mb-3">
+                    <Icon
+                      icon="f7:link"
+                      className="w-[22px] h-[22px] text-[#333333]"
+                    />
+                    <span className="text-[13px] text-[#999999] leading-[20px]">
+                      파일 첨부
+                    </span>
+                  </div>
+
+                  <div className="ml-[46px] w-full max-w-[760px] space-y-3">
+                    {/* 기존 파일 목록 */}
+                    {existingFiles.length > 0 && (
+                      <div className="space-y-2">
+                        {existingFiles.map((file) => (
+                          <div
+                            key={file.id}
+                            className="w-full h-[44px] bg-white border border-[#E5E7EB] rounded-[14px] px-4 flex items-center justify-between"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleOpenExistingFile(file)}
+                              className="flex-1 text-left text-[14px] text-[#111827] truncate underline-offset-2 hover:underline"
+                            >
+                              {file.name}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExistingFile(file.id)}
+                              className="ml-3 w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#E5E7EB] active:scale-95"
+                            >
+                              <Icon
+                                icon="solar:trash-bin-minimalistic-bold"
+                                className="w-4 h-4 text-[#9CA3AF]"
+                              />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 새 파일 추가 */}
+                    <label className="inline-flex items-center justify-center px-5 h-[44px] rounded-[14px] bg-white border border-dashed border-[#E5E7EB] text-[14px] text-[#4B5563] cursor-pointer">
+                      <span>파일 추가</span>
+                      <input
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={handleFilesChange}
+                      />
+                    </label>
+
+                    {/* 새 첨부 파일 목록 */}
+                    {files.length > 0 && (
+                      <div className="mt-1 space-y-2">
+                        {files.map((file, index) => (
+                          <div
+                            key={`${file.name}-${index}`}
+                            className="w-full h-[44px] bg-white border border-[#E5E7EB] rounded-[14px] px-4 flex items-center justify-between"
+                          >
+                            <span className="text-[14px] text-[#111827] truncate">
+                              {file.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveNewFile(index)}
+                              className="ml-2 w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#E5E7EB] active:scale-95"
+                            >
+                              <Icon
+                                icon="solar:trash-bin-minimalistic-bold"
+                                className="w-4 h-4 text-[#9CA3AF]"
+                              />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* 하단 수정 버튼 */}
-              <div className="mt-10 flex justify-end">
+              {/* 하단 수정 버튼 (실제 저장) */}
+              <div className="mt-12 flex justify-center">
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={!isValid || submitting}
+                  disabled={!isValid || submitting || loading}
                   className={[
-                    "min-w-[200px] h-[52px] rounded-[12px] flex items-center justify-center",
-                    "text-[16px] font-semibold tracking-[-0.2px]",
-                    isValid && !submitting
+                    "min-w-[320px] h-[64px] rounded-[16px] flex items-center justify-center",
+                    "text-[20px] font-semibold tracking-[-0.2px]",
+                    isValid && !submitting && !loading
                       ? "bg-[#FF2233] text-white active:scale-95"
                       : "bg-[#F6F6F6] text-[#ADB3B6]",
                   ].join(" ")}

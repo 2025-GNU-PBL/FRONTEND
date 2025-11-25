@@ -222,7 +222,7 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
 
       setConfirmOpen(false);
       setShowToast(true);
-      setPaymentStatus("CANCELED"); // 모바일과 동일하게 완료 상태로 전환
+      setPaymentStatus("CANCELED");
       props.onApproved?.();
 
       setTimeout(() => {
