@@ -1,22 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import MobileView from './views/MobileView';
-import WebView from './views/WebView';
+import React from "react";
+import MobileView from "./views/InquiryMobileView";
+import WebView from "./views/InquiryWebView";
 
-const InquiryPage: React.FC = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+export default function InquiryPage() {
+  return (
+    <div className="w-full bg-white">
+      {/* Mobile */}
+      <div className="md:hidden">
+        <MobileView />
+      </div>
 
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
-  return isMobile ? <MobileView /> : <WebView />;
-};
-
-export default InquiryPage;
+      {/* Web */}
+      <div className="hidden md:block">
+        <WebView />
+      </div>
+    </div>
+  );
+}

@@ -306,7 +306,7 @@ export default function CalendarWebView() {
   const weekdayLabels = ["월", "화", "수", "목", "금", "토", "일"];
 
   return (
-    <div className="w-full min-h-screen bg-[#F3F4F6] mt-17">
+    <div className="w-full min-h-screen bg-white mt-17">
       <div className="max-w-[1200px] mx-auto px-6 py-8">
         {/* ================== 상단 타이틀 ================== */}
         <div className="mb-5">
