@@ -1,12 +1,12 @@
 // src/pages/SignupPage/complete/WebView.tsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import type { AppDispatch } from "../../../../store/store";
-import { submitSignup } from "../../../../store/thunkFunctions";
-import signupImg from "../../../../assets/images/signup.png";
-import { useRefreshAuth } from "../../../../hooks/useRefreshAuth";
+import type { AppDispatch } from "../../../../../store/store";
+import { submitSignup } from "../../../../../store/thunkFunctions";
+import signupImg from "../../../../../assets/images/signup.png";
+import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
 interface WebCompleteViewProps {
   /** 시작하기 버튼 클릭 시 실행 (성공 후 후행 동작이 필요할 때 사용) */
@@ -15,6 +15,35 @@ interface WebCompleteViewProps {
   title?: string;
   descriptionLine1?: string;
   descriptionLine2?: string;
+}
+
+/** step1/2/3에서 넘겨준 location.state 타입 */
+interface SignupCompleteState {
+  phone?: string;
+  zipcode?: string;
+  address?: string;
+  detailAddress?: string;
+  extraAddress?: string;
+  weddingDate?: string;
+  weddingSido?: string;
+  weddingSigungu?: string;
+}
+
+/** 백엔드로 넘길 payload 타입 */
+interface SignupPayload {
+  phone: string;
+  address: string;
+  zipCode: string;
+  roadAddress: string;
+  jibunAddress: string;
+  detailAddress: string;
+  sido: string;
+  sigungu: string;
+  dong: string;
+  buildingName: string;
+  weddingSido?: string;
+  weddingSigungu?: string;
+  weddingDate?: string;
 }
 
 export default function WebView({
@@ -30,6 +59,8 @@ export default function WebView({
 
   // step1/step2/step3에서 넘겨준 값 수신
   const location = useLocation();
+  const state = (location.state as SignupCompleteState) || {};
+
   const {
     phone,
     zipcode,
@@ -39,22 +70,22 @@ export default function WebView({
     weddingDate,
     weddingSido,
     weddingSigungu,
-  } = (location.state as any) || {};
+  } = state;
 
   // 백엔드 제출 payload
-  const formValues = {
-    phone,
+  const formValues: SignupPayload = {
+    phone: phone ?? "",
     // 기본 주소 필드
-    address, // 일반 주소
-    zipCode: zipcode, // 우편번호
-    roadAddress: address, // 도로명 주소로 동일 전달
+    address: address ?? "", // 일반 주소
+    zipCode: zipcode ?? "", // 우편번호
+    roadAddress: address ?? "", // 도로명 주소로 동일 전달
     jibunAddress: "", // 수집 못했으면 빈값
-    detailAddress, // 상세주소
+    detailAddress: detailAddress ?? "", // 상세주소
     // 추가 정보
     sido: "", // 없으면 빈값
     sigungu: "",
     dong: "",
-    buildingName: (extraAddress || "").replace(/[()]/g, ""),
+    buildingName: (extraAddress ?? "").replace(/[()]/g, ""),
     // 예식 정보
     weddingSido,
     weddingSigungu,
@@ -73,34 +104,31 @@ export default function WebView({
     }
 
     // 디버그 로그
-    console.log("[complete:web] location.state:", location.state);
+    console.log("[complete:web] location.state:", state);
     console.log("[complete:web] formValues:", formValues);
 
     setIsSubmitting(true);
     try {
-      await dispatch(submitSignup(formValues as any)).unwrap();
+      await dispatch(submitSignup(formValues)).unwrap();
       // 성공 시 후행 콜백(optional)
       onStart?.();
       refreshAuth();
       nav("/");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[submitSignup:web] error:", err);
-      alert(
-        typeof err === "string"
-          ? err
-          : err?.message || "회원가입 제출에 실패했습니다."
-      );
+
+      const message =
+        err instanceof Error ? err.message : "회원가입 제출에 실패했습니다.";
+
+      alert(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-20">
-      {/* 상단 얇은 그라디언트 바 */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
-
-      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
+    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-15">
+      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-center">
         {/* Left — 카피 영역 */}
         <section className="md:col-span-6 flex flex-col justify-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-[#FF4646]/10 text-[#FF4646] text-xs font-semibold px-3 py-1 w-fit ring-1 ring-[#FF4646]/20">

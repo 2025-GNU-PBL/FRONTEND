@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
@@ -12,19 +12,30 @@ export default function WebView() {
     return /^010\d{8}$/.test(onlyNum);
   }, [phone]);
 
+  // 🔥 전화번호 자동 하이픈 적용 수정
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onlyNum = e.target.value.replace(/\D/g, "");
+
+    if (onlyNum.length <= 3) {
+      setPhone(onlyNum);
+    } else if (onlyNum.length <= 7) {
+      setPhone(`${onlyNum.slice(0, 3)}-${onlyNum.slice(3)}`);
+    } else {
+      setPhone(
+        `${onlyNum.slice(0, 3)}-${onlyNum.slice(3, 7)}-${onlyNum.slice(7, 11)}`
+      );
+    }
+  };
+
   const onNext = () => {
     if (!isValid) return;
-    // step2로 이동하며 state에 phone 전달
     nav("/sign-up/client/step2", {
       state: { phone },
     });
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col">
-      {/* 상단 얇은 그라디언트 바 */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
-
+    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-15">
       <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-center">
         {/* Left — Hero 카피 */}
         <section className="md:col-span-6 flex flex-col justify-center">
@@ -58,7 +69,6 @@ export default function WebView() {
         {/* Right — Form 카드 */}
         <section className="md:col-span-6 flex justify-center md:justify-end">
           <div className="relative w-full max-w-[520px]">
-            {/* soft glow & offset */}
             <div className="absolute inset-0 -z-10 blur-xl rounded-3xl bg-gradient-to-br from-[#FF4646]/15 via-white to-[#111827]/5" />
             <div className="absolute inset-0 -z-10 translate-x-3 translate-y-3 rounded-3xl bg-white" />
 
@@ -110,7 +120,7 @@ export default function WebView() {
                     inputMode="numeric"
                     placeholder="010-1234-5678"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={handlePhoneChange}
                     className="
                       w-full h-[54px] rounded-[12px]
                       border border-[#E5E7EB]
@@ -159,7 +169,6 @@ export default function WebView() {
                 </button>
               </div>
 
-              {/* 약관 푸터 */}
               <p className="mt-5 text-[12px] text-gray-500 text-center">
                 계속 진행하면{" "}
                 <a

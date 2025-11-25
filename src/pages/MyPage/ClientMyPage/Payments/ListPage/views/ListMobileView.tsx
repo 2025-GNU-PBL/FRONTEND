@@ -1,6 +1,5 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Icon } from "@iconify/react";
 import { useAppSelector } from "../../../../../../store/hooks";
 import type { UserData } from "../../../../../../store/userSlice";
 import type { UserRole } from "../../../../../../store/thunkFunctions";
@@ -11,22 +10,18 @@ import MyPageHeader from "../../../../../../components/MyPageHeader";
 /*  타입 정의                                                                 */
 /* -------------------------------------------------------------------------- */
 
-/** 백엔드 응답 DTO */
 export interface PaymentMeItem {
   orderCode: string;
   productName: string;
   amount: number;
-  status: string; // "CANCELED" | "CANCEL_REQUESTED" | "DONE" | "FAILED" ...
+  status: string;
   approvedAt: string;
   shopName: string;
   paymentKey: string;
   productId: number;
-
-  // 실제 API 응답 필드명 반영
   thumbnailUrl?: string;
 }
 
-/** 화면 상태 라벨 */
 type PaymentStatus = "취소완료" | "취소요청됨" | "결제완료" | "결제실패";
 
 interface PaymentItem {
@@ -56,7 +51,6 @@ interface PaymentSectionProps {
 /*  유틸 함수                                                                 */
 /* -------------------------------------------------------------------------- */
 
-/** 백엔드 status → 화면 라벨 */
 function mapStatusToLabel(status: string): PaymentStatus {
   switch (status) {
     case "CANCELED":
@@ -71,7 +65,6 @@ function mapStatusToLabel(status: string): PaymentStatus {
   }
 }
 
-/** YYYY.MM.DD 포맷 */
 function formatDate(iso?: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -84,7 +77,6 @@ function formatDate(iso?: string | null): string {
   return `${y}.${m}.${day}`;
 }
 
-/** DTO → 화면 아이템 */
 function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
   return {
     id: dto.orderCode,
@@ -105,8 +97,6 @@ function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
 
 function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
   const nav = useNavigate();
-
-  // ✅ 취소 요청 상태 + 취소 완료 상태 모두 취소 요청 버튼 숨김
   const isCancelable =
     item.status !== "취소요청됨" && item.status !== "취소완료";
 
@@ -141,7 +131,6 @@ function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
       </div>
 
       <div className="mt-4 flex gap-[6px]">
-        {/* 취소 요청 → 환불 요청 페이지로 이동 (취소요청됨/취소완료 상태에서는 숨김) */}
         {isCancelable && (
           <button
             type="button"
@@ -181,7 +170,6 @@ function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
   );
 }
 
-/** 상태별 섹션 */
 function PaymentSection({
   status,
   items,
@@ -257,7 +245,6 @@ export default function ListMobileView() {
     fetchPayments();
   }, [role]);
 
-  // 상태별 분류
   const canceled = payments.filter((p) => p.status === "취소완료");
   const cancelRequested = payments.filter((p) => p.status === "취소요청됨");
   const completed = payments.filter((p) => p.status === "결제완료");
@@ -266,7 +253,6 @@ export default function ListMobileView() {
   const hasPayments = payments.length > 0;
   const isNotCustomer = role && role !== "CUSTOMER";
 
-  /* 취소 요청 버튼 클릭 → 환불 요청 페이지로 이동 */
   const handleGoRefundRequest = (item: PaymentItem) => {
     nav(`/my-page/client/payments/refund/${item.paymentKey}`, {
       state: {
@@ -279,93 +265,72 @@ export default function ListMobileView() {
     });
   };
 
+  const sections = [
+    { items: cancelRequested, label: "취소요청됨" },
+    { items: canceled, label: "취소완료" },
+    { items: completed, label: "결제완료" },
+    { items: failed, label: "결제실패" },
+  ];
+
   return (
-    <div className="w-full bg-white">
-      <div className="mx-auto w-[390px] h-[844px] bg-[#FFFFFF] flex flex-col relative">
-        {/* 헤더 */}
-        <div className="sticky top-0 z-20 bg-[#FFFFFF] border-b border-gray-200">
-          <MyPageHeader
-            title="결제 내역"
-            onBack={() => nav(-1)}
-            showMenu={false}
-          />
-        </div>
+    <div className="relative w-full min-h-screen bg-[#FFFFFF] flex flex-col">
+      <div className="sticky top-0 z-20 bg-[#FFFFFF] border-b border-gray-200">
+        <MyPageHeader
+          title="결제 내역"
+          onBack={() => nav(-1)}
+          showMenu={false}
+        />
+      </div>
 
-        {/* 컨텐츠 */}
-        <div className="flex-1 overflow-y-auto px-5 pt-8 pb-15">
-          <div className="w-[390px] h-2 bg-[#F7F9FA] -mx-5 mb-5" />
+      <div className="flex-1 overflow-y-auto px-5 pt-8 pb-15">
+        <div className="w-full h-2 bg-[#F7F9FA] -mx-5 mb-5" />
 
-          {/* 고객이 아닌 경우 */}
-          {isNotCustomer && (
-            <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
-              고객 전용 페이지입니다.
-            </div>
-          )}
+        {isNotCustomer && (
+          <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
+            고객 전용 페이지입니다.
+          </div>
+        )}
 
-          {/* 로딩 */}
-          {!isNotCustomer && loading && (
-            <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
-              결제 내역을 불러오는 중입니다...
-            </div>
-          )}
+        {!isNotCustomer && loading && (
+          <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
+            결제 내역을 불러오는 중입니다...
+          </div>
+        )}
 
-          {/* 에러 */}
-          {!isNotCustomer && !loading && error && (
-            <div className="w-full mt-10 flex justify-center text-[14px] text-red-500">
-              {error}
-            </div>
-          )}
+        {!isNotCustomer && !loading && error && (
+          <div className="w-full mt-10 flex justify-center text-[14px] text-red-500">
+            {error}
+          </div>
+        )}
 
-          {/* 데이터 있을 때 */}
-          {!isNotCustomer && !loading && !error && hasPayments && (
-            <>
-              {cancelRequested.length > 0 && (
-                <PaymentSection
-                  status="취소요청됨"
-                  items={cancelRequested}
-                  onCancelRequest={handleGoRefundRequest}
-                />
-              )}
+        {!isNotCustomer && !loading && !error && hasPayments && (
+          <>
+            {sections.map((s, idx) =>
+              s.items.length > 0 ? (
+                <React.Fragment key={s.label}>
+                  {idx > 0 && <div className="w-full h-2 bg-[#F7F9FA] my-5" />}
+                  <PaymentSection
+                    status={s.label as PaymentStatus}
+                    items={s.items}
+                    onCancelRequest={handleGoRefundRequest}
+                  />
+                </React.Fragment>
+              ) : null
+            )}
+          </>
+        )}
 
-              {canceled.length > 0 && (
-                <PaymentSection
-                  status="취소완료"
-                  items={canceled}
-                  onCancelRequest={handleGoRefundRequest}
-                />
-              )}
-
-              {completed.length > 0 && (
-                <PaymentSection
-                  status="결제완료"
-                  items={completed}
-                  onCancelRequest={handleGoRefundRequest}
-                />
-              )}
-
-              {failed.length > 0 && (
-                <PaymentSection
-                  status="결제실패"
-                  items={failed}
-                  onCancelRequest={handleGoRefundRequest}
-                />
-              )}
-            </>
-          )}
-
-          {/* 데이터 없을 때 */}
-          {!isNotCustomer && !loading && !error && !hasPayments && (
-            <div className="w-full flex flex-col items-center mt-70">
-              <img
-                src="/images/document.png"
-                className="w-20 h-20 mb-3 text-[#D9D9D9]"
-              />
-              <p className="text-[18px] font-semibold text-[#333333]">
-                결제 내역이 없어요
-              </p>
-            </div>
-          )}
-        </div>
+        {!isNotCustomer && !loading && !error && !hasPayments && (
+          <div className="w-full flex flex-col items-center mt-70">
+            <img
+              src="/images/document.png"
+              className="w-20 h-20 mb-3 text-[#D9D9D9]"
+            />
+            <p className="text-[18px] font-semibold text-[#333333]">
+              결제 내역이 없어요
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

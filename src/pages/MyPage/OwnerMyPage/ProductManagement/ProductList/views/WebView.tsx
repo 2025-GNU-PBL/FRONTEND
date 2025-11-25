@@ -1,9 +1,8 @@
 // src/pages/MyPage/OwnerMyPage/ProductManagement/ProductList/views/WebView.tsx
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../../../../components/MyPageHeader";
 import api from "../../../../../../lib/api/axios";
 
 /** ====== 타입 ====== */
@@ -165,16 +164,9 @@ export default function WebView() {
 
   /** ====== 뷰 ====== */
   return (
-    <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 상단 공통 헤더 영역 */}
-      <div className="w-full bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-[1040px] mx-auto">
-          <MyPageHeader title="상품 관리" onBack={onBack} showMenu />
-        </div>
-      </div>
-
+    <div className="w-full min-h-screen bg-[#F6F7FB] mt-15">
       {/* 본문 */}
-      <div className="max-w-[1040px] mt-20 mx-auto px-6 py-8">
+      <div className="max-w-[1040px] mx-auto px-6 py-8">
         {/* 상단 타이틀/설명 */}
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
@@ -275,16 +267,6 @@ function ProductRow({
         <div className="text-[13px] text-[rgba(0,0,0,0.45)] tracking-[-0.2px]">
           등록일 {formatDateYMD(item.createdAt)}
         </div>
-        <button
-          type="button"
-          className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-[#F3F4F6]"
-          aria-label="상품 더보기"
-        >
-          <Icon
-            icon="solar:menu-dots-bold"
-            className="w-4 h-4 text-[#9CA3AF]"
-          />
-        </button>
       </div>
 
       {/* 중간: 썸네일 + 정보 + 가격 */}

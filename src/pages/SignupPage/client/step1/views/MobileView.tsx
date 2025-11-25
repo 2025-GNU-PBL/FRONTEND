@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import MyPageHeader from "../../../../../components/MyPageHeader";
 
 export default function MobileView() {
-  const [phoneNumber, setphoneNumber] = useState("");
+  const [phone, setPhone] = useState("");
   const nav = useNavigate();
 
   // 🔥 전화번호 자동 하이픈 적용
@@ -11,11 +11,11 @@ export default function MobileView() {
     const onlyNum = e.target.value.replace(/\D/g, "");
 
     if (onlyNum.length <= 3) {
-      setphoneNumber(onlyNum);
+      setPhone(onlyNum);
     } else if (onlyNum.length <= 7) {
-      setphoneNumber(`${onlyNum.slice(0, 3)}-${onlyNum.slice(3)}`);
+      setPhone(`${onlyNum.slice(0, 3)}-${onlyNum.slice(3)}`);
     } else {
-      setphoneNumber(
+      setPhone(
         `${onlyNum.slice(0, 3)}-${onlyNum.slice(3, 7)}-${onlyNum.slice(7, 11)}`
       );
     }
@@ -23,9 +23,9 @@ export default function MobileView() {
 
   // 다음 단계로 이동
   const handleNext = () => {
-    if (!phoneNumber) return;
-    nav("/sign-up/owner/step2", {
-      state: { phoneNumber },
+    if (!phone) return;
+    nav("/sign-up/client/step2", {
+      state: { phone },
     });
   };
 
@@ -62,7 +62,7 @@ export default function MobileView() {
               <input
                 type="tel"
                 placeholder="010-1234-5678"
-                value={phoneNumber}
+                value={phone}
                 onChange={handlePhoneChange}
                 className="w-full text-[14px] text-[#1E2124] placeholder:text-[#9D9D9D] focus:outline-none"
               />
@@ -77,13 +77,9 @@ export default function MobileView() {
             <button
               type="button"
               onClick={handleNext}
-              disabled={!phoneNumber}
+              disabled={!phone}
               className={`w-full h-[56px] rounded-[12px] font-semibold text-[16px] text-white transition
-                ${
-                  phoneNumber
-                    ? "bg-[#FF0000]"
-                    : "bg-[#D9D9D9] cursor-not-allowed"
-                }`}
+                ${phone ? "bg-[#FF0000]" : "bg-[#D9D9D9] cursor-not-allowed"}`}
             >
               다음
             </button>

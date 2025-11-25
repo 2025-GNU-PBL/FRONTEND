@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../../components/MyPageHeader";
+import MyPageHeader from "../../../../../components/MyPageHeader";
 
 interface MobileWeddingInfoViewProps {
   onBack?: () => void;
@@ -12,6 +12,18 @@ interface MobileWeddingInfoViewProps {
   }) => void;
   onSkip?: () => void;
   title?: string;
+}
+
+// 라우터 state 타입 정의
+interface ClientSignUpState {
+  phone?: string;
+  zipcode?: string;
+  address?: string;
+  detailAddress?: string;
+  extraAddress?: string;
+  weddingDate?: string;
+  weddingSido?: string;
+  weddingSigungu?: string;
 }
 
 const PROVINCES = ["서울특별시", "부산광역시", "인천광역시", "경기도"] as const;
@@ -35,7 +47,9 @@ export default function MobileView({
 
   const navigate = useNavigate();
   const location = useLocation();
-  const prevState = (location.state as any) || {}; // { phone, zipcode, address, detailAddress, extraAddress, ... }
+
+  const prevState: ClientSignUpState =
+    (location.state as ClientSignUpState) ?? {};
 
   const districtOptions = useMemo(
     () =>
@@ -80,17 +94,19 @@ export default function MobileView({
   )}`;
 
   return (
-    <div className="relative w-[390px] h-[844px] bg-white overflow-hidden">
+    <div className="flex min-h-screen w-full flex-col bg-white">
       {/* 헤더 */}
       <MyPageHeader title={title} onBack={onBack} showMenu={false} />
 
       {/* 본문 */}
-      <div className="absolute left-1/2 -translate-x-1/2 top-[143px] w-[350px] pb-[140px]">
-        <div className="text-[14px] leading-[22px] -tracking-[0.2px] text-[#1E2124] mb-[8px]">
-          3 / 3
+      <div className="flex-1 px-5 pt-15 pb-36">
+        <div className="mt-[24px] text-[14px] text-[#1E2124]">
+          <span>3 /</span>
+          &nbsp;
+          <span className="text-[#999999]">3</span>
         </div>
 
-        <h1 className="text-[24px] font-bold leading-[36px] -tracking-[0.3px] text-[#1E2124] mb-[24px] whitespace-pre-line">
+        <h1 className="mt-[8px] text-[24px] font-bold leading-[36px] -tracking-[0.3px] text-[#1E2124] mb-[24px] whitespace-pre-line">
           예식 정보를{"\n"}입력해 주세요
         </h1>
 
@@ -98,7 +114,7 @@ export default function MobileView({
         <label className="block text-[#666] text-[12px] leading-[18px] -tracking-[0.1px] mb-[6px]">
           예식일
         </label>
-        <div className="w-[350px] h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-4 mb-[18px]">
+        <div className="w-full h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-4 mb-[18px]">
           <input
             type="date"
             value={weddingDate}
@@ -116,7 +132,7 @@ export default function MobileView({
         <div className="grid grid-cols-2 gap-[10px]">
           {/* 시/도 */}
           <div className="relative">
-            <div className="w-[170px] h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-4">
+            <div className="w-full h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-4">
               <select
                 value={weddingSido}
                 onChange={(e) => {
@@ -141,7 +157,7 @@ export default function MobileView({
 
           {/* 시/군/구 */}
           <div className="relative">
-            <div className="w-[170px] h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-4">
+            <div className="w-full h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-4">
               <select
                 value={weddingSigungu}
                 onChange={(e) => setWeddingSigungu(e.target.value)}
@@ -166,13 +182,13 @@ export default function MobileView({
         </div>
       </div>
 
-      {/* 하단 버튼 */}
-      <div className="fixed left-1/2 -translate-x-1/2 bottom-[80px] w-[390px] px-[20px] pb-[8px] z-50 pointer-events-none">
-        <div className="pointer-events-auto flex flex-col gap-3 py-3">
+      {/* 하단 버튼 영역 (고정) */}
+      <div className="fixed inset-x-0 bottom-0 w-full px-5 pb-5 bg-white">
+        <div className="flex flex-col gap-3">
           <button
             onClick={handleNext}
             disabled={!isComplete}
-            className={`w-[350px] h-[56px] mx-auto rounded-[12px] text-white text-[16px] font-semibold ${
+            className={`w-full h-[56px] rounded-[12px] text-white text-[16px] font-semibold ${
               isComplete ? "bg-[#FF2233]" : "bg-[#D9D9D9] cursor-not-allowed"
             }`}
           >
@@ -181,7 +197,7 @@ export default function MobileView({
           <button
             type="button"
             onClick={handleSkip}
-            className="w-[350px] h-[53px] mx-auto rounded-[12px] text-[#999] text-[14px] font-semibold"
+            className="w-full h-[56px] rounded-[12px] text-[#999] text-[14px] font-semibold"
           >
             나중에 하기
           </button>

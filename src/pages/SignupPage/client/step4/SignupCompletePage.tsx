@@ -1,6 +1,5 @@
-import React from "react";
-import MobileView from "./MobileView";
-import WebView from "./WebView";
+import MobileView from "./views/MobileView";
+import WebView from "./views/WebView";
 
 export default function SignupCompletePage() {
   return (

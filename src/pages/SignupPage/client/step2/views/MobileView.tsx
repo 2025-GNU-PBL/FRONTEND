@@ -1,5 +1,4 @@
-// src/pages/SignupPage/step2/MobileView.tsx
-import React, {
+import {
   useCallback,
   useEffect,
   useRef,
@@ -8,11 +7,41 @@ import React, {
   useId,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../../components/MyPageHeader";
+import MyPageHeader from "../../../../../components/MyPageHeader";
+
+/** Daum 우편번호 데이터 타입 정의 */
+interface DaumPostcodeData {
+  zonecode: string; // 우편번호
+  roadAddress: string; // 도로명 주소
+  jibunAddress: string; // 지번 주소
+  userSelectedType: "R" | "J"; // 선택한 주소 타입 (R: 도로명, J: 지번)
+  bname: string; // 법정동/법정리 이름
+  buildingName: string; // 건물명
+  apartment: "Y" | "N"; // 공동주택 여부
+}
+
+/** Postcode 생성자 옵션 타입 */
+interface DaumPostcodeConstructorOptions {
+  oncomplete: (data: DaumPostcodeData) => void;
+  width?: string | number;
+  height?: string | number;
+}
+
+/** Postcode 인스턴스 타입 */
+interface DaumPostcodeInstance {
+  embed: (element: HTMLElement) => void;
+}
+
+/** window.daum 네임스페이스 타입 */
+interface DaumPostcodeNamespace {
+  Postcode: new (
+    options: DaumPostcodeConstructorOptions
+  ) => DaumPostcodeInstance;
+}
 
 declare global {
   interface Window {
-    daum?: any;
+    daum?: DaumPostcodeNamespace;
   }
 }
 
@@ -82,11 +111,7 @@ function loadDaumPostcodeOnce(): Promise<void> {
   return DAUM_POSTCODE_LOADING;
 }
 
-export default function MobileView({
-  onBack,
-  onNext,
-  title = "주소 입력",
-}: MobileViewProps) {
+export default function MobileView({ onBack, onNext }: MobileViewProps) {
   const [zipcode, setZipcode] = useState("");
   const [address, setAddress] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
@@ -151,8 +176,8 @@ export default function MobileView({
     const element_wrap = wrapRef.current;
     element_wrap.innerHTML = ""; // 중복 embed 방지
 
-    new window.daum.Postcode({
-      oncomplete: (data: any) => {
+    new window.daum!.Postcode({
+      oncomplete: (data: DaumPostcodeData) => {
         let addr = "";
         let extraAddr = "";
 
@@ -215,21 +240,27 @@ export default function MobileView({
   };
 
   return (
-    <div className="relative w-[390px] h-[844px] bg-white overflow-hidden">
+    <div className="relative w-full min-h-screen bg-white flex flex-col overflow-hidden">
       {/* 헤더 */}
-      <MyPageHeader title={title} onBack={onBack} showMenu={false} />
+      <MyPageHeader title="" onBack={onBack} showMenu={false} />
 
-      {/* 본문 */}
-      <div className="pt-[60px] h-full flex flex-col">
-        <div className="flex-1 overflow-y-auto px-[20px] pb-[210px]">
-          <div className="mt-[24px] text-[14px] leading-[22px] text-[#1E2124]">
-            2 / 3
+      {/* 콘텐츠 영역 */}
+      <div className="pt-[60px] flex-1 flex flex-col">
+        {/* 스크롤 되는 본문 */}
+        <div className="flex-1 overflow-y-auto px-[20px] pb-[120px]">
+          {/* Step Progress */}
+          <div className="mt-[24px] text-[14px] text-[#1E2124]">
+            <span>2 /</span>
+            &nbsp;
+            <span className="text-[#999999]">3</span>
           </div>
 
-          <h2 className="mt-[8px] text-[24px] font-bold leading-[36px] text-[#1E2124]">
+          {/* 타이틀 */}
+          <h2 className="whitespace-pre-line mt-[8px] text-[24px] font-bold leading-[36px] text-[#1E2124]">
             회원님의{"\n"}주소를 알려주세요
           </h2>
 
+          {/* 입력 영역 */}
           <div className="mt-[50px] space-y-[12px]">
             {/* 우편번호 */}
             <div className="grid grid-cols-3 gap-[8px]">
@@ -302,23 +333,21 @@ export default function MobileView({
           </div>
         </div>
 
-        {/* 하단 버튼 */}
+        {/* 하단 버튼 (owner용 반응형 스타일 적용) */}
         {!isPostcodeOpen && (
-          <div className="pointer-events-none">
-            <div className="absolute left-0 right-0 bottom-[70px] px-[20px] pb-[20px] pt-[10px] bg-gradient-to-t from-white to-white/80">
-              <button
-                onClick={handleNext}
-                disabled={!isComplete}
-                className={`pointer-events-auto w-full h-[56px] rounded-[12px] text-white text-[16px] font-semibold tracking-[-0.2px] active:scale-[0.99] transition
-                  ${
-                    isComplete
-                      ? "bg-[#FF2233] shadow-[0_8px_20px_rgba(255,34,51,0.3)]"
-                      : "bg-[#D9D9D9] cursor-not-allowed shadow-none"
-                  }`}
-              >
-                다음
-              </button>
-            </div>
+          <div className="w-full px-[20px] pb-[20px] bg-white">
+            <button
+              onClick={handleNext}
+              disabled={!isComplete}
+              className={`w-full h-[56px] rounded-[12px] text-white font-semibold text-[16px] transition
+                ${
+                  isComplete
+                    ? "bg-[#FF2233] shadow-[0_8px_20px_rgba(255,34,51,0.3)]"
+                    : "bg-[#D9D9D9] cursor-not-allowed shadow-none"
+                }`}
+            >
+              다음
+            </button>
           </div>
         )}
       </div>

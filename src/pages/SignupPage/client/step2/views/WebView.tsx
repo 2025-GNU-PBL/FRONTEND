@@ -1,5 +1,5 @@
 // src/pages/SignupPage/step2/WebView.tsx
-import React, {
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -10,10 +10,18 @@ import React, {
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
-declare global {
-  interface Window {
-    daum?: any;
-  }
+/** ----- Daum 우편번호 데이터 타입만 정의 (전역 확장은 MobileView 등 한 군데에서만) ----- */
+interface DaumPostcodeData {
+  zonecode: string; // 우편번호
+  roadAddress: string; // 도로명 주소
+  jibunAddress: string; // 지번 주소
+  autoRoadAddress?: string;
+  autoJibunAddress?: string;
+  address?: string;
+  userSelectedType: "R" | "J"; // R: 도로명, J: 지번
+  bname?: string;
+  buildingName?: string;
+  apartment?: "Y" | "N";
 }
 
 interface WebViewProps {
@@ -84,14 +92,21 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
   }, [postcodeReady]);
 
   useEffect(() => {
-    if (!isPostcodeOpen || !postcodeReady || !wrapRef.current) return;
+    const { daum } = window;
+
+    if (
+      !isPostcodeOpen ||
+      !postcodeReady ||
+      !wrapRef.current ||
+      !daum?.Postcode
+    )
+      return;
 
     const element_wrap = wrapRef.current;
     element_wrap.innerHTML = "";
 
-    // eslint-disable-next-line new-cap
-    new window.daum.Postcode({
-      oncomplete: (data: any) => {
+    new daum.Postcode({
+      oncomplete: (data: DaumPostcodeData) => {
         // 대표주소 안전 폴백
         const addressText =
           (data.roadAddress && data.roadAddress.trim()) ||
@@ -152,11 +167,8 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-20">
-      {/* 상단 얇은 그라디언트 바 */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
-
-      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
+    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-15">
+      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-center">
         {/* Left — Hero 카피 */}
         <section className="md:col-span-6 flex flex-col justify-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-[#FF4646]/10 text-[#FF4646] text-xs font-semibold px-3 py-1 w-fit ring-1 ring-[#FF4646]/20">

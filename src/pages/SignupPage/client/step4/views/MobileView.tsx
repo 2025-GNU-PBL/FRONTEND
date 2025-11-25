@@ -3,22 +3,20 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../../../../store/store";
-import { submitOwnerSignup } from "../../../../../store/thunkFunctions";
+import { submitSignup } from "../../../../../store/thunkFunctions";
 import signupImg from "../../../../../assets/images/signup.png";
 import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
-interface OwnerSignupState {
-  phoneNumber?: string;
-  bzName?: string;
-  bzNumber?: string;
-  bankAccount?: string;
+// location.state 타입 정의
+interface SignupCompleteState {
+  phone?: string;
   zipcode?: string;
-  roadAddress?: string;
   address?: string;
-  jibunAddress?: string;
   detailAddress?: string;
-  buildingName?: string;
   extraAddress?: string;
+  weddingDate?: string;
+  weddingSido?: string;
+  weddingSigungu?: string;
 }
 
 interface MobileCompleteViewProps {
@@ -29,8 +27,8 @@ interface MobileCompleteViewProps {
 
 export default function MobileView({
   title = "환영합니다!",
-  descriptionLine1 = "스드메 예약과 홍보,",
-  descriptionLine2 = "이제 웨딩픽에서 해결하세요",
+  descriptionLine1 = "비교·예약·상담까지",
+  descriptionLine2 = "웨딩픽으로 간편하게 해결하세요",
 }: MobileCompleteViewProps) {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
@@ -38,70 +36,75 @@ export default function MobileView({
   const { refreshAuth } = useRefreshAuth();
 
   const location = useLocation();
-  const state = (location.state as OwnerSignupState) || {};
+  const state = (location.state as SignupCompleteState) || {};
 
   const {
-    phoneNumber,
-    bzName,
-    bzNumber,
-    bankAccount,
+    phone,
     zipcode,
-    roadAddress,
     address,
-    jibunAddress,
     detailAddress,
-    buildingName,
     extraAddress,
+    weddingDate,
+    weddingSido,
+    weddingSigungu,
   } = state;
 
-  // DTO 변환
-  const ownerValues = {
-    phoneNumber,
-    bzName,
-    bzNumber,
-    bankAccount,
-    zipCode: zipcode,
-    roadAddress: roadAddress || address || "",
-    jibunAddress: jibunAddress || "",
-    detailAddress: detailAddress || "",
-    buildingName:
-      buildingName || (extraAddress ? extraAddress.replace(/[()]/g, "") : ""),
+  // DTO 타입 정의
+  interface SignupPayload {
+    phone: string;
+    address: string;
+    zipCode: string;
+    roadAddress: string;
+    jibunAddress: string;
+    detailAddress: string;
+    sido: string;
+    sigungu: string;
+    dong: string;
+    buildingName: string;
+    weddingSido?: string;
+    weddingSigungu?: string;
+    weddingDate?: string;
+  }
+
+  const formValues: SignupPayload = {
+    phone: phone ?? "",
+    address: address ?? "",
+    zipCode: zipcode ?? "",
+    roadAddress: address ?? "",
+    jibunAddress: "",
+    detailAddress: detailAddress ?? "",
+    sido: "",
+    sigungu: "",
+    dong: "",
+    buildingName: (extraAddress ?? "").replace(/[()]/g, ""),
+    weddingSido,
+    weddingSigungu,
+    weddingDate,
   };
 
   const handleStart = async () => {
     if (isSubmitting) return;
 
-    if (
-      !ownerValues.phoneNumber ||
-      !ownerValues.bzName ||
-      !ownerValues.bzNumber ||
-      !ownerValues.bankAccount ||
-      !ownerValues.zipCode ||
-      !ownerValues.roadAddress
-    ) {
-      alert("사장 회원가입 필수 정보가 부족합니다. 이전 단계를 확인해 주세요.");
-      console.log("[owner-complete:mobile] invalid ownerValues:", ownerValues);
+    if (!phone || !address || !detailAddress) {
+      alert(
+        "전화번호/주소/상세주소가 비어 있습니다. 이전 단계 입력을 확인해 주세요."
+      );
       return;
     }
 
-    console.log("[owner-complete:mobile] location.state:", state);
-    console.log("[owner-complete:mobile] ownerValues:", ownerValues);
+    console.log("[complete] location.state:", state);
+    console.log("[complete] formValues:", formValues);
 
     setIsSubmitting(true);
     try {
-      await dispatch(submitOwnerSignup(ownerValues)).unwrap();
+      await dispatch(submitSignup(formValues)).unwrap();
       refreshAuth();
       navigate("/");
-    } catch (err: unknown) {
-      console.error("[submitOwnerSignup:mobile] error:", err);
+    } catch (err) {
+      console.error("[submitSignup] error:", err);
 
-      let message = "회원가입 제출에 실패했습니다.";
-
-      if (typeof err === "string") {
-        message = err;
-      } else if (err instanceof Error) {
-        message = err.message;
-      }
+      const message =
+        err instanceof Error ? err.message : "회원가입 제출에 실패했습니다.";
 
       alert(message);
     } finally {
@@ -117,7 +120,7 @@ export default function MobileView({
             {title}
           </h1>
 
-          <p className="mt-2 mx-auto max-w-[172px] text-center text-[16px] leading-[26px] tracking-[-0.2px] text-[#666666]">
+          <p className="mt-2 mx-auto max-w-[199px] text-center text-[16px] leading-[26px] tracking-[-0.2px] text-[#666666]">
             {descriptionLine1}
             <br />
             {descriptionLine2}

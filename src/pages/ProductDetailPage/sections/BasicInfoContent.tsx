@@ -33,6 +33,91 @@ type ReviewResponse = {
   };
 };
 
+/**
+ * NormalizedDetail 에 실제로 들어오는 필드를 확장해서 사용하기 위한 타입
+ * (id, averageRating, starCount, tags)
+ */
+type DetailWithMeta = NormalizedDetail & {
+  id?: number | string;
+  averageRating?: number;
+  starCount?: number;
+  tags?: Array<
+    | string
+    | {
+        tagName?: string | null;
+        name?: string | null;
+      }
+  >;
+};
+
+/* ========================= 태그 한글 매핑 ========================= */
+
+const TAG_LABEL_MAP: Record<string, string> = {
+  // 홀타입
+  GENERAL: "일반",
+  CONVENTION: "컨벤션",
+  HOTEL: "호텔",
+  HOUSE: "하우스",
+  RESTAURANT: "레스토랑",
+  HANOK: "한옥",
+  CHURCH: "교회/성당",
+
+  // 홀컨셉
+  SMALL: "스몰",
+  CHAPEL: "채플",
+  OUTDOOR_GARDEN: "야외/가든",
+  TRADITIONAL_WEDDING: "전통혼례",
+
+  // 스타일
+  PORTRAIT_FOCUSED: "인물중심",
+  VARIED_BACKGROUND: "배경다양",
+  PORTRAIT_AND_BACKGROUND: "인물+배경",
+
+  // 촬영 가능
+  GARDEN: "가든",
+  NIGHT: "야간",
+  ROAD: "로드",
+  UNDERWATER: "수중",
+  PET_FRIENDLY: "반려동물",
+
+  // 행사
+  SHOOTING_AND_CEREMONY: "촬영+본식",
+  CEREMONY: "본식",
+  SHOOTING: "촬영",
+
+  // 주력소재
+  SILK: "실크",
+  LACE: "레이스",
+  BEADS: "비즈",
+
+  // 제작형태
+  DOMESTIC: "국내",
+  IMPORTED: "수입",
+  DOMESTIC_AND_IMPORTED: "국내+수입",
+
+  // 담당자
+  DIRECTOR_OR_CEO: "원장/대표/이사",
+  DEPUTY_DIRECTOR: "부원장",
+  MANAGER: "실장",
+  TEAM_LEADER_OR_DESIGNER: "팀장/디자이너",
+
+  // 메이크업 스타일
+  FRUITY_TONE: "과즙/색조",
+  CLEAN_AND_BRIGHT: "깨끗/화사",
+  CONTOUR_AND_SHADOW: "윤곽/음영",
+};
+
+/**
+ * 백엔드에서 넘어오는 태그 값을 한글로 변환
+ * - 영문 코드(GENERAL, CONVENTION, ...) 은 한글 매핑
+ * - 이미 한글로 들어오면 그대로 노출
+ */
+const mapTagLabel = (value: string): string => {
+  if (!value) return "";
+  const key = value.toUpperCase(); // 영문 코드 기준 매핑
+  return TAG_LABEL_MAP[key] ?? value; // 매핑 없으면 원본 그대로 사용
+};
+
 /* ========================= 컴포넌트 ========================= */
 
 export const BasicInfoContent = ({
@@ -53,8 +138,11 @@ export const BasicInfoContent = ({
     if (onGoDetailTab) onGoDetailTab();
   };
 
+  // ✅ data를 확장 타입으로 캐스팅 (any 사용 X)
+  const detail = data as DetailWithMeta;
+
   // ✅ productId (리뷰 API 호출용)
-  const productId = (data as any).id as number | string | undefined;
+  const productId = detail.id;
 
   // 메인 이미지 (첫 번째 이미지 사용)
   const mainImageUrl =
@@ -66,29 +154,29 @@ export const BasicInfoContent = ({
       ? `${data.price.toLocaleString("ko-KR")}원`
       : "";
 
-  // ✅ 태그 정리
-  const rawTags = (data.tags ?? []) as any[];
+  // ✅ 태그 정리 + 한글 매핑
+  const rawTags = detail.tags ?? [];
   const tagLabels: string[] = rawTags
-    .map((t) =>
-      typeof t === "string"
-        ? t
-        : typeof t?.tagName === "string"
-        ? t.tagName
-        : typeof t?.name === "string"
-        ? t.name
-        : ""
-    )
+    .map((t) => {
+      let raw = "";
+      if (typeof t === "string") raw = t;
+      else if (t && typeof t.tagName === "string") raw = t.tagName ?? "";
+      else if (t && typeof t.name === "string") raw = t.name ?? "";
+
+      raw = raw.trim();
+      if (!raw) return "";
+
+      // 영문 코드 → 한글 매핑
+      return mapTagLabel(raw);
+    })
     .filter((t) => t && t.trim().length > 0);
 
   const primaryTag = tagLabels[0];
   const secondaryTag = tagLabels[1];
 
   // ✅ 평점 / 리뷰 수 (상단 요약 영역)
-  // 기존 데이터 예시:
-  // "starCount": 4.9,
-  // "averageRating": 5   => 4.9점, 리뷰 5개
-  const averageRating = (data as any).averageRating;
-  const starCount = (data as any).starCount;
+  const averageRating = detail.averageRating;
+  const starCount = detail.starCount;
   const hasRating = typeof starCount === "number";
 
   // ✅ 하단 리뷰 영역용 상태

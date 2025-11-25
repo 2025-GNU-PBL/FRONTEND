@@ -11,11 +11,14 @@ type ImageItem = { src: string; file?: File };
 
 type Region = "SEOUL" | "GYEONGGI" | "INCHEON" | "BUSAN";
 
+// 카테고리 타입 명시
+type Category = "웨딩홀" | "스튜디오" | "드레스" | "메이크업";
+
 type FormValues = {
   // 공통
   vendorName: string; // 읽기 전용
   address: string; // 읽기 전용
-  category: string | null;
+  category: Category | null;
   name: string;
   price: string;
   detail: string;
@@ -40,7 +43,7 @@ type FormValues = {
   reservationPolicy: string; // reservationPolicy
 };
 
-const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"] as const;
+const categories: Category[] = ["웨딩홀", "스튜디오", "드레스", "메이크업"];
 
 // ---------- 태그 그룹 정의 ----------
 type TagOption = { ko: string; en: string };
@@ -147,13 +150,12 @@ const MAKEUP_TAG_GROUPS: TagGroup[] = [
   },
 ];
 
-const TAG_GROUPS_BY_CATEGORY: Record<(typeof categories)[number], TagGroup[]> =
-  {
-    웨딩홀: HALL_TAG_GROUPS,
-    스튜디오: STUDIO_TAG_GROUPS,
-    드레스: DRESS_TAG_GROUPS,
-    메이크업: MAKEUP_TAG_GROUPS,
-  };
+const TAG_GROUPS_BY_CATEGORY: Record<Category, TagGroup[]> = {
+  웨딩홀: HALL_TAG_GROUPS,
+  스튜디오: STUDIO_TAG_GROUPS,
+  드레스: DRESS_TAG_GROUPS,
+  메이크업: MAKEUP_TAG_GROUPS,
+};
 
 // ko ↔ en 매핑 빠른 조회용
 const KO_TO_EN: Record<string, string> = [
@@ -181,7 +183,16 @@ const EN_TO_KO: Record<string, string> = Object.keys(KO_TO_EN).reduce(
 const FILE_PART_KEY = "images";
 const JSON_PART_KEY = "request";
 
+// 백엔드로 보낼 Region 값
 const regions: Region[] = ["SEOUL", "GYEONGGI", "INCHEON", "BUSAN"];
+
+// 프론트에서 보여줄 한글 라벨
+const REGION_LABELS: Record<Region, string> = {
+  SEOUL: "서울",
+  GYEONGGI: "경기",
+  INCHEON: "인천",
+  BUSAN: "부산",
+};
 
 // OWNER 전용 유저 판별
 function ensureOwner(userData: UserData | null): OwnerData | null {
@@ -250,7 +261,7 @@ const MobileView: React.FC = () => {
   });
 
   const images = useWatch({ control, name: "images" }) || [];
-  const category = useWatch({ control, name: "category" }) || null;
+  const category = useWatch({ control, name: "category" }) as Category | null;
   const selectedTags = useWatch({ control, name: "tags" }) || [];
 
   const handlePickFiles = () => fileRef.current?.click();
@@ -301,9 +312,7 @@ const MobileView: React.FC = () => {
   };
 
   // 카테고리 토글 시: 태그 초기화
-  const handleCategoryToggle = (
-    nextCategory: (typeof categories)[number] | null
-  ) => {
+  const handleCategoryToggle = (nextCategory: Category | null) => {
     setValue("category", nextCategory, {
       shouldDirty: true,
       shouldTouch: true,
@@ -412,37 +421,6 @@ const MobileView: React.FC = () => {
     const formData = new FormData();
     formData.append(JSON_PART_KEY, jsonBlob, "request.json");
 
-    console.groupCollapsed("[DEBUG] FormData");
-
-    for (const [k, v] of formData.entries()) {
-      if (v instanceof File) {
-        console.log(
-          k,
-          `(File) name=${v.name}, type=${v.type}, size=${v.size}B`
-        );
-      } else if (v instanceof Blob) {
-        console.log(k, `(Blob) type=${v.type}`);
-      } else {
-        console.log(k, v);
-      }
-    }
-
-    const reqPart = formData.get("request");
-    if (reqPart instanceof Blob) {
-      try {
-        const text = await reqPart.text();
-        try {
-          console.log("request.json (parsed):", JSON.parse(text));
-        } catch {
-          console.log("request.json (raw text):", text);
-        }
-      } catch (e) {
-        console.warn("request.json 읽기 실패:", e);
-      }
-    }
-
-    console.groupEnd();
-
     values.images.forEach((img) => {
       if (img.file) formData.append(FILE_PART_KEY, img.file, img.file.name);
     });
@@ -509,7 +487,7 @@ const MobileView: React.FC = () => {
             {group.options.length}
           </span>
         </div>
-        <div className="flex flex-wrap gap-8px gap-2">
+        <div className="flex flex-wrap gap-2">
           {group.options.map((opt) => {
             const sel = selectedTags.includes(opt.en);
             return (
@@ -528,19 +506,20 @@ const MobileView: React.FC = () => {
   };
 
   return (
-    <div className="w-full flex justify-center bg-white">
-      <div className="relative w-[390px] min-h-screen bg-white">
-        {/* 헤더 */}
-        <MyPageHeader
-          title="상품 추가"
-          onBack={() => navigate(-1)}
-          showMenu={false}
-        />
+    <div className="w-full min-h-screen flex flex-col bg-white relative">
+      {/* 헤더 */}
+      <MyPageHeader
+        title="상품 추가"
+        onBack={() => navigate(-1)}
+        showMenu={false}
+      />
 
-        {/* 본문 */}
+      {/* 본문 영역 & 버튼 영역을 flex-col 로 분리 */}
+      <div className="flex-1 flex flex-col">
+        {/* 스크롤 되는 본문 폼 */}
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="pt-[60px] pb-[210px]"
+          className="flex-1 pt-[60px] pb-5 overflow-y-auto"
         >
           {/* 이미지 업로드 */}
           <section className="px-5 pt-5">
@@ -744,7 +723,7 @@ const MobileView: React.FC = () => {
             {/* availableTime */}
             <div className="flex flex-col gap-2">
               <label className="text-[14px] leading-[21px] text-black">
-                이용 가능 시간 (availableTime)
+                이용 가능 시간
               </label>
               <div className="h-[100px] px-4 py-2 rounded-[8px] border border-[#D9D9D9]">
                 <textarea
@@ -759,7 +738,7 @@ const MobileView: React.FC = () => {
             {/* region */}
             <div className="flex flex-col gap-2">
               <label className="text-[14px] leading-[21px] text-black">
-                지역 (region)
+                지역
               </label>
               <div className="h-[49px] flex items-center px-3 rounded-[8px] border border-[#D9D9D9]">
                 <select
@@ -770,7 +749,7 @@ const MobileView: React.FC = () => {
                   <option value="">지역 선택</option>
                   {regions.map((r) => (
                     <option key={r} value={r}>
-                      {r}
+                      {REGION_LABELS[r]}
                     </option>
                   ))}
                 </select>
@@ -839,7 +818,7 @@ const MobileView: React.FC = () => {
             </div>
           </section>
 
-          {/* ✅ 웨딩홀 전용 섹션 */}
+          {/* 웨딩홀 전용 섹션 */}
           {category === "웨딩홀" && (
             <section className="px-5 mt-8 flex flex-col gap-5">
               <h2 className="text-[16px] font-semibold text-[#1E2124]">
@@ -849,7 +828,7 @@ const MobileView: React.FC = () => {
               {/* 수용 인원 */}
               <div className="flex flex-col gap-2">
                 <label className="text-[14px] leading-[21px] text-black">
-                  수용 인원 (capacity)
+                  수용 인원
                 </label>
                 <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
                   <input
@@ -867,7 +846,7 @@ const MobileView: React.FC = () => {
               {/* 최소 수용 인원 */}
               <div className="flex flex-col gap-2">
                 <label className="text-[14px] leading-[21px] text-black">
-                  최소 수용 인원 (minGuest)
+                  최소 수용 인원
                 </label>
                 <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
                   <input
@@ -885,7 +864,7 @@ const MobileView: React.FC = () => {
               {/* 최대 수용 인원 */}
               <div className="flex flex-col gap-2">
                 <label className="text-[14px] leading-[21px] text-black">
-                  최대 수용 인원 (maxGuest)
+                  최대 수용 인원
                 </label>
                 <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
                   <input
@@ -903,7 +882,7 @@ const MobileView: React.FC = () => {
               {/* 주차 수용량 */}
               <div className="flex flex-col gap-2">
                 <label className="text-[14px] leading-[21px] text-black">
-                  주차 수용량 (parkingCapacity)
+                  주차 수용량
                 </label>
                 <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
                   <input
@@ -921,7 +900,7 @@ const MobileView: React.FC = () => {
               {/* 뷔페 타입 */}
               <div className="flex flex-col gap-2">
                 <label className="text-[14px] leading-[21px] text-black">
-                  뷔페 타입 (cateringType)
+                  뷔페 타입
                 </label>
                 <div className="h-[49px] flex items-center px-4 rounded-[8px] border border-[#D9D9D9]">
                   <input
@@ -939,7 +918,7 @@ const MobileView: React.FC = () => {
               {/* 예약 규칙 */}
               <div className="flex flex-col gap-2">
                 <label className="text-[14px] leading-[21px] text-black">
-                  예약 규칙 (reservationPolicy)
+                  예약 규칙
                 </label>
                 <div className="h-[120px] px-4 py-2 rounded-[8px] border border-[#D9D9D9]">
                   <textarea
@@ -957,7 +936,7 @@ const MobileView: React.FC = () => {
         </form>
 
         {/* 하단 버튼 */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[390px] bg-white">
+        <div>
           <div className="px-5 py-5">
             <button
               type="button"

@@ -1,5 +1,5 @@
 // src/pages/SignupPage/step3/WebView.tsx
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
@@ -11,6 +11,18 @@ interface WebWeddingInfoViewProps {
     weddingSigungu: string;
   }) => void;
   onSkip?: () => void;
+}
+
+// 라우터 state 타입 정의 (step1/2에서 넘긴 값들 포함해서 여기다 모아두면 편함)
+interface ClientSignUpState {
+  phone?: string;
+  zipcode?: string;
+  address?: string;
+  detailAddress?: string;
+  extraAddress?: string;
+  weddingDate?: string;
+  weddingSido?: string;
+  weddingSigungu?: string;
 }
 
 const PROVINCES = ["서울특별시", "부산광역시", "인천광역시", "경기도"] as const;
@@ -29,7 +41,12 @@ export default function WebView({
 }: WebWeddingInfoViewProps) {
   const nav = useNavigate();
   const location = useLocation();
-  const prevState = (location.state as any) || {};
+
+  // ✅ any 제거 + useMemo로 감싸서 stable reference 유지
+  const prevState = useMemo<ClientSignUpState>(
+    () => (location.state as ClientSignUpState | null) ?? {},
+    [location.state]
+  );
 
   const [weddingDate, setWeddingDate] = useState("");
   const [weddingSido, setWeddingSido] = useState("");
@@ -86,11 +103,8 @@ export default function WebView({
   }, [nav, prevState, onSkip]);
 
   return (
-    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-20">
-      {/* 상단 그라디언트 바 */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
-
-      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
+    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-15">
+      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-center">
         {/* Left — 카피 영역 */}
         <section className="md:col-span-6 flex flex-col justify-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-[#FF4646]/10 text-[#FF4646] text-xs font-semibold px-3 py-1 w-fit ring-1 ring-[#FF4646]/20">

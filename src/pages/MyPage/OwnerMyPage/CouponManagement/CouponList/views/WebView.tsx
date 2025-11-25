@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../../../components/MyPageHeader";
-import api from "../../../../../lib/api/axios";
+import api from "../../../../../../lib/api/axios";
 
 /** ====== 타입 ====== */
 type DiscountType = "AMOUNT" | "RATE";
@@ -88,7 +87,7 @@ function formatDateRange(start: string, end: string): string {
 
 /** ====== 웹뷰 컴포넌트 (쿠폰함) ====== */
 
-export default function CustomerCouponWebView() {
+export default function WebView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
 
@@ -158,16 +157,9 @@ export default function CustomerCouponWebView() {
 
   /** 뷰 */
   return (
-    <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 상단 공통 헤더 영역 (웹뷰 스타일) */}
-      <div className="w-full bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-[1040px] mx-auto">
-          <MyPageHeader title="쿠폰함" onBack={onBack} showMenu={false} />
-        </div>
-      </div>
-
+    <div className="w-full min-h-screen bg-[#F6F7FB] mt-15">
       {/* 본문 */}
-      <div className="max-w-[1040px] mt-20 mx-auto px-6 py-8">
+      <div className="max-w-[1040px] mx-auto px-6 py-8">
         {/* 상단 타이틀/설명 및 등록 버튼 */}
         <div className="mb-6 flex items-center justify-between">
           <div>

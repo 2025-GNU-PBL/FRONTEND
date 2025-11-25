@@ -12,6 +12,21 @@ export default function WebView() {
     return /^010\d{8}$/.test(onlyNum);
   }, [phoneNumber]);
 
+  // 🔥 전화번호 자동 하이픈 적용
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onlyNum = e.target.value.replace(/\D/g, "");
+
+    if (onlyNum.length <= 3) {
+      setPhoneNumber(onlyNum);
+    } else if (onlyNum.length <= 7) {
+      setPhoneNumber(`${onlyNum.slice(0, 3)}-${onlyNum.slice(3)}`);
+    } else {
+      setPhoneNumber(
+        `${onlyNum.slice(0, 3)}-${onlyNum.slice(3, 7)}-${onlyNum.slice(7, 11)}`
+      );
+    }
+  };
+
   const onNext = () => {
     if (!isValid) return;
 
@@ -23,10 +38,7 @@ export default function WebView() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col">
-      {/* 상단 얇은 그라디언트 바 */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
-
+    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-15">
       <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-center">
         {/* Left — Hero 카피 */}
         <section className="md:col-span-6 flex flex-col justify-center">
@@ -111,7 +123,7 @@ export default function WebView() {
                     inputMode="numeric"
                     placeholder="010-1234-5678"
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    onChange={handlePhoneChange}
                     className="
                       w-full h-[54px] rounded-[12px]
                       border border-[#E5E7EB]

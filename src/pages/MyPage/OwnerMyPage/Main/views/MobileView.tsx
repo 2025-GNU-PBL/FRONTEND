@@ -1,12 +1,18 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import MyPageHeader from "../../../../../components/MyPageHeader";
 import { useAppDispatch, useAppSelector } from "../../../../../store/hooks";
 import { logoutUser } from "../../../../../store/thunkFunctions";
-import { forceLogout } from "../../../../../store/userSlice";
+import SideMenu from "../../../../../components/SideMenu";
 
-export default function MobileView() {
+// 메인 페이지처럼 메뉴 상태를 부모에서 내려받도록 Props 정의
+type Props = {
+  isMenuOpen: boolean;
+  openMenu: () => void;
+  closeMenu: () => void;
+};
+
+export default function MobileView({ isMenuOpen, openMenu, closeMenu }: Props) {
   const nav = useNavigate();
   const dispatch = useAppDispatch();
 
@@ -14,35 +20,58 @@ export default function MobileView() {
 
   const go = useCallback((to: string) => nav(to), [nav]);
   const onBack = useCallback(() => nav(-1), [nav]);
-  const onMenu = useCallback(() => go("/settings"), [go]);
 
-  /** 로그아웃 처리 */
-  const onLogout = useCallback(async () => {
+  const handleLogout = async () => {
     try {
-      // 서버 로그아웃 요청 (userSlice.logoutUser)
       await dispatch(logoutUser()).unwrap();
-    } catch (e) {
-      // 실패 시 프론트 강제 로그아웃 (token + Redux 초기화)
-      console.error("logoutUser 실패, forceLogout 실행:", e);
-      dispatch(forceLogout());
     } finally {
-      // 로그인 페이지로 이동
       nav("/");
     }
-  }, [dispatch, nav]);
+  };
 
   return (
-    <div className="w-full bg-white">
+    <div className="w-full bg-white relative">
       <div className="mx-auto w-[390px] min-h-[844px] bg-white flex flex-col">
         {/* 최상단 헤더 */}
-        <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
-          <MyPageHeader
-            title="마이페이지"
-            onBack={onBack}
-            onMenu={onMenu}
-            showMenu={false}
-          />
-        </div>
+        <header
+          className="
+        absolute top-[0px] left-0
+        w-[390px] h-[60px]
+        flex flex-row justify-between items-center
+        px-[20px] gap-[4px]
+        bg-[#F6F7FB]
+      "
+        >
+          {/* Back Button */}
+          <button
+            className="w-8 h-8 flex items-center justify-center"
+            type="button"
+            onClick={onBack}
+          >
+            <Icon
+              icon="solar:alt-arrow-left-linear"
+              className="w-8 h-8 text-[#1E2124]"
+            />
+          </button>
+          {/* 가운데: 타이틀 */}
+          <h1
+            className="
+          text-[18px] font-semibold text-[#1E2124]
+          tracking-[-0.2px] select-none
+        "
+          >
+            마이페이지
+          </h1>
+          {/* 햄버거 메뉴 버튼 -> 메뉴 열기 */}
+          <button
+            className="flex items-center justify-center hover:opacity-80 active:scale-95"
+            type="button"
+            aria-label="메뉴 열기"
+            onClick={openMenu}
+          >
+            <Icon icon="mynaui:menu" className="w-6 h-6 text-black/80" />
+          </button>
+        </header>
 
         {/* 메인 콘텐츠 */}
         <main className="flex-1">
@@ -126,7 +155,7 @@ export default function MobileView() {
             </button>
             <div className="w-6 h-px bg-black/80 rotate-90" />
             <button
-              onClick={onLogout}
+              onClick={handleLogout}
               className="text-[16px] tracking-[-0.2px] hover:opacity-80"
             >
               로그아웃
@@ -134,6 +163,9 @@ export default function MobileView() {
           </div>
         </section>
       </div>
+
+      {/* 메인 페이지처럼 사이드 메뉴 붙이기 */}
+      <SideMenu isOpen={isMenuOpen} onClose={closeMenu} />
     </div>
   );
 }

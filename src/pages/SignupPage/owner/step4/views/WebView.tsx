@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -14,6 +14,23 @@ interface WebCompleteViewProps {
   descriptionLine2?: string;
 }
 
+interface OwnerSignupWebState {
+  phoneNumber?: string;
+  phone?: string;
+  bzName?: string;
+  bzNumber?: string;
+  bankAccount?: string;
+  accountNumber?: string;
+  zipCode?: string;
+  zipcode?: string;
+  roadAddress?: string;
+  address?: string;
+  jibunAddress?: string;
+  detailAddress?: string;
+  buildingName?: string;
+  extraAddress?: string;
+}
+
 export default function WebView({
   onStart,
   title = "환영합니다!",
@@ -26,7 +43,7 @@ export default function WebView({
   const { refreshAuth } = useRefreshAuth();
 
   const location = useLocation();
-  const state = (location.state as any) || {};
+  const state = (location.state as OwnerSignupWebState) || {};
 
   // step1/2/3 에서 넘어온 raw 값들 호환 처리
   const phoneNumber = state.phoneNumber ?? state.phone ?? ""; // step1: phone
@@ -76,24 +93,26 @@ export default function WebView({
       onStart?.();
       refreshAuth();
       nav("/");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[submitOwnerSignup:web] error:", err);
-      alert(
-        typeof err === "string"
-          ? err
-          : err?.message || "회원가입 제출에 실패했습니다."
-      );
+
+      let message = "회원가입 제출에 실패했습니다.";
+
+      if (typeof err === "string") {
+        message = err;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+
+      alert(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-20">
-      {/* 상단 그라디언트 바 */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
-
-      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
+    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-15">
+      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-center">
         {/* Left - 카피 영역 */}
         <section className="md:col-span-6 flex flex-col justify-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-[#FF4646]/10 text-[#FF4646] text-xs font-semibold px-3 py-1 w-fit ring-1 ring-[#FF4646]/20">

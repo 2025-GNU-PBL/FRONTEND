@@ -1,7 +1,7 @@
-import MobileView from "./views/ListMoblieView";
-import WebView from "./views/ListWebView";
+import MobileView from "./views/MoblieView";
+import WebView from "./views/WebView";
 
-const CouponEditPage = () => {
+const CouponListPage = () => {
   return (
     <div className="min-h-screen">
       <div className="md:hidden">
@@ -14,4 +14,4 @@ const CouponEditPage = () => {
   );
 };
 
-export default CouponEditPage;
+export default CouponListPage;

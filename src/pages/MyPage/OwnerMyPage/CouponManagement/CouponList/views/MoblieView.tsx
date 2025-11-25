@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
-import api from "../../../../../lib/api/axios";
+import api from "../../../../../../lib/api/axios";
 
 /** ====== 타입 ====== */
 type DiscountType = "AMOUNT" | "RATE";
@@ -27,47 +27,6 @@ interface OwnerCoupon {
   status: CouponStatus;
 }
 
-/** ====== 유틸 ====== */
-
-const CATEGORY_LABEL: Record<Category, string> = {
-  WEDDING: "웨딩홀",
-  WEDDING_HALL: "웨딩홀",
-  STUDIO: "스튜디오",
-  DRESS: "드레스",
-  MAKEUP: "메이크업",
-};
-
-function formatDiscountValue(type: DiscountType, value: number): string {
-  if (!value || Number.isNaN(value)) return "-";
-  if (type === "RATE") return `${value}%`;
-  return `${value.toLocaleString("ko-KR")}원`;
-}
-
-function formatConditionText(
-  minPurchaseAmount: number,
-  maxDiscountAmount: number,
-  type: DiscountType
-): string {
-  const minText =
-    minPurchaseAmount && minPurchaseAmount > 0
-      ? `${(minPurchaseAmount / 10000).toLocaleString(
-          "ko-KR"
-        )}만원 이상 구매 시`
-      : "구매 시";
-
-  if (type === "RATE") {
-    const maxText =
-      maxDiscountAmount && maxDiscountAmount > 0
-        ? ` 최대 ${(maxDiscountAmount / 10000).toLocaleString(
-            "ko-KR"
-          )}만원 할인`
-        : " 할인";
-    return `${minText}${maxText}`;
-  }
-
-  return `${minText} 할인`;
-}
-
 function formatDateRange(start: string, end: string): string {
   const fmt = (d: string) => {
     if (!d) return "";
@@ -87,7 +46,7 @@ function formatDateRange(start: string, end: string): string {
 
 /** ====== 컴포넌트 ====== */
 
-export default function CustomerCouponMobile() {
+export default function MobileView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
 
@@ -157,61 +116,66 @@ export default function CustomerCouponMobile() {
   const registeredCount = coupons.length;
 
   return (
-    <div className="w-full bg-white">
-      {/* 390 × 844 프레임 (상단 노치/하단 인디케이터 X) */}
-      <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col">
-        {/* 헤더 */}
-        <div className="sticky top-0 z-20 bg-white border-b border-[#F2F2F2]">
-          <div className="h-[59px] flex items-center justify-between px-5">
-            <button onClick={onBack} aria-label="back">
-              <Icon icon="solar:alt-arrow-left-linear" className="w-6 h-6" />
-            </button>
-            <h1 className="text-[18px] font-semibold">쿠폰함</h1>
-            <button onClick={() => nav("register")} aria-label="add coupon">
-              <Icon icon="solar:add-square-bold" className="w-6 h-6" />
-            </button>
-          </div>
+    // ✅ 전체 레이아웃: w-full, min-h-screen, flex-col
+    <div className="w-full min-h-screen bg-white flex flex-col mb-15">
+      {/* 헤더 */}
+      <div className="sticky top-0 z-20 bg-white border-b border-[#F2F2F2]">
+        <div className="h-[59px] flex items-center justify-between px-5">
+          <button onClick={onBack} aria-label="back">
+            <Icon icon="solar:alt-arrow-left-linear" className="w-6 h-6" />
+          </button>
+          <h1 className="text-[18px] font-semibold">쿠폰함</h1>
+          <button onClick={() => nav("register")} aria-label="add coupon">
+            <Icon icon="majesticons:plus-line" className="w-6 h-6" />
+          </button>
         </div>
+      </div>
 
-        {/* 내용 영역 */}
-        <div className="relative flex-1 overflow-y-auto">
-          <div className="px-5 pt-5 pb-6">
-            {/* 등록된 쿠폰 개수 */}
-            <div className="flex items-center justify-between mb-4">
-              {registeredCount > 0 && (
-                <p className="text-[14px] text-[#000000]">
-                  {loading ? "쿠폰 불러오는 중..." : `등록된 쿠폰 ${registeredCount}`}
-                </p>
-              )}
-            </div>
-
-            {/* 상태 표시 */}
-            {loading && (
-              <div className="py-10 text-center text-[14px] text-[#999999]">
-                쿠폰 정보를 불러오는 중입니다...
-              </div>
-            )}
-
-            {errorMsg && !loading && (
-              <div className="py-10 text-center text-[14px] text-[#EB5147]">
-                {errorMsg}
-              </div>
-            )}
-
-            {!loading && !errorMsg && (
-              <>
-                {coupons.length === 0 ? (
-                  <EmptyState />
-                ) : (
-                  <div className="flex flex-col gap-4">
-                    {coupons.map((coupon) => (
-                      <CouponCard key={coupon.id} c={coupon} onRemove={handleRemove} />
-                    ))}
-                  </div>
-                )}
-              </>
+      {/* 내용 영역 */}
+      <div className="relative flex-1 overflow-y-auto">
+        {/* 내용은 가운데 정렬 + 양 옆 여백, 너비는 반응형 */}
+        <div className="px-5 pt-5 pb-6 w-full max-w-xl mx-auto">
+          {/* 등록된 쿠폰 개수 */}
+          <div className="flex items-center justify-between mb-4">
+            {registeredCount > 0 && (
+              <p className="text-[14px] text-[#000000]">
+                {loading
+                  ? "쿠폰 불러오는 중..."
+                  : `등록된 쿠폰 ${registeredCount}`}
+              </p>
             )}
           </div>
+
+          {/* 상태 표시 */}
+          {loading && (
+            <div className="py-10 text-center text-[14px] text-[#999999]">
+              쿠폰 정보를 불러오는 중입니다...
+            </div>
+          )}
+
+          {errorMsg && !loading && (
+            <div className="py-10 text-center text-[14px] text-[#EB5147]">
+              {errorMsg}
+            </div>
+          )}
+
+          {!loading && !errorMsg && (
+            <>
+              {coupons.length === 0 ? (
+                <EmptyState />
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {coupons.map((coupon) => (
+                    <CouponCard
+                      key={coupon.id}
+                      c={coupon}
+                      onRemove={handleRemove}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -226,15 +190,18 @@ interface CouponCardProps {
 }
 
 function CouponCard({ c, onRemove }: CouponCardProps) {
+  // ✅ RATE일 때 퍼센트, AMOUNT일 때 원
   const discountLabel =
-    c.discountType === "PERCENT" ? `${c.discountValue}%` : `${c.discountValue}원`;
+    c.discountType === "RATE" ? `${c.discountValue}%` : `${c.discountValue}원`;
+
   const period = formatDateRange(c.startDate, c.expirationDate);
 
   return (
-    <div className="w-full h-[129px] flex">
-      {/* 좌측 본문 */}
-      <div className="w-[278px] h-[129px] border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-2 bg-white">
-        <div className="flex flex-col gap-1 w-[222px]">
+    // ✅ 카드도 전체 너비 사용
+    <div className="w-full flex">
+      {/* 좌측 본문: flex-1 로 남는 너비 모두 사용 */}
+      <div className="flex-1 border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-2 bg-white">
+        <div className="flex flex-col gap-1 w-full">
           <div className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
             {c.couponName}
           </div>
@@ -242,7 +209,7 @@ function CouponCard({ c, onRemove }: CouponCardProps) {
             {discountLabel}
           </div>
         </div>
-        <div className="flex flex-col w-[200px]">
+        <div className="flex flex-col w-full">
           <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999] line-clamp-1">
             {c.couponDetail}
           </div>
@@ -252,14 +219,14 @@ function CouponCard({ c, onRemove }: CouponCardProps) {
         </div>
       </div>
 
-      {/* 우측 영역: 삭제 버튼 */}
-      <div className="w-[72px] h-[129px] bg-[#F6F7FB] border border-l-0 border-[#F2F2F2] rounded-r-[16px] flex items-center justify-center px-[18px]">
+      {/* 우측 영역: 삭제 버튼 (너비는 고정, 카드 전체는 w-full) */}
+      <div className="w-[72px] bg-[#F6F7FB] border border-l-0 border-[#F2F2F2] rounded-r-[16px] flex items-center justify-center px-[18px]">
         <button
           className="w-9 h-9 rounded-[20px] bg-white flex items-center justify-center active:scale-95"
           aria-label="delete-coupon"
           onClick={() => onRemove(c.id)}
         >
-          <Icon icon="solar:close-square-broken" className="w-4 h-4" />
+          <Icon icon="majesticons:close" className="w-5 h-5" />
         </button>
       </div>
     </div>
@@ -268,7 +235,8 @@ function CouponCard({ c, onRemove }: CouponCardProps) {
 
 function EmptyState() {
   return (
-    <div className="h-[400px] flex items-center justify-center">
+    // ✅ 고정 높이 대신 padding 사용해서 반응형
+    <div className="w-full flex items-center justify-center py-20">
       <div className="flex flex-col items-center gap-4">
         <Icon
           icon="material-symbols:credit-card-outline"

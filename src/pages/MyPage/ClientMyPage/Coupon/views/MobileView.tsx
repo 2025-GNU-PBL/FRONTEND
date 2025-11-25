@@ -1,7 +1,10 @@
+// src/pages/MyPage/ClientMyPage/Coupons/MobileView.tsx
+
 import React, { useState, useEffect, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../../../../lib/api/axios";
+import { useAppSelector } from "../../../../../store/hooks";
 
 // API에서 내려오는 category를 UI 표기로 매핑
 const categoryMap: Record<string, string> = {
@@ -19,10 +22,10 @@ type CouponCategory =
   | "메이크업"
   | string;
 
-// API 응답 구조에 맞춘 Coupon 타입
+// 웹뷰와 동일한 Coupon 타입
 interface Coupon {
   userCouponId: number;
-  status: string;
+  status: "AVAILABLE" | "USED" | "EXPIRED" | "CANCELLED" | string;
   downloadedAt: string;
   usedAt: string | null;
   couponId: number;
@@ -62,7 +65,7 @@ const MobileView: React.FC = () => {
   );
   const [selectedUserCouponId, setSelectedUserCouponId] = useState<
     number | null
-  >(null); // ✅ 기본: 선택 없음
+  >(null);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,13 +75,13 @@ const MobileView: React.FC = () => {
   const { products = [], purchaseAmount } =
     (location.state as CouponPageState) || {};
 
-  // 기준 상품: 결제 순서상 맨 위 상품 기준
+  const isAuth = useAppSelector((s) => s.user.isAuth);
+
   const currentProduct = useMemo(
     () => (products.length > 0 ? products[0] : undefined),
     [products]
   );
 
-  // ✅ 기준 금액: 현재 상품(lineTotal) 우선, 없으면 purchaseAmount
   const effectiveAmount = useMemo(() => {
     if (currentProduct) return currentProduct.lineTotal;
     if (purchaseAmount !== undefined) return purchaseAmount;
@@ -86,19 +89,22 @@ const MobileView: React.FC = () => {
   }, [currentProduct, purchaseAmount]);
 
   useEffect(() => {
+    if (!isAuth) {
+      setCoupons([]);
+      setApplicableCouponIds(new Set());
+      setSelectedUserCouponId(null);
+      return;
+    }
+
     const fetchCoupons = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // 1) 내가 사용 가능한 쿠폰(보유 쿠폰) 전체
-        const availableRes = await api.get<Coupon[]>(
-          "/api/v1/customer/coupon/my/available"
-        );
-        const availableCoupons = availableRes.data ?? [];
-        setCoupons(availableCoupons);
+        const allRes = await api.get<Coupon[]>("/api/v1/customer/coupon/my");
+        const allCoupons = allRes.data ?? [];
+        setCoupons(allCoupons);
 
-        // 2) 현재 상품/금액 기준으로 적용 가능한 쿠폰 조회
         if (currentProduct && effectiveAmount > 0) {
           const applicableRes = await api.get<Coupon[]>(
             "/api/v1/customer/coupon/my/applicable",
@@ -115,14 +121,9 @@ const MobileView: React.FC = () => {
             applicableList.map((c) => c.userCouponId)
           );
           setApplicableCouponIds(idSet);
-
-          // ✅ 자동 선택 제거: 선택 초기화
           setSelectedUserCouponId(null);
         } else {
-          // 상품/금액 정보 없으면 일단 전부 적용 가능 처리
-          const idSet = new Set<number>(
-            availableCoupons.map((c) => c.userCouponId)
-          );
+          const idSet = new Set<number>(allCoupons.map((c) => c.userCouponId));
           setApplicableCouponIds(idSet);
           setSelectedUserCouponId(null);
         }
@@ -135,14 +136,12 @@ const MobileView: React.FC = () => {
     };
 
     fetchCoupons();
-  }, [currentProduct, effectiveAmount]);
+  }, [isAuth, currentProduct, effectiveAmount]);
 
-  // UI 표기에 맞춰 category 변환
   const convertCategory = (key: string): string => {
     return categoryMap[key] ?? key;
   };
 
-  // 할인율 또는 할인금액 포맷팅
   const formatRate = (coupon: Coupon) => {
     if (coupon.discountType === "RATE") {
       return `${coupon.discountValue}%`;
@@ -150,14 +149,12 @@ const MobileView: React.FC = () => {
     return `${coupon.discountValue.toLocaleString("ko-KR")}원`;
   };
 
-  // 조건 텍스트 포맷팅
   const formatCondition = (coupon: Coupon) => {
     return `최소 ${coupon.minPurchaseAmount.toLocaleString(
       "ko-KR"
     )}원 이상 구매 시`;
   };
 
-  // 기간 텍스트 포맷팅
   const formatPeriod = (coupon: Coupon) => {
     return `${coupon.startDate} ~ ${coupon.expirationDate}`;
   };
@@ -167,43 +164,34 @@ const MobileView: React.FC = () => {
       ? coupons
       : coupons.filter((c) => convertCategory(c.category) === activeCategory);
 
-  // 적용 가능한 쿠폰 개수
-  const applicableCount = useMemo(
-    () => coupons.filter((c) => applicableCouponIds.has(c.userCouponId)).length,
-    [coupons, applicableCouponIds]
-  );
+  /**
+   * 정렬
+   * 1) 사용 가능 > 사용 불가 > 사용됨
+   * 2) 같은 그룹 내 최신순 (다운로드일자 기준)
+   */
+  const sortedCoupons = useMemo(() => {
+    return [...filteredCoupons].sort((a, b) => {
+      const aApplicable = applicableCouponIds.has(a.userCouponId);
+      const bApplicable = applicableCouponIds.has(b.userCouponId);
 
-  // 선택된 쿠폰
-  const selectedCoupon = useMemo(
-    () => coupons.find((c) => c.userCouponId === selectedUserCouponId) ?? null,
-    [coupons, selectedUserCouponId]
-  );
+      const aUsed = a.status === "USED";
+      const bUsed = b.status === "USED";
 
-  // 선택된 쿠폰 기준 할인 금액
-  const selectedDiscountAmount = useMemo(() => {
-    if (!selectedCoupon || effectiveAmount <= 0) return 0;
+      // 1) 사용 가능 먼저
+      if (aApplicable && !bApplicable) return -1;
+      if (!aApplicable && bApplicable) return 1;
 
-    let discount = 0;
+      // 2) 사용됨은 아래로
+      if (aUsed && !bUsed) return 1;
+      if (!aUsed && bUsed) return -1;
 
-    if (selectedCoupon.discountType === "RATE") {
-      discount = Math.floor(
-        (effectiveAmount * selectedCoupon.discountValue) / 100
-      );
-      if (
-        selectedCoupon.maxDiscountAmount &&
-        selectedCoupon.maxDiscountAmount > 0
-      ) {
-        discount = Math.min(discount, selectedCoupon.maxDiscountAmount);
-      }
-    } else {
-      discount = selectedCoupon.discountValue;
-    }
+      // 3) 최신순
+      const da = +new Date(a.downloadedAt || a.startDate);
+      const db = +new Date(b.downloadedAt || b.startDate);
+      return db - da;
+    });
+  }, [filteredCoupons, applicableCouponIds]);
 
-    if (discount > effectiveAmount) discount = effectiveAmount;
-    return discount;
-  }, [selectedCoupon, effectiveAmount]);
-
-  // 쿠폰 카드 클릭: 적용 가능할 때만 단일 선택/해제
   const handleSelectCoupon = (coupon: Coupon, isApplicable: boolean) => {
     if (!isApplicable) return;
     setSelectedUserCouponId((prev) =>
@@ -211,37 +199,12 @@ const MobileView: React.FC = () => {
     );
   };
 
-  // ✅ "적용하기" 버튼: /use 호출 X, 선택 정보만 /checkout 으로 전달
-  const handleApplyCoupon = () => {
-    if (
-      !selectedCoupon ||
-      !selectedUserCouponId ||
-      selectedDiscountAmount <= 0
-    ) {
-      // 선택 안 했으면 쿠폰 미적용 상태로 결제 페이지로 복귀
-      navigate("/checkout");
-      return;
-    }
-
-    navigate("/checkout", {
-      state: {
-        selectedCouponId: selectedCoupon.userCouponId, // ✅ userCouponId 전달
-        selectedCoupon,
-        discountAmount: selectedDiscountAmount,
-        productId: currentProduct?.productId,
-        appliedAmount: effectiveAmount,
-        applicableCount,
-      },
-    });
-  };
-
   return (
     <div className="min-h-screen flex justify-center bg-[#F5F5F5]">
       {/* 폰 화면 프레임 */}
       <div className="relative w-full max-w-[390px] min-h-screen bg-white">
-        {/* 🔹 상단(헤더 + 카테고리) 통째로 sticky 고정 */}
+        {/* sticky header */}
         <div className="sticky top-0 z-20 bg-white">
-          {/* 헤더 */}
           <header className="relative flex h-[60px] items-center justify-between px-5">
             <button
               type="button"
@@ -254,27 +217,15 @@ const MobileView: React.FC = () => {
               />
             </button>
 
-            <div className="absolute left-1/2 -translate-x-1/2 text-center text-[18px] font-semibold text-[#1E2124]">
-              쿠폰 선택
+            <div className="absolute left-1/2 -translate-x-1/2 text-[18px] font-semibold text-[#1E2124]">
+              쿠폰함
             </div>
-
             <div className="h-6 w-6" />
           </header>
 
-          {/* 상단 개수 + 카테고리 탭 */}
           <section className="px-5 pt-5 pb-3">
             <div className="w-full max-w-[350px] mx-auto flex flex-col gap-4">
-              {/* 상단 개수 */}
-              <div className="flex items-center justify-between h-[21px]">
-                <span className="text-[14px]">
-                  {`상품 쿠폰 ${coupons.length}장`}
-                </span>
-                <span className="text-[14px] text-[#999999]">
-                  {`적용 가능 ${applicableCount}장`}
-                </span>
-              </div>
-
-              {/* 카테고리 탭 */}
+              {/* ✅ 원래 쓰던 카테고리 토글 디자인 그대로 복구 */}
               <div className="flex gap-2 h-[37px] flex-nowrap">
                 {["전체", "웨딩홀", "스튜디오", "드레스", "메이크업"].map(
                   (label) => {
@@ -303,11 +254,17 @@ const MobileView: React.FC = () => {
                   }
                 )}
               </div>
+
+              <div className="flex items-center justify-between h-[21px]">
+                <span className="text-[14px]">
+                  {`보유 쿠폰 ${sortedCoupons.length}`}
+                </span>
+              </div>
             </div>
           </section>
         </div>
 
-        {/* 🔹 쿠폰 리스트 영역 (실제 스크롤 되는 부분) */}
+        {/* 리스트 */}
         <main className="px-5 pb-[96px] pt-2">
           <div className="w-full max-w-[350px] mx-auto">
             {loading ? (
@@ -316,18 +273,45 @@ const MobileView: React.FC = () => {
               </div>
             ) : error ? (
               <div className="text-[13px] text-[#EF4444]">{error}</div>
-            ) : filteredCoupons.length === 0 ? (
+            ) : sortedCoupons.length === 0 ? (
               <div className="text-[13px] text-[#999999]">
-                적용 가능한 쿠폰이 없습니다.
+                보유중인 쿠폰이 없습니다.
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                {filteredCoupons.map((coupon, index) => {
+                {sortedCoupons.map((coupon, index) => {
                   const isApplicable = applicableCouponIds.has(
                     coupon.userCouponId
                   );
                   const isSelected =
                     selectedUserCouponId === coupon.userCouponId;
+                  const isUsed = coupon.status === "USED";
+
+                  let statusLabel = "";
+                  let circleBgClass = "";
+                  let iconName = "";
+                  let iconColorClass = "";
+                  let textColorClass = "";
+
+                  if (isUsed) {
+                    statusLabel = "사용됨";
+                    circleBgClass = "bg-[#F3F4F6]";
+                    iconName = "mdi:check-all";
+                    iconColorClass = "text-[#6B7280]";
+                    textColorClass = "text-[#6B7280]";
+                  } else if (isApplicable) {
+                    statusLabel = "사용 가능";
+                    circleBgClass = "bg-[#ECFDF3]";
+                    iconName = "mdi:check-circle-outline";
+                    iconColorClass = "text-[#16A34A]";
+                    textColorClass = "text-[#16A34A]";
+                  } else {
+                    statusLabel = "사용 불가";
+                    circleBgClass = "bg-[#F3F4F6]";
+                    iconName = "mdi:close-circle-outline";
+                    iconColorClass = "text-[#9CA3AF]";
+                    textColorClass = "text-[#9CA3AF]";
+                  }
 
                   return (
                     <div
@@ -335,23 +319,24 @@ const MobileView: React.FC = () => {
                       className="flex flex-row items-center w-[350px] h-[129px] cursor-pointer"
                       onClick={() => handleSelectCoupon(coupon, isApplicable)}
                     >
-                      {/* 왼쪽 영역 */}
+                      {/* 왼쪽 */}
                       <div
-                        className={`flex flex-col items-start p-4 gap-[10px] w-[278px] h-[129px] border border-[#F2F2F2] border-r-0 rounded-l-[16px] ${
+                        className={`flex flex-col items-start p-4 gap-[10px] w-[278px] h-[129px] border border-r-0 rounded-l-[16px] ${
                           !isApplicable ? "opacity-50" : ""
+                        } ${
+                          isSelected ? "border-[#000000]" : "border-[#F2F2F2]"
                         }`}
                       >
-                        <div className="flex flex-col items-start gap-1 w-[222px] h-[97px]">
-                          <p className="text-[14px] text-[#000000]">
+                        <div className="flex flex-col gap-1 w-[222px]">
+                          <p className="text-[14px] text-[#000000] truncate">
                             {coupon.couponName}
                           </p>
-
                           <p className="text-[20px] font-[700] text-[#000000]">
                             {formatRate(coupon)}
                           </p>
                         </div>
 
-                        <div className="flex flex-col items-start w-[220px] h-[36px]">
+                        <div className="flex flex-col w-[220px]">
                           <p className="text-[12px] text-[#999999]">
                             {formatCondition(coupon)}
                           </p>
@@ -361,30 +346,33 @@ const MobileView: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* 오른쪽 선택/불가 영역 */}
-                      <div className="flex flex-row items-center px-[18px] w-[72px] h-[129px] bg-[#F6F7FB] border border-[#F2F2F2] border-l-0 rounded-r-[16px]">
-                        {isApplicable ? (
-                          <div
-                            className={`flex items-center justify-center w-[36px] h-[36px] rounded-[20px] ${
-                              isSelected ? "bg-[#000000]" : "bg-[#FFFFFF]"
-                            }`}
-                          >
-                            {isSelected ? (
-                              <Icon
-                                icon="mdi:check"
-                                className="w-4 h-4 text-[#FFFFFF]"
-                              />
-                            ) : (
-                              <div className="w-[10px] h-[10px] rounded-full border border-[#000000]" />
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center w-[36px] h-[36px] bg-[#F0F0F0] rounded-[20px]">
-                            <span className="text-[10px] text-[#BDBDBD] leading-none">
-                              불가
-                            </span>
-                          </div>
-                        )}
+                      {/* 오른쪽 상태 */}
+                      <div
+                        className={`flex flex-col items-center justify-center gap-2 px-[10px] w-[72px] h-[129px] bg-[#F6F7FB] border border-l-0 rounded-r-[16px] ${
+                          isSelected ? "border-[#000000]" : "border-[#F2F2F2]"
+                        }`}
+                      >
+                        <div
+                          className={`flex items-center justify-center w-[36px] h-[36px] rounded-full ${circleBgClass}`}
+                        >
+                          {isApplicable && isSelected ? (
+                            <Icon
+                              icon="mdi:check"
+                              className="w-4 h-4 text-[#000000]"
+                            />
+                          ) : (
+                            <Icon
+                              icon={iconName}
+                              className={`w-5 h-5 ${iconColorClass}`}
+                            />
+                          )}
+                        </div>
+
+                        <span
+                          className={`text-[11px] font-medium ${textColorClass}`}
+                        >
+                          {statusLabel}
+                        </span>
                       </div>
                     </div>
                   );
@@ -393,26 +381,6 @@ const MobileView: React.FC = () => {
             )}
           </div>
         </main>
-
-        {/* 🔹 하단 적용 버튼: 뷰포트 기준 완전 고정 */}
-        <div className="fixed left-1/2 bottom-0 -translate-x-1/2 w-full max-w-[390px] px-5 pb-5 pt-3 border-t border-[#F2F2F2] bg-white z-30">
-          <div className="w-full max-w-[350px] mx-auto">
-            <button
-              type="button"
-              onClick={handleApplyCoupon}
-              className="w-full h-[56px] rounded-[12px] bg-[#FF2233] flex items-center justify-center disabled:bg-[#F3F4F6]"
-              disabled={!selectedCoupon || selectedDiscountAmount <= 0}
-            >
-              <span className="text-[16px] font-[600] text-white">
-                {selectedCoupon && selectedDiscountAmount > 0
-                  ? `${selectedDiscountAmount.toLocaleString(
-                      "ko-KR"
-                    )}원 적용하기`
-                  : "적용 가능한 쿠폰이 없습니다"}
-              </span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

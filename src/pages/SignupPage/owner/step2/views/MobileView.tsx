@@ -1,4 +1,4 @@
-import React, {
+import {
   useCallback,
   useEffect,
   useRef,
@@ -9,11 +9,40 @@ import React, {
 import { useLocation, useNavigate } from "react-router-dom";
 import MyPageHeader from "../../../../../components/MyPageHeader";
 
-declare global {
-  interface Window {
-    daum?: any;
-  }
+// Daum 우편번호 타입들
+interface DaumPostcodeData {
+  userSelectedType: "R" | "J";
+  roadAddress: string;
+  jibunAddress: string;
+  bname: string;
+  buildingName: string;
+  apartment: "Y" | "N";
+  zonecode: string;
 }
+
+interface DaumPostcodeOptions {
+  oncomplete: (data: DaumPostcodeData) => void;
+  width?: string | number;
+  height?: string | number;
+}
+
+interface DaumPostcodeInstance {
+  embed: (element: HTMLElement) => void;
+}
+
+interface DaumPostcodeConstructor {
+  new (options: DaumPostcodeOptions): DaumPostcodeInstance;
+}
+
+interface DaumNamespace {
+  Postcode: DaumPostcodeConstructor;
+}
+
+type DaumWindow = Window & {
+  daum?: DaumNamespace;
+};
+
+const getDaum = (): DaumNamespace | undefined => (window as DaumWindow).daum;
 
 /** 상위에서 받는 props */
 interface MobileViewProps {
@@ -30,14 +59,10 @@ interface MobileViewProps {
 let DAUM_POSTCODE_LOADING: Promise<void> | null = null;
 
 function loadDaumPostcodeOnce(): Promise<void> {
-  // 이미 로드 완료
-  if (window.daum?.Postcode) return Promise.resolve();
-
-  // 로딩 중이면 같은 Promise 반환
+  if (getDaum()?.Postcode) return Promise.resolve();
   if (DAUM_POSTCODE_LOADING) return DAUM_POSTCODE_LOADING;
 
   DAUM_POSTCODE_LOADING = new Promise<void>((resolve, reject) => {
-    // 기존 스크립트 태그가 있으면 그 이벤트를 기다림
     const existing = document.querySelector<HTMLScriptElement>(
       'script[data-daum-postcode="true"]'
     );
@@ -53,7 +78,6 @@ function loadDaumPostcodeOnce(): Promise<void> {
 
     const script = document.createElement("script");
     script.setAttribute("data-daum-postcode", "true");
-
     script.src =
       "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
     script.async = true;
@@ -81,11 +105,7 @@ function loadDaumPostcodeOnce(): Promise<void> {
   return DAUM_POSTCODE_LOADING;
 }
 
-export default function MobileView({
-  onBack,
-  onNext,
-  title = "주소 입력",
-}: MobileViewProps) {
+export default function MobileView({ onBack, onNext }: MobileViewProps) {
   const [zipcode, setZipcode] = useState("");
   const [address, setAddress] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
@@ -93,12 +113,11 @@ export default function MobileView({
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { phoneNumber } = location.state || {};
+  const { phoneNumber } =
+    (location.state as { phoneNumber?: string } | null) || {};
 
-  // 우편번호 레이어 오픈 상태
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
 
-  // 고유 id 생성
   const uid = useId();
   const idZipcode = `${uid}-zipcode`;
   const idAddress = `${uid}-Address`;
@@ -116,53 +135,49 @@ export default function MobileView({
   useEffect(() => {
     let mounted = true;
 
-    if (window.daum?.Postcode) {
+    if (getDaum()?.Postcode) {
       setPostcodeReady(true);
       return;
     }
 
     loadDaumPostcodeOnce()
       .then(() => mounted && setPostcodeReady(true))
-      .catch((e) => {
-        console.error("[daum postcode] load failed:", e);
-      });
+      .catch((e) => console.error("[daum postcode] load failed:", e));
 
     return () => {
       mounted = false;
     };
   }, []);
 
-  // 닫기
   const foldDaumPostcode = useCallback(() => {
     setIsPostcodeOpen(false);
   }, []);
 
-  // 열기
   const openPostcode = useCallback(() => {
     if (!postcodeReady) return;
     setIsPostcodeOpen(true);
   }, [postcodeReady]);
 
-  // 오버레이가 렌더된 뒤에 embed 실행
   useEffect(() => {
     if (!isPostcodeOpen || !postcodeReady || !wrapRef.current) return;
 
     const element_wrap = wrapRef.current;
-    element_wrap.innerHTML = ""; // 중복 embed 방지
+    element_wrap.innerHTML = "";
 
-    new window.daum.Postcode({
-      oncomplete: (data: any) => {
+    const daum = getDaum();
+    if (!daum?.Postcode) return;
+
+    new daum.Postcode({
+      oncomplete: (data: DaumPostcodeData) => {
         let addr = "";
         let extraAddr = "";
 
-        // 도로명/지번 선택 처리
         if (data.userSelectedType === "R") {
           addr = data.roadAddress;
         } else {
           addr = data.jibunAddress;
         }
 
-        // 참고항목
         if (data.userSelectedType === "R") {
           if (data.bname !== "" && /[동|로|가]$/g.test(data.bname)) {
             extraAddr += data.bname;
@@ -182,7 +197,6 @@ export default function MobileView({
         setAddress(addr);
         setIsPostcodeOpen(false);
 
-        // 상세주소 포커스
         setTimeout(() => {
           const input = document.getElementById(
             idDetail
@@ -200,32 +214,29 @@ export default function MobileView({
       alert("우편번호/주소/상세주소를 모두 입력해주세요.");
       return;
     }
+
     onNext?.({ zipcode, address, detailAddress, extraAddress });
 
     navigate("/sign-up/owner/step3", {
-      state: {
-        phoneNumber,
-        zipcode,
-        address,
-        detailAddress,
-        extraAddress,
-      },
+      state: { phoneNumber, zipcode, address, detailAddress, extraAddress },
     });
   };
 
   return (
-    <div className="relative w-[390px] h-[844px] bg-white overflow-hidden">
+    <div className="relative w-full min-h-screen bg-white flex flex-col overflow-hidden">
       {/* 헤더 */}
-      <MyPageHeader title={title} onBack={onBack} showMenu={false} />
+      <MyPageHeader title="" onBack={onBack} showMenu={false} />
 
-      {/* 본문 */}
-      <div className="pt-[60px] h-full flex flex-col">
-        <div className="flex-1 overflow-y-auto px-[20px] pb-[210px]">
-          <div className="mt-[24px] text-[14px] leading-[22px] text-[#1E2124]">
-            2 / 3
+      {/* 콘텐츠 영역 */}
+      <div className="pt-[60px] flex-1 flex flex-col">
+        <div className="flex-1 overflow-y-auto px-[20px] pb-[120px]">
+          <div className="mt-[24px] text-[14px] text-[#1E2124]">
+            <span>2 /</span>
+            &nbsp;
+            <span className="text-[#999999]">3</span>
           </div>
 
-          <h2 className="mt-[8px] text-[24px] font-bold leading-[36px] text-[#1E2124]">
+          <h2 className=" whitespace-pre-line mt-[8px] text-[24px] font-bold leading-[36px] text-[#1E2124]">
             사업장{"\n"}주소를 알려주세요
           </h2>
 
@@ -236,19 +247,17 @@ export default function MobileView({
                 <div className="h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center bg-white">
                   <input
                     id={idZipcode}
-                    name="zipcode"
                     type="text"
                     readOnly
                     value={zipcode}
                     placeholder="우편번호"
-                    autoComplete="postal-code"
-                    className="w-full h-full px-[16px] text-[14px] text-[#1E2124] placeholder:text-[#9D9D9D] outline-none"
+                    className="w-full h-full px-[16px] text-[14px] outline-none"
                   />
                 </div>
               </div>
+
               <div className="col-span-2">
                 <button
-                  type="button"
                   onClick={openPostcode}
                   className="w-full h-[54px] rounded-[10px] border border-[#404040] text-[#404040] text-[14px] font-medium hover:bg-black/5 transition"
                 >
@@ -261,14 +270,11 @@ export default function MobileView({
             <div className="h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center bg-white">
               <input
                 id={idAddress}
-                name="address"
                 type="text"
                 readOnly
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
                 placeholder="예) 연희동 132, 도산대로 33"
-                autoComplete="street-address"
-                className="w-full h-full px-[16px] text-[14px] text-[#1E2124] placeholder:text-[#9D9D9D] outline-none"
+                className="w-full h-full px-[16px] text-[14px] outline-none"
               />
             </div>
 
@@ -276,13 +282,11 @@ export default function MobileView({
             <div className="h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center bg-white">
               <input
                 id={idDetail}
-                name="detailAddress"
                 type="text"
                 value={detailAddress}
                 onChange={(e) => setDetailAddress(e.target.value)}
                 placeholder="상세주소"
-                autoComplete="address-line2"
-                className="w-full h-full px-[16px] text-[14px] text-[#1E2124] placeholder:text-[#9D9D9D] outline-none"
+                className="w-full h-full px-[16px] text-[14px] outline-none"
               />
             </div>
 
@@ -290,12 +294,11 @@ export default function MobileView({
             <div className="h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center bg-white">
               <input
                 id={idExtra}
-                name="extraAddress"
                 type="text"
                 readOnly
                 value={extraAddress}
                 placeholder="참고항목"
-                className="w-full h-full px-[16px] text-[14px] text-[#1E2124] placeholder:text-[#9D9D9D] outline-none"
+                className="w-full h-full px-[16px] text-[14px] outline-none"
               />
             </div>
           </div>
@@ -303,43 +306,38 @@ export default function MobileView({
 
         {/* 하단 버튼 */}
         {!isPostcodeOpen && (
-          <div className="pointer-events-none">
-            <div className="absolute left-0 right-0 bottom-[70px] px-[20px] pb-[20px] pt-[10px] bg-gradient-to-t from-white to-white/80">
-              <button
-                onClick={handleNext}
-                disabled={!isComplete}
-                className={`pointer-events-auto w-full h-[56px] rounded-[12px] text-white text-[16px] font-semibold tracking-[-0.2px] active:scale-[0.99] transition
-                  ${
-                    isComplete
-                      ? "bg-[#FF2233] shadow-[0_8px_20px_rgba(255,34,51,0.3)]"
-                      : "bg-[#D9D9D9] cursor-not-allowed shadow-none"
-                  }`}
-              >
-                다음
-              </button>
-            </div>
+          <div className="w-full px-[20px] pb-[20px] bg-white">
+            <button
+              onClick={handleNext}
+              disabled={!isComplete}
+              className={`w-full h-[56px] rounded-[12px] text-white font-semibold text-[16px] transition 
+                ${
+                  isComplete
+                    ? "bg-[#FF2233] shadow-[0_8px_20px_rgba(255,34,51,0.3)]"
+                    : "bg-[#D9D9D9] cursor-not-allowed"
+                }`}
+            >
+              다음
+            </button>
           </div>
         )}
       </div>
 
-      {/* 카카오 우편번호 오버레이 */}
+      {/* 카카오 주소 검색 */}
       {isPostcodeOpen && (
         <div className="fixed inset-0 z-50 bg-white">
-          {/* 상단 닫기 버튼 */}
-          <div className="h-[56px] flex items-center justify-end px-3 border-b border-[#E5E7EB] relative z-50 bg-white">
+          <div className="h-[56px] flex items-center justify-end px-3 border-b border-[#E5E7EB] bg-white">
             <button
               onClick={foldDaumPostcode}
               className="w-10 h-10 flex items-center justify-center text-[18px] rounded-full hover:bg-black/5"
-              aria-label="닫기"
             >
               ✕
             </button>
           </div>
 
-          {/* iframe 임베드 영역 */}
           <div
             ref={wrapRef}
-            className="absolute left-0 right-0 top-[56px] bottom-0 z-40"
+            className="absolute top-[56px] left-0 right-0 bottom-0"
           />
         </div>
       )}

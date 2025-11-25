@@ -1,4 +1,4 @@
-import React, {
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -9,11 +9,45 @@ import React, {
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
-declare global {
-  interface Window {
-    daum?: any;
-  }
+// Daum 우편번호 타입들
+interface DaumPostcodeData {
+  zonecode: string;
+
+  roadAddress: string;
+  jibunAddress: string;
+
+  autoRoadAddress?: string;
+  autoJibunAddress?: string;
+  address?: string;
+
+  buildingName?: string;
+
+  userSelectedType: "R" | "J";
 }
+
+interface DaumPostcodeOptions {
+  oncomplete: (data: DaumPostcodeData) => void;
+  width?: string | number;
+  height?: string | number;
+}
+
+interface DaumPostcodeInstance {
+  embed: (element: HTMLElement) => void;
+}
+
+interface DaumPostcodeConstructor {
+  new (options: DaumPostcodeOptions): DaumPostcodeInstance;
+}
+
+interface DaumNamespace {
+  Postcode: DaumPostcodeConstructor;
+}
+
+type DaumWindow = Window & {
+  daum?: DaumNamespace;
+};
+
+const getDaum = (): DaumNamespace | undefined => (window as DaumWindow).daum;
 
 interface WebViewProps {
   onBack?: () => void;
@@ -56,7 +90,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
 
   // 카카오 우편번호 스크립트 로딩
   useEffect(() => {
-    if (window.daum?.Postcode) {
+    if (getDaum()?.Postcode) {
       setPostcodeReady(true);
       return;
     }
@@ -86,14 +120,17 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
     const element_wrap = wrapRef.current;
     element_wrap.innerHTML = "";
 
-    // eslint-disable-next-line new-cap
-    new window.daum.Postcode({
-      oncomplete: (data: any) => {
+    const daum = getDaum();
+    if (!daum?.Postcode) return;
+
+    new daum.Postcode({
+      oncomplete: (data: DaumPostcodeData) => {
         // 도로명/지번 정보 분리
         const roadAddr =
           (data.roadAddress && data.roadAddress.trim()) ||
           (data.autoRoadAddress && data.autoRoadAddress.trim()) ||
           "";
+
         const jibunAddr =
           (data.jibunAddress && data.jibunAddress.trim()) ||
           (data.autoJibunAddress && data.autoJibunAddress.trim()) ||
@@ -101,10 +138,7 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
           "";
 
         // 건물명 (DTO: buildingName)
-        let building = "";
-        if (data.buildingName) {
-          building = data.buildingName.trim();
-        }
+        const building = data.buildingName?.trim() ?? "";
 
         setZipCode(data.zonecode || "");
         setRoadAddress(roadAddr || jibunAddr || "");
@@ -149,11 +183,8 @@ export default function WebView({ onBack, onNext }: WebViewProps) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-20">
-      {/* 상단 그라디언트 바 */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
-
-      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
+    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-15">
+      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-center">
         {/* Left — Hero 카피 */}
         <section className="md:col-span-6 flex flex-col justify-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-[#FF4646]/10 text-[#FF4646] text-xs font-semibold px-3 py-1 w-fit ring-1 ring-[#FF4646]/20">

@@ -5,7 +5,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { multipartApi } from "../../../../../../lib/api/multipartApi";
 import { useAppSelector } from "../../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../../store/userSlice";
-import MyPageHeader from "../../../../../../components/MyPageHeader";
 
 // -------------------- 타입 --------------------
 type ImageItem = { id?: number; src: string; file?: File };
@@ -43,6 +42,34 @@ type FormValues = {
 
 const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"] as const;
 type CategoryKo = (typeof categories)[number];
+
+// ---------- 서버 응답 타입 ----------
+type ServerTag = string | { tagName?: string };
+
+type ServerImage = {
+  id: number;
+  url: string;
+};
+
+type LoadedProduct = {
+  name?: string;
+  price?: number;
+  detail?: string;
+  availableTime?: string;
+  availableTimes?: string;
+  availabletimes?: string;
+  region?: Region;
+  thumbnail?: string;
+  tags?: ServerTag[];
+  tag?: ServerTag[];
+  capacity?: number;
+  minGuest?: number;
+  maxGuest?: number;
+  parkingCapacity?: number;
+  cateringType?: string;
+  reservationPolicy?: string;
+  images?: ServerImage[];
+};
 
 // ---------- 태그 그룹 정의 ----------
 type TagOption = { ko: string; en: string };
@@ -184,6 +211,14 @@ const JSON_PART_KEY = "request";
 
 const regions: Region[] = ["SEOUL", "GYEONGGI", "INCHEON", "BUSAN"];
 
+// Region -> 프론트 표시용 한글 라벨 매핑 (생성 페이지와 동일)
+const REGION_LABELS: Record<Region, string> = {
+  SEOUL: "서울",
+  GYEONGGI: "경기",
+  INCHEON: "인천",
+  BUSAN: "부산",
+};
+
 // OWNER 전용 유저 판별
 function ensureOwner(userData: UserData | null): OwnerData | null {
   if (!userData) return null;
@@ -289,14 +324,14 @@ const WebView: React.FC = () => {
         ? EN_CATEGORY_TO_KO[categoryParam]
         : undefined;
 
-      let targetCategories: CategoryKo[];
+      let targetCategories: readonly CategoryKo[];
 
       if (categoryKoFromParam) {
         // 해당 카테고리 하나만 호출
-        targetCategories = [categoryKoFromParam];
+        targetCategories = [categoryKoFromParam] as const;
       } else {
         // 파라미터가 없거나 매핑 실패하면, 전체 시도 (fallback)
-        targetCategories = categories as CategoryKo[];
+        targetCategories = categories;
       }
 
       for (const cat of targetCategories) {
@@ -307,21 +342,23 @@ const WebView: React.FC = () => {
             continue;
           }
 
-          const data = await res.json();
+          const data = (await res.json()) as LoadedProduct;
 
           // 가격 문자열 포맷
           const priceStr = data.price
             ? String(data.price).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
             : "";
 
-          // ✅ tags(string[]) 또는 예전 방식 tag(object[]) 모두 대응 (모바일과 동일)
-          const rawTags: unknown = data.tags ?? data.tag;
+          // ✅ tags(string[]) 또는 예전 방식 tag(object[]) 모두 대응
+          const rawTags: ServerTag[] | undefined = data.tags ?? data.tag;
           const serverTags: string[] = Array.isArray(rawTags)
             ? rawTags
-                .map((t: any) =>
-                  typeof t === "string" ? t : t?.tagName ?? null
-                )
-                .filter((t: unknown): t is string => typeof t === "string")
+                .map((t) => {
+                  if (typeof t === "string") return t;
+                  if (t && typeof t.tagName === "string") return t.tagName;
+                  return null;
+                })
+                .filter((t): t is string => t !== null)
             : [];
 
           // 한글이면 EN 코드로 변환, 이미 EN 이면 그대로 사용
@@ -357,7 +394,7 @@ const WebView: React.FC = () => {
             cateringType: data.cateringType ?? "",
             reservationPolicy: data.reservationPolicy ?? "",
             images:
-              data.images?.map((img: any) => ({
+              data.images?.map((img) => ({
                 id: img.id,
                 src: img.url,
               })) ?? [],
@@ -408,17 +445,6 @@ const WebView: React.FC = () => {
   const formatPriceInput = (v: string) => {
     const onlyNum = v.replace(/[^\d]/g, "");
     return onlyNum.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  };
-
-  // 수평 스크롤용 wheel 핸들러
-  const handleHorizontalWheel: React.WheelEventHandler<HTMLDivElement> = (
-    e
-  ) => {
-    const { deltaY, deltaX } = e;
-    if (Math.abs(deltaY) > Math.abs(deltaX)) {
-      e.currentTarget.scrollLeft += deltaY;
-      e.preventDefault();
-    }
   };
 
   // 카테고리 토글 시: 태그 초기화
@@ -531,132 +557,114 @@ const WebView: React.FC = () => {
 
   const canSubmit = isValid && !!category && images.length > 0;
 
-  // 칩(알약) 한 개 렌더
+  // 칩(알약) 한 개 렌더 – 생성 페이지와 동일 스타일
   const Chip: React.FC<{
     labelKo: string;
     valueEn: string;
     selected: boolean;
     onClick: () => void;
-  }> = ({ labelKo, selected, onClick }) => {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className={[
-          "px-3 h-9 rounded-full border text-[13px] transition-all",
-          selected
-            ? "bg-[#1f2937] border-[#1f2937] text-white shadow-sm"
-            : "bg-white border-[#E2E6EA] text-[#1E2124] hover:border-[#cbd5e1]",
-        ].join(" ")}
-        aria-pressed={selected}
-      >
-        <span className="align-middle">{labelKo}</span>
-      </button>
-    );
-  };
+  }> = ({ labelKo, selected, onClick }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "px-3 h-9 rounded-full border text-[13px] transition-all",
+        selected
+          ? "bg-[#1f2937] border-[#1f2937] text-white shadow-sm"
+          : "bg-white border-[#E2E6EA] text-[#1E2124] hover:border-[#cbd5e1]",
+      ].join(" ")}
+      aria-pressed={selected}
+    >
+      {labelKo}
+    </button>
+  );
 
-  // 태그 그룹 카드 렌더
-  const TagGroupCard: React.FC<{ group: TagGroup }> = ({ group }) => {
-    return (
-      <div className="rounded-[12px] border border-[#EEF0F2] bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Icon
-              icon="mdi:tag-multiple-outline"
-              className="w-5 h-5 text-[#6B7280]"
-            />
-            <h3 className="text-[14px] font-semibold text-[#1E2124]">
-              {group.groupLabel}
-            </h3>
-          </div>
-          <span className="text-[12px] text-[#9AA1A6]">
-            선택{" "}
-            {group.options.filter((o) => selectedTags.includes(o.en)).length} /{" "}
-            {group.options.length}
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {group.options.map((opt) => {
-            const sel = selectedTags.includes(opt.en);
-            return (
-              <Chip
-                key={opt.en}
-                labelKo={opt.ko}
-                valueEn={opt.en}
-                selected={sel}
-                onClick={() => toggleTag(opt.en)}
-              />
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 상단 헤더 */}
-      <div className="w-full bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-[1040px] mx-auto">
-          <MyPageHeader
-            title="상품 수정"
-            onBack={() => navigate(-1)}
-            showMenu={false}
+  // 태그 그룹 카드 – 생성 페이지와 동일 스타일
+  const TagGroupCard: React.FC<{ group: TagGroup }> = ({ group }) => (
+    <div className="rounded-xl border border-[#EEF0F2] bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Icon
+            icon="mdi:tag-multiple-outline"
+            className="w-5 h-5 text-[#6B7280]"
           />
+          <h3 className="text-[15px] font-semibold text-[#1E2124]">
+            {group.groupLabel}
+          </h3>
         </div>
+        <span className="text-[12px] text-[#9AA1A6]">
+          선택 {group.options.filter((o) => selectedTags.includes(o.en)).length}{" "}
+          / {group.options.length}
+        </span>
       </div>
 
-      {/* 본문 */}
-      <div className="max-w-[1040px] mx-auto px-6 py-10">
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="bg-white rounded-2xl border border-[#E5E7EB] p-8 flex flex-col gap-8"
-        >
-          {/* 상단 타이틀 */}
-          <div>
-            <h1 className="text-[22px] font-semibold text-[#111827] tracking-[-0.3px]">
-              상품 정보를 수정하세요
-            </h1>
-            <p className="mt-1 text-[13px] text-[#6B7280] tracking-[-0.2px]">
-              이미지, 가격, 상세 정보 등 모든 내용을 이 화면에서 변경할 수
-              있어요.
-            </p>
-          </div>
+      <div className="flex flex-wrap gap-2">
+        {group.options.map((opt) => (
+          <Chip
+            key={opt.en}
+            labelKo={opt.ko}
+            valueEn={opt.en}
+            selected={selectedTags.includes(opt.en)}
+            onClick={() => toggleTag(opt.en)}
+          />
+        ))}
+      </div>
+    </div>
+  );
 
-          {/* 이미지 업로드 */}
-          <section>
-            <label className="text-[14px] font-medium text-[#1E2124]">
-              상품 이미지
-            </label>
+  // -------------------- 렌더링 (생성 페이지 디자인과 통일) --------------------
+  return (
+    <div className="w-full min-h-screen bg-[#F5F6FA] pb-10 mt-15">
+      {/* 본문 */}
+      <div className="max-w-[720px] mx-auto px-6 py-10 space-y-10">
+        {/* 타이틀 – 생성 페이지와 유사 */}
+        <div>
+          <h2 className="text-[24px] font-bold text-[#111827]">
+            상품 정보 수정
+          </h2>
+          <p className="mt-2 text-[14px] text-[#6B7280]">
+            이미지, 기본 정보, 태그를 수정해 웨딩 상품 정보를 업데이트하세요.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
+          {/* 이미지 패널 */}
+          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-[15px] font-semibold text-[#1E2124]">
+                상품 이미지
+              </div>
+              <div className="text-[12px] text-[#9CA3AF]">
+                최대 10장 등록 가능
+              </div>
+            </div>
+
             <div
-              className="mt-3 flex items-center gap-3 overflow-x-auto"
-              style={{
-                WebkitOverflowScrolling: "touch",
-                scrollbarWidth: "none",
-                msOverflowStyle: "none",
+              className="flex items-center gap-3 overflow-x-auto h-[110px] bg-[#FAFAFC] rounded-xl p-4"
+              onWheel={(e) => {
+                if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                  e.currentTarget.scrollLeft += e.deltaY;
+                  e.preventDefault();
+                }
               }}
-              onWheel={handleHorizontalWheel}
             >
               <button
                 type="button"
                 onClick={handlePickFiles}
-                className="shrink-0 w-[104px] h-[104px] rounded-[10px] border border-[#D1D5DB] bg-[#F9FAFB] flex flex-col items-center justify-center"
-                aria-label="이미지 업로드"
                 disabled={images.length >= 10 || isSubmitting}
+                className="w-[90px] h-[90px] shrink-0 border border-[#D1D5DB] rounded-xl bg-white hover:bg-[#F7F7FA] flex flex-col items-center justify-center text-[#9CA3AF]"
               >
-                <Icon
-                  icon="solar:camera-bold"
-                  className="w-6 h-6 text-[#9CA3AF]"
-                />
-                <span className="mt-1 text-[12px] text-[#9CA3AF]">
-                  {images.length}/10
-                </span>
+                <Icon icon="solar:camera-bold" className="w-6 h-6" />
+                <div className="mt-1 text-[12px]">
+                  {images.length}
+                  /10
+                </div>
               </button>
 
               {images.map((it, idx) => (
                 <div
                   key={`${it.src}-${idx}`}
-                  className="relative shrink-0 w-[104px] h-[104px] rounded-[10px] border border-[#E5E7EB] overflow-hidden"
+                  className="relative w-[90px] h-[90px] shrink-0 rounded-xl border border-[#E5E7EB] overflow-hidden bg-white"
                 >
                   <img
                     src={it.src}
@@ -666,14 +674,14 @@ const WebView: React.FC = () => {
                   />
                   <button
                     type="button"
-                    onClick={() => removeImage(idx)}
-                    className="absolute right-2 top-2 w-[22px] h-[22px] flex items-center justify-center bg-white border border-[#E5E7EB] rounded-full shadow-sm"
-                    aria-label="이미지 삭제"
                     disabled={isSubmitting}
+                    onClick={() => removeImage(idx)}
+                    className="absolute right-2 top-2 w-6 h-6 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center shadow"
+                    aria-label="이미지 삭제"
                   >
                     <Icon
                       icon="meteor-icons:xmark"
-                      className="w-3.5 h-3.5 text-[#4B5563]"
+                      className="w-3 h-3 text-[#374151]"
                     />
                   </button>
                 </div>
@@ -688,60 +696,69 @@ const WebView: React.FC = () => {
               className="hidden"
               onChange={(e) => handleFiles(e.target.files)}
             />
-          </section>
+          </div>
 
-          {/* 기본 정보 섹션 */}
-          <section className="flex flex-col gap-5">
+          {/* 업체 정보 패널 */}
+          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-6">
+            <div className="text-[15px] font-semibold text-[#1E2124]">
+              업체 정보
+            </div>
+
             {/* 업체명 */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[14px] text-[#111827]">업체명</label>
-              <div className="h-[44px] flex items-center px-4 rounded-[8px] border border-[#E5E7EB] bg-[#F9FAFB]">
-                <input
-                  type="text"
-                  readOnly
-                  aria-readonly="true"
-                  tabIndex={-1}
-                  className="w-full text-[14px] text-[#4B5563] outline-none bg-transparent pointer-events-none select-none"
-                  {...register("vendorName")}
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-[13px] text-[#1E2124] font-medium">
+                업체명
+              </label>
+              <input
+                type="text"
+                readOnly
+                aria-readonly="true"
+                {...register("vendorName")}
+                className="w-full h-[44px] px-3 rounded-lg bg-[#F6F7FB] border border-[#E8E8E8] text-[14px] text-[#4B5563] pointer-events-none select-none"
+              />
             </div>
 
             {/* 주소 */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[14px] text-[#111827]">주소</label>
-              <div className="h-[44px] flex items-center px-4 rounded-[8px] border border-[#E5E7EB] bg-[#F9FAFB]">
-                <input
-                  type="text"
-                  readOnly
-                  aria-readonly="true"
-                  tabIndex={-1}
-                  className="w-full text-[14px] text-[#4B5563] outline-none bg-transparent pointer-events-none select-none"
-                  {...register("address")}
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-[13px] text-[#1E2124] font-medium">
+                주소
+              </label>
+              <input
+                type="text"
+                readOnly
+                aria-readonly="true"
+                {...register("address")}
+                className="w-full h-[44px] px-3 rounded-lg bg-[#F6F7FB] border border-[#E8E8E8] text-[14px] text-[#4B5563] pointer-events-none select-none"
+              />
+            </div>
+          </div>
+
+          {/* 기본 정보 패널 */}
+          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-6">
+            <div className="text-[15px] font-semibold text-[#1E2124]">
+              기본 정보
             </div>
 
             {/* 카테고리 */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[14px] text-[#111827]">
+            <div className="space-y-2">
+              <label className="text-[14px] font-medium text-[#1E2124]">
                 상품 카테고리
               </label>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex flex-wrap gap-2">
                 {categories.map((c) => {
                   const selected = c === category;
                   return (
                     <button
                       key={c}
                       type="button"
+                      disabled={isSubmitting}
+                      onClick={() => handleCategoryToggle(selected ? null : c)}
                       className={[
-                        "h-[34px] px-3 rounded-full border text-[13px] transition-colors",
+                        "h-[34px] px-4 rounded-full border text-[13px]",
                         selected
-                          ? "bg-[#FFF2F2] border-[#FF5B68] text-[#FF2233]"
+                          ? "bg-[#FFE8EA] border-[#FF5B68] text-[#FF3344]"
                           : "bg-white border-[#D1D5DB] text-[#111827]",
                       ].join(" ")}
-                      onClick={() => handleCategoryToggle(selected ? null : c)}
-                      disabled={isSubmitting}
                     >
                       {c}
                     </button>
@@ -751,282 +768,275 @@ const WebView: React.FC = () => {
             </div>
 
             {/* 상품명 */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[14px] text-[#111827]">상품명</label>
-              <div className="h-[44px] flex items-center px-4 rounded-[8px] border border-[#D1D5DB]">
-                <input
-                  type="text"
-                  placeholder="상품명을 입력해 주세요"
-                  className="w-full text-[14px] placeholder:text-[#D1D5DB] outline-none bg-transparent"
-                  {...register("name", { required: true })}
-                  disabled={isSubmitting}
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-[14px] font-medium text-[#1E2124]">
+                상품명
+              </label>
+              <input
+                type="text"
+                placeholder="상품명을 입력해 주세요"
+                {...register("name", { required: true })}
+                disabled={isSubmitting}
+                className="w-full h-[44px] px-3 rounded-lg border border-[#E8E8E8] bg-white text-[14px] placeholder:text-[#C1C1C1] outline-none"
+              />
             </div>
 
             {/* 가격 */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[14px] text-[#111827]">가격</label>
-              <div className="h-[44px] flex items-center px-4 rounded-[8px] border border-[#D1D5DB]">
-                <Controller
-                  control={control}
-                  name="price"
-                  rules={{
-                    required: true,
-                    validate: (v) =>
-                      Number(v.replace(/[^\d]/g, "")) >= 0 &&
-                      /^\d[\d,]*$/.test(v.replace(/\s/g, "")),
-                  }}
-                  render={({ field: { value, onChange } }) => (
-                    <input
-                      inputMode="numeric"
-                      placeholder="가격을 입력해 주세요"
-                      className="w-full text-[14px] placeholder:text-[#D1D5DB] outline-none bg-transparent"
-                      value={value || ""}
-                      onChange={(e) =>
-                        onChange(formatPriceInput(e.target.value))
-                      }
-                      disabled={isSubmitting}
-                    />
-                  )}
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-[14px] font-medium text-[#1E2124]">
+                가격
+              </label>
+              <Controller
+                control={control}
+                name="price"
+                rules={{
+                  required: true,
+                  validate: (v) =>
+                    Number(v.replace(/[^\d]/g, "")) >= 0 &&
+                    /^\d[\d,]*$/.test(v.replace(/\s/g, "")),
+                }}
+                render={({ field: { value, onChange } }) => (
+                  <input
+                    inputMode="numeric"
+                    placeholder="가격을 입력해 주세요"
+                    className="w-full h-[44px] px-3 rounded-lg border border-[#E8E8E8] bg-white text-[14px] placeholder:text-[#C1C1C1] outline-none"
+                    value={value || ""}
+                    onChange={(e) => onChange(formatPriceInput(e.target.value))}
+                    disabled={isSubmitting}
+                  />
+                )}
+              />
             </div>
 
             {/* 상품 기본 정보 */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[14px] text-[#111827]">
+            <div className="space-y-1">
+              <label className="text-[14px] font-medium text-[#1E2124]">
                 상품 기본 정보
               </label>
-              <div className="h-[140px] px-4 py-3 rounded-[8px] border border-[#D1D5DB]">
-                <textarea
-                  placeholder={
-                    "상품 기본 정보에 대해 작성해주세요\nex) 상품 구성 : 촬영용 드레스 3벌 + 본식 드레스 1벌\n상담 소요 시간 : 60분  가봉 소요 시 : 90분"
-                  }
-                  className="w-full h-full resize-none text-[14px] placeholder:text-[#D1D5DB] outline-none bg-transparent"
-                  {...register("detail")}
-                  disabled={isSubmitting}
-                />
-              </div>
+              <textarea
+                placeholder={
+                  "상품 기본 정보에 대해 작성해주세요\nex) 상품 구성 : 촬영용 드레스 3벌 + 본식 드레스 1벌\n상담 소요 시간 : 60분  가봉 소요 시 : 90분"
+                }
+                {...register("detail")}
+                disabled={isSubmitting}
+                className="w-full min-h-[120px] px-3 py-2 rounded-lg border border-[#D9D9D9] bg-white text-[14px] resize-none outline-none placeholder:text-[#D9D9D9]"
+              />
             </div>
-          </section>
+          </div>
 
-          {/* 추가 정보 섹션 */}
-          <section className="flex flex-col gap-5">
-            <h2 className="text-[16px] font-semibold text-[#1E2124]">
+          {/* 추가 정보 패널 (availableTime + region) */}
+          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-6">
+            <div className="text-[15px] font-semibold text-[#1E2124]">
               추가 정보
-            </h2>
+            </div>
 
-            {/* availableTime */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[14px] text-[#111827]">
-                이용 가능 시간 (availableTime)
+            {/* 이용 가능 시간 */}
+            <div className="space-y-1">
+              <label className="text-[14px] font-medium text-[#1E2124]">
+                이용 가능 시간
               </label>
-              <div className="h-[100px] px-4 py-2 rounded-[8px] border border-[#D1D5DB]">
-                <textarea
-                  placeholder="예: 09:00-11:00, 13:00-15:00"
-                  className="w-full h-full resize-none text-[14px] placeholder:text-[#D1D5DB] outline-none bg-transparent"
-                  {...register("availableTime", { required: true })}
-                  disabled={isSubmitting}
-                />
+              <textarea
+                placeholder="예: 09:00-11:00, 13:00-15:00"
+                {...register("availableTime", { required: true })}
+                disabled={isSubmitting}
+                className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-[#D9D9D9] text-[14px] resize-none outline-none placeholder:text-[#D9D9D9]"
+              />
+            </div>
+
+            {/* 지역 – 한글 라벨 매핑 */}
+            <div className="space-y-1">
+              <label className="text-[14px] font-medium text-[#1E2124]">
+                지역
+              </label>
+              <select
+                {...register("region", { required: true })}
+                disabled={isSubmitting}
+                className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none"
+              >
+                <option value="">지역 선택</option>
+                {regions.map((r) => (
+                  <option key={r} value={r}>
+                    {REGION_LABELS[r]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* 태그 패널 */}
+          <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="text-[15px] font-semibold text-[#1E2124]">
+                태그 선택
+              </div>
+              <div className="text-[12px] text-[#9AA1A6]">
+                카테고리 선택 후 태그 선택 가능
               </div>
             </div>
 
-            {/* region */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[14px] text-[#111827]">
-                지역 (region)
-              </label>
-              <div className="h-[44px] flex items-center px-3 rounded-[8px] border border-[#D1D5DB]">
-                <select
-                  className="w-full bg-transparent outline-none text-[14px]"
-                  {...register("region", { required: true })}
-                  disabled={isSubmitting}
-                >
-                  <option value="">지역 선택</option>
-                  {regions.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+            {!category ? (
+              <div className="w-full rounded-xl bg-[#F8FAFC] border border-[#EEF0F2] p-4 text-[14px] text-[#9CA3AF]">
+                카테고리를 먼저 선택해 주세요.
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                {currentTagGroups.map((g) => (
+                  <TagGroupCard key={g.groupLabel} group={g} />
+                ))}
 
-            {/* 태그 그룹 */}
-            <div className="flex flex-col gap-3">
-              <label className="text-[14px] text-[#111827]">태그 선택</label>
+                {/* 선택된 태그 프리뷰 */}
+                <div className="rounded-xl border border-[#EEF0F2] bg-[#FAFAFC] p-3">
+                  <div className="mb-2 flex items-center gap-2 text-[13px] text-[#6B7280]">
+                    <Icon icon="mdi:check-circle-outline" className="w-4 h-4" />
+                    선택된 태그
+                    <span className="ml-1 text-[#9AA1A6]">
+                      ({selectedTags.length})
+                    </span>
+                  </div>
 
-              {!category ? (
-                <div className="rounded-[12px] border border-[#EEF0F2] bg-[#F9FAFB] text-[#9CA3AF] p-4 text-[13px]">
-                  카테고리를 먼저 선택해 주세요.
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {currentTagGroups.map((g) => (
-                    <TagGroupCard key={g.groupLabel} group={g} />
-                  ))}
-
-                  {/* 선택된 태그 프리뷰 */}
-                  <div className="rounded-[12px] border border-[#EEF0F2] bg-white p-3">
-                    <div className="mb-2 text-[13px] text-[#6B7280] flex items-center gap-1">
-                      <Icon
-                        icon="mdi:check-circle-outline"
-                        className="w-4 h-4"
-                      />
-                      선택된 태그
-                      <span className="ml-1 text-[#9AA1A6]">
-                        ({selectedTags.length})
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTags.length === 0 ? (
+                      <span className="text-[13px] text-[#A0A5AA]">
+                        아직 선택된 태그가 없습니다.
                       </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedTags.length === 0 ? (
-                        <span className="text-[13px] text-[#9AA1A6]">
-                          아직 선택된 태그가 없습니다.
-                        </span>
-                      ) : (
-                        selectedTags.map((en) => (
-                          <span
-                            key={en}
-                            className="inline-flex items-center gap-1 px-3 h-8 rounded-full border border-[#E8ECF0] bg-[#F6F8FA] text-[#1E2124] text-[12px]"
+                    ) : (
+                      selectedTags.map((en) => (
+                        <span
+                          key={en}
+                          className="inline-flex items-center gap-1 px-3 h-8 rounded-full border border-[#E8ECF0] bg-[#F6F8FA] text-[#1E2124] text-[12px]"
+                        >
+                          {EN_TO_KO[en] || en}
+                          <button
+                            type="button"
+                            aria-label="태그 삭제"
+                            onClick={() => toggleTag(en)}
+                            disabled={isSubmitting}
+                            className="ml-1 w-[18px] h-[18px] flex items-center justify-center bg-white border border-[#F2F2F2] rounded-full"
                           >
-                            {EN_TO_KO[en] || en}
-                            <button
-                              type="button"
-                              aria-label="태그 삭제"
-                              onClick={() => toggleTag(en)}
-                              className="ml-1 w-[18px] h-[18px] flex items-center justify-center bg-white border border-[#F2F2F2] rounded-full"
-                              disabled={isSubmitting}
-                            >
-                              <Icon
-                                icon="meteor-icons:xmark"
-                                className="w-3 h-3 text-[#3C4144]"
-                              />
-                            </button>
-                          </span>
-                        ))
-                      )}
-                    </div>
+                            <Icon
+                              icon="meteor-icons:xmark"
+                              className="w-3 h-3 text-[#3C4144]"
+                            />
+                          </button>
+                        </span>
+                      ))
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
-          </section>
+              </div>
+            )}
+          </div>
 
           {/* 웨딩홀 전용 섹션 */}
           {category === "웨딩홀" && (
-            <section className="flex flex-col gap-5">
-              <h2 className="text-[16px] font-semibold text-[#1E2124]">
+            <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#ECEDEF] space-y-6">
+              <div className="text-[15px] font-semibold text-[#1E2124]">
                 웨딩홀 정보
-              </h2>
+              </div>
 
               {/* 수용 인원 */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[14px] text-[#111827]">
-                  수용 인원 (capacity)
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  수용 인원
                 </label>
-                <div className="h-[44px] flex items-center px-4 rounded-[8px] border border-[#D1D5DB]">
-                  <input
-                    inputMode="numeric"
-                    placeholder="예: 200"
-                    className="w-full text-[14px] placeholder:text-[#D1D5DB] outline-none bg-transparent"
-                    {...register("hallCapacity")}
-                    disabled={isSubmitting}
-                  />
-                </div>
+                <input
+                  inputMode="numeric"
+                  placeholder="예: 200"
+                  {...register("hallCapacity")}
+                  disabled={isSubmitting}
+                  className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none placeholder:text-[#D9D9D9]"
+                />
               </div>
 
               {/* 최소 수용 인원 */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[14px] text-[#111827]">
-                  최소 수용 인원 (minGuest)
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  최소 수용 인원
                 </label>
-                <div className="h-[44px] flex items-center px-4 rounded-[8px] border border-[#D1D5DB]">
-                  <input
-                    inputMode="numeric"
-                    placeholder="예: 50"
-                    className="w-full text-[14px] placeholder:text-[#D1D5DB] outline-none bg-transparent"
-                    {...register("minGuest")}
-                    disabled={isSubmitting}
-                  />
-                </div>
+                <input
+                  inputMode="numeric"
+                  placeholder="예: 50"
+                  {...register("minGuest")}
+                  disabled={isSubmitting}
+                  className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none placeholder:text-[#D9D9D9]"
+                />
               </div>
 
               {/* 최대 수용 인원 */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[14px] text-[#111827]">
-                  최대 수용 인원 (maxGuest)
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  최대 수용 인원
                 </label>
-                <div className="h-[44px] flex items-center px-4 rounded-[8px] border border-[#D1D5DB]">
-                  <input
-                    inputMode="numeric"
-                    placeholder="예: 300"
-                    className="w-full text-[14px] placeholder:text-[#D1D5DB] outline-none bg-transparent"
-                    {...register("maxGuest")}
-                    disabled={isSubmitting}
-                  />
-                </div>
+                <input
+                  inputMode="numeric"
+                  placeholder="예: 300"
+                  {...register("maxGuest")}
+                  disabled={isSubmitting}
+                  className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none placeholder:text-[#D9D9D9]"
+                />
               </div>
 
               {/* 주차 수용량 */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[14px] text-[#111827]">
-                  주차 수용량 (parkingCapacity)
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  주차 수용량
                 </label>
-                <div className="h-[44px] flex items-center px-4 rounded-[8px] border border-[#D1D5DB]">
-                  <input
-                    inputMode="numeric"
-                    placeholder="예: 100"
-                    className="w-full text-[14px] placeholder:text-[#D1D5DB] outline-none bg-transparent"
-                    {...register("parkingCapacity")}
-                    disabled={isSubmitting}
-                  />
-                </div>
+                <input
+                  inputMode="numeric"
+                  placeholder="예: 100"
+                  {...register("parkingCapacity")}
+                  disabled={isSubmitting}
+                  className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none placeholder:text-[#D9D9D9]"
+                />
               </div>
 
               {/* 뷔페 타입 */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[14px] text-[#111827]">
-                  뷔페 타입 (cateringType)
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  뷔페 타입
                 </label>
-                <div className="h-[44px] flex items-center px-4 rounded-[8px] border border-[#D1D5DB]">
-                  <input
-                    type="text"
-                    placeholder="예: 뷔페 / 테이블 / 뷔페+테이블"
-                    className="w-full text-[14px] placeholder:text-[#D1D5DB] outline-none bg-transparent"
-                    {...register("cateringType")}
-                    disabled={isSubmitting}
-                  />
-                </div>
+                <input
+                  type="text"
+                  placeholder="예: 뷔페 / 테이블 / 뷔페+테이블"
+                  {...register("cateringType")}
+                  disabled={isSubmitting}
+                  className="w-full h-[44px] px-3 rounded-lg border border-[#D9D9D9] text-[14px] bg-white outline-none placeholder:text-[#D9D9D9]"
+                />
               </div>
 
               {/* 예약 규칙 */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[14px] text-[#111827]">
-                  예약 규칙 (reservationPolicy)
+              <div className="space-y-1">
+                <label className="text-[14px] font-medium text-[#1E2124]">
+                  예약 규칙
                 </label>
-                <div className="h-[120px] px-4 py-2 rounded-[8px] border border-[#D1D5DB]">
-                  <textarea
-                    placeholder="예: 예약 및 취소/환불 규정을 입력해 주세요."
-                    className="w-full h-full resize-none text-[14px] placeholder:text-[#D1D5DB] outline-none bg-transparent"
-                    {...register("reservationPolicy")}
-                    disabled={isSubmitting}
-                  />
-                </div>
+                <textarea
+                  placeholder="예: 예약 및 취소/환불 규정을 입력해 주세요."
+                  {...register("reservationPolicy")}
+                  disabled={isSubmitting}
+                  className="w-full min-h-[120px] px-3 py-2 rounded-lg border border-[#D9D9D9] text-[14px] bg-white resize-none outline-none placeholder:text-[#D9D9D9]"
+                />
               </div>
-            </section>
+            </div>
           )}
 
-          {/* 하단 버튼 */}
-          <div className="flex justify-end pt-2">
+          {/* 버튼 영역 – 생성 페이지와 동일 레이아웃, 텍스트만 수정 */}
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="h-[44px] px-6 rounded-xl border border-[#E5E7EB] bg-white text-[14px] text-[#4B5563]"
+            >
+              취소
+            </button>
+
             <button
               type="submit"
               disabled={!canSubmit || isSubmitting}
               className={[
-                "h-[44px] px-8 rounded-[12px] text-[14px] font-semibold",
+                "h-[44px] px-6 rounded-xl text-[14px] font-semibold",
                 !isSubmitting && canSubmit
                   ? "bg-[#FF2233] text-white active:scale-95"
-                  : "bg-[#F3F4F6] text-[#9CA3AF] cursor-not-allowed",
+                  : "bg-[#EFEFF1] text-[#A8AEB2]",
               ].join(" ")}
             >
               {isSubmitting ? "수정 중..." : "수정 완료"}

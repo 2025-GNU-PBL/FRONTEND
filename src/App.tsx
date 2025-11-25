@@ -56,9 +56,7 @@ import NotificationPage from "./pages/NotificationPage/NotificationPage";
 import ProductDetailPage from "./pages/ProductDetailPage/ProductDetailPage";
 import OwnerProfilePage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfilePage";
 import ReservationManagementPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationManagementPage";
-import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponRegisterPage";
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
-import CouponEditPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponEditPage";
 import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
 import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
@@ -66,7 +64,6 @@ import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManage
 import CancelListPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelListPage";
 import CancelDetailPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelDetailPage";
 import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentDetailPage";
-import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponListPage";
 import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import Success from "./pages/CheckoutPage/Success/Success";
 import Fail from "./pages/CheckoutPage/Fail/Fail";
@@ -75,7 +72,6 @@ import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
 import ReviewCreate from "./pages/ReviewCreatePage/ReviewCreate";
 import ClientProfileEdit from "./pages/MyPage/ClientMyPage/ProfileEdit/ClientProfileEdit";
 import { useRefreshAuth } from "./hooks/useRefreshAuth";
-import TestPage from "./pages/TestPage/TestPage";
 import PersonalScheduleCreatePage from "./pages/CalendarPage/PersonalScheduleCreatePage";
 import PersonalScheduleEditPage from "./pages/CalendarPage/PersonalScheduleEditPage";
 import SharedScheduleEditPage from "./pages/CalendarPage/SharedScheduleEdigPage";
@@ -84,6 +80,9 @@ import CustomNotificationToast from "./components/CustomNotificationToast/Custom
 import SupportPage from "./pages/SupportPage/SupportPage";
 import RefundRequestPage from "./pages/MyPage/ClientMyPage/Payments/RefundPage/RefundRequestPage";
 import CanceledDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CanceledDetailPage";
+import ProductDetail from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductDetail/ProductDetail";
+import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponRegister/CouponRegisterPage";
+import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponList/CouponListPage";
 
 function Layout() {
   const location = useLocation();
@@ -99,6 +98,16 @@ function Layout() {
   const isStudioDetail = !!useMatch("/studio/:id");
   const isDressDetail = !!useMatch("/dress/:id");
   const isMakeupDetail = !!useMatch("/makeup/:id");
+
+  // 🔹 사장 상품 수정 디테일 페이지 매칭 (동적 파라미터)
+  const isOwnerProductEdit = !!useMatch(
+    "/my-page/owner/product/edit/:category/:id"
+  );
+
+  // 🔹 사장 상품 수정 디테일 페이지 매칭 (동적 파라미터)
+  const isOwnerProductDetail = !!useMatch(
+    "/my-page/owner/products/management/:id"
+  );
 
   // 네비바 숨길 경로 (정적)
   const hideNavOnPaths = [
@@ -116,9 +125,7 @@ function Layout() {
     "/log-in/client",
     "/log-in/owner",
     "/my-page/owner/product/create",
-    "/my-page/owner/product/edit",
-    "/my-page/owner/product/list",
-    "/test",
+    "/my-page/owner/products/management",
     "/inquiry", // InquiryPage에 Footer 숨김
     "/product-inquiry", // ProductInquiryPage에 Footer 숨김
     "/notification",
@@ -127,9 +134,18 @@ function Layout() {
     "/checkout/payment",
     "/success",
     "/fail",
-    "/my-page/owner/coupons/register", // 쿠폰 등록 페이지에 Footer 숨김
+    "/my-page/owner/coupons/register",
+
     "/my-page/client/profile/edit",
     "/my-page/client/payments/review",
+    "/sign-up/owner/step1",
+    "/sign-up/owner/step2",
+    "/sign-up/owner/step3",
+    "/sign-up/owner/step4",
+    "/sign-up/client/step1",
+    "/sign-up/client/step2",
+    "/sign-up/client/step3",
+    "/sign-up/client/step4",
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)
@@ -150,14 +166,16 @@ function Layout() {
   // 네비바 노출 여부
   const showNavbar = !hideNavOnPaths.includes(location.pathname);
 
-  // 푸터 숨김 조건: 정적 + 채팅 디테일 + 디테일 페이지들
+  // 푸터 숨김 조건: 정적 + 채팅 디테일 + 디테일 페이지들 + 동적 상품 수정 페이지
   const hideFooter =
     hideFooterOnPaths.includes(location.pathname) ||
     isChatDetail ||
     isWeddingDetail ||
     isStudioDetail ||
     isDressDetail ||
-    isMakeupDetail;
+    isMakeupDetail ||
+    isOwnerProductEdit ||
+    isOwnerProductDetail; // 🔹 추가
 
   const showFooter = !hideFooter;
 
@@ -318,7 +336,7 @@ const App = () => {
         <Route path="/fail" element={<Fail />} />
         <Route path="/support" element={<SupportPage />} />
 
-        <Route path="/test" element={<TestPage />} />
+        <Route path="/test" element={<OwnerSignupPage />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>
@@ -395,16 +413,16 @@ const App = () => {
             element={<CouponRegisterPage />}
           />
           <Route
-            path="/my-page/owner/coupons/edit"
-            element={<CouponEditPage />}
-          />
-          <Route
             path="/my-page/owner/reservations"
             element={<ReservationManagementPage />}
           />
           <Route
             path="/my-page/owner/reservations/:reservationId"
             element={<ReservationDetailPage />}
+          />
+          <Route
+            path="/my-page/owner/products/management/:id"
+            element={<ProductDetail />}
           />
           <Route
             path="/my-page/owner/products/management"
