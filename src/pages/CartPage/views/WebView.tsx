@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import './WebView.css'; // Changed CSS import path
+import './CommonView.css';
 import { Icon } from '@iconify/react';
 import api from '../../../lib/api/axios'; // axios 인스턴스 임포트
 import { useNavigate } from 'react-router-dom'; // useNavigate 임포트
+import { makeItems } from '../../../data/dumyData';
 
 // API 응답 데이터 타입 정의
 interface CartItem {
   cartItemId: number;
   productId: number;
   productName: string;
+  bzName: string;
   price: number;
   quantity: number;
   selected: boolean;
@@ -153,23 +156,23 @@ const WebView = () => {
   }
 
   if (error) {
-    return <div className="web-cart-container error-message">{error}</div>;
+    return <div className="web-cart-container web-error-message">{error}</div>;
   }
 
   if (!cartData || cartData.items.length === 0) {
     return (
       <div className="web-cart-container">
-        <div className="cart-header">
-          <Icon icon="solar:alt-arrow-left-linear" className="header-back-arrow" onClick={() => navigate(-1)} />
-          <h1 className="header-title">장바구니</h1>
-          <div className="header-menu-icon"></div>
+        <div className="web-cart-header">
+          <Icon icon="solar:alt-arrow-left-linear" className="web-header-back-arrow" onClick={() => navigate(-1)} />
+          <h1 className="web-header-title">장바구니</h1>
+          <div className="web-header-menu-icon"></div>
         </div>
-        <div className="empty-cart-view">
-          <div className="empty-cart-icon-wrapper">
-            <Icon icon="mdi:cart-outline" className="empty-cart-icon" />
+        <div className="web-empty-cart-view">
+          <div className="web-empty-cart-icon-wrapper">
+            <Icon icon="mdi:cart-outline" className="web-empty-cart-icon" />
           </div>
-          <p className="empty-cart-text">장바구니에 담긴 상품이 없어요.</p>
-          <button className="go-to-products-button" onClick={() => navigate('/')}>상품 보러가기</button>
+          <p className="web-empty-cart-text">장바구니에 담긴 상품이 없어요.</p>
+          <button className="web-go-to-products-button" onClick={() => navigate('/')}>상품 보러가기</button>
         </div>
       </div>
     );
@@ -178,120 +181,134 @@ const WebView = () => {
   return (
     <div className="web-cart-container">
       {/* Header */}
-      <div className="cart-header">
-        <Icon icon="solar:alt-arrow-left-linear" className="header-back-arrow" onClick={() => navigate(-1)} />
-        <h1 className="header-title">장바구니</h1>
-        <div className="header-menu-icon"></div>
+      <div className="web-cart-header">
+        <Icon icon="solar:alt-arrow-left-linear" className="web-header-back-arrow" onClick={() => navigate(-1)} />
+        <h1 className="web-header-title">장바구니</h1>
+        <div className="web-header-menu-icon"></div>
       </div>
 
-      <div className="separator-gray-8px"></div> {/* Separator below header */}
+      {/* Main Content Wrapper */}
+      <div className="web-content-wrapper">
+        <div className="web-separator-gray-8px"></div> {/* Separator below header */}
 
-      {/* Select All / Delete Selected */}
-      <div className="select-delete-section">
-        <div className="select-all-group">
-          <button
-            className={`product-item-checkbox ${isAllChecked ? 'product-item-checkbox-checked' : 'product-item-checkbox-unchecked'}`}
-            onClick={toggleAllCheckboxes}
-            aria-checked={isAllChecked}
-            role="checkbox"
-          >
-            {isAllChecked && <Icon icon="ion:checkmark" />} {/* Checkmark icon for checked state */}
-          </button>
-          <span className="select-all-text">모두선택</span>
-        </div>
-        <span className="delete-selected-text" onClick={handleDeleteSelected}>선택삭제</span>
-      </div>
-
-      {/* Product Items */}
-      {cartData.items.map(item => (
-        <div className="product-item-wrapper" key={item.cartItemId}>
-          <button
-            className={`product-item-checkbox ${item.selected ? 'product-item-checkbox-checked' : 'product-item-checkbox-unchecked'}`}
-            onClick={() => toggleItemCheckbox(item.cartItemId, item.quantity, item.selected)}
-            aria-checked={item.selected}
-            role="checkbox"
-          >
-            {item.selected && <Icon icon="ion:checkmark" />} {/* Checkmark icon for checked state */}
-          </button>
-          <img src={item.thumbnailUrl || "/images/placeholder.png"} alt={item.productName} className="product-item-image" />
-          <div className="product-details">
-            <p className="product-item-shop-name">제이바이로이스타</p> {/* TODO: 실제 상점 이름으로 대체 */}
-            <p className="product-item-description">{item.productName}<br />(수량: {item.quantity})</p>
-            <div className="product-price-section">
-              <p className="product-item-original-price">{(item.price * item.quantity).toLocaleString()}원</p>
-              <p className="product-item-discounted-price">{(item.price * item.quantity).toLocaleString()}원</p> {/* TODO: 할인 금액 계산 */}
+        <div className="flex flex-col lg:flex-row lg:space-x-8 p-4">
+          <div className="flex-1">
+            {/* Select All / Delete Selected */}
+            <div className="web-select-delete-section">
+              <div className="web-select-all-group">
+                <button
+                  className={`web-product-item-checkbox ${isAllChecked ? 'web-product-item-checkbox-checked' : 'web-product-item-checkbox-unchecked'}`}
+                  onClick={toggleAllCheckboxes}
+                  aria-checked={isAllChecked}
+                  role="checkbox"
+                >
+                  {isAllChecked && <Icon icon="ion:checkmark" />} {/* Checkmark icon for checked state */}
+                </button>
+                <span className="web-select-all-text">모두선택</span>
+              </div>
+              <span className="web-delete-selected-text" onClick={handleDeleteSelected}>선택삭제</span>
             </div>
-            <div className="product-item-quantity-control">
-              <Icon icon="mynaui:minus" className="quantity-minus-icon" onClick={() => decreaseQuantity(item.cartItemId, item.quantity, item.selected)} />
-              <span className="quantity-display">{item.quantity}</span>
-              <Icon icon="mynaui:plus" className="quantity-plus-icon" onClick={() => increaseQuantity(item.cartItemId, item.quantity, item.selected)} />
+
+            {/* Product Items */}
+            <div className="web-product-list-container">
+              {cartData.items.map(item => (
+                <div className="web-product-item-wrapper" key={item.cartItemId}>
+                  <button
+                    className={`web-product-item-checkbox ${item.selected ? 'web-product-item-checkbox-checked' : 'web-product-item-checkbox-unchecked'}`}
+                    onClick={() => toggleItemCheckbox(item.cartItemId, item.quantity, item.selected)}
+                    aria-checked={item.selected}
+                    role="checkbox"
+                  >
+                    {item.selected && <Icon icon="ion:checkmark" />} {/* Checkmark icon for checked state */}
+                  </button>
+                  <img src={item.thumbnailUrl || "/images/placeholder.png"} alt={item.productName} className="web-product-item-image" />
+                  <div className="web-product-details">
+                    <p className="web-product-item-shop-name">{item.bzName}</p> {/* TODO: 실제 상점 이름으로 대체 */}
+                    <p className="web-product-item-description">{item.productName}</p>
+                    <div className="web-product-item-info-row">
+                      <div className="web-product-price-section">
+                        {/* <p className="web-product-item-original-price">{(item.price * item.quantity).toLocaleString()}원</p> */}
+                        <p className="web-product-item-discounted-price">{(item.price * item.quantity).toLocaleString()}원</p>
+                      </div>
+                      <div className="web-product-item-quantity-control">
+                        <Icon icon="mynaui:minus" className="web-quantity-minus-icon" onClick={() => decreaseQuantity(item.cartItemId, item.quantity, item.selected)} />
+                        <span className="web-quantity-display">{item.quantity}</span>
+                        <Icon icon="mynaui:plus" className="web-quantity-plus-icon" onClick={() => increaseQuantity(item.cartItemId, item.quantity, item.selected)} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="web-summary-panel">
+            {/* Summary Section */}
+            <div className="web-summary-section">
+              <h2 className="web-summary-title">결제 상세</h2>
+              <div className="web-summary-item">
+                <p className="web-summary-item-label">총 상품금액</p>
+                <p className="web-summary-item-value">{cartData.totalProductAmount.toLocaleString()}원</p>
+              </div>
+              <div className="web-summary-item">
+                <p className="web-summary-item-label">총 할인금액</p>
+                <p className="web-summary-item-value">{cartData.totalDiscountAmount.toLocaleString()}원</p>
+              </div>
+              <div className="web-summary-item web-summary-item-border-top">
+                <p className="web-summary-item-payment-amount">총 결제금액</p>
+                <p className="web-summary-payment-value">{cartData.paymentAmount.toLocaleString()}원</p>
+              </div>
+            </div>
+
+            {/* Purchase Bar */}
+            <div className="web-purchase-bar-container">
+              <button className="web-purchase-button" onClick={togglePopup}>
+                <span className="web-purchase-button-text">{cartData.paymentAmount.toLocaleString()}원 구매하기</span>
+              </button>
             </div>
           </div>
         </div>
-      ))}
-
-      {/* Summary Section */}
-      <div className="summary-section">
-        <div className="summary-item">
-          <p className="summary-item-label">총 상품금액</p>
-          <p className="summary-item-value">{cartData.totalProductAmount.toLocaleString()}원</p>
-        </div>
-        <div className="summary-item">
-          <p className="summary-item-label">총 할인금액</p>
-          <p className="summary-item-value">{cartData.totalDiscountAmount.toLocaleString()}원</p>
-        </div>
-        <div className="summary-item">
-          <p className="summary-item-payment-amount">결제금액</p>
-          <p className="summary-payment-value">{cartData.paymentAmount.toLocaleString()}원</p>
-        </div>
-      </div>
-
-      {/* Purchase Bar */}
-      <div className="purchase-bar-container">
-        <button className="purchase-button" onClick={togglePopup}>
-          <span className="purchase-button-text">{cartData.paymentAmount.toLocaleString()}원 구매하기</span>
-        </button>
-      </div>
+      </div> {/* End of web-content-wrapper */}
 
       {/* Dimmed Overlay and Pop-up */}
       {isPopupOpen && (
-        <div className="dimmed-overlay" onClick={togglePopup}>
-          <div className={`popup-container ${isPopupOpen ? '' : 'hidden'}`} onClick={(e) => e.stopPropagation()}>
-            <div className="popup-header">
-              <div className="popup-product-info">
-                <img src={cartData.items[0]?.thumbnailUrl || "/images/placeholder.png"} alt="Product" className="popup-product-image" />
-                <div className="popup-product-text-group">
-                  <p className="popup-product-shop-name">제이바이로이스타</p>
-                  <p className="popup-product-description">{cartData.items[0]?.productName}<br />(부원장)</p>
+        <div className="web-dimmed-overlay" onClick={togglePopup}>
+          <div className={`web-popup-container ${isPopupOpen ? '' : 'hidden'}`} onClick={(e) => e.stopPropagation()}>
+            <div className="web-popup-header">
+              <div className="web-popup-product-info">
+                <img src={cartData.items[0]?.thumbnailUrl || "/images/placeholder.png"} alt="Product" className="web-popup-product-image" />
+                <div className="web-popup-product-text-group">
+                  <p className="web-popup-product-shop-name">{cartData.items[0]?.bzName}</p>
+                  <p className="web-popup-product-description">{cartData.items[0]?.productName}<br /></p>
                 </div>
               </div>
-              <Icon icon="meteor-icons:xmark" className="popup-close-icon" onClick={togglePopup} />
+              <Icon icon="meteor-icons:xmark" className="web-popup-close-icon" onClick={togglePopup} />
             </div>
 
-            <div className="popup-summary-section">
-              <div className="popup-total-price-row">
-                <p className="popup-total-price-label">상품 금액</p>
-                <p className="popup-total-price-value">{cartData.totalProductAmount.toLocaleString()}원</p>
+            <div className="web-popup-summary-section">
+              <div className="web-popup-total-price-row">
+                <p className="web-popup-total-price-label">상품 금액</p>
+                <p className="web-popup-total-price-value">{cartData.totalProductAmount.toLocaleString()}원</p>
               </div>
-              <div className="popup-coupon-discount-row">
-                <p className="popup-coupon-discount-label">쿠폰 할인</p>
-                <p className="popup-coupon-discount-value">{cartData.totalDiscountAmount.toLocaleString()}원</p>
+              <div className="web-popup-coupon-discount-row">
+                <p className="web-popup-coupon-discount-label">쿠폰 할인</p>
+                <p className="web-popup-coupon-discount-value">{cartData.totalDiscountAmount.toLocaleString()}원</p>
               </div>
 
-              <div className="popup-summary-line"></div>
+              <div className="web-popup-summary-line"></div>
 
-              <div className="popup-expected-payment-row">
-                <p className="popup-expected-payment-label">예상 결제금액</p>
-                <p className="popup-expected-payment-value">{cartData.paymentAmount.toLocaleString()}원</p>
+              <div className="web-popup-expected-payment-row">
+                <p className="web-popup-expected-payment-label">예상 결제금액</p>
+                <p className="web-popup-expected-payment-value">{cartData.paymentAmount.toLocaleString()}원</p>
               </div>
             </div>
 
-            <div className="popup-buttons-container">
-              <button className="popup-cart-button">
-                <span className="popup-cart-button-text">장바구니</span>
+            <div className="web-popup-buttons-container">
+              <button className="web-popup-cart-button">
+                <span className="web-popup-cart-button-text">장바구니</span>
               </button>
-              <button className="popup-purchase-button" onClick={handlePurchase}>
-                <span className="popup-purchase-button-text">구매하기</span>
+              <button className="web-popup-purchase-button" onClick={handlePurchase}>
+                <span className="web-popup-purchase-button-text">문의하기</span>
               </button>
             </div>
           </div>
