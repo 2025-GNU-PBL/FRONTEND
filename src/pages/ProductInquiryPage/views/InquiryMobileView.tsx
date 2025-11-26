@@ -13,7 +13,7 @@ interface InquiryDraft {
   thumbnailUrl: string;
   quantity: number;
   desiredDate: string;
-  productType?: "wedding" | "studio" | "dress" | "makeup" | string;
+  category: "WEDDING_HALL" | "STUDIO" | "DRESS" | "MAKEUP" | string;
 }
 
 const MobileView: React.FC = () => {
@@ -34,8 +34,8 @@ const MobileView: React.FC = () => {
 
   // 상품 상세보기를 위한 상태
   const [productId, setProductId] = useState<number | null>(null);
-  const [productType, setProductType] = useState<
-    "wedding" | "studio" | "dress" | "makeup" | string | null
+  const [category, setCategory] = useState<
+    "WEDDING_HALL" | "STUDIO" | "DRESS" | "MAKEUP" | string | null
   >(null);
 
   // 문의 관련 상태 초기화 함수
@@ -47,13 +47,12 @@ const MobileView: React.FC = () => {
     setShopImageUrl("");
     setProductImageUrl("");
     setProductId(null);
-    setProductType(null);
+    setCategory(null);
   };
 
-  // draftIds 유무 체크 및 기본 productType 세팅
   useEffect(() => {
     const state = location.state as
-      | { draftIds?: number[]; cartItemIds?: number[]; productType?: string }
+      | { draftIds?: number[]; cartItemIds?: number[]; setCategory?: string }
       | undefined;
 
     if (!state || !state.draftIds || state.draftIds.length === 0) {
@@ -66,16 +65,15 @@ const MobileView: React.FC = () => {
 
     setHasDraftIds(true);
 
-    // location.state 에 productType이 넘어온 경우 우선 사용
-    if (state.productType) {
-      setProductType(state.productType);
+    if (state.setCategory) {
+      setCategory(state.setCategory);
     }
   }, [location.state, nav]);
 
   // draft 데이터 조회
   useEffect(() => {
     const state = location.state as
-      | { draftIds?: number[]; cartItemIds?: number[]; productType?: string }
+      | { draftIds?: number[]; cartItemIds?: number[]; category?: string }
       | undefined;
 
     const fetchDraftData = async (draftId: number) => {
@@ -91,9 +89,8 @@ const MobileView: React.FC = () => {
         setShopImageUrl(draft.ownerProfileImage || "");
         setProductId(draft.productId);
 
-        // 백엔드에서 productType을 내려주는 경우 사용 (location.state 가 우선이고, 없으면 draft 기반)
-        if (!productType && draft.productType) {
-          setProductType(draft.productType);
+        if (!category && draft.category) {
+          setCategory(draft.category);
         }
       } catch (error) {
         console.error(`Failed to fetch inquiry draft ${draftId}:`, error);
@@ -103,7 +100,7 @@ const MobileView: React.FC = () => {
     if (state?.draftIds && state.draftIds.length > 0) {
       fetchDraftData(state.draftIds[0]);
     }
-  }, [location.state, productType]);
+  }, [location.state, category]);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
@@ -149,7 +146,7 @@ const MobileView: React.FC = () => {
       if (remainingDraftIds.length > 0) {
         // 남아 있는 draftIds가 있으면 다음 문의 페이지로 이동
         nav("/product-inquiry", {
-          state: { draftIds: remainingDraftIds, cartItemIds, productType },
+          state: { draftIds: remainingDraftIds, cartItemIds, category },
         });
       } else {
         // 모든 draftIds 처리 후 장바구니 아이템 삭제 및 장바구니로 이동
@@ -180,23 +177,22 @@ const MobileView: React.FC = () => {
 
     let basePath = "";
 
-    switch (productType) {
-      case "wedding":
+    switch (category) {
+      case "WEDDING_HALL":
         basePath = "/wedding";
         break;
-      case "studio":
+      case "STUDIO":
         basePath = "/studio";
         break;
-      case "dress":
+      case "DRESS":
         basePath = "/dress";
         break;
-      case "makeup":
+      case "MAKEUP":
         basePath = "/makeup";
         break;
       default:
-        // 혹시 타입 정보가 없을 때 기본 경로 (필요에 따라 수정)
         basePath = "/wedding";
-        console.warn("productType이 없어 기본 경로(/wedding)를 사용합니다.");
+        console.warn("category 없어 기본 경로(/wedding)를 사용합니다.");
         break;
     }
 
