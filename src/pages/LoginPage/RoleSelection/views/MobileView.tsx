@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-// ✅ Mobile-First 반응형 뷰
+// Mobile-First 반응형 뷰
 const MobileView = () => {
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[#F6F7FB]">
@@ -12,7 +12,7 @@ const MobileView = () => {
       />
 
       {/* 컨텐츠 레이어
-        - ❗ py-10 (상하 40px) -> pt-10 (상 40px), pb-[74px] (하 74px)로 수정
+        - py-10 (상하 40px) -> pt-10 (상 40px), pb-[74px] (하 74px)로 수정
       */}
       <div className="relative z-10 flex flex-col justify-between min-h-screen w-full px-5 pt-10 pb-[74px]">
         {/* === 상단 컨텐츠 (로고) === */}

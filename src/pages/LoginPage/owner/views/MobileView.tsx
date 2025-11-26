@@ -65,7 +65,7 @@ const MobileView = () => {
             </p>
           </div>
 
-          {/* 하단 소셜 로그인 버튼 (로그인 예시의 위치 기준으로 맞춤) */}
+          {/* 하단 소셜 로그인 버튼 */}
           <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
             <div className="w-full h-[56px]">
               <KakaoLoginButton role="OWNER" />

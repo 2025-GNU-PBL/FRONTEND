@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { useAppSelector } from "../../store/hooks";
 import { useEffect, useState } from "react";
 import { getUnreadNotificationCount } from "../../lib/api/notification";
-import api from '../../lib/api/axios'; // axios 인스턴스 임포트
+import api from "../../lib/api/axios"; // axios 인스턴스 임포트
 
 const menuItems = [
   { name: "웨딩홀", path: "/wedding" },
@@ -14,9 +14,9 @@ const menuItems = [
 ];
 
 const Navbar = () => {
-  // ✅ Redux에서 로그인 여부 확인
+  // Redux에서 로그인 여부 확인
   const isAuth = useAppSelector((s) => s.user.isAuth);
-  const userRole = useAppSelector((state) => state.user.role); // ✅ Redux에서 role 가져오기
+  const userRole = useAppSelector((state) => state.user.role); // Redux에서 role 가져오기
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [cartCount, setCartCount] = useState<number>(0); // 장바구니 상품 개수 상태 추가
 
@@ -34,7 +34,7 @@ const Navbar = () => {
 
       const fetchCartCount = async () => {
         try {
-          const response = await api.get<number>('/api/v1/cart/count');
+          const response = await api.get<number>("/api/v1/cart/count");
           setCartCount(response.data);
         } catch (error) {
           console.error("Failed to fetch cart count:", error);

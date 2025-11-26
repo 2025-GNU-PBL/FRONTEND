@@ -1,5 +1,3 @@
-// src/pages/LoginPage/callbacks/NaverCallback.tsx
-
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../../../store/hooks";
@@ -9,7 +7,11 @@ import {
   authOwner,
 } from "../../../store/thunkFunctions";
 import { readRoleFromState } from "../../../lib/auth/state";
-import type { UserRole } from "../../../store/userSlice";
+import type {
+  UserRole,
+  CustomerData,
+  OwnerData,
+} from "../../../store/userSlice";
 
 export default function NaverCallback() {
   const once = useRef(false);
@@ -41,42 +43,40 @@ export default function NaverCallback() {
       }
 
       try {
-        // 1) 네이버 로그인 요청 → accessToken 저장 + 임시 role 세팅
+        // 네이버 로그인 요청 → accessToken 저장 + 임시 role 세팅
         await dispatch(
           naverLoginUser({ code, state: rawState, role })
         ).unwrap();
 
-        // 2) 토큰으로 실제 프로필 조회해서 "최초 로그인 여부" 판별
+        //  역할에 따라 내 정보 조회(auth*) → 최초 로그인 여부 판단
         if (role === "CUSTOMER") {
-          try {
-            await dispatch(authCustomer()).unwrap();
-            // 고객 정보가 존재하면 기존 회원 → 메인 이동
-            window.history.replaceState({}, "", "/");
-            nav("/");
-          } catch {
-            // 고객 정보 없으면 최초 로그인 → 고객 회원가입 페이지
-            window.history.replaceState({}, "", "/sign-up/client/step1");
-            nav("/sign-up/client/step1");
-          }
-        } else if (role === "OWNER") {
-          try {
-            await dispatch(authOwner()).unwrap();
-            // 사장 정보 존재 → 사장 메인(or 공통 메인)으로
-            window.history.replaceState({}, "", "/");
-            nav("/owner"); // 팀 규칙에 따라 "/" 로 바꿔도 됨
-          } catch {
-            // 사장 정보 없으면 최초 로그인 → 사장 회원가입 페이지
-            window.history.replaceState({}, "", "/sign-up/owner/step1");
-            nav("/sign-up/owner/step1");
+          const customer = (await dispatch(
+            authCustomer()
+          ).unwrap()) as CustomerData;
+
+          // 필수 필드가 비어 있으면 "회원가입 진행 필요"
+          const needSignup = !customer.phoneNumber;
+
+          if (needSignup) {
+            nav("/sign-up/client/step1", { replace: true });
+          } else {
+            nav("/", { replace: true });
           }
         } else {
-          // safety fallback
-          window.history.replaceState({}, "", "/");
-          nav("/");
+          const owner = (await dispatch(authOwner()).unwrap()) as OwnerData;
+
+          // 사업자번호/정산계좌 없으면 최초 로그인으로 간주
+          const needSignup = !owner.bzNumber;
+
+          if (needSignup) {
+            nav("/sign-up/owner/step1", { replace: true });
+          } else {
+            nav("/", { replace: true });
+          }
         }
       } catch (e) {
         console.error("네이버 로그인 중 오류:", e);
-        nav("/log-in/client?error=naver");
+        nav("/log-in/client?error=auth", { replace: true });
       }
     })();
   }, [dispatch, nav]);

@@ -1,4 +1,3 @@
-// src/pages/LoginPage/callbacks/KakaoCallback.tsx
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../../../store/hooks";
@@ -42,7 +41,7 @@ export default function KakaoCallback() {
       }
 
       try {
-        //  카카오 로그인: accessToken 저장 + userSlice.role(임시) 세팅
+        //  카카오 로그인: accessToken 저장 + userSlice.role 세팅
         await dispatch(
           kakaoLoginUser({ code, state: rawState, role })
         ).unwrap();

@@ -4,7 +4,6 @@ import type { UserRole } from "../../lib/auth/types";
 
 type Props = {
   role: UserRole;
-  /** 필요 시 부모에서 추가 스타일을 덮어쓸 수 있게 함 (예: w-[350px] absolute top-... 등) */
   className?: string;
 };
 
@@ -22,7 +21,7 @@ export default function NaverLoginButton({ role, className = "" }: Props) {
         // Frame 2085665021
         "flex items-center justify-center",
         "rounded-[50px]",
-        "bg-[#03C75A]", // ✅ 네이버 공식 색상
+        "bg-[#03C75A]", // 네이버 공식 색상
         "h-[56px]",
         "w-full",
         "px-0 py-4",
