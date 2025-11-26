@@ -1,4 +1,3 @@
-// src/lib/auth/state.ts
 export type UserRole = "CUSTOMER" | "OWNER";
 
 export function readRoleFromState(state: string | null | undefined): UserRole {

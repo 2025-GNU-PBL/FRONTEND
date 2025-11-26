@@ -40,7 +40,7 @@ import JoinAddressPage from "./pages/SignupPage/client/step2/JoinAddressPage";
 import WeddingInfoPage from "./pages/SignupPage/client/step3/WeddingInfoPage";
 import SignupClientCompletePage from "./pages/SignupPage/client/step4/SignupCompletePage";
 import ClientSignupPage from "./pages/SignupPage/client/step1/ClientSignupPage";
-import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
+import InquiryListPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryListPage";
 import ProductInquiryPage from "./pages/ProductInquiryPage/InquiryPage";
 import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
@@ -85,6 +85,7 @@ import SupportPage from "./pages/SupportPage/SupportPage";
 import RefundRequestPage from "./pages/MyPage/ClientMyPage/Payments/RefundPage/RefundRequestPage";
 import CanceledDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CanceledDetailPage";
 import type { Notification } from "./type/notification";
+import InquiryDetailPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryDetailPage";
 
 function Layout() {
   const location = useLocation();
@@ -358,7 +359,14 @@ const App = () => {
             path="/my-page/client/coupons"
             element={<ClientCouponPage />}
           />
-          <Route path="/my-page/client/inquiries" element={<InquiryPage />} />
+          <Route
+            path="/my-page/client/inquiries"
+            element={<InquiryListPage />}
+          />
+          <Route
+            path="/my-page/client/inquiries/:inquiryId"
+            element={<InquiryDetailPage />}
+          />
           <Route path="/my-page/client/reviews" element={<ReviewPage />} />
           <Route
             path="/my-page/client/payments"

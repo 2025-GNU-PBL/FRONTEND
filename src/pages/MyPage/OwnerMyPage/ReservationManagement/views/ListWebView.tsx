@@ -302,11 +302,10 @@ export default function ListWebView() {
             </div>
 
             <div>
-              {filtered.map((q, index) => (
+              {filtered.map((q) => (
                 <WebInquiryRow
                   key={q.id}
                   q={q}
-                  withSoftBackground={index === 1}
                   onClick={() => onSelectInquiry(q.id)}
                 />
               ))}
@@ -366,7 +365,6 @@ function StatusBadge({ status }: { status: InquiryStatus }) {
 /** 웹용 문의 리스트 행 */
 function WebInquiryRow({
   q,
-  withSoftBackground,
   onClick,
 }: {
   q: Inquiry;
@@ -379,12 +377,7 @@ function WebInquiryRow({
       onClick={onClick}
       className="w-full text-left hover:bg-[#F9FAFB] transition"
     >
-      <div
-        className={[
-          "grid grid-cols-[1.5fr_3fr_1.2fr_1.2fr] gap-3 px-6 py-4 border-t border-[#F3F4F5] items-center",
-          withSoftBackground ? "bg-[#F6F7FB]" : "bg-white",
-        ].join(" ")}
-      >
+      <div className="grid grid-cols-[1.5fr_3fr_1.2fr_1.2fr] gap-3 px-6 py-4 border-t border-[#F3F4F5] items-center bg-white">
         <div className="text-[14px] font-semibold text-[#111827]">
           {q.partner}
         </div>

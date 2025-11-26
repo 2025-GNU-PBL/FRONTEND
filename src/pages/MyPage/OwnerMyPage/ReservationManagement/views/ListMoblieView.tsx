@@ -263,11 +263,10 @@ export default function ListMoblieView() {
             ) : filtered.length === 0 ? (
               <EmptyState />
             ) : (
-              filtered.map((r, index) => (
+              filtered.map((r) => (
                 <ReservationRow
                   key={r.id}
                   r={r}
-                  withSoftBackground={index === 1}
                   onClick={() => onSelectReservation(r.id)}
                 />
               ))
@@ -327,21 +326,16 @@ function StatusBadge({ status }: { status: ReservationStatus }) {
 /** 예약 리스트 행 */
 function ReservationRow({
   r,
-  withSoftBackground,
   onClick,
 }: {
   r: Reservation;
-  withSoftBackground?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={[
-        "w-full px-5 text-left",
-        withSoftBackground ? "bg-[#F6F7FB]" : "bg-white",
-      ].join(" ")}
+      className="w-full px-5 text-left bg-white"
     >
       <div className="w-full max-w-[350px] mx-auto flex items-center justify-between gap-[40px] border-b border-[#F3F4F5] py-4">
         {/* 좌측 텍스트 */}
