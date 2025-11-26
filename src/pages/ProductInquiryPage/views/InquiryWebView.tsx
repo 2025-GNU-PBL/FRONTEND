@@ -12,7 +12,7 @@ interface InquiryDraft {
   thumbnailUrl: string;
   quantity: number;
   desiredDate: string;
-  productType?: "wedding" | "studio" | "dress" | "makeup" | string;
+  category: "WEDDING_HALL" | "STUDIO" | "DRESS" | "MAKEUP" | string;
 }
 
 const WebView: React.FC = () => {
@@ -31,8 +31,8 @@ const WebView: React.FC = () => {
   const [hasDraftIds, setHasDraftIds] = useState(false);
 
   const [productId, setProductId] = useState<number | null>(null);
-  const [productType, setProductType] = useState<
-    "wedding" | "studio" | "dress" | "makeup" | string | null
+  const [category, setCategory] = useState<
+    "WEDDING_HALL" | "STUDIO" | "DRESS" | "MAKEUP" | string | null
   >(null);
 
   const resetInquiryState = () => {
@@ -43,12 +43,12 @@ const WebView: React.FC = () => {
     setShopImageUrl("");
     setProductImageUrl("");
     setProductId(null);
-    setProductType(null);
+    setCategory(null);
   };
 
   useEffect(() => {
     const state = location.state as
-      | { draftIds?: number[]; cartItemIds?: number[]; productType?: string }
+      | { draftIds?: number[]; cartItemIds?: number[]; category?: string }
       | undefined;
 
     if (!state || !state.draftIds || state.draftIds.length === 0) {
@@ -61,15 +61,15 @@ const WebView: React.FC = () => {
 
     setHasDraftIds(true);
 
-    if (state.productType) {
-      setProductType(state.productType);
+    if (state.category) {
+      setCategory(state.category);
     }
   }, [location.state, nav]);
 
   // draft 데이터 조회
   useEffect(() => {
     const state = location.state as
-      | { draftIds?: number[]; cartItemIds?: number[]; productType?: string }
+      | { draftIds?: number[]; cartItemIds?: number[]; category?: string }
       | undefined;
 
     const fetchDraftData = async (draftId: number) => {
@@ -85,9 +85,9 @@ const WebView: React.FC = () => {
         setShopImageUrl(draft.ownerProfileImage || "");
         setProductId(draft.productId);
 
-        // state에 productType이 없고, draft에서 내려오면 사용
-        if (!productType && draft.productType) {
-          setProductType(draft.productType);
+        // state에 category이 없고, draft에서 내려오면 사용
+        if (!category && draft.category) {
+          setCategory(draft.category);
         }
       } catch (error) {
         console.error(`Failed to fetch inquiry draft ${draftId}:`, error);
@@ -97,7 +97,7 @@ const WebView: React.FC = () => {
     if (state?.draftIds && state.draftIds.length > 0) {
       fetchDraftData(state.draftIds[0]);
     }
-  }, [location.state, productType]);
+  }, [location.state, category]);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
@@ -118,7 +118,7 @@ const WebView: React.FC = () => {
     const state = (location.state as {
       draftIds?: number[];
       cartItemIds?: number[];
-      productType?: string;
+      category?: string;
     }) || { draftIds: [], cartItemIds: [] };
 
     const { draftIds, cartItemIds } = state;
@@ -142,7 +142,7 @@ const WebView: React.FC = () => {
       const remainingDraftIds = draftIds.slice(1);
       if (remainingDraftIds.length > 0) {
         nav("/product-inquiry", {
-          state: { draftIds: remainingDraftIds, cartItemIds, productType },
+          state: { draftIds: remainingDraftIds, cartItemIds, category },
         });
       } else {
         console.info("모든 문의가 완료되었습니다.");
@@ -171,25 +171,24 @@ const WebView: React.FC = () => {
 
     let basePath = "";
 
-    switch (productType) {
-      case "wedding":
+    switch (category) {
+      case "WEDDING_HALL":
         basePath = "/wedding";
         break;
-      case "studio":
+      case "STUDIO":
         basePath = "/studio";
         break;
-      case "dress":
+      case "DRESS":
         basePath = "/dress";
         break;
-      case "makeup":
+      case "MAKEUP":
         basePath = "/makeup";
         break;
       default:
-        // 프로젝트에서 productType 항상 내려오도록 만들면 이 분기는 자연스럽게 사라짐
         basePath = "/wedding";
+        console.warn("category 없어 기본 경로(/wedding)를 사용합니다.");
         break;
     }
-
     nav(`${basePath}/${productId}`);
   };
 
