@@ -329,7 +329,6 @@ function ReservationRow({
   onClick,
 }: {
   r: Reservation;
-  withSoftBackground?: boolean;
   onClick: () => void;
 }) {
   return (
