@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import './MobileView.css'; // Changed CSS import path
+import './CommonView.css';
 import { Icon } from '@iconify/react';
 import api from '../../../lib/api/axios'; // axios 인스턴스 임포트
 import { useNavigate } from 'react-router-dom'; // useNavigate 임포트
@@ -150,149 +151,149 @@ const MobileView = () => {
   };
 
   if (loading) {
-    return <div className="cart-page-container">로딩 중...</div>;
+    return <div className="mobile-cart-page-container">로딩 중...</div>;
   }
 
   if (error) {
-    return <div className="cart-page-container error-message">{error}</div>;
+    return <div className="mobile-cart-page-container error-message">{error}</div>;
   }
 
   if (!cartData || cartData.items.length === 0) {
     return (
-      <div className="cart-page-container">
-        <div className="cart-header">
-          <Icon icon="solar:alt-arrow-left-linear" className="header-back-arrow" onClick={() => navigate(-1)} /> {/* 뒤로가기 기능 추가 */}
-          <h1 className="header-title">장바구니</h1>
-          <div className="header-menu-icon"></div>
+      <div className="mobile-cart-page-container">
+        <div className="mobile-cart-header">
+          <Icon icon="solar:alt-arrow-left-linear" className="mobile-header-back-arrow" onClick={() => navigate(-1)} /> {/* 뒤로가기 기능 추가 */}
+          <h1 className="mobile-header-title">장바구니</h1>
+          <div className="mobile-header-menu-icon"></div>
         </div>
-        <div className="empty-cart-view">
-          <div className="empty-cart-icon-wrapper">
-            <Icon icon="mdi:cart-outline" className="empty-cart-icon" />
+        <div className="mobile-empty-cart-view">
+          <div className="mobile-empty-cart-icon-wrapper">
+            <Icon icon="mdi:cart-outline" className="mobile-empty-cart-icon" />
           </div>
-          <p className="empty-cart-text">장바구니에 담긴 상품이 없어요.</p>
-          <button className="go-to-products-button" onClick={() => navigate('/')}>상품 보러가기</button>
+          <p className="mobile-empty-cart-text">장바구니에 담긴 상품이 없어요.</p>
+          <button className="mobile-go-to-products-button" onClick={() => navigate('/')}>상품 보러가기</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="cart-page-container">
+    <div className="mobile-cart-page-container">
       {/* Header */}
-      <div className="cart-header">
-        <Icon icon="solar:alt-arrow-left-linear" className="header-back-arrow" onClick={() => navigate(-1)} />
-        <h1 className="header-title">장바구니</h1>
-        <div className="header-menu-icon"></div>
+      <div className="mobile-cart-header">
+        <Icon icon="solar:alt-arrow-left-linear" className="mobile-header-back-arrow" onClick={() => navigate(-1)} />
+        <h1 className="mobile-header-title">장바구니</h1>
+        <div className="mobile-header-menu-icon"></div>
       </div>
 
-      <div className="separator-gray-8px"></div> {/* Separator below header */}
+      <div className="mobile-separator-gray-8px"></div> {/* Separator below header */}
 
       {/* Select All / Delete Selected */}
-      <div className="select-delete-section">
-        <div className="select-all-group">
+      <div className="mobile-select-delete-section">
+        <div className="mobile-select-all-group">
           <button
-            className={`product-item-checkbox ${isAllChecked ? 'product-item-checkbox-checked' : 'product-item-checkbox-unchecked'}`}
+            className={`mobile-product-item-checkbox ${isAllChecked ? 'mobile-product-item-checkbox-checked' : 'mobile-product-item-checkbox-unchecked'}`}
             onClick={toggleAllCheckboxes}
             aria-checked={isAllChecked}
             role="checkbox"
           >
             {isAllChecked && <Icon icon="ion:checkmark" />} {/* Checkmark icon for checked state */}
           </button>
-          <span className="select-all-text">모두선택</span>
+          <span className="mobile-select-all-text">모두선택</span>
         </div>
-        <span className="delete-selected-text" onClick={handleDeleteSelected}>선택삭제</span>
+        <span className="mobile-delete-selected-text" onClick={handleDeleteSelected}>선택삭제</span>
       </div>
 
       {/* Product Items */}
       {cartData.items.map(item => (
-        <div className="product-item-wrapper" key={item.cartItemId}>
+        <div className="mobile-product-item-wrapper" key={item.cartItemId}>
           <button
-            className={`product-item-checkbox ${item.selected ? 'product-item-checkbox-checked' : 'product-item-checkbox-unchecked'}`}
+            className={`mobile-product-item-checkbox ${item.selected ? 'mobile-product-item-checkbox-checked' : 'mobile-product-item-checkbox-unchecked'}`}
             onClick={() => toggleItemCheckbox(item.cartItemId, item.quantity, item.selected)}
             aria-checked={item.selected}
             role="checkbox"
           >
             {item.selected && <Icon icon="ion:checkmark" />} {/* Checkmark icon for checked state */}
           </button>
-          <img src={item.thumbnailUrl || "/images/placeholder.png"} alt={item.productName} className="product-item-image" />
-          <div className="product-details">
-            <p className="product-item-shop-name">{item.bzName}</p> {/* TODO: 실제 상점 이름으로 대체 */}
-            <p className="product-item-description">{item.productName}<br />(수량: {item.quantity})</p>
-            <div className="product-price-section">
-              <p className="product-item-original-price">{(item.price * item.quantity).toLocaleString()}원</p>
-              <p className="product-item-discounted-price">{(item.price * item.quantity).toLocaleString()}원</p> {/* TODO: 할인 금액 계산 */}
+          <img src={item.thumbnailUrl || "/images/placeholder.png"} alt={item.productName} className="mobile-product-item-image" />
+          <div className="mobile-product-details">
+            <p className="mobile-product-item-shop-name">{item.bzName}</p> {/* TODO: 실제 상점 이름으로 대체 */}
+            <p className="mobile-product-item-description">{item.productName}<br />(수량: {item.quantity})</p>
+            <div className="mobile-product-price-section">
+              <p className="mobile-product-item-original-price">{(item.price * item.quantity).toLocaleString()}원</p>
+              <p className="mobile-product-item-discounted-price">{(item.price * item.quantity).toLocaleString()}원</p> {/* TODO: 할인 금액 계산 */}
             </div>
-            <div className="product-item-quantity-control">
-              <Icon icon="mynaui:minus" className="quantity-minus-icon" onClick={() => decreaseQuantity(item.cartItemId, item.quantity, item.selected)} />
-              <span className="quantity-display">{item.quantity}</span>
-              <Icon icon="mynaui:plus" className="quantity-plus-icon" onClick={() => increaseQuantity(item.cartItemId, item.quantity, item.selected)} />
+            <div className="mobile-product-item-quantity-control">
+              <Icon icon="mynaui:minus" className="mobile-quantity-minus-icon" onClick={() => decreaseQuantity(item.cartItemId, item.quantity, item.selected)} />
+              <span className="mobile-quantity-display">{item.quantity}</span>
+              <Icon icon="mynaui:plus" className="mobile-quantity-plus-icon" onClick={() => increaseQuantity(item.cartItemId, item.quantity, item.selected)} />
             </div>
           </div>
         </div>
       ))}
 
       {/* Summary Section */}
-      <div className="summary-section">
-        <div className="summary-item">
-          <p className="summary-item-label">총 상품금액</p>
-          <p className="summary-item-value">{cartData.totalProductAmount.toLocaleString()}원</p>
+      <div className="mobile-summary-section">
+        <div className="mobile-summary-item">
+          <p className="mobile-summary-item-label">총 상품금액</p>
+          <p className="mobile-summary-item-value">{cartData.totalProductAmount.toLocaleString()}원</p>
         </div>
-        <div className="summary-item">
-          <p className="summary-item-label">총 할인금액</p>
-          <p className="summary-item-value">{cartData.totalDiscountAmount.toLocaleString()}원</p>
+        <div className="mobile-summary-item">
+          <p className="mobile-summary-item-label">총 할인금액</p>
+          <p className="mobile-summary-item-value">{cartData.totalDiscountAmount.toLocaleString()}원</p>
         </div>
-        <div className="summary-item">
-          <p className="summary-item-payment-amount">결제금액</p>
-          <p className="summary-payment-value">{cartData.paymentAmount.toLocaleString()}원</p>
+        <div className="mobile-summary-item">
+          <p className="mobile-summary-item-payment-amount">결제금액</p>
+          <p className="mobile-payment-value">{cartData.paymentAmount.toLocaleString()}원</p>
         </div>
       </div>
 
       {/* Purchase Bar */}
-      <div className="purchase-bar-container">
-        <button className="purchase-button" onClick={togglePopup}>
-          <span className="purchase-button-text">문의하기 </span>
+      <div className="mobile-purchase-bar-container">
+        <button className="mobile-purchase-button" onClick={togglePopup}>
+          <span className="mobile-purchase-button-text">문의하기 </span>
         </button>
       </div>
 
       {/* Dimmed Overlay and Pop-up */}
       {isPopupOpen && (
-        <div className="dimmed-overlay" onClick={togglePopup}>
-          <div className={`popup-container ${isPopupOpen ? '' : 'hidden'}`} onClick={(e) => e.stopPropagation()}>
-            <div className="popup-header">
-              <div className="popup-product-info">
-                <img src={cartData.items[0]?.thumbnailUrl || "/images/placeholder.png"} alt="Product" className="popup-product-image" />
-                <div className="popup-product-text-group">
-                  <p className="popup-product-shop-name">{cartData.items[0]?.bzName}</p>
-                  <p className="popup-product-description">{cartData.items[0]?.productName}<br /></p>
+        <div className="mobile-dimmed-overlay" onClick={togglePopup}>
+          <div className={`mobile-popup-container ${isPopupOpen ? '' : 'hidden'}`} onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-popup-header">
+              <div className="mobile-popup-product-info">
+                <img src={cartData.items[0]?.thumbnailUrl || "/images/placeholder.png"} alt="Product" className="mobile-popup-product-image" />
+                <div className="mobile-popup-product-text-group">
+                  <p className="mobile-popup-product-shop-name">제이바이로이스타</p>
+                  <p className="mobile-popup-product-description">{cartData.items[0]?.productName}<br /></p>
                 </div>
               </div>
-              <Icon icon="meteor-icons:xmark" className="popup-close-icon" onClick={togglePopup} />
+              <Icon icon="meteor-icons:xmark" className="mobile-popup-close-icon" onClick={togglePopup} />
             </div>
 
-            <div className="popup-summary-section">
-              <div className="popup-total-price-row">
-                <p className="popup-total-price-label">상품 금액</p>
-                <p className="popup-total-price-value">{cartData.totalProductAmount.toLocaleString()}원</p>
+            <div className="mobile-popup-summary-section">
+              <div className="mobile-popup-total-price-row">
+                <p className="mobile-popup-total-price-label">상품 금액</p>
+                <p className="mobile-popup-total-price-value">{cartData.totalProductAmount.toLocaleString()}원</p>
               </div>
-              <div className="popup-coupon-discount-row">
-                <p className="popup-coupon-discount-label">쿠폰 할인</p>
-                <p className="popup-coupon-discount-value">{cartData.totalDiscountAmount.toLocaleString()}원</p>
+              <div className="mobile-popup-coupon-discount-row">
+                <p className="mobile-popup-coupon-discount-label">쿠폰 할인</p>
+                <p className="mobile-popup-coupon-discount-value">{cartData.totalDiscountAmount.toLocaleString()}원</p>
               </div>
 
-              <div className="popup-summary-line"></div>
+              <div className="mobile-popup-summary-line"></div>
 
-              <div className="popup-expected-payment-row">
-                <p className="popup-expected-payment-label">예상 결제금액</p>
-                <p className="popup-expected-payment-value">{cartData.paymentAmount.toLocaleString()}원</p>
+              <div className="mobile-popup-expected-payment-row">
+                <p className="mobile-popup-expected-payment-label">예상 결제금액</p>
+                <p className="mobile-popup-expected-payment-value">{cartData.paymentAmount.toLocaleString()}원</p>
               </div>
             </div>
 
-            <div className="popup-buttons-container">
-              <button className="popup-cart-button">
-                <span className="popup-cart-button-text">장바구니</span>
+            <div className="mobile-popup-buttons-container">
+              <button className="mobile-popup-cart-button">
+                <span className="mobile-popup-cart-button-text">장바구니</span>
               </button>
-              <button className="popup-purchase-button" onClick={handlePurchase}>
-                <span className="popup-purchase-button-text">문의하기</span>
+              <button className="mobile-popup-purchase-button" onClick={handlePurchase}>
+                <span className="mobile-purchase-button-text">문의하기</span>
               </button>
             </div>
           </div>
