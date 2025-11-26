@@ -219,17 +219,16 @@ export default function MobileView() {
               )}
 
               {!isLoading &&
-                sortedItems.map((item, index) => {
+                sortedItems.map((item) => {
                   const writtenDate = formatWrittenDate(item.requestedAt);
                   const badge = getStatusBadge(item.status);
-                  const bgClass = index % 2 === 1 ? "bg-[#F6F7FB]" : "bg-white";
 
                   return (
                     <button
                       key={item.orderCode}
                       type="button"
                       onClick={() => handleCardClick(item)}
-                      className={`w-full ${bgClass} px-5 border-b border-[#F3F4F5] cursor-pointer`}
+                      className={`w-full bg-white px-5 border-b border-[#F3F4F5] cursor-pointer`}
                     >
                       <div className="mx-auto flex h-[101px] w-[350px] flex-row items-center justify-between">
                         <div className="flex h-[69px] w-[207px] flex-col justify-between gap-1 text-left">

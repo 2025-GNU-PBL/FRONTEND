@@ -293,21 +293,16 @@ export default function WebView() {
                     취소 내역이 없습니다.
                   </div>
                 ) : (
-                  sortedItems.map((item, index) => {
+                  sortedItems.map((item) => {
                     const writtenDate = formatWrittenDate(item.requestedAt);
                     const badge = getStatusBadge(item.status);
-                    const rowBg = index % 2 === 0 ? "bg-white" : "bg-[#F9FAFB]";
 
                     return (
                       <button
                         key={item.orderCode}
                         type="button"
                         onClick={() => handleCardClick(item)}
-                        className={[
-                          "w-full border-b border-[#F3F4F5] px-1 py-2 text-left",
-                          rowBg,
-                          "hover:bg-[#F3F4FF]",
-                        ].join(" ")}
+                        className="w-full border-b border-[#F3F4F5] px-1 py-2 text-left bg-white hover:bg-[#F3F4FF]"
                       >
                         <div className="flex items-center justify-between gap-6 px-1 py-1">
                           {/* 왼쪽 텍스트 영역 (매장 / 상품 / 사유 / 작성일) */}
