@@ -5,7 +5,6 @@ import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../../../../store/store";
 import { submitSignup } from "../../../../../store/thunkFunctions";
 import signupImg from "../../../../../assets/images/signup.png";
-import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
 // location.state 타입 정의
 interface SignupCompleteState {
@@ -33,7 +32,6 @@ export default function MobileView({
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { refreshAuth } = useRefreshAuth();
 
   const location = useLocation();
   const state = (location.state as SignupCompleteState) || {};
@@ -98,7 +96,6 @@ export default function MobileView({
     setIsSubmitting(true);
     try {
       await dispatch(submitSignup(formValues)).unwrap();
-      refreshAuth();
       navigate("/");
     } catch (err) {
       console.error("[submitSignup] error:", err);

@@ -27,21 +27,15 @@ interface OwnerCoupon {
   status: CouponStatus;
 }
 
-function formatDateRange(start: string, end: string): string {
-  const fmt = (d: string) => {
-    if (!d) return "";
-    const date = new Date(d);
-    if (Number.isNaN(date.getTime())) return "";
-    const yy = String(date.getFullYear()).slice(-2);
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const dd = String(date.getDate()).padStart(2, "0");
-    return `${yy}.${mm}.${dd}`;
-  };
-
-  const s = fmt(start);
-  const e = fmt(end);
-  if (!s && !e) return "-";
-  return `${s}~${e}`;
+// ✅ 단일 날짜 포맷터 (yy.MM.dd 형식)
+function formatDate(d: string): string {
+  if (!d) return "";
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return "";
+  const yy = String(date.getFullYear()).slice(-2);
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yy}.${mm}.${dd}`;
 }
 
 /** ====== 컴포넌트 ====== */
@@ -53,6 +47,10 @@ export default function MobileView() {
   const [coupons, setCoupons] = useState<OwnerCoupon[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // 삭제 모달 상태
+  const [deleteTarget, setDeleteTarget] = useState<OwnerCoupon | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   /** accessor (localStorage) -> query object */
   const accessorParam = useMemo(() => {
@@ -92,24 +90,39 @@ export default function MobileView() {
     fetchCoupons();
   }, [fetchCoupons]);
 
-  /** 쿠폰 삭제 (있다면 DELETE /api/v1/owner/coupon/{id} 가정) */
-  const handleRemove = async (couponId: number) => {
-    if (!window.confirm("해당 쿠폰을 삭제하시겠어요?")) return;
+  /** 삭제 모달 열기 */
+  const openDeleteModal = (coupon: OwnerCoupon) => {
+    setDeleteTarget(coupon);
+  };
+
+  /** 삭제 모달 닫기 */
+  const closeDeleteModal = () => {
+    if (isDeleting) return;
+    setDeleteTarget(null);
+  };
+
+  /** 쿠폰 삭제 실제 수행 */
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
 
     try {
+      setIsDeleting(true);
+
       const config = {
         params: {
           accessor: accessorParam ?? {},
         },
       };
 
-      // 백엔드에 따라 경로 수정 가능
-      await api.delete(`/api/v1/owner/coupon/${couponId}`, config);
+      await api.delete(`/api/v1/owner/coupon/${deleteTarget.id}`, config);
 
-      setCoupons((prev) => prev.filter((c) => c.id !== couponId));
+      setCoupons((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      setDeleteTarget(null);
     } catch (e) {
       console.error("[CustomerCouponMobile] delete error:", e);
       alert("쿠폰 삭제 중 오류가 발생했습니다.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -169,7 +182,7 @@ export default function MobileView() {
                     <CouponCard
                       key={coupon.id}
                       c={coupon}
-                      onRemove={handleRemove}
+                      onRemove={openDeleteModal}
                     />
                   ))}
                 </div>
@@ -178,32 +191,57 @@ export default function MobileView() {
           )}
         </div>
       </div>
+
+      {/* 삭제 확인 모달 */}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          title="쿠폰을 삭제하시겠어요?"
+          description="삭제한 쿠폰은 다시 복구할 수 없어요."
+          onCancel={closeDeleteModal}
+          onConfirm={handleConfirmDelete}
+          isLoading={isDeleting}
+        />
+      )}
     </div>
   );
 }
 
-/** ====== 컴포넌트 ====== */
+/** ====== 쿠폰 카드 ====== */
 
 interface CouponCardProps {
   c: OwnerCoupon;
-  onRemove: (couponId: number) => void;
+  onRemove: (coupon: OwnerCoupon) => void;
 }
 
-function CouponCard({ c, onRemove }: CouponCardProps) {
+function CouponCard({ c: coupon, onRemove }: CouponCardProps) {
   // ✅ RATE일 때 퍼센트, AMOUNT일 때 원
   const discountLabel =
-    c.discountType === "RATE" ? `${c.discountValue}%` : `${c.discountValue}원`;
+    coupon.discountType === "RATE"
+      ? `${coupon.discountValue}%`
+      : `${coupon.discountValue}원`;
 
-  const period = formatDateRange(c.startDate, c.expirationDate);
+  // ✅ 상세설명 영역을 조건 문구 + 기간으로 구성
+  const line1 =
+    coupon.minPurchaseAmount > 0
+      ? `${coupon.minPurchaseAmount.toLocaleString()}원 이상 구매 시${
+          coupon.maxDiscountAmount > 0
+            ? ` 최대 ${coupon.maxDiscountAmount.toLocaleString()}원`
+            : ""
+        }`
+      : coupon.couponDetail;
+
+  const line2 = `사용기간 : ${formatDate(coupon.startDate)} ~ ${formatDate(
+    coupon.expirationDate
+  )}`;
 
   return (
     // ✅ 카드도 전체 너비 사용
     <div className="w-full flex">
       {/* 좌측 본문: flex-1 로 남는 너비 모두 사용 */}
-      <div className="flex-1 border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-2 bg-white">
+      <div className="flex-1 border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-1 bg-white">
         <div className="flex flex-col gap-1 w-full">
           <div className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-            {c.couponName}
+            {coupon.couponName}
           </div>
           <div className="text-[20px] font-bold leading-[32px] tracking-[-0.2px] text-black">
             {discountLabel}
@@ -211,10 +249,10 @@ function CouponCard({ c, onRemove }: CouponCardProps) {
         </div>
         <div className="flex flex-col w-full">
           <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999] line-clamp-1">
-            {c.couponDetail}
+            {line1}
           </div>
           <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
-            사용기간: {period}
+            {line2}
           </div>
         </div>
       </div>
@@ -224,7 +262,7 @@ function CouponCard({ c, onRemove }: CouponCardProps) {
         <button
           className="w-9 h-9 rounded-[20px] bg-white flex items-center justify-center active:scale-95"
           aria-label="delete-coupon"
-          onClick={() => onRemove(c.id)}
+          onClick={() => onRemove(coupon)}
         >
           <Icon icon="majesticons:close" className="w-5 h-5" />
         </button>
@@ -232,6 +270,8 @@ function CouponCard({ c, onRemove }: CouponCardProps) {
     </div>
   );
 }
+
+/** ====== 빈 상태 ====== */
 
 function EmptyState() {
   return (
@@ -245,6 +285,72 @@ function EmptyState() {
         <p className="text-center font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-black">
           보유중인 쿠폰이 없어요
         </p>
+      </div>
+    </div>
+  );
+}
+
+/** ====== 삭제 확인 모달 ====== */
+
+interface DeleteConfirmModalProps {
+  title: string;
+  description: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  isLoading?: boolean;
+}
+
+function DeleteConfirmModal({
+  title,
+  description,
+  onCancel,
+  onConfirm,
+  isLoading = false,
+}: DeleteConfirmModalProps) {
+  return (
+    <div
+      className="fixed inset-0 z-30 flex items-center justify-center bg-black/40"
+      onClick={onCancel}
+    >
+      <div
+        className="relative w-[335px] bg-white rounded-[14px] shadow-[4px_4px_10px_rgba(0,0,0,0.06)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 상단 내용 영역 */}
+        <div className="flex flex-col items-start gap-2 px-5 pt-6 pb-0">
+          <div className="flex flex-row items-start gap-[14px] w-full">
+            <p className="text-[16px] font-bold leading-[24px] tracking-[-0.2px] text-[#1E2124]">
+              {title}
+            </p>
+          </div>
+          <p className="w-full text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#9D9D9D]">
+            {description}
+          </p>
+        </div>
+
+        {/* 하단 버튼 영역 */}
+        <div className="mt-4 flex flex-row items-center justify-between gap-2 px-5 pb-6 pt-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isLoading}
+            className="flex h-11 w-[142px] flex-row items-center justify-center rounded-[10px] bg-[#F3F4F5] disabled:opacity-70"
+          >
+            <span className="text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999]">
+              취소
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="flex h-11 w-[143px] flex-row items-center justify-center rounded-[10px] bg-[#FF2233] disabled:bg-[#FF2233]/60"
+          >
+            <span className="text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white">
+              {isLoading ? "삭제 중..." : "삭제"}
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   );

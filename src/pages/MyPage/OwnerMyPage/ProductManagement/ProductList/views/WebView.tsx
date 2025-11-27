@@ -1,6 +1,6 @@
 // src/pages/MyPage/OwnerMyPage/ProductManagement/ProductList/views/WebView.tsx
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../../../../lib/api/axios";
@@ -33,7 +33,6 @@ type ApiOwnerProduct = {
   thumbnail: string | null;
   category: string;
   createdAt: string;
-  // starCount, address, availableTime, region, tags... 등은 생략
 };
 
 // 스웨거 예시 DTO에 맞춘 페이지 응답 타입
@@ -47,6 +46,15 @@ type PageMeta = {
 type ApiOwnerProductPageResponse = {
   content: ApiOwnerProduct[];
   page: PageMeta;
+};
+
+/** ✅ 상세 페이지용 카테고리 슬러그 매핑 (모바일과 동일) */
+const CATEGORY_SLUG_MAP: Record<ProductCategory, string> = {
+  WEDDING_HALL: "wedding-hall",
+  WEDDING: "wedding-hall", // 같은 엔드포인트 사용
+  STUDIO: "studio",
+  DRESS: "dress",
+  MAKEUP: "makeup",
 };
 
 /** ====== 유틸 ====== */
@@ -64,7 +72,6 @@ const formatPrice = (n: number) => (n ?? 0).toLocaleString("ko-KR") + "원";
 /** ====== 웹 뷰 ====== */
 export default function WebView() {
   const nav = useNavigate();
-  const onBack = useCallback(() => nav(-1), [nav]);
 
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<OwnerProduct[]>([]);
@@ -125,7 +132,7 @@ export default function WebView() {
     [items]
   );
 
-  /** 액션 */
+  /** 삭제 */
   const onDelete = async (id: number) => {
     if (!confirm("이 상품을 삭제하시겠어요?")) return;
     try {
@@ -145,8 +152,19 @@ export default function WebView() {
     }
   };
 
-  const onEdit = (category: ProductCategory, productId: number) => {
-    nav(`/my-page/owner/product/edit/${category}/${productId}`);
+  /** ✅ 상세보기 (모바일과 동일한 상세 페이지 경로로 이동) */
+  const onViewDetail = (product: OwnerProduct) => {
+    const slug = CATEGORY_SLUG_MAP[product.category];
+
+    if (!slug) {
+      console.error("[onViewDetail] invalid category:", product.category);
+      alert("알 수 없는 카테고리의 상품입니다.");
+      return;
+    }
+
+    nav(`/my-page/owner/products/${slug}/${product.id}`, {
+      state: { product },
+    });
   };
 
   const onRegisterProduct = () => {
@@ -225,7 +243,7 @@ export default function WebView() {
                   key={p.id}
                   item={p}
                   onDelete={onDelete}
-                  onEdit={onEdit}
+                  onViewDetail={onViewDetail}
                   onRegisterCoupon={onRegisterCoupon}
                 />
               ))}
@@ -251,18 +269,17 @@ export default function WebView() {
 function ProductRow({
   item,
   onDelete,
-  onEdit,
+  onViewDetail,
   onRegisterCoupon,
 }: {
   item: OwnerProduct;
   onDelete: (id: number) => void;
-  // category + productId 모두 받도록 수정
-  onEdit: (category: ProductCategory, productId: number) => void;
+  onViewDetail: (product: OwnerProduct) => void;
   onRegisterCoupon: (id: number, category: ProductCategory) => void;
 }) {
   return (
     <article className="w-full border border-[#E5E7EB] rounded-xl bg-white px-5 py-4 flex flex-col gap-3">
-      {/* 상단: 날짜 / 더보기 아이콘 */}
+      {/* 상단: 날짜 */}
       <div className="flex items-center justify-between">
         <div className="text-[13px] text-[rgba(0,0,0,0.45)] tracking-[-0.2px]">
           등록일 {formatDateYMD(item.createdAt)}
@@ -306,12 +323,13 @@ function ProductRow({
 
         {/* 액션 버튼 세트*/}
         <div className="flex flex-col justify-between items-end gap-2 ml-2">
+          {/* ✅ 수정하기 → 상세보기로 변경 */}
           <button
             type="button"
-            onClick={() => onEdit(item.category, item.id)}
+            onClick={() => onViewDetail(item)}
             className="px-3 py-1.5 rounded-[999px] border border-[#E5E7EB] bg-white text-[12px] text-[#374151] tracking-[-0.2px] hover:bg-[#F9FAFB]"
           >
-            상품 수정
+            상세보기
           </button>
           <button
             type="button"

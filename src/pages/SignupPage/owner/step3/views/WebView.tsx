@@ -8,6 +8,7 @@ interface WebBusinessInfoViewProps {
     bzName: string;
     bzNumber: string;
     bankAccount: string;
+    bankName: string;
   }) => void;
   onSkip?: () => void;
   title?: string;
@@ -18,6 +19,7 @@ interface OwnerSignUpLocationState {
   bzName?: string;
   bzNumber?: string;
   bankAccount?: string;
+  bankName?: string;
   [key: string]: unknown;
 }
 
@@ -38,16 +40,18 @@ export default function WebView({
 
   const [bzName, setBzName] = useState("");
   const [bzNumber, setBzNumber] = useState("");
+  const [bankName, setBankName] = useState("");
   const [bankAccount, setBankAccount] = useState("");
 
   const uid = useId();
   const idBzName = `${uid}-bzName`;
   const idBzNumber = `${uid}-bzNumber`;
+  const idBankName = `${uid}-bankName`;
   const idBankAccount = `${uid}-bankAccount`;
 
   const isComplete = useMemo(
-    () => Boolean(bzName && bzNumber && bankAccount),
-    [bzName, bzNumber, bankAccount]
+    () => Boolean(bzName && bzNumber && bankName && bankAccount),
+    [bzName, bzNumber, bankName, bankAccount]
   );
 
   // ✅ 사업자번호 자동 하이픈(000-00-00000)
@@ -72,6 +76,7 @@ export default function WebView({
       bzName,
       bzNumber,
       bankAccount,
+      bankName,
     });
 
     navigate("/sign-up/owner/step4", {
@@ -80,9 +85,19 @@ export default function WebView({
         bzName,
         bzNumber,
         bankAccount,
+        bankName,
       },
     });
-  }, [isComplete, onNext, navigate, prevState, bzName, bzNumber, bankAccount]);
+  }, [
+    isComplete,
+    onNext,
+    navigate,
+    prevState,
+    bzName,
+    bzNumber,
+    bankAccount,
+    bankName,
+  ]);
 
   const handleSkip = useCallback(() => {
     onSkip?.();
@@ -226,6 +241,26 @@ export default function WebView({
                   </div>
                 </div>
 
+                {/* 은행명 */}
+                <div className="space-y-2">
+                  <label
+                    htmlFor={idBankName}
+                    className="block text-[#666666] text-[12px] leading-[18px] -tracking-[0.1px]"
+                  >
+                    은행명
+                  </label>
+                  <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
+                    <input
+                      id={idBankName}
+                      type="text"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      placeholder="은행명"
+                      className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
                 {/* 계좌번호 */}
                 <div className="space-y-2">
                   <label
@@ -240,7 +275,7 @@ export default function WebView({
                       type="text"
                       value={bankAccount}
                       onChange={(e) => setBankAccount(e.target.value)}
-                      placeholder="은행명 + 계좌번호"
+                      placeholder="계좌번호"
                       className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
                     />
                   </div>
@@ -252,7 +287,7 @@ export default function WebView({
                 <button
                   type="button"
                   onClick={handleSkip}
-                  className="w-full sm:w-[220px] h-[56px] rounded-[12px] border border-gray-300 text-[14px] font-semibold text-[#666666] hover:bg黑/5 transition"
+                  className="w-full sm:w-[220px] h-[56px] rounded-[12px] border border-gray-300 text-[14px] font-semibold text-[#666666] hover:bg-black/5 transition"
                 >
                   나중에 하기
                 </button>

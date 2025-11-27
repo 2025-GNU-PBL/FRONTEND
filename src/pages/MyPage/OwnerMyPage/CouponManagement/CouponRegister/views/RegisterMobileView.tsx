@@ -46,7 +46,17 @@ const generateCouponCode = () => {
   return result;
 };
 
+// 오늘 날짜를 로컬 기준(브라우저 타임존)으로 YYYY-MM-DD 문자열로 반환
+const getTodayString = () => {
+  const today = new Date();
+  const offset = today.getTimezoneOffset();
+  const local = new Date(today.getTime() - offset * 60 * 1000);
+  return local.toISOString().split("T")[0];
+};
+
 const RegisterMobileView = () => {
+  const todayStr = getTodayString();
+
   const [couponCode, setCouponCode] = useState<string>("");
   const [couponName, setCouponName] = useState<string>("");
   const [couponDetail, setCouponDetail] = useState<string>("");
@@ -54,8 +64,9 @@ const RegisterMobileView = () => {
   const [discountValue, setDiscountValue] = useState<string>("");
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>("");
   const [minPurchaseAmount, setMinPurchaseAmount] = useState<string>("");
-  const [startDate, setStartDate] = useState<string>("2025-11-11");
-  const [expirationDate, setExpirationDate] = useState<string>("2025-11-12");
+  // ★ 시작일, 종료일 기본값을 오늘 기준으로 세팅
+  const [startDate, setStartDate] = useState<string>(todayStr);
+  const [expirationDate, setExpirationDate] = useState<string>(todayStr);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(
     null
   );
@@ -452,6 +463,7 @@ const RegisterMobileView = () => {
             쿠폰 기간
           </div>
           <div className="flex flex-row w-full h-[49px] mt-[10px] gap-3">
+            {/* 시작일: 오늘 이전 날짜 선택 불가 */}
             <div className="box-border relative flex flex-row items-center justify-between flex-1 h-[49px] border border-[#E8E8E8] rounded-[10px]">
               <input
                 type="date"
@@ -459,9 +471,18 @@ const RegisterMobileView = () => {
                   startDate ? "text-black" : "text-[#9D9D9D]"
                 }`}
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                min={todayStr} // ★ 오늘 이전 선택 불가
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setStartDate(value);
+                  // 시작일을 바꿨는데 종료일이 시작일보다 이전이면 종료일도 맞춰 줌
+                  if (expirationDate && value && expirationDate < value) {
+                    setExpirationDate(value);
+                  }
+                }}
               />
             </div>
+            {/* 종료일: 시작일 이전은 선택 불가 */}
             <div className="box-border relative flex flex-row items-center justify-between flex-1 h-[49px] border border-[#E8E8E8] rounded-[10px]">
               <input
                 type="date"
@@ -469,6 +490,7 @@ const RegisterMobileView = () => {
                   expirationDate ? "text-black" : "text-[#9D9D9D]"
                 }`}
                 value={expirationDate}
+                min={startDate || todayStr}
                 onChange={(e) => setExpirationDate(e.target.value)}
               />
             </div>

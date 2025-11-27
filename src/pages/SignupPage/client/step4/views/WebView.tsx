@@ -6,7 +6,6 @@ import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../../../../store/store";
 import { submitSignup } from "../../../../../store/thunkFunctions";
 import signupImg from "../../../../../assets/images/signup.png";
-import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
 interface WebCompleteViewProps {
   /** 시작하기 버튼 클릭 시 실행 (성공 후 후행 동작이 필요할 때 사용) */
@@ -55,7 +54,6 @@ export default function WebView({
   const nav = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { refreshAuth } = useRefreshAuth();
 
   // step1/step2/step3에서 넘겨준 값 수신
   const location = useLocation();
@@ -112,7 +110,6 @@ export default function WebView({
       await dispatch(submitSignup(formValues)).unwrap();
       // 성공 시 후행 콜백(optional)
       onStart?.();
-      refreshAuth();
       nav("/");
     } catch (err: unknown) {
       console.error("[submitSignup:web] error:", err);

@@ -1,6 +1,5 @@
-import React from "react";
-import MobileView from "./views/DetailMobileView";
-import WebView from "./views/DetailWebView";
+import MobileView from "./views/MobileView";
+import WebView from "./views/WebView";
 
 export default function ReservationDetailPage() {
   return (

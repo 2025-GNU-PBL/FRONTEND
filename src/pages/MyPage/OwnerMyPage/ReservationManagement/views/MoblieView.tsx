@@ -14,7 +14,7 @@ type ReservationApiResponse = {
   ownerId: number;
   customerId: number;
   productId: number;
-  status: string; // WAITING / APPROVE / CANCEL
+  status: string; // WAITING / APPROVE / DENY
   reservationTime: string; // "2025-11-07T12:00:00"
   title: string;
   content: string;
@@ -29,18 +29,19 @@ type Reservation = {
   createdAt: string; // YYYY-MM-DD
 };
 
-/** ----- 컴포넌트 밖으로 뺀 유틸 함수들 ----- */
+/** YYYY-MM-DD → YYYY.MM.DD 포맷 */
+function formatDate(date: string) {
+  if (!date) return "";
+  const [y, m, d] = date.split("-");
+  return `${y}.${m}.${d}`;
+}
 
 /** 서버 status → UI status 매핑 */
 const mapStatus = (status: string): ReservationStatus => {
   switch (status) {
     case "APPROVE":
-    case "APPROVED":
-    case "CONFIRM":
-    case "CONFIRMED":
       return "확정";
-    case "CANCEL":
-    case "CANCELED":
+    case "DENY":
       return "취소";
     default:
       return "대기";
@@ -58,13 +59,6 @@ const toReservation = (r: ReservationApiResponse): Reservation => {
     createdAt: dateOnly,
   };
 };
-
-/** YYYY-MM-DD → YYYY.MM.DD 포맷 */
-function formatDate(date: string) {
-  if (!date) return "";
-  const [y, m, d] = date.split("-");
-  return `${y}.${m}.${d}`;
-}
 
 export default function MobileView() {
   const nav = useNavigate();
@@ -93,7 +87,6 @@ export default function MobileView() {
         setReservations((data || []).map(toReservation));
       } catch (err) {
         console.error("[Reservation/MobileView] fetchReservations error:", err);
-        // TODO: 토스트 등으로 에러 노출
       } finally {
         setLoading(false);
       }
@@ -138,10 +131,15 @@ export default function MobileView() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [statusOpen, sortOpen]);
 
+  /** 예약 한 건 선택 시 상세 페이지로 이동 */
+  const onSelectReservation = (reservationId: string) => {
+    nav(`/my-page/owner/reservations/${reservationId}`);
+  };
+
   return (
     <div className="w-full min-h-screen bg-white flex flex-col">
       {/* 헤더 */}
-      <MyPageHeader title="예약 내역" onBack={onBack} showMenu={false} />
+      <MyPageHeader title="예약 관리" onBack={onBack} showMenu={false} />
 
       {/* 콘텐츠 스크롤 영역 */}
       <div className="flex-1 overflow-y-auto">
@@ -172,7 +170,7 @@ export default function MobileView() {
               </button>
               {statusOpen && (
                 <div className="absolute right-0 mt-2 w-28 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
-                  {/* 전체 */}
+                  {/* DropdownItem 대체 - 전체 */}
                   <button
                     type="button"
                     onClick={() => {
@@ -302,8 +300,8 @@ export default function MobileView() {
               예약 정보를 불러오는 중입니다...
             </div>
           ) : filtered.length === 0 ? (
+            // EmptyState 인라인
             <div className="mt-10">
-              {/* EmptyState 인라인 */}
               <div className="flex flex-col items-center justify-center py-10">
                 <img
                   src="/images/document.png"
@@ -323,45 +321,51 @@ export default function MobileView() {
               </div>
             </div>
           ) : (
-            filtered.map((r) => (
-              <div
-                key={r.id}
-                className="w-full bg-white border-b border-[#F3F4F5] py-4"
-              >
-                <div className="w-full flex items-center justify-between gap-4">
-                  {/* 좌측 텍스트 */}
-                  <div className="flex flex-col gap-1 flex-1 min-w-0">
-                    <div className="text-[14px] leading-[21px] font-semibold tracking-[-0.2px] text-black truncate">
-                      {r.partner}
-                    </div>
-                    <div className="text-[16px] leading-[26px] tracking-[-0.2px] text-black break-words">
-                      {r.title}
-                    </div>
-                    <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
-                      예약일 {formatDate(r.createdAt)}
-                    </div>
-                  </div>
+            filtered.map((r) => {
+              // StatusBadge 인라인 스타일 결정
+              let bg = "";
+              if (r.status === "대기") bg = "bg-[#FA9538]";
+              if (r.status === "확정") bg = "bg-[#3DC061]";
+              if (r.status === "취소") bg = "bg-[#EB5147]";
 
-                  {/* 상태 배지 (StatusBadge 인라인) */}
-                  <div
-                    className={[
-                      "min-w-[48px] h-[33px] px-3 flex items-center justify-center rounded-[20px]",
-                      r.status === "대기"
-                        ? "bg-[#FA9538]"
-                        : r.status === "확정"
-                        ? "bg-[#3DC061]"
-                        : r.status === "취소"
-                        ? "bg-[#EB5147]"
-                        : "",
-                    ].join(" ")}
-                  >
-                    <span className="text-white text-[14px] font-medium leading-[21px] tracking-[-0.2px]">
-                      {r.status}
-                    </span>
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => onSelectReservation(r.id)}
+                  className="w-full text-left"
+                >
+                  <div className="w-full bg-white border-b border-[#F3F4F5] py-4">
+                    <div className="w-full flex items-center justify-between gap-4">
+                      {/* 좌측 텍스트 */}
+                      <div className="flex flex-col gap-1 flex-1 min-w-0">
+                        <div className="text-[14px] leading-[21px] font-semibold tracking-[-0.2px] text-black truncate">
+                          {r.partner}
+                        </div>
+                        <div className="text-[16px] leading-[26px] tracking-[-0.2px] text-black break-words">
+                          {r.title}
+                        </div>
+                        <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
+                          예약일 {formatDate(r.createdAt)}
+                        </div>
+                      </div>
+
+                      {/* 상태 배지 (StatusBadge 인라인) */}
+                      <div
+                        className={[
+                          "min-w-[48px] h-[33px] px-3 flex items-center justify-center rounded-[20px]",
+                          bg,
+                        ].join(" ")}
+                      >
+                        <span className="text-white text-[14px] font-medium leading-[21px] tracking-[-0.2px]">
+                          {r.status}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))
+                </button>
+              );
+            })
           )}
         </div>
       </div>

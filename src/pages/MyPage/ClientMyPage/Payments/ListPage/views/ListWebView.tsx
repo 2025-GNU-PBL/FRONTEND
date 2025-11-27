@@ -25,6 +25,29 @@ export interface PaymentMeItem {
   thumbnailUrl?: string; // 썸네일 URL
 }
 
+/** 내 리뷰 목록 응답 타입 ( /api/v1/reviews/me ) */
+interface ReviewMeItem {
+  id: number;
+  customerId: number;
+  customerName: string;
+  productId: number;
+  star: number;
+  title: string;
+  comment: string;
+  imageUrl: string;
+  satisfaction: string; // "SATISFIED" | "DISSATISFIED" 등
+}
+
+interface ReviewMeResponse {
+  content: ReviewMeItem[];
+  page: {
+    size: number;
+    number: number;
+    totalElements: number;
+    totalPages: number;
+  };
+}
+
 type PaymentStatus = "취소완료" | "취소요청됨" | "결제완료" | "결제실패";
 
 interface PaymentItem {
@@ -37,6 +60,9 @@ interface PaymentItem {
   thumbnail?: string;
   productId: number;
   paymentKey: string;
+
+  // 이 결제(상품)에 대한 리뷰가 이미 작성되었는지 여부
+  isReviewed?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -101,6 +127,9 @@ function PaymentCard({
   const isCancelable =
     item.status !== "취소요청됨" && item.status !== "취소완료";
 
+  // 이미 리뷰를 쓴 상품이면 작성 불가능
+  const canWriteReview = !item.isReviewed;
+
   return (
     <div className="w-full border border-[#E5E7EB] rounded-xl bg-white px-5 py-4 flex flex-col gap-3">
       <div className="flex items-center gap-4">
@@ -152,22 +181,34 @@ function PaymentCard({
         >
           결제 상세
         </button>
-        <button
-          type="button"
-          className="px-3 py-2 border border-[#E4E4E4] rounded-lg text-[13px] text-[#333333] tracking-[-0.2px]"
-          onClick={() => {
-            nav("/my-page/client/payments/review", {
-              state: {
-                productId: item.productId,
-                shopName: item.shopName,
-                productName: item.productName,
-                thumbnailUrl: item.thumbnail,
-              },
-            });
-          }}
-        >
-          리뷰 작성
-        </button>
+
+        {canWriteReview ? (
+          <button
+            type="button"
+            className="px-3 py-2 border border-[#E4E4E4] rounded-lg text-[13px] text-[#333333] tracking-[-0.2px]"
+            onClick={() => {
+              nav("/my-page/client/payments/review", {
+                state: {
+                  productId: item.productId,
+                  shopName: item.shopName,
+                  productName: item.productName,
+                  thumbnailUrl: item.thumbnail,
+                  paymentKey: item.paymentKey,
+                },
+              });
+            }}
+          >
+            리뷰 작성
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="px-3 py-2 border border-[#E4E4E4] rounded-lg text-[13px] text-[#BDBDBD] bg-[#F5F5F5] tracking-[-0.2px] cursor-default"
+          >
+            작성 완료
+          </button>
+        )}
       </div>
     </div>
   );
@@ -239,14 +280,34 @@ export default function ListWebView() {
       return;
     }
 
-    const fetchPayments = async () => {
+    const fetchPaymentsAndReviews = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const { data } = await api.get<PaymentMeItem[]>("/api/v1/payments/me");
+        // 결제 내역 + 내 리뷰 목록을 함께 불러옴 (모바일과 동일한 구조)
+        const [paymentsRes, reviewsRes] = await Promise.all([
+          api.get<PaymentMeItem[]>("/api/v1/payments/me"),
+          api.get<ReviewMeResponse>("/api/v1/reviews/me"),
+        ]);
 
-        const mapped = (data || []).map(mapToPaymentItem);
+        const paymentData = paymentsRes.data || [];
+        const reviewData = reviewsRes.data?.content || [];
+
+        // 리뷰가 작성된 productId 집합
+        const reviewedProductIdSet = new Set(
+          reviewData.map((review) => review.productId)
+        );
+
+        // 결제 아이템에 isReviewed 플래그를 붙여서 저장
+        const mapped: PaymentItem[] = paymentData.map((dto) => {
+          const base = mapToPaymentItem(dto);
+          return {
+            ...base,
+            isReviewed: reviewedProductIdSet.has(dto.productId),
+          };
+        });
+
         setPayments(mapped);
       } catch (e) {
         console.log(e);
@@ -256,7 +317,7 @@ export default function ListWebView() {
       }
     };
 
-    fetchPayments();
+    fetchPaymentsAndReviews();
   }, [role]);
 
   // 상태별 분류

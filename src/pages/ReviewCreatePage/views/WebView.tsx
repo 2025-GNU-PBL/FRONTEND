@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { multipartApi } from "../../../lib/api/multipartApi";
+import { toast } from "react-toastify"; // ✅ toast 추가
 
 const MAX_REVIEW_LENGTH = 200;
 const MAX_IMAGES = 5;
@@ -117,7 +118,7 @@ const WebView: React.FC = () => {
     if (!isFormValid || submitting) return;
 
     if (!productId) {
-      alert("상품 정보가 없습니다. 다시 시도해주세요.");
+      toast.error("상품 정보가 없습니다. 다시 시도해주세요.");
       return;
     }
 
@@ -159,11 +160,13 @@ const WebView: React.FC = () => {
         formData
       );
       console.log("리뷰 작성 성공:", res.data);
-      alert("리뷰가 등록되었습니다.");
+      toast.success("리뷰가 등록되었습니다.");
       navigate(-1);
     } catch (err) {
       console.error("리뷰 작성 실패:", err);
-      alert("리뷰 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+      toast.error(
+        "리뷰 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+      );
     } finally {
       setSubmitting(false);
     }

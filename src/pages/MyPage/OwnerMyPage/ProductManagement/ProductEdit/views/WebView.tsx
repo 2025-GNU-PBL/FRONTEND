@@ -11,11 +11,14 @@ type ImageItem = { id?: number; src: string; file?: File };
 
 type Region = "SEOUL" | "GYEONGGI" | "INCHEON" | "BUSAN";
 
+const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"] as const;
+type CategoryKo = (typeof categories)[number];
+
 type FormValues = {
   // 공통
   vendorName: string; // 읽기 전용
   address: string; // 읽기 전용
-  category: string | null;
+  category: CategoryKo | null;
   name: string;
   price: string;
   detail: string;
@@ -39,9 +42,6 @@ type FormValues = {
   cateringType: string; // cateringType
   reservationPolicy: string; // reservationPolicy
 };
-
-const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"] as const;
-type CategoryKo = (typeof categories)[number];
 
 // ---------- 서버 응답 타입 ----------
 type ServerTag = string | { tagName?: string };
@@ -240,11 +240,19 @@ const PATCH_ENDPOINT_MAP: Record<CategoryKo, string> = GET_ENDPOINT_MAP;
 
 // 리스트에서 넘어온 영어 카테고리 → 이 페이지에서 쓰는 한글 카테고리
 const EN_CATEGORY_TO_KO: Record<string, CategoryKo> = {
+  // UPPER CASE
   WEDDING_HALL: "웨딩홀",
-  WEDDING: "웨딩홀", // 혹시 WEDDING 으로 오는 경우 대비
+  WEDDING: "웨딩홀",
   STUDIO: "스튜디오",
   DRESS: "드레스",
   MAKEUP: "메이크업",
+  // slug / lower case
+  "wedding-hall": "웨딩홀",
+  wedding_hall: "웨딩홀",
+  wedding: "웨딩홀",
+  studio: "스튜디오",
+  dress: "드레스",
+  makeup: "메이크업",
 };
 
 const WebView: React.FC = () => {
@@ -314,97 +322,105 @@ const WebView: React.FC = () => {
   const category = useWatch({ control, name: "category" }) as CategoryKo | null;
   const selectedTags = useWatch({ control, name: "tags" }) || [];
 
-  // -------------------- 상품 불러오기 --------------------
+  // -------------------- 상품 불러오기 (URL 카테고리 한 번만 호출) --------------------
   useEffect(() => {
     const loadProduct = async () => {
       if (!id) return;
 
-      // URL 의 영어 categoryParam 을 한글 카테고리로 변환
-      const categoryKoFromParam: CategoryKo | undefined = categoryParam
-        ? EN_CATEGORY_TO_KO[categoryParam]
-        : undefined;
+      let categoryKoFromParam: CategoryKo | undefined;
 
-      let targetCategories: readonly CategoryKo[];
+      if (categoryParam) {
+        const key1 = categoryParam; // 그대로
+        const key2 = categoryParam.toUpperCase(); // 대문자
+        const key3 = categoryParam.toLowerCase(); // 소문자/슬러그
 
-      if (categoryKoFromParam) {
-        // 해당 카테고리 하나만 호출
-        targetCategories = [categoryKoFromParam] as const;
-      } else {
-        // 파라미터가 없거나 매핑 실패하면, 전체 시도 (fallback)
-        targetCategories = categories;
+        categoryKoFromParam =
+          EN_CATEGORY_TO_KO[key1] ??
+          EN_CATEGORY_TO_KO[key2] ??
+          EN_CATEGORY_TO_KO[key3];
       }
 
-      for (const cat of targetCategories) {
-        const url = `${GET_ENDPOINT_MAP[cat]}/${id}`;
-        try {
-          const res = await fetch(url);
-          if (!res.ok) {
-            continue;
-          }
+      if (!categoryKoFromParam) {
+        console.error(
+          "[상품 수정] URL 카테고리를 한글 카테고리로 매핑할 수 없습니다:",
+          categoryParam
+        );
+        return;
+      }
 
-          const data = (await res.json()) as LoadedProduct;
+      const url = `${GET_ENDPOINT_MAP[categoryKoFromParam]}/${id}`;
 
-          // 가격 문자열 포맷
-          const priceStr = data.price
-            ? String(data.price).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-            : "";
-
-          // ✅ tags(string[]) 또는 예전 방식 tag(object[]) 모두 대응
-          const rawTags: ServerTag[] | undefined = data.tags ?? data.tag;
-          const serverTags: string[] = Array.isArray(rawTags)
-            ? rawTags
-                .map((t) => {
-                  if (typeof t === "string") return t;
-                  if (t && typeof t.tagName === "string") return t.tagName;
-                  return null;
-                })
-                .filter((t): t is string => t !== null)
-            : [];
-
-          // 한글이면 EN 코드로 변환, 이미 EN 이면 그대로 사용
-          const normalizedTags: string[] = serverTags.map((tag) =>
-            KO_TO_EN[tag] ? KO_TO_EN[tag] : tag
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          console.error(
+            "[상품 수정] 상품 로딩 실패 (status:",
+            res.status,
+            "):",
+            url
           );
-
-          reset({
-            vendorName: resolvedVendorName,
-            address: resolvedAddress,
-            category: cat, // 실제로 성공한 카테고리(한글)로 설정
-            name: data.name ?? "",
-            price: priceStr,
-            detail: data.detail ?? "",
-            availableTime:
-              data.availableTime ??
-              data.availableTimes ??
-              data.availabletimes ??
-              "",
-            region: data.region ?? "",
-            ownerName: resolvedVendorName || "",
-            starCount: "0",
-            subwayAccessible: false,
-            diningAvailable: false,
-            thumbnail: data.thumbnail ?? "",
-            tags: normalizedTags,
-            hallCapacity: data.capacity ? String(data.capacity) : "",
-            minGuest: data.minGuest ? String(data.minGuest) : "",
-            maxGuest: data.maxGuest ? String(data.maxGuest) : "",
-            parkingCapacity: data.parkingCapacity
-              ? String(data.parkingCapacity)
-              : "",
-            cateringType: data.cateringType ?? "",
-            reservationPolicy: data.reservationPolicy ?? "",
-            images:
-              data.images?.map((img) => ({
-                id: img.id,
-                src: img.url,
-              })) ?? [],
-          });
-
-          // 한 번 성공하면 나머지 카테고리는 호출하지 않음
-          break;
-        } catch (e) {
-          console.error("[상품 수정] 상품 로딩 실패:", e);
+          return;
         }
+
+        const data = (await res.json()) as LoadedProduct;
+
+        // 가격 문자열 포맷
+        const priceStr = data.price
+          ? String(data.price).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+          : "";
+
+        // tags(string[]) 또는 예전 방식 tag(object[]) 모두 대응
+        const rawTags: ServerTag[] | undefined = data.tags ?? data.tag;
+        const serverTags: string[] = Array.isArray(rawTags)
+          ? rawTags
+              .map((t) => {
+                if (typeof t === "string") return t;
+                if (t && typeof t.tagName === "string") return t.tagName;
+                return null;
+              })
+              .filter((t): t is string => t !== null)
+          : [];
+
+        // 한글이면 EN 코드로 변환, 이미 EN 이면 그대로 사용
+        const normalizedTags: string[] = serverTags.map((tag) =>
+          KO_TO_EN[tag] ? KO_TO_EN[tag] : tag
+        );
+
+        reset({
+          vendorName: resolvedVendorName,
+          address: resolvedAddress,
+          category: categoryKoFromParam, // 실제 카테고리 설정
+          name: data.name ?? "",
+          price: priceStr,
+          detail: data.detail ?? "",
+          availableTime:
+            data.availableTime ??
+            data.availableTimes ??
+            data.availabletimes ??
+            "",
+          region: data.region ?? "",
+          ownerName: resolvedVendorName || "",
+          starCount: "0",
+          subwayAccessible: false,
+          diningAvailable: false,
+          thumbnail: data.thumbnail ?? "",
+          tags: normalizedTags,
+          hallCapacity: data.capacity ? String(data.capacity) : "",
+          minGuest: data.minGuest ? String(data.minGuest) : "",
+          maxGuest: data.maxGuest ? String(data.maxGuest) : "",
+          parkingCapacity: data.parkingCapacity
+            ? String(data.parkingCapacity)
+            : "",
+          cateringType: data.cateringType ?? "",
+          reservationPolicy: data.reservationPolicy ?? "",
+          images:
+            data.images?.map((img) => ({
+              id: img.id,
+              src: img.url,
+            })) ?? [],
+        });
+      } catch (e) {
+        console.error("[상품 수정] 상품 로딩 실패:", e);
       }
     };
 

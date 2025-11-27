@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
+import type { AxiosError } from "axios";
 import api from "../../../lib/api/axios";
 import { BasicInfoContent } from "../sections/BasicInfoContent";
 import { DetailContent } from "../sections/DetailContent";
@@ -16,6 +17,7 @@ import type {
   Coupon,
   MyCoupon,
 } from "../../../type/product";
+import { toast } from "react-toastify"; // ✅ 토스트
 
 /* 날짜 포맷: 2025-11-19 -> 25.11.19 */
 const formatDate = (dateStr: string) => {
@@ -28,6 +30,21 @@ const formatDate = (dateStr: string) => {
   return `${yy}.${mm}.${dd}`;
 };
 
+/** 공유 타이틀 계산 (any 사용 X) */
+const getShareTitle = (data: NormalizedDetail | null): string => {
+  if (!data) return "웨딩 상품 상세";
+  if ("name" in data && typeof data.name === "string" && data.name) {
+    return data.name;
+  }
+  if (
+    "title" in data &&
+    typeof (data as { title?: string }).title === "string"
+  ) {
+    return (data as { title?: string }).title ?? "웨딩 상품 상세";
+  }
+  return "웨딩 상품 상세";
+};
+
 /* ========================= 컴포넌트 ========================= */
 
 const MobileView = () => {
@@ -35,6 +52,17 @@ const MobileView = () => {
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const isAuth = useAppSelector((s) => s.user.isAuth);
+
+  // ✅ OWNER일 때만 bzName 안전하게 꺼내기
+  const ownerBzName = useAppSelector((s) => {
+    const data = s.user.userData;
+    const role = s.user.role;
+
+    if (role === "OWNER" && data && "bzName" in data) {
+      return data.bzName;
+    }
+    return undefined;
+  });
 
   const [activeTab, setActiveTab] = useState<"basic" | "detail" | "review">(
     "basic"
@@ -79,10 +107,10 @@ const MobileView = () => {
     navigate("/cart");
   };
 
-  /* ========= 장바구니 공용 로직 (알럿 X) ========= */
+  /* ========= 장바구니 공용 로직 (알럿 → toast) ========= */
   const addToCartCore = async (): Promise<boolean> => {
     if (!detailData || !id) {
-      alert("상품 정보를 불러올 수 없습니다.");
+      toast.error("상품 정보를 불러올 수 없습니다.");
       return false;
     }
 
@@ -101,17 +129,16 @@ const MobileView = () => {
       return true;
     } catch (error) {
       console.error("장바구니 추가 실패:", error);
-      alert("장바구니 추가에 실패했습니다.");
+      toast.error("장바구니 추가에 실패했습니다.");
       return false;
     }
   };
 
-  /* ========= 장바구니 버튼용 (알럿 O) ========= */
+  /* ========= 장바구니 버튼용 (성공도 toast) ========= */
   const addToCart = async () => {
     const ok = await addToCartCore();
     if (!ok) return;
-    // 장바구니 버튼에서는 기존 알럿 유지
-    alert("상품이 장바구니에 담겼습니다.");
+    toast.success("상품이 장바구니에 담겼습니다.");
   };
 
   /* ========= 상품 예약 버튼용 (모달 O, 알럿 X) ========= */
@@ -123,12 +150,20 @@ const MobileView = () => {
     setShowReservationModal(true);
   };
 
+  /* ========= 수정하기 버튼용 ========= */
+  const handleEditProduct = () => {
+    if (!category || !id) {
+      toast.error("상품 정보를 불러올 수 없습니다.");
+      return;
+    }
+    navigate(`/my-page/owner/product/edit/${category}/${id}`);
+  };
+
   /* ========================= 플로팅 버튼 핸들러 ========================= */
 
   const handleShare = async () => {
     const url = window.location.href;
-    const title =
-      detailData?.name || (detailData as any)?.title || "웨딩 상품 상세";
+    const title = getShareTitle(detailData);
 
     if (navigator.share) {
       try {
@@ -160,7 +195,7 @@ const MobileView = () => {
   // ✅ 채팅 버튼: 상품 기반 채팅방 열기 API 연동
   const handleChat = async () => {
     if (!id) {
-      alert("상품 정보를 불러올 수 없습니다.");
+      toast.error("상품 정보를 불러올 수 없습니다.");
       return;
     }
 
@@ -171,20 +206,22 @@ const MobileView = () => {
 
       console.log("채팅방 생성/조회 결과:", data);
 
-      // TODO: 백엔드 응답에 따라 실제 채팅방 페이지로 이동 로직 추가
-      // 예: navigate(`/chat/rooms/${data.roomId}`);
-      alert("판매자와의 채팅방이 열렸어요.");
-    } catch (error: any) {
+      toast.success("판매자와의 채팅방이 열렸어요.");
+      navigate(`/chat/${data}`);
+    } catch (error) {
       console.error("채팅방 열기 실패:", error);
 
-      const status = error?.response?.status;
+      const axiosError = error as AxiosError | undefined;
+      const status = axiosError?.response?.status;
 
       if (status === 401) {
-        alert("로그인이 필요한 서비스입니다.");
+        toast.error("로그인이 필요한 서비스입니다.");
         // 필요하면 로그인 페이지로 이동
         // navigate("/login");
       } else {
-        alert("채팅방을 여는 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
+        toast.error(
+          "채팅방을 여는 중 문제가 발생했어요. 잠시 후 다시 시도해주세요."
+        );
       }
     }
   };
@@ -228,14 +265,14 @@ const MobileView = () => {
         return next;
       });
 
-      // 다운로드 완료 토스트
+      // 다운로드 완료 토스트 (기존 커스텀 토스트 유지)
       setShowCouponToast(true);
       setTimeout(() => {
         setShowCouponToast(false);
-      }, 3000);
+      }, 2000);
     } catch (error) {
       console.error("쿠폰 다운로드 실패:", error);
-      alert("쿠폰 다운로드에 실패했습니다.");
+      toast.error("쿠폰 다운로드에 실패했습니다.");
     }
   };
 
@@ -411,6 +448,10 @@ const MobileView = () => {
     }
   };
 
+  /* ========================= 오너 여부 판별 ========================= */
+  const isOwnerOfProduct =
+    !!detailData && !!ownerBzName && detailData.bzName === ownerBzName;
+
   /* ========================= 렌더 ========================= */
 
   return (
@@ -457,8 +498,8 @@ const MobileView = () => {
               />
             </button>
 
-            {/* 카트 (로그인 시) */}
-            {isAuth && (
+            {/* 카트 (로그인 + 이 상품 오너가 아닐 때만) */}
+            {isAuth && !isOwnerOfProduct && (
               <button
                 type="button"
                 className="relative w-6 h-6 flex items-center justify-center"
@@ -534,8 +575,8 @@ const MobileView = () => {
                 <BasicInfoContent
                   data={detailData}
                   onOpenCoupon={handleOpenCoupon}
-                  onGoReviewTab={handleGoReviewTab} // ✅ 리뷰 전체보기 -> 평점후기 탭 이동 + 상단 스크롤
-                  onGoDetailTab={handleGoDetailTab} // ✅ 상품 상세 사진 전체보기 -> 상품상세 탭 이동 + 상단 스크롤
+                  onGoReviewTab={handleGoReviewTab}
+                  onGoDetailTab={handleGoDetailTab}
                 />
               )}
 
@@ -549,51 +590,67 @@ const MobileView = () => {
         </main>
 
         {/* ================== 우측 하단 플로팅 버튼 (공유 / 채팅) ================== */}
-        <div className="fixed right-4 bottom-[100px] flex flex-col items-center gap-2 z-40">
-          {/* 채팅 버튼 */}
-          <button
-            type="button"
-            onClick={handleChat}
-            className="box-border flex items-center justify-center w-10 h-10 rounded-[20px] bg-white border border-[#D9D9D9] shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-95 transition-transform"
-          >
-            <Icon
-              icon="fluent:chat-16-regular"
-              className="w-6 h-6 text-[#333333]"
-            />
-          </button>
+        {!isOwnerOfProduct && (
+          <div className="fixed right-4 bottom-[100px] flex flex-col items-center gap-2 z-40">
+            {/* 채팅 버튼: ✅ isAuth일 때만 표시 */}
+            {isAuth && (
+              <button
+                type="button"
+                onClick={handleChat}
+                className="box-border flex items-center justify-center w-10 h-10 rounded-[20px] bg-white border border-[#D9D9D9] shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-95 transition-transform"
+              >
+                <Icon
+                  icon="fluent:chat-16-regular"
+                  className="w-6 h-6 text-[#333333]"
+                />
+              </button>
+            )}
 
-          {/* 공유 버튼 */}
-          <button
-            type="button"
-            onClick={handleShare}
-            className="box-border flex items-center justify-center w-10 h-10 rounded-[20px] bg-white border border-[#D9D9D9] shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-95 transition-transform"
-          >
-            <Icon
-              icon="solar:share-linear"
-              className="w-6 h-6 text-[#333333]"
-            />
-          </button>
-        </div>
-
-        {/* 하단 고정 버튼 */}
-        <div className="fixed left-0 bottom-0 w-full bg-white px-4 pt-3 pb-5 z-30">
-          <div className="flex gap-3">
+            {/* 공유 버튼 */}
             <button
               type="button"
-              className="flex-1 h-[56px] border border-black/20 rounded-[12px] flex items-center justify-center text-[16px] font-semibold text-black/80"
-              onClick={addToCart}
+              onClick={handleShare}
+              className="box-border flex items-center justify-center w-10 h-10 rounded-[20px] bg-white border border-[#D9D9D9] shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-95 transition-transform"
             >
-              장바구니
-            </button>
-            <button
-              type="button"
-              className="flex-1 h-[56px] rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold flex items-center justify-center"
-              onClick={handleProductReservation}
-            >
-              상품예약
+              <Icon
+                icon="solar:share-linear"
+                className="w-6 h-6 text-[#333333]"
+              />
             </button>
           </div>
-        </div>
+        )}
+
+        {/* 하단 고정 버튼 */}
+        {!loading && !errorMsg && detailData && (
+          <div className="fixed left-0 bottom-0 w-full bg-white px-4 pt-3 pb-5 z-30">
+            {isOwnerOfProduct ? (
+              <button
+                type="button"
+                className="w-full h-[56px] rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold flex items-center justify-center"
+                onClick={handleEditProduct}
+              >
+                수정하기
+              </button>
+            ) : (
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="flex-1 h-[56px] border border-black/20 rounded-[12px] flex items-center justify-center text-[16px] font-semibold text-black/80"
+                  onClick={addToCart}
+                >
+                  장바구니
+                </button>
+                <button
+                  type="button"
+                  className="flex-1 h-[56px] rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold flex items-center justify-center"
+                  onClick={handleProductReservation}
+                >
+                  상품예약
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 쿠폰 바텀시트 딤드 */}
         <div

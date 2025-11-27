@@ -37,6 +37,14 @@ interface ProductPageResponse {
   tags: ProductTag[];
 }
 
+// 오늘 날짜를 로컬 기준(브라우저 타임존)으로 YYYY-MM-DD 문자열로 반환
+const getTodayString = () => {
+  const today = new Date();
+  const offset = today.getTimezoneOffset();
+  const local = new Date(today.getTime() - offset * 60 * 1000);
+  return local.toISOString().split("T")[0];
+};
+
 const RegisterWebView = () => {
   const [couponCode, setCouponCode] = useState<string>("");
   const [couponName, setCouponName] = useState<string>("");
@@ -45,8 +53,11 @@ const RegisterWebView = () => {
   const [discountValue, setDiscountValue] = useState<string>("");
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>("");
   const [minPurchaseAmount, setMinPurchaseAmount] = useState<string>("");
-  const [startDate, setStartDate] = useState<string>("2025-11-11");
-  const [expirationDate, setExpirationDate] = useState<string>("2025-11-12");
+
+  const todayStr = getTodayString();
+
+  const [startDate, setStartDate] = useState<string>(todayStr);
+  const [expirationDate, setExpirationDate] = useState<string>(todayStr);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(
     null
   );
@@ -524,7 +535,15 @@ const RegisterWebView = () => {
                     startDate ? "text-[#111827]" : "text-[#9CA3AF]",
                   ].join(" ")}
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  min={todayStr} // 오늘 이전 선택 불가
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setStartDate(value);
+                    // 시작일 변경 시 종료일이 시작일보다 이전이면 종료일을 시작일로 보정
+                    if (expirationDate && value && expirationDate < value) {
+                      setExpirationDate(value);
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -542,6 +561,7 @@ const RegisterWebView = () => {
                     expirationDate ? "text-[#111827]" : "text-[#9CA3AF]",
                   ].join(" ")}
                   value={expirationDate}
+                  min={startDate || todayStr} // 시작일 이전 선택 불가
                   onChange={(e) => setExpirationDate(e.target.value)}
                 />
               </div>

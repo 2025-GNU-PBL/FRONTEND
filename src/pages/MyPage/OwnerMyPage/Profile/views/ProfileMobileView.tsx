@@ -1,37 +1,8 @@
 import React from "react";
+import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../../../components/MyPageHeader";
 import { useAppSelector } from "../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../store/userSlice";
-
-function SectionCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="w-full rounded-2xl bg-white border border-gray-200 shadow-sm p-5 mb-3 last:mb-0">
-      <h3 className="text-[16px] font-semibold text-gray-900 tracking-[-0.2px]">
-        {title}
-      </h3>
-      <div className="my-4 h-px bg-[#D9D9D9]" />
-      {children}
-    </section>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value?: string }) {
-  return (
-    <div className="flex items-center justify-between py-1.5">
-      <span className="text-[14px] text-[#999] tracking-[-0.2px]">{label}</span>
-      <span className="text-[14px] text-[#000] tracking-[-0.2px]">
-        {value && value.trim() !== "" ? value : "-"}
-      </span>
-    </div>
-  );
-}
 
 /** OWNER 유저만 허용 */
 function ensureOwner(userData: UserData | null): OwnerData | null {
@@ -42,28 +13,64 @@ function ensureOwner(userData: UserData | null): OwnerData | null {
   return null;
 }
 
-/** 사장(OWNER) 마이페이지 - 내 정보 조회 */
-export default function MobileView() {
-  const nav = useNavigate();
+const MobileView: React.FC = () => {
+  const navigate = useNavigate();
 
   const rawUserData = useAppSelector((state) => state.user.userData);
   const owner = ensureOwner(rawUserData);
 
-  // 로그인 안 됐거나 OWNER가 아니면 안내
+  const handleGoBack = () => {
+    navigate(-1);
+  };
+
+  const handleGoToEdit = () => {
+    navigate("/my-page/owner/profile/edit");
+  };
+
+  // 회원 탈퇴 모달 상태
+  const [showWithdrawModal, setShowWithdrawModal] = React.useState(false);
+
+  const handleOpenWithdrawModal = () => {
+    setShowWithdrawModal(true);
+  };
+
+  const handleCancelWithdraw = () => {
+    setShowWithdrawModal(false);
+  };
+
+  const handleConfirmWithdraw = () => {
+    // 실제 탈퇴 로직은 추후 API 연동
+    alert("회원 탈퇴 프로세스를 연결해주세요.");
+    setShowWithdrawModal(false);
+  };
+
+  // OWNER가 아닌 경우 안내 화면
   if (!owner) {
     return (
-      <div className="w-full bg-white">
-        <div className="mx-auto w-[390px] h-[844px] bg-[#F6F7FB] flex flex-col">
-          <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
-            <MyPageHeader
-              title="내 정보 조회"
-              onBack={() => nav(-1)}
-              showMenu={false}
+      <div className="relative w-full min-h-screen bg-white overflow-hidden flex flex-col">
+        {/* 상단 헤더 */}
+        <div className="flex items-center justify-between h-[60px] px-5">
+          <button
+            className="w-8 h-8 flex items-center justify-center"
+            type="button"
+            onClick={handleGoBack}
+          >
+            <Icon
+              icon="solar:alt-arrow-left-linear"
+              className="w-8 h-8 text-[#1E2124]"
             />
-          </div>
-          <div className="flex-1 px-5 pt-20 flex items-center justify-center text-sm text-gray-500">
-            사장님 정보가 없습니다. 다시 로그인해주세요.
-          </div>
+          </button>
+
+          <h1 className="font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-[#1E2124]">
+            내 정보 조회
+          </h1>
+
+          {/* 오른쪽 공간 맞춤용 더미 박스 */}
+          <div className="w-6 h-6" />
+        </div>
+
+        <div className="flex-1 w-full px-5 flex items-center justify-center text-sm text-gray-500">
+          사장님 정보가 없습니다. 다시 로그인해주세요.
         </div>
       </div>
     );
@@ -77,6 +84,7 @@ export default function MobileView() {
     profileImage,
     bzNumber,
     bankAccount,
+    bankName,
     bzName,
     roadAddress,
     jibunAddress,
@@ -108,91 +116,258 @@ export default function MobileView() {
         : `(${buildingName})`;
     }
 
-    return addressStr;
+    return addressStr || "-";
   })();
 
-  const handleGoEdit = () => {
-    nav("/my-page/owner/profile/edit");
-  };
+  const displayBankName = bankName || "-";
+  const displayBankAccount = bankAccount || "-";
 
   return (
-    <div className="w-full bg-white">
-      {/* 프레임 */}
-      <div className="mx-auto w-[390px] h-[844px] bg-[#F6F7FB] flex flex-col">
-        {/* 헤더 */}
-        <div className="sticky top-0 z-20 bg-[#F6F7FB] border-b border-gray-200">
-          <MyPageHeader
-            title="내 정보 조회"
-            onBack={() => nav(-1)}
-            showMenu={false}
+    <div className="relative w-full min-h-screen bg-white overflow-hidden flex flex-col">
+      {/* 상단 헤더 */}
+      <div className="flex items-center justify-between h-[60px] px-5">
+        <button
+          className="w-8 h-8 flex items-center justify-center"
+          type="button"
+          onClick={handleGoBack}
+        >
+          <Icon
+            icon="solar:alt-arrow-left-linear"
+            className="w-8 h-8 text-[#1E2124]"
           />
-        </div>
+        </button>
 
-        {/* 본문 */}
-        <div className="flex-1 px-5 pt-20 pb-24 overflow-auto space-y-6">
-          {/* 상단 프로필 카드 */}
-          <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
-            <div className="flex items-center gap-4">
-              {profileImage ? (
-                <img
-                  src={profileImage}
-                  alt="프로필 이미지"
-                  className="w-16 h-16 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-[#D9D9D9]" />
-              )}
-              <div>
-                <div className="text-[18px] font-semibold text-black tracking-[-0.2px]">
-                  {name}
+        <h1 className="font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-[#1E2124]">
+          내 정보 조회
+        </h1>
+
+        <button
+          className="w-6 h-6 flex items-center justify-center z-[1]"
+          type="button"
+          onClick={handleGoToEdit}
+        >
+          <Icon
+            icon="majesticons:edit-pen-2-line"
+            className="w-6 h-6 text-[#1E2124]"
+          />
+        </button>
+      </div>
+
+      {/* 메인 컨텐츠 */}
+      <div className="flex-1 w-full px-5 overflow-y-auto pb-[80px]">
+        <div className="w-full flex flex-col items-start gap-[30px] mt-[30px]">
+          {/* 프로필 */}
+          <div className="flex flex-row items-center gap-4 h-[64px]">
+            {profileImage ? (
+              <img
+                src={profileImage}
+                alt="프로필 이미지"
+                className="w-16 h-16 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-[#D9D9D9]" />
+            )}
+            <span className="font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-black">
+              {name}
+            </span>
+          </div>
+
+          {/* 정보 섹션 */}
+          <div className="w-full flex flex-col items-start gap-[40px]">
+            {/* 회원정보 */}
+            <div className="w-full flex flex-col items-start gap-5">
+              <div className="w-full flex flex-row items-center justify-between">
+                <span className="font-[Pretendard] text-[16px] leading-[26px] tracking-[-0.2px] text-black">
+                  회원정보
+                </span>
+
+                <button
+                  className="flex flex-row items-center gap-1"
+                  type="button"
+                  onClick={handleGoToEdit}
+                >
+                  <span className="font-[Pretendard] text-[12px] leading-[18px] tracking-[-0.1px] text-[#4170FF]">
+                    회원 정보 수정
+                  </span>
+                  <Icon
+                    icon="solar:alt-arrow-left-linear"
+                    className="w-4 h-4 text-[#4170FF] rotate-180"
+                  />
+                </button>
+              </div>
+
+              <div className="w-full border-t border-[#D9D9D9]" />
+
+              <div className="w-full flex flex-col items-start gap-3">
+                {/* 이름 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
+                    이름
+                  </span>
+                  <span className="text-[14px] text-black ml-3">
+                    {name || "-"}
+                  </span>
                 </div>
-                <div className="text-sm text-gray-600 tracking-[-0.2px]">
-                  사장님, 환영합니다 👋
+
+                {/* 전화번호 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
+                    전화번호
+                  </span>
+                  <span className="text-[14px] text-black ml-3">
+                    {displayPhone}
+                  </span>
+                </div>
+
+                {/* 이메일 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
+                    이메일
+                  </span>
+                  <span className="text-[14px] text-black ml-3">
+                    {email || "-"}
+                  </span>
+                </div>
+
+                {/* 가입일 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
+                    가입일
+                  </span>
+                  <span className="text-[14px] text-black ml-3">
+                    {displayCreatedAt}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 사업자 정보 */}
+            <div className="w-full flex flex-col items-start gap-5">
+              <span className="font-[Pretendard] text-[16px] text-black">
+                사업자 정보
+              </span>
+
+              <div className="w-full border-t border-[#D9D9D9]" />
+
+              <div className="w-full flex flex-col items-start gap-3">
+                {/* 사업장명 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
+                    사업장명
+                  </span>
+                  <span className="text-[14px] text-black ml-3">
+                    {bzName || "-"}
+                  </span>
+                </div>
+
+                {/* 사업자 번호 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
+                    사업자 번호
+                  </span>
+                  <span className="text-[14px] text-black ml-3">
+                    {bzNumber || "-"}
+                  </span>
+                </div>
+
+                {/* 사업장 주소 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
+                    사업장 주소
+                  </span>
+                  <span className="text-[14px] text-black ml-3">
+                    {displayBzAddress}
+                  </span>
+                </div>
+
+                {/* 사업장 메일 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
+                    사업장 메일
+                  </span>
+                  <span className="text-[14px] text-black ml-3">
+                    {email || "-"}
+                  </span>
+                </div>
+
+                {/* 은행명 */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
+                    은행명
+                  </span>
+                  <span className="text-[14px] text-black ml-3">
+                    {displayBankName}
+                  </span>
+                </div>
+
+                {/* 정산 계좌(계좌번호) */}
+                <div className="w-full flex flex-row items-center">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
+                    정산 계좌
+                  </span>
+                  <span className="text-[14px] text-black ml-3">
+                    {displayBankAccount}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* 회원정보 (기본 정보) */}
-          <SectionCard title="회원정보">
-            <div className="space-y-2">
-              <InfoRow label="이름" value={name} />
-              <InfoRow label="전화번호" value={displayPhone} />
-              <InfoRow label="이메일" value={email} />
-              <InfoRow label="가입일" value={displayCreatedAt} />
-            </div>
-          </SectionCard>
-
-          {/* 사업자 정보 */}
-          <SectionCard title="사업자 정보">
-            <div className="space-y-2">
-              <InfoRow label="사업장명" value={bzName} />
-              <InfoRow label="사업자 번호" value={bzNumber} />
-              {/* 여기서 가공된 주소 사용 */}
-              <InfoRow label="사업장 주소" value={displayBzAddress} />
-              <InfoRow label="사업장 메일" value={email} />
-              <InfoRow label="정산 계좌" value={bankAccount} />
-            </div>
-          </SectionCard>
-
-          {/* 하단 액션 영역 */}
-          <div className="mt-4 mb-2 flex items-center justify-between">
-            <button
-              type="button"
-              className="text-[14px] text-[#FF2233] font-semibold hover:opacity-80"
-              onClick={handleGoEdit}
-            >
-              수정하기
-            </button>
-            <button
-              className="text-[14px] text-[#999] hover:text-[#666]"
-              onClick={() => alert("회원 탈퇴 프로세스를 연결하세요.")}
-            >
-              회원 탈퇴
-            </button>
-          </div>
         </div>
       </div>
+
+      {/* 오른쪽 아래 고정된 회원 탈퇴 버튼 */}
+      <button
+        className="absolute bottom-20 right-5 text-[14px] text-[#999999]"
+        type="button"
+        onClick={handleOpenWithdrawModal}
+      >
+        회원 탈퇴
+      </button>
+
+      {/* 회원 탈퇴 확인 모달 */}
+      {showWithdrawModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-[310px] rounded-2xl bg-white px-5 py-6 shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
+            <div className="w-full flex justify-center mb-3">
+              <div className="w-10 h-10 rounded-full bg-[#FFF2F2] flex items-center justify-center">
+                <Icon
+                  icon="solar:warning-triangle-bold"
+                  className="w-6 h-6 text-[#FF4D4F]"
+                />
+              </div>
+            </div>
+
+            <p className="text-center font-[Pretendard] text-[16px] font-semibold text-[#1E2124]">
+              정말 탈퇴하시겠어요?
+            </p>
+            <p className="mt-2 text-center text-[13px] text-[#777777] leading-[20px]">
+              탈퇴 후에는 계정 및 매장 정보가
+              <br />
+              복구되지 않을 수 있어요.
+            </p>
+
+            <div className="mt-5 flex flex-row gap-2">
+              <button
+                type="button"
+                className="flex-1 h-11 rounded-full border border-[#D9D9D9] text-[14px] text-[#666666]"
+                onClick={handleCancelWithdraw}
+              >
+                취소
+              </button>
+
+              <button
+                type="button"
+                className="flex-1 h-11 rounded-full bg-[#FF4D4F] text-white text-[14px]"
+                onClick={handleConfirmWithdraw}
+              >
+                탈퇴할래요
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default MobileView;

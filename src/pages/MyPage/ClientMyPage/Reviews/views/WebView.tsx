@@ -12,8 +12,8 @@ type ReviewApiResponseItem = {
   title: string; // 상품/업체명
   comment: string;
   imageUrl?: string | null;
-  category?: string; // (선택) 추후 백엔드에서 내려줄 수 있음
-  createdAt?: string; // "2025-11-07T12:00:00"
+  category?: string;
+  createdAt?: string;
 };
 
 type ReviewApiResponse = {
@@ -26,13 +26,13 @@ type ReviewApiResponse = {
   };
 };
 
-/** 화면에서 사용할 리뷰 타입 (모바일과 동일 구조) */
+/** 화면에서 사용할 리뷰 타입 (createdAgo는 UI에 사용되지 않음) */
 type Review = {
   id: string;
   brand: string;
   category: string;
-  rating: number; // 0~5
-  createdAgo: string; // "n일 전"
+  rating: number;
+  createdAgo: string;
   content: string;
   thumbnail: string;
 };
@@ -41,20 +41,23 @@ export default function WebView() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // 삭제 확인 모달용
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
   const hasReviews = !loading && reviews.length > 0;
 
-  /** API 응답 → UI 모델 매핑 (모바일 mapToReview 기반, 웹에서는 createdAgo 계산만 추가) */
+  /** API 응답 → UI 모델 */
   const mapToReview = (item: ReviewApiResponseItem): Review => ({
     id: String(item.id),
     brand: item.title || "상품명 미지정",
     category: item.category || "",
     rating: typeof item.star === "number" ? item.star : 0,
-    createdAgo: formatAgo(item.createdAt),
+    createdAgo: "", // UI에서 사용 안함
     content: item.comment || "",
     thumbnail: item.imageUrl || "",
   });
 
-  /** 내 리뷰 목록 조회 (모바일과 동일 엔드포인트/파라미터) */
+  /** 리뷰 목록 불러오기 */
   useEffect(() => {
     const fetchMyReviews = async () => {
       try {
@@ -63,10 +66,7 @@ export default function WebView() {
         const { data } = await api.get<ReviewApiResponse>(
           "/api/v1/reviews/me",
           {
-            params: {
-              pageNumber: 1,
-              pageSize: 50,
-            },
+            params: { pageNumber: 1, pageSize: 50 },
           }
         );
 
@@ -83,21 +83,25 @@ export default function WebView() {
     fetchMyReviews();
   }, []);
 
-  /** 리뷰 삭제 (모바일과 동일 로직) */
+  /** 실제 삭제 */
   const handleDelete = useCallback(async (id: string) => {
     try {
       await api.delete(`/api/v1/reviews/${id}`);
       setReviews((prev) => prev.filter((r) => r.id !== id));
-      // TODO: 토스트로 "리뷰가 삭제되었습니다." 노출
     } catch (err) {
       console.error("[Reviews/WebView] delete error:", err);
-      // TODO: 토스트로 "리뷰 삭제에 실패했습니다." 노출
     }
   }, []);
 
+  /** 모달 확인 버튼 */
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTargetId) return;
+    await handleDelete(deleteTargetId);
+    setDeleteTargetId(null);
+  }, [deleteTargetId, handleDelete]);
+
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB] mt-15">
-      {/* 콘텐츠 영역 */}
       <main className="max-w-[1200px] mx-auto px-6 pt-6 pb-10">
         {/* 상단 정보 */}
         <div className="flex items-center justify-between gap-4 mb-4">
@@ -109,37 +113,30 @@ export default function WebView() {
               {loading ? "불러오는 중..." : `총 ${reviews.length}개`}
             </span>
           </div>
-
-          {hasReviews && (
-            <div className="flex items-center gap-3 text-[12px] text-[#9CA3AF]">
-              <span>※ 리뷰 삭제 시 복구가 어려울 수 있어요.</span>
-            </div>
-          )}
         </div>
 
-        {/* 리스트 or 빈 화면 */}
+        {/* 리스트 */}
         {loading ? (
           <section className="mt-8 bg-white rounded-2xl shadow-sm border border-[#E5E6EB] flex flex-col items-center justify-center py-16 gap-3 text-[14px] text-[#9CA3AF]">
             리뷰 내역을 불러오는 중입니다...
           </section>
         ) : hasReviews ? (
           <section className="bg-white rounded-2xl shadow-sm border border-[#E5E6EB]">
-            {/* 헤더 라인 */}
-            <div className="grid grid-cols-[2.2fr_3fr_1.2fr_0.8fr] gap-3 px-6 py-3 border-b border-[#F3F4F5] text-[13px] text-[#9CA3AF]">
+            {/* 헤더 라인 (작성 경과 제거됨) */}
+            <div className="grid grid-cols-[2.2fr_3fr_0.8fr] gap-3 px-6 py-3 border-b border-[#F3F4F5] text-[13px] text-[#9CA3AF]">
               <div>상품 / 업체명</div>
               <div>별점 및 리뷰 내용</div>
-              <div>작성 경과</div>
               <div className="text-center">관리</div>
             </div>
 
-            {/* 데이터 라인 */}
+            {/* 데이터 */}
             <div>
               {reviews.map((r, index) => (
                 <ReviewRow
                   key={r.id}
                   review={r}
                   withSoftBackground={index % 2 === 1}
-                  onDelete={handleDelete}
+                  onClickDelete={setDeleteTargetId}
                 />
               ))}
             </div>
@@ -148,24 +145,36 @@ export default function WebView() {
           <EmptyState />
         )}
       </main>
+
+      {/* 삭제 모달 */}
+      {deleteTargetId && (
+        <DeleteConfirmModal
+          title="리뷰를 삭제하시겠어요?"
+          description="삭제한 리뷰는 다시 되돌릴 수 없어요."
+          cancelText="취소"
+          confirmText="삭제하기"
+          onCancel={() => setDeleteTargetId(null)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
     </div>
   );
 }
 
-/** 리뷰 row */
+/** Row 컴포넌트 – 작성 경과 UI 완전 제거 */
 function ReviewRow({
   review,
   withSoftBackground,
-  onDelete,
+  onClickDelete,
 }: {
   review: Review;
   withSoftBackground?: boolean;
-  onDelete: (id: string) => void;
+  onClickDelete: (id: string) => void;
 }) {
   return (
     <div
       className={[
-        "grid grid-cols-[2.2fr_3fr_1.2fr_0.8fr] gap-3 px-6 py-4 border-t border-[#F3F4F5] items-center",
+        "grid grid-cols-[2.2fr_3fr_0.8fr] gap-3 px-6 py-4 border-t border-[#F3F4F5] items-center",
         withSoftBackground ? "bg-[#F6F7FB]" : "bg-white",
       ].join(" ")}
     >
@@ -182,6 +191,7 @@ function ReviewRow({
             <Icon icon="solar:user-linear" className="w-6 h-6 text-[#D1D5DB]" />
           )}
         </div>
+
         <div className="flex flex-col">
           <span className="text-[14px] font-semibold text-[#111827]">
             {review.brand}
@@ -208,28 +218,19 @@ function ReviewRow({
               }
             />
           ))}
-          {review.createdAgo && (
-            <span className="ml-1 text-[12px] text-[#9CA3AF]">
-              {review.createdAgo}
-            </span>
-          )}
         </div>
+
         <p className="text-[13px] leading-[19px] text-[#4B5563] line-clamp-2">
           {review.content}
         </p>
       </div>
 
-      {/* 작성 경과 (같은 createdAgo 재사용) */}
-      <div className="text-[13px] text-[#6B7280]">
-        {review.createdAgo || "-"}
-      </div>
-
-      {/* 삭제 */}
+      {/* 삭제 버튼 */}
       <div className="flex justify-center">
         <button
           type="button"
           className="text-[13px] text-[#4B6FFF] hover:underline"
-          onClick={() => onDelete(review.id)}
+          onClick={() => onClickDelete(review.id)}
         >
           삭제
         </button>
@@ -238,7 +239,7 @@ function ReviewRow({
   );
 }
 
-/** 웹 빈 상태 */
+/** 빈 상태 */
 function EmptyState() {
   return (
     <section className="mt-8 bg-white rounded-2xl shadow-sm border border-[#E5E6EB] flex flex-col items-center justify-center py-16 gap-5">
@@ -258,28 +259,47 @@ function EmptyState() {
   );
 }
 
-/** createdAt ISO → "n일 전" 등으로 변환 */
-function formatAgo(iso?: string): string {
-  if (!iso) return "";
-  const created = new Date(iso);
-  if (Number.isNaN(created.getTime())) return "";
+/** 삭제 모달 — 모바일과 동일 */
+type DeleteConfirmModalProps = {
+  title: string;
+  description: string;
+  cancelText?: string;
+  confirmText?: string;
+  onCancel: () => void;
+  onConfirm: () => void | Promise<void>;
+};
 
-  const now = new Date();
-  const diffMs = now.getTime() - created.getTime();
+function DeleteConfirmModal({
+  title,
+  description,
+  cancelText = "취소",
+  confirmText = "삭제하기",
+  onCancel,
+  onConfirm,
+}: DeleteConfirmModalProps) {
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+      <div className="relative w-full max-w-[335px] bg-white rounded-[14px] shadow-[4px_4px_10px_rgba(0,0,0,0.06)]">
+        <div className="flex flex-col items-start px-5 pt-6 pb-0 gap-2.5">
+          <p className="text-[16px] font-bold text-[#1E2124]">{title}</p>
+          <p className="text-[14px] text-[#9D9D9D]">{description}</p>
+        </div>
 
-  const diffMin = Math.floor(diffMs / (1000 * 60));
-  if (diffMin < 1) return "방금 전";
-  if (diffMin < 60) return `${diffMin}분 전`;
-
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간 전`;
-
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 30) return `${diffDay}일 전`;
-
-  const diffMonth = Math.floor(diffDay / 30);
-  if (diffMonth < 12) return `${diffMonth}개월 전`;
-
-  const diffYear = Math.floor(diffMonth / 12);
-  return `${diffYear}년 전`;
+        <div className="mt-4 flex flex-row items-center px-5 pb-6 pt-2 gap-2.5">
+          <button
+            onClick={onCancel}
+            className="flex-1 h-11 rounded-[10px] bg-[#F3F4F5] flex items-center justify-center"
+          >
+            <span className="text-[14px] text-[#999999]">{cancelText}</span>
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 h-11 rounded-[10px] bg-[#FF2233] flex items-center justify-center"
+          >
+            <span className="text-[14px] text-white">{confirmText}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

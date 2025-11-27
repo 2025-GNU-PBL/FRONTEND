@@ -5,6 +5,7 @@ import type { UserData } from "../../../../../../store/userSlice";
 import type { UserRole } from "../../../../../../store/thunkFunctions";
 import api from "../../../../../../lib/api/axios";
 import MyPageHeader from "../../../../../../components/MyPageHeader";
+import { Icon } from "@iconify/react";
 
 /* -------------------------------------------------------------------------- */
 /*  타입 정의                                                                 */
@@ -22,6 +23,29 @@ export interface PaymentMeItem {
   thumbnailUrl?: string;
 }
 
+// 내 리뷰 목록 응답 타입 ( /api/v1/reviews/me )
+interface ReviewMeItem {
+  id: number;
+  customerId: number;
+  customerName: string;
+  productId: number;
+  star: number;
+  title: string;
+  comment: string;
+  imageUrl: string;
+  satisfaction: string; // "SATISFIED" | "DISSATISFIED" 등
+}
+
+interface ReviewMeResponse {
+  content: ReviewMeItem[];
+  page: {
+    size: number;
+    number: number;
+    totalElements: number;
+    totalPages: number;
+  };
+}
+
 type PaymentStatus = "취소완료" | "취소요청됨" | "결제완료" | "결제실패";
 
 interface PaymentItem {
@@ -34,17 +58,22 @@ interface PaymentItem {
   thumbnail?: string;
   productId: number;
   paymentKey: string;
+
+  // 이 결제(상품)에 대한 리뷰가 이미 작성되었는지 여부
+  isReviewed?: boolean;
 }
 
 interface PaymentCardProps {
   item: PaymentItem;
   onCancelRequest: (item: PaymentItem) => void;
+  onDeleteClick: (item: PaymentItem) => void;
 }
 
 interface PaymentSectionProps {
   status: PaymentStatus;
   items: PaymentItem[];
   onCancelRequest: (item: PaymentItem) => void;
+  onDeleteClick: (item: PaymentItem) => void;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -95,13 +124,29 @@ function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
 /*  프레젠테이션 컴포넌트                                                     */
 /* -------------------------------------------------------------------------- */
 
-function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
+function PaymentCard({
+  item,
+  onCancelRequest,
+  onDeleteClick,
+}: PaymentCardProps) {
   const nav = useNavigate();
   const isCancelable =
     item.status !== "취소요청됨" && item.status !== "취소완료";
 
+  // 이미 리뷰를 쓴 상품이면 작성 불가능
+  const canWriteReview = !item.isReviewed;
+
   return (
-    <div className="w-full">
+    <div className="w-full relative">
+      {/* 삭제 아이콘 */}
+      <button
+        type="button"
+        className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center"
+        onClick={() => onDeleteClick(item)}
+      >
+        <Icon icon="meteor-icons:xmark" className="w-5 h-5 text-[#9D9D9D]" />
+      </button>
+
       <div className="flex">
         <div
           className="w-20 h-20 rounded-[4px] border border-[#F5F5F5] bg-[#F5F5F5] bg-cover bg-center"
@@ -149,22 +194,34 @@ function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
           결제 상세
         </button>
 
-        <button
-          type="button"
-          className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333]"
-          onClick={() =>
-            nav("/my-page/client/payments/review", {
-              state: {
-                productId: item.productId,
-                shopName: item.shopName,
-                productName: item.productName,
-                thumbnailUrl: item.thumbnail,
-              },
-            })
-          }
-        >
-          리뷰 작성
-        </button>
+        {canWriteReview ? (
+          <button
+            type="button"
+            className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333]"
+            onClick={() =>
+              nav("/my-page/client/payments/review", {
+                state: {
+                  productId: item.productId,
+                  shopName: item.shopName,
+                  productName: item.productName,
+                  thumbnailUrl: item.thumbnail,
+                  paymentKey: item.paymentKey,
+                },
+              })
+            }
+          >
+            리뷰 작성
+          </button>
+        ) : (
+          // 이미 리뷰를 작성한 결제의 경우
+          <button
+            type="button"
+            disabled
+            className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#BDBDBD] bg-[#F5F5F5] cursor-default"
+          >
+            작성 완료
+          </button>
+        )}
       </div>
     </div>
   );
@@ -174,6 +231,7 @@ function PaymentSection({
   status,
   items,
   onCancelRequest,
+  onDeleteClick,
 }: PaymentSectionProps) {
   if (items.length === 0) return null;
 
@@ -196,7 +254,11 @@ function PaymentSection({
 
       {items.map((item) => (
         <div key={item.id} className="mb-6 last:mb-0">
-          <PaymentCard item={item} onCancelRequest={onCancelRequest} />
+          <PaymentCard
+            item={item}
+            onCancelRequest={onCancelRequest}
+            onDeleteClick={onDeleteClick}
+          />
         </div>
       ))}
     </section>
@@ -219,20 +281,47 @@ export default function ListMobileView() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // 삭제 모달 상태
+  const [deleteTarget, setDeleteTarget] = React.useState<PaymentItem | null>(
+    null
+  );
+
+  const isDeleteModalOpen = !!deleteTarget;
+
   React.useEffect(() => {
     if (!role || role !== "CUSTOMER") {
       setPayments([]);
       return;
     }
 
-    const fetchPayments = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const { data } = await api.get<PaymentMeItem[]>("/api/v1/payments/me");
+        // 결제 내역 + 내 리뷰 목록을 함께 불러옴
+        const [paymentsRes, reviewsRes] = await Promise.all([
+          api.get<PaymentMeItem[]>("/api/v1/payments/me"),
+          api.get<ReviewMeResponse>("/api/v1/reviews/me"),
+        ]);
 
-        const mapped = (data || []).map(mapToPaymentItem);
+        const paymentData = paymentsRes.data || [];
+        const reviewData = reviewsRes.data?.content || [];
+
+        // 리뷰가 작성된 productId 집합
+        const reviewedProductIdSet = new Set(
+          reviewData.map((review) => review.productId)
+        );
+
+        // 결제 아이템에 isReviewed 플래그를 붙여서 저장
+        const mapped = paymentData.map((dto) => {
+          const base = mapToPaymentItem(dto);
+          return {
+            ...base,
+            isReviewed: reviewedProductIdSet.has(dto.productId),
+          };
+        });
+
         setPayments(mapped);
       } catch (e) {
         console.log(e);
@@ -242,7 +331,7 @@ export default function ListMobileView() {
       }
     };
 
-    fetchPayments();
+    fetchData();
   }, [role]);
 
   const canceled = payments.filter((p) => p.status === "취소완료");
@@ -265,15 +354,76 @@ export default function ListMobileView() {
     });
   };
 
+  // 삭제 아이콘 클릭 시 모달 오픈
+  const handleOpenDeleteModal = (item: PaymentItem) => {
+    setDeleteTarget(item);
+  };
+
+  const handleCloseDeleteModal = () => {
+    setDeleteTarget(null);
+  };
+
+  // 실제 삭제 로직 (일단 UI만, API 연동은 이후에)
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    // TODO: 삭제 API 연동
+    // 예: await api.delete(`/api/v1/payments/${deleteTarget.id}`);
+    // 여기서는 일단 UI 상에서만 삭제 처리
+    setPayments((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+    setDeleteTarget(null);
+  };
+
   const sections = [
-    { items: cancelRequested, label: "취소요청됨" },
-    { items: canceled, label: "취소완료" },
-    { items: completed, label: "결제완료" },
-    { items: failed, label: "결제실패" },
+    { items: cancelRequested, label: "취소요청됨" as PaymentStatus },
+    { items: canceled, label: "취소완료" as PaymentStatus },
+    { items: completed, label: "결제완료" as PaymentStatus },
+    { items: failed, label: "결제실패" as PaymentStatus },
   ];
 
   return (
     <div className="relative w-full min-h-screen bg-[#FFFFFF] flex flex-col">
+      {/* 삭제 모달 */}
+      {isDeleteModalOpen && deleteTarget && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-[rgba(0,0,0,0.4)]">
+          <div className="relative w-[335px] h-[164px] bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)] rounded-[14px]">
+            {/* 상단 영역 */}
+            <div className="flex flex-col items-start px-5 pt-6 gap-2">
+              <div className="flex flex-row items-start gap-[14px] w-full h-6">
+                <p className="flex items-center text-[16px] leading-[24px] font-bold tracking-[-0.2px] text-[#1E2124]">
+                  결제 내역을 삭제하시겠어요?
+                </p>
+              </div>
+              <p className="flex items-center w-full text-[14px] leading-[21px] font-medium tracking-[-0.2px] text-[#9D9D9D]">
+                삭제내역은 복구하기 어려워요
+              </p>
+            </div>
+
+            {/* 하단 버튼 영역 */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[335px] h-[78px] px-5 pb-6 pt-[10px] flex flex-row items-center gap-2 rounded-b-[10px]">
+              <button
+                type="button"
+                className="flex-1 h-11 flex items-center justify-center rounded-[10px] bg-[#F3F4F5]"
+                onClick={handleCloseDeleteModal}
+              >
+                <span className="text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999]">
+                  취소
+                </span>
+              </button>
+              <button
+                type="button"
+                className="flex-1 h-11 flex items-center justify-center rounded-[10px] bg-[#FF2233]"
+                onClick={handleConfirmDelete}
+              >
+                <span className="text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white">
+                  삭제
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="sticky top-0 z-20 bg-[#FFFFFF] border-b border-gray-200">
         <MyPageHeader
           title="결제 내역"
@@ -310,9 +460,10 @@ export default function ListMobileView() {
                 <React.Fragment key={s.label}>
                   {idx > 0 && <div className="w-full h-2 bg-[#F7F9FA] my-5" />}
                   <PaymentSection
-                    status={s.label as PaymentStatus}
+                    status={s.label}
                     items={s.items}
                     onCancelRequest={handleGoRefundRequest}
+                    onDeleteClick={handleOpenDeleteModal}
                   />
                 </React.Fragment>
               ) : null

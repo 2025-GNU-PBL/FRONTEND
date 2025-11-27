@@ -106,7 +106,7 @@ function getStatusBadgeClasses(status: ReservationDetailStatus) {
 }
 
 /** ====== 메인 컴포넌트 ====== */
-export default function DetailWebView() {
+export default function WebView() {
   const { reservationId } = useParams<{ reservationId: string }>();
 
   const [detail, setDetail] = useState<ReservationDetail | null>(null);

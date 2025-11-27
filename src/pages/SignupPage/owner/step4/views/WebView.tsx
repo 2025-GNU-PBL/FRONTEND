@@ -5,7 +5,6 @@ import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../../../../store/store";
 import { submitOwnerSignup } from "../../../../../store/thunkFunctions";
 import signupImg from "../../../../../assets/images/signup.png";
-import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
 interface WebCompleteViewProps {
   onStart?: () => void;
@@ -21,6 +20,7 @@ interface OwnerSignupWebState {
   bzNumber?: string;
   bankAccount?: string;
   accountNumber?: string;
+  bankName?: string; // ✅ 은행명 추가
   zipCode?: string;
   zipcode?: string;
   roadAddress?: string;
@@ -40,7 +40,6 @@ export default function WebView({
   const nav = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { refreshAuth } = useRefreshAuth();
 
   const location = useLocation();
   const state = (location.state as OwnerSignupWebState) || {};
@@ -50,6 +49,7 @@ export default function WebView({
   const bzName = state.bzName ?? "";
   const bzNumber = state.bzNumber ?? "";
   const bankAccount = state.bankAccount ?? state.accountNumber ?? "";
+  const bankName = state.bankName ?? ""; // ✅ step3에서 넘어온 은행명
 
   const zipCode = state.zipCode ?? state.zipcode ?? "";
   const roadAddress = state.roadAddress ?? state.address ?? "";
@@ -67,6 +67,7 @@ export default function WebView({
     bzName,
     bzNumber,
     bankAccount,
+    bankName, // ✅ thunk로 같이 전달
     zipCode,
     roadAddress,
     jibunAddress,
@@ -78,7 +79,7 @@ export default function WebView({
     if (isSubmitting) return;
 
     // 필수값 가드 (thunk와 동일 기준)
-    if (!phoneNumber || !bzName || !bzNumber || !bankAccount) {
+    if (!phoneNumber || !bzName || !bzNumber || !bankAccount || !bankName) {
       alert("사장 회원가입 필수 정보가 부족합니다. 이전 단계를 확인해 주세요.");
       console.log("[owner-complete:web] invalid ownerValues:", ownerValues);
       return;
@@ -91,7 +92,6 @@ export default function WebView({
     try {
       await dispatch(submitOwnerSignup(ownerValues)).unwrap();
       onStart?.();
-      refreshAuth();
       nav("/");
     } catch (err: unknown) {
       console.error("[submitOwnerSignup:web] error:", err);

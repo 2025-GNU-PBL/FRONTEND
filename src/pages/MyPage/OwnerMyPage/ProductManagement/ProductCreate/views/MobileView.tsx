@@ -307,7 +307,6 @@ const MobileView: React.FC = () => {
     const { deltaY, deltaX } = e;
     if (Math.abs(deltaY) > Math.abs(deltaX)) {
       e.currentTarget.scrollLeft += deltaY;
-      e.preventDefault();
     }
   };
 

@@ -197,19 +197,27 @@ const GET_ENDPOINT_MAP: Record<CategoryKo, string> = {
 
 // 리스트에서 넘어온 영어 카테고리 → 이 페이지에서 쓰는 한글 카테고리
 const EN_CATEGORY_TO_KO: Record<string, CategoryKo> = {
+  // UPPER CASE
   WEDDING_HALL: "웨딩홀",
   WEDDING: "웨딩홀",
   STUDIO: "스튜디오",
   DRESS: "드레스",
   MAKEUP: "메이크업",
+  // slug / lower case
+  "wedding-hall": "웨딩홀",
+  wedding_hall: "웨딩홀",
+  wedding: "웨딩홀",
+  studio: "스튜디오",
+  dress: "드레스",
+  makeup: "메이크업",
 };
 
 // 🔹 상세 → 수정 페이지로 갈 때: 한글 카테고리 → 영어 카테고리
 const KO_CATEGORY_TO_EN: Record<CategoryKo, string> = {
-  웨딩홀: "WEDDING_HALL",
-  스튜디오: "STUDIO",
-  드레스: "DRESS",
-  메이크업: "MAKEUP",
+  웨딩홀: "wedding-hall",
+  스튜디오: "studio",
+  드레스: "dress",
+  메이크업: "makeup",
 };
 
 // API 응답 타입
@@ -220,7 +228,7 @@ interface ApiImage {
   url?: string;
 }
 
-// 전체 카테고리 리스트 (시도 순서 구성용)
+// 전체 카테고리 리스트 (fallback 용)
 const ALL_CATEGORIES: CategoryKo[] = [
   "웨딩홀",
   "스튜디오",
@@ -230,8 +238,7 @@ const ALL_CATEGORIES: CategoryKo[] = [
 
 // -------------------- 상품 정보 확인 (완전 읽기 전용 텍스트) --------------------
 const MobileView: React.FC = () => {
-  // URL: (예상) /my-page/owner/products/management/:id
-  // 혹은 /.../:category/:id 같은 구조도 대비
+  // URL: /my-page/owner/products/:category/:id
   const { id, category: categoryParam } = useParams<{
     id: string;
     category?: string;
@@ -306,24 +313,32 @@ const MobileView: React.FC = () => {
     const loadProduct = async () => {
       if (!id) return;
 
-      // URL 파라미터에서 한글 카테고리로 매핑 (있을 수도 있고, 틀릴 수도 있음)
-      const categoryKoFromParam: CategoryKo | undefined = categoryParam
-        ? EN_CATEGORY_TO_KO[categoryParam]
-        : undefined;
+      // ✅ URL 파라미터에서 한글 카테고리로 매핑
+      let categoryKoFromParam: CategoryKo | undefined;
+
+      if (categoryParam) {
+        const key1 = categoryParam; // "dress"
+        const key2 = categoryParam.toUpperCase(); // "DRESS"
+        const key3 = categoryParam.toLowerCase(); // "dress"
+
+        categoryKoFromParam =
+          EN_CATEGORY_TO_KO[key1] ??
+          EN_CATEGORY_TO_KO[key2] ??
+          EN_CATEGORY_TO_KO[key3];
+      }
 
       // ✅ 카테고리 후보 리스트 구성
-      // 1순위: URL 파라미터에서 추론한 카테고리
-      // 2순위: 나머지 모든 카테고리 (실제 상품 카테고리를 찾기 위해)
+      // 1순위: URL 파라미터에서 추론한 카테고리가 있으면 그 카테고리만
+      // 2순위: 정말 모를 때만 전체 카테고리 시도 (fallback)
       let targetCategories: CategoryKo[];
 
       if (categoryKoFromParam) {
-        targetCategories = [
-          categoryKoFromParam,
-          ...ALL_CATEGORIES.filter((c) => c !== categoryKoFromParam),
-        ];
+        targetCategories = [categoryKoFromParam];
       } else {
         targetCategories = [...ALL_CATEGORIES];
       }
+
+      let lastError: unknown | null = null;
 
       for (const cat of targetCategories) {
         const url = `${GET_ENDPOINT_MAP[cat]}/${id}`;
@@ -353,7 +368,6 @@ const MobileView: React.FC = () => {
             KO_TO_EN[tag] ? KO_TO_EN[tag] : tag
           );
 
-          // ✅ 여기서 category를 실제 성공한 cat으로 세팅
           reset({
             vendorName: resolvedVendorName,
             address: resolvedAddress,
@@ -398,20 +412,25 @@ const MobileView: React.FC = () => {
 
           // 하나라도 성공하면 더 이상 다른 카테고리 호출하지 않음
           return;
-        } catch (e) {
-          console.error(
-            `[상품 정보 확인] 상품 로딩 실패 (카테고리: ${cat}):`,
-            e
-          );
-          // 실패하면 다음 카테고리로 시도
+        } catch (e: any) {
+          lastError = e;
+          const status = e?.response?.status;
+          // 404는 "이 카테고리에 해당 id 없음" 이라 조용히 다음 카테고리로
+          if (status !== 404) {
+            console.error(
+              `[상품 정보 확인] 상품 로딩 실패 (카테고리: ${cat}, status: ${status})`,
+              e
+            );
+          }
           continue;
         }
       }
 
-      // 모든 카테고리에서 404가 난 경우
       console.error(
         "[상품 정보 확인] 모든 카테고리에서 상품을 찾지 못했습니다. id:",
-        id
+        id,
+        "lastError:",
+        lastError
       );
     };
 
@@ -425,7 +444,6 @@ const MobileView: React.FC = () => {
     const { deltaY, deltaX } = e;
     if (Math.abs(deltaY) > Math.abs(deltaX)) {
       e.currentTarget.scrollLeft += deltaY;
-      e.preventDefault();
     }
   };
 
@@ -446,7 +464,14 @@ const MobileView: React.FC = () => {
     }
     // ✅ 2순위: URL 파라미터 기반으로 보정해서 사용
     else if (categoryParam) {
-      const categoryKoFromParam = EN_CATEGORY_TO_KO[categoryParam];
+      const key1 = categoryParam;
+      const key2 = categoryParam.toUpperCase();
+      const key3 = categoryParam.toLowerCase();
+      const categoryKoFromParam =
+        EN_CATEGORY_TO_KO[key1] ??
+        EN_CATEGORY_TO_KO[key2] ??
+        EN_CATEGORY_TO_KO[key3];
+
       if (categoryKoFromParam) {
         categoryForEdit = KO_CATEGORY_TO_EN[categoryKoFromParam];
       } else {

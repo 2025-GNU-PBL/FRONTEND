@@ -17,7 +17,7 @@ import api from "../../../lib/api/axios";
 
 type ProductTag = {
   id?: number | string;
-  tagName: string;
+  tagName: string; // 서버에서 PORTRAIT_FOCUSED, HANOK 같은 코드가 내려온다고 가정
 };
 
 type ProductExt = Product & {
@@ -89,7 +89,7 @@ const getRegionQueryValue = (region: RegionKey): string | undefined => {
   if (region === "서울") return "SEOUL";
   if (region === "경기") return "GYEONGGI";
   if (region === "부산") return "BUSAN";
-  if (region === "인천") return "ETC";
+  if (region === "인천") return "INCHEON";
   return undefined;
 };
 
@@ -134,6 +134,26 @@ const SHOOTABLE_TO_TAG: Record<ShootableOption, string> = {
   로드: "ROAD",
   수중: "UNDERWATER",
   반려동물: "PET_FRIENDLY",
+};
+
+/* ========================= 태그 코드 → 한글 라벨 매핑 ========================= */
+/** 서버 코드 기준으로 카드/뱃지에 노출할 한글 라벨 매핑 */
+const STUDIO_TAG_LABEL: Record<string, string> = {
+  // 스타일
+  PORTRAIT_FOCUSED: "인물중심",
+  VARIED_BACKGROUND: "배경다양",
+  PORTRAIT_AND_BACKGROUND: "인물+배경",
+  // 촬영 가능
+  HANOK: "한옥",
+  GARDEN: "가든",
+  NIGHT: "야간",
+  ROAD: "로드",
+  UNDERWATER: "수중",
+  PET_FRIENDLY: "반려동물",
+};
+
+const getStudioTagLabel = (code: string): string => {
+  return STUDIO_TAG_LABEL[code] ?? code;
 };
 
 /* ========================= 유틸 ========================= */
@@ -231,15 +251,18 @@ const Card: React.FC<CardProps> = ({
           </p>
 
           <div className="flex max-w-[60%] flex-wrap items-center gap-1">
-            {tagList.slice(0, 2).map((t) => (
-              <span
-                key={(t.id ?? t.tagName).toString()}
-                className="truncate rounded-full border border-[#E5E7EB] px-2 py-0.5 text-[11px] text-[#4B5563]"
-                title={t.tagName}
-              >
-                {t.tagName}
-              </span>
-            ))}
+            {tagList.slice(0, 2).map((t) => {
+              const label = getStudioTagLabel(t.tagName);
+              return (
+                <span
+                  key={(t.id ?? t.tagName).toString()}
+                  className="truncate rounded-full border border-[#E5E7EB] px-2 py-0.5 text-[11px] text-[#4B5563]"
+                  title={label}
+                >
+                  {label}
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import type { NormalizedDetail } from "../../../type/product";
+import { useAppSelector } from "../../../store/hooks";
 
 /* ========================= Types ========================= */
 
@@ -185,6 +186,22 @@ export const BasicInfoContent = ({
   const [isReviewLoading, setIsReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
 
+  /* ========================= 오너 여부 판별 ========================= */
+
+  const ownerBzName = useAppSelector((s) => {
+    const userData = s.user.userData;
+    const role = s.user.role;
+    if (role === "OWNER" && userData && "bzName" in userData) {
+      return userData.bzName as string;
+    }
+    return undefined;
+  });
+
+  const isOwnerOfProduct =
+    !!ownerBzName &&
+    typeof data.bzName === "string" &&
+    data.bzName === ownerBzName;
+
   /* ========================= 리뷰 불러오기 ========================= */
 
   useEffect(() => {
@@ -258,14 +275,16 @@ export const BasicInfoContent = ({
             />
           </div>
 
-          {/* 찜 영역 (현재 더미, 추후 API 연동 가능) */}
-          <button type="button" className="flex items-center gap-1 px-2 py-1">
-            <Icon
-              icon="solar:heart-linear"
-              className="w-4 h-4 text-[#000000]"
-            />
-            <span className="text-[11px] text-[#000000]">452</span>
-          </button>
+          {/* 찜 영역 (오너일 때는 숨김) */}
+          {!isOwnerOfProduct && (
+            <button type="button" className="flex items-center gap-1 px-2 py-1">
+              <Icon
+                icon="solar:heart-linear"
+                className="w-4.h-4 text-[#000000]"
+              />
+              <span className="text-[11px] text-[#000000]">452</span>
+            </button>
+          )}
         </div>
 
         {/* 메인 타이틀 */}
@@ -294,13 +313,16 @@ export const BasicInfoContent = ({
           <div className="text-[24px] font-semibold text-[#000000] leading-[1.6]">
             {priceText || "가격 정보가 준비 중입니다."}
           </div>
-          <button
-            type="button"
-            className="px-3 py-2 bg-[#1E2124] rounded-[4px] text-[13px] text-white"
-            onClick={handleOpenCouponClick}
-          >
-            쿠폰 받기
-          </button>
+          {/* 오너일 때는 쿠폰 버튼 숨김 */}
+          {!isOwnerOfProduct && (
+            <button
+              type="button"
+              className="px-3 py-2 bg-[#1E2124] rounded-[4px] text-[13px] text-white"
+              onClick={handleOpenCouponClick}
+            >
+              쿠폰 받기
+            </button>
+          )}
         </div>
 
         {/* 태그 / 뱃지 */}
@@ -452,7 +474,7 @@ export const BasicInfoContent = ({
               </div>
             )}
 
-            {/* ✅ 리뷰 리스트: 가로 스크롤 카드 (디자인: F6F7FB, radius 8) */}
+            {/* ✅ 리뷰 리스트: 가로 스크롤 카드 */}
             {!isReviewLoading && !reviewError && reviews.length > 0 && (
               <div className="-mx-5 px-5">
                 <div className="flex gap-3 overflow-x-auto pb-2">
@@ -495,7 +517,7 @@ export const BasicInfoContent = ({
 
                       {/* 이미지가 있는 경우 썸네일 */}
                       {review.imageUrl && (
-                        <div className="mt-2 w-full h-[72px] rounded-[4px] overflow-hidden bg_white">
+                        <div className="mt-2 w-full h-[72px] rounded-[4px] overflow-hidden bg-white">
                           <img
                             src={review.imageUrl}
                             alt="리뷰 이미지"

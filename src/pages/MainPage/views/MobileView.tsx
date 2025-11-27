@@ -97,6 +97,7 @@ export default function MobileView({
 }: Props) {
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector((s) => s.user.isAuth);
+  const role = useAppSelector((s) => s.user.role); // ★ 추가: role 조회
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [cartCount, setCartCount] = useState<number>(0); // 장바구니 상품 개수 상태 추가
 
@@ -282,7 +283,9 @@ export default function MobileView({
               )}
             </motion.button>
           )}
-          {isAuthenticated && (
+
+          {/* ★ 변경: CUSTOMER 일 때만 카트 아이콘 노출 */}
+          {isAuthenticated && role === "CUSTOMER" && (
             <motion.button
               className="relative flex items-center justify-center hover:opacity-80 active:scale-95"
               onClick={() => navigate("/cart")}
@@ -299,6 +302,7 @@ export default function MobileView({
               )}
             </motion.button>
           )}
+
           <motion.button
             className="flex items-center justify-center hover:opacity-80 active:scale-95"
             aria-label="메뉴 열기"

@@ -57,9 +57,7 @@ import ProductDetailPage from "./pages/ProductDetailPage/ProductDetailPage";
 import OwnerProfilePage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfilePage";
 import ReservationManagementPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationManagementPage";
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
-import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationDetailPage";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
-import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfileEditPage";
 import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
 import CancelListPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelListPage";
 import CancelDetailPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelDetailPage";
@@ -83,6 +81,8 @@ import CanceledDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/Can
 import ProductDetail from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductDetail/ProductDetail";
 import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponRegister/CouponRegisterPage";
 import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponList/CouponListPage";
+import OwnerProfileEditPage from "./pages/MyPage/OwnerMyPage/ProfileEdit/OwnerProfileEditPage";
+import ReservationDetailPage from "./pages/MyPage/OwnerMyPage/ReservationDetail/ReservationDetailPage";
 
 function Layout() {
   const location = useLocation();
@@ -106,8 +106,11 @@ function Layout() {
 
   // 🔹 사장 상품 수정 디테일 페이지 매칭 (동적 파라미터)
   const isOwnerProductDetail = !!useMatch(
-    "/my-page/owner/products/management/:id"
+    "/my-page/owner/products/:category/:id"
   );
+
+  // 🔹 사장 상품 수정 디테일 페이지 매칭 (동적 파라미터)
+  const isOwnerReservation = !!useMatch("/my-page/owner/reservations/:id");
 
   // 네비바 숨길 경로 (정적)
   const hideNavOnPaths = [
@@ -135,6 +138,8 @@ function Layout() {
     "/success",
     "/fail",
     "/my-page/owner/coupons/register",
+    "/my-page/owner/profile/edit",
+    "/my-page/owner/reservations",
 
     "/my-page/client/profile/edit",
     "/my-page/client/payments/review",
@@ -175,7 +180,8 @@ function Layout() {
     isDressDetail ||
     isMakeupDetail ||
     isOwnerProductEdit ||
-    isOwnerProductDetail; // 🔹 추가
+    isOwnerProductDetail ||
+    isOwnerReservation; // 🔹 추가
 
   const showFooter = !hideFooter;
 
@@ -190,7 +196,7 @@ function Layout() {
         position="bottom-right"
         theme="light"
         pauseOnHover
-        autoClose={3000} // autoClose 시간 3초로 조정
+        autoClose={1000} // autoClose 시간 3초로 조정
         hideProgressBar={true} // 프로그레스 바 숨김
         closeButton={false} // 기본 닫기 버튼 숨김
         // toastClassName="custom-toastify-toast" // CustomNotificationToast에만 적용되도록 여기서 제거
@@ -421,7 +427,7 @@ const App = () => {
             element={<ReservationDetailPage />}
           />
           <Route
-            path="/my-page/owner/products/management/:id"
+            path="/my-page/owner/products/:category/:id"
             element={<ProductDetail />}
           />
           <Route

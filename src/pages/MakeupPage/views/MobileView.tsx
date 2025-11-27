@@ -211,7 +211,7 @@ const MobileView: React.FC = () => {
     if (region === "서울") return "SEOUL";
     if (region === "경기") return "GYEONGGI";
     if (region === "부산") return "BUSAN";
-    if (region === "인천") return "ETC"; // 서버 규약 유지
+    if (region === "인천") return "INCHEON"; // 서버 규약 유지
     return undefined;
   };
 
@@ -343,6 +343,7 @@ const MobileView: React.FC = () => {
             signal: controller.signal,
           }
         );
+        console.log(data);
 
         // 파라미터가 바뀐 뒤 늦게 온 응답이면 폐기
         if (inFlightKeyRef.current !== myKey || myKey !== paramsKey) {

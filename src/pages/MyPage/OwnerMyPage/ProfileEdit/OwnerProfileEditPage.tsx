@@ -1,5 +1,5 @@
-import MobileView from "./views/ProfileEditMobile";
-import WebView from "./views/ProfileEditWebView";
+import MobileView from "./views/MobileView";
+import WebView from "./views/WebView";
 
 export default function OwnerProfileEditPage() {
   return (

@@ -8,6 +8,7 @@ interface MobileBusinessInfoViewProps {
     bzName: string;
     bzNumber: string;
     bankAccount: string;
+    bankName: string;
   }) => void;
   onSkip?: () => void;
   title?: string;
@@ -18,6 +19,7 @@ interface OwnerSignUpLocationState {
   bzName?: string;
   bzNumber?: string;
   bankAccount?: string;
+  bankName?: string;
   [key: string]: unknown;
 }
 
@@ -29,6 +31,7 @@ export default function MobileView({
 }: MobileBusinessInfoViewProps) {
   const [bzName, setBzName] = useState("");
   const [bzNumber, setBzNumber] = useState("");
+  const [bankName, setBankName] = useState("");
   const [bankAccount, setBankAccount] = useState("");
 
   const navigate = useNavigate();
@@ -38,8 +41,8 @@ export default function MobileView({
   const prevState = (location.state ?? {}) as OwnerSignUpLocationState;
 
   const isComplete = useMemo(
-    () => Boolean(bzName && bzNumber && bankAccount),
-    [bzName, bzNumber, bankAccount]
+    () => Boolean(bzName && bzNumber && bankName && bankAccount),
+    [bzName, bzNumber, bankName, bankAccount]
   );
 
   // ✅ 사업자번호 자동 하이픈(000-00-00000)
@@ -64,6 +67,7 @@ export default function MobileView({
       bzName,
       bzNumber,
       bankAccount,
+      bankName,
     });
 
     navigate("/sign-up/owner/step4", {
@@ -72,6 +76,7 @@ export default function MobileView({
         bzName,
         bzNumber,
         bankAccount,
+        bankName,
       },
     });
   };
@@ -136,6 +141,22 @@ export default function MobileView({
             </div>
           </div>
 
+          {/* 은행명 */}
+          <div className="mb-[24px]">
+            <label className="block text-[#666666] text-[12px] leading-[18px] -tracking-[0.1px] mb-[6px]">
+              은행명
+            </label>
+            <div className="w-full h-[54px] border border-[#E8E8E8] rounded-[10px] flex items-center px-5">
+              <input
+                type="text"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="은행명"
+                className="w-full h-full outline-none bg-transparent text-[14px] leading-[22px] -tracking-[0.2px] text-[#1E2124] placeholder:text-[#9D9D9D]"
+              />
+            </div>
+          </div>
+
           {/* 계좌번호 */}
           <div className="mb-[32px]">
             <label className="block text-[#666666] text-[12px] leading-[18px] -tracking-[0.1px] mb-[6px]">
@@ -146,7 +167,7 @@ export default function MobileView({
                 type="text"
                 value={bankAccount}
                 onChange={(e) => setBankAccount(e.target.value)}
-                placeholder="은행명 + 계좌번호"
+                placeholder="계좌번호"
                 className="w-full h-full outline-none bg-transparent text-[14px] leading-[22px] -tracking-[0.2px] text-[#1E2124] placeholder:text-[#9D9D9D]"
               />
             </div>

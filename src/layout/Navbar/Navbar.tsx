@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { useAppSelector } from "../../store/hooks";
 import { useEffect, useState } from "react";
 import { getUnreadNotificationCount } from "../../lib/api/notification";
-import api from '../../lib/api/axios'; // axios 인스턴스 임포트
+import api from "../../lib/api/axios"; // axios 인스턴스 임포트
 
 const menuItems = [
   { name: "웨딩홀", path: "/wedding" },
@@ -34,7 +34,7 @@ const Navbar = () => {
 
       const fetchCartCount = async () => {
         try {
-          const response = await api.get<number>('/api/v1/cart/count');
+          const response = await api.get<number>("/api/v1/cart/count");
           setCartCount(response.data);
         } catch (error) {
           console.error("Failed to fetch cart count:", error);
@@ -100,31 +100,36 @@ const Navbar = () => {
                   </span>
                 )}
               </Link>
-              {/* ❤️ 카트 */}
-              <Link
-                to="/cart"
-                aria-label="장바구니"
-                className="relative p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
-              >
-                <Icon
-                  icon="solar:cart-large-minimalistic-linear"
-                  className="w-6 h-6"
-                />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                    {cartCount}
-                  </span>
-                )}
-              </Link>
 
-              {/* ❤️ 찜하기 */}
-              <Link
-                to="/favorites"
-                aria-label="찜 목록"
-                className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
-              >
-                <Icon icon="solar:heart-linear" className="h-6 w-6" />
-              </Link>
+              {/* ❤️ 카트 — CUSTOMER일 때만 노출 */}
+              {userRole === "CUSTOMER" && (
+                <Link
+                  to="/cart"
+                  aria-label="장바구니"
+                  className="relative p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
+                >
+                  <Icon
+                    icon="solar:cart-large-minimalistic-linear"
+                    className="w-6 h-6"
+                  />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+
+              {/* ❤️ 찜하기 — CUSTOMER일 때만 노출 */}
+              {userRole === "CUSTOMER" && (
+                <Link
+                  to="/favorites"
+                  aria-label="찜 목록"
+                  className="p-1 text-gray-700 hover:text-[#FF2233] transition-colors"
+                >
+                  <Icon icon="solar:heart-linear" className="h-6 w-6" />
+                </Link>
+              )}
 
               {/* 👤 마이페이지 */}
               <Link

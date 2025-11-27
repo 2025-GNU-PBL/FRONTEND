@@ -13,6 +13,9 @@ export const DetailContent = ({ data }: DetailContentProps) => {
   // 필요하면 category / data.detail 등을 사용해서
   // 카테고리별로 다른 설명을 노출할 수 있음.
 
+  const detailImages = data.images ?? [];
+  const hasDetailImages = detailImages.length > 0;
+
   return (
     <>
       {/* 상품상세 전용 헤더 영역 */}
@@ -65,11 +68,25 @@ export const DetailContent = ({ data }: DetailContentProps) => {
         </section>
       </div>
 
-      {/* 큰 상세 이미지들 (실제 이미지가 있다면 data.images 활용해서 교체 가능) */}
+      {/* 큰 상세 이미지들 */}
       <div className="px-5 pt-5 pb-8 space-y-3">
-        <div className="w-full h-[180px] bg-[#EFEFEF] rounded-[10px]" />
-        <div className="w-full h-[180px] bg-[#EFEFEF] rounded-[10px]" />
-        <div className="w-full h-[180px] bg-[#EFEFEF] rounded-[10px]" />
+        {hasDetailImages ? (
+          detailImages.map((img, index) => (
+            <div key={`${img.id ?? img.url}-${index}`} className="w-full">
+              <img
+                src={img.url}
+                alt={`${data.name} 상세 이미지 ${index + 1}`}
+                className="w-full max-h-[540px] rounded-[10px] object-cover"
+              />
+            </div>
+          ))
+        ) : (
+          <>
+            <div className="w-full h-[180px] bg-[#EFEFEF] rounded-[10px]" />
+            <div className="w-full h-[180px] bg-[#EFEFEF] rounded-[10px]" />
+            <div className="w-full h-[180px] bg-[#EFEFEF] rounded-[10px]" />
+          </>
+        )}
       </div>
     </>
   );

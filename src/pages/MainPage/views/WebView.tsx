@@ -57,6 +57,79 @@ const DETAIL_PATH_BY_CATEGORY: Record<
   makeup: (id) => `/makeup/${id}`,
 };
 
+// ========================= 태그 한글 매핑 ========================= //
+
+const TAG_LABEL_MAP: Record<string, string> = {
+  // 홀타입
+  GENERAL: "일반",
+  CONVENTION: "컨벤션",
+  HOTEL: "호텔",
+  HOUSE: "하우스",
+  RESTAURANT: "레스토랑",
+  HANOK: "한옥",
+  CHURCH: "교회/성당",
+
+  // 홀컨셉
+  SMALL: "스몰",
+  CHAPEL: "채플",
+  OUTDOOR_GARDEN: "야외/가든",
+  TRADITIONAL_WEDDING: "전통혼례",
+
+  // 스타일
+  PORTRAIT_FOCUSED: "인물중심",
+  VARIED_BACKGROUND: "배경다양",
+  PORTRAIT_AND_BACKGROUND: "인물+배경",
+
+  // 촬영 가능
+  GARDEN: "가든",
+  NIGHT: "야간",
+  ROAD: "로드",
+  UNDERWATER: "수중",
+  PET_FRIENDLY: "반려동물",
+
+  // 행사
+  SHOOTING_AND_CEREMONY: "촬영+본식",
+  CEREMONY: "본식",
+  SHOOTING: "촬영",
+
+  // 주력소재
+  SILK: "실크",
+  LACE: "레이스",
+  BEADS: "비즈",
+
+  // 제작형태
+  DOMESTIC: "국내",
+  IMPORTED: "수입",
+  DOMESTIC_AND_IMPORTED: "국내+수입",
+
+  // 담당자
+  DIRECTOR_OR_CEO: "원장/대표/이사",
+  DEPUTY_DIRECTOR: "부원장",
+  MANAGER: "실장",
+  TEAM_LEADER_OR_DESIGNER: "팀장/디자이너",
+
+  // 메이크업 스타일
+  FRUITY_TONE: "과즙/색조",
+  CLEAN_AND_BRIGHT: "깨끗/화사",
+  CONTOUR_AND_SHADOW: "윤곽/음영",
+};
+
+/**
+ * 백엔드에서 넘어오는 태그 값을 한글로 변환
+ * - 영문 코드(GENERAL, CONVENTION, ...) 은 한글 매핑
+ * - 이미 한글로 들어오면 그대로 노출
+ */
+const mapTagLabel = (value: string): string => {
+  if (!value) return "";
+  const key = value.toUpperCase();
+  return TAG_LABEL_MAP[key] ?? value;
+};
+
+type ParsedTag = {
+  id: string | number | undefined;
+  label: string;
+};
+
 // 서버 규격: pageNumber(1-base), pageSize(기본 6)
 const DEFAULT_PAGE_SIZE = 6;
 
@@ -486,10 +559,47 @@ function ProductCard({
 
   const priceText = formatPrice(product.price);
   const addrText = shortAddress(product.address);
-  const tags =
-    Array.isArray(product.tags) && product.tags.length > 0
-      ? product.tags.slice(0, 2)
-      : [];
+
+  // ✅ 태그 한글 매핑 적용 (최대 2개)
+  const rawTags = Array.isArray(product.tags) ? product.tags : [];
+
+  const parsedTags: ParsedTag[] = rawTags
+    .map((tag) => {
+      let base = "";
+
+      if (typeof tag === "string") {
+        base = tag;
+      } else if (tag && typeof tag === "object") {
+        const anyTag = tag as {
+          id?: string | number;
+          tagName?: string | null;
+          name?: string | null;
+        };
+        base = anyTag.tagName ?? anyTag.name ?? "";
+      }
+
+      base = base.trim();
+      if (!base) return null;
+
+      const label = mapTagLabel(base);
+
+      const id =
+        typeof tag === "object" &&
+        tag !== null &&
+        "id" in tag &&
+        (tag as { id?: string | number }).id !== undefined
+          ? (tag as { id?: string | number }).id
+          : undefined;
+
+      const result: ParsedTag = {
+        id,
+        label,
+      };
+
+      return result;
+    })
+    .filter((v): v is ParsedTag => v !== null && v.label.trim().length > 0)
+    .slice(0, 2);
 
   return (
     <article
@@ -543,16 +653,16 @@ function ProductCard({
           </p>
         ) : null}
 
-        {/* 태그 칩 (최대 2개) */}
-        {tags.length > 0 && (
+        {/* 태그 칩 (최대 2개, 한글 매핑) */}
+        {parsedTags.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {tags.map((t, i) => (
+            {parsedTags.map((tag, i) => (
               <span
-                key={t.id ?? `${product.id}-tag-${i}`}
+                key={tag.id ?? `${product.id}-tag-${i}`}
                 className="inline-flex items-center gap-1 rounded-full border border-[#E8E6F6] bg-[#F9F8FF] px-2.5 py-1 text-[11px] font-medium text-[#5C4AA8]"
               >
                 <Icon icon="solar:hashtag-bold" className="h-3.5 w-3.5" />
-                {t.tagName}
+                {tag.label}
               </span>
             ))}
           </div>

@@ -5,13 +5,13 @@ import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../../../../store/store";
 import { submitOwnerSignup } from "../../../../../store/thunkFunctions";
 import signupImg from "../../../../../assets/images/signup.png";
-import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
 interface OwnerSignupState {
   phoneNumber?: string;
   bzName?: string;
   bzNumber?: string;
   bankAccount?: string;
+  bankName?: string; // ✅ 은행명 추가
   zipcode?: string;
   roadAddress?: string;
   address?: string;
@@ -35,7 +35,6 @@ export default function MobileView({
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { refreshAuth } = useRefreshAuth();
 
   const location = useLocation();
   const state = (location.state as OwnerSignupState) || {};
@@ -45,6 +44,7 @@ export default function MobileView({
     bzName,
     bzNumber,
     bankAccount,
+    bankName, // ✅ state에서 은행명 꺼내기
     zipcode,
     roadAddress,
     address,
@@ -60,6 +60,7 @@ export default function MobileView({
     bzName,
     bzNumber,
     bankAccount,
+    bankName, // ✅ 최종 payload에 bankName 포함
     zipCode: zipcode,
     roadAddress: roadAddress || address || "",
     jibunAddress: jibunAddress || "",
@@ -71,11 +72,13 @@ export default function MobileView({
   const handleStart = async () => {
     if (isSubmitting) return;
 
+    // ✅ bankName 필수값 체크 추가
     if (
       !ownerValues.phoneNumber ||
       !ownerValues.bzName ||
       !ownerValues.bzNumber ||
       !ownerValues.bankAccount ||
+      !ownerValues.bankName ||
       !ownerValues.zipCode ||
       !ownerValues.roadAddress
     ) {
@@ -90,7 +93,6 @@ export default function MobileView({
     setIsSubmitting(true);
     try {
       await dispatch(submitOwnerSignup(ownerValues)).unwrap();
-      refreshAuth();
       navigate("/");
     } catch (err: unknown) {
       console.error("[submitOwnerSignup:mobile] error:", err);

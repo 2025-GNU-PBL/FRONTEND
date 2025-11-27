@@ -53,6 +53,15 @@ const DELETE_ENDPOINT_MAP: Record<ProductCategory, string> = {
   MAKEUP: "/api/v1/makeup",
 };
 
+/** ✅ 상세 페이지용 카테고리 슬러그 매핑 */
+const CATEGORY_SLUG_MAP: Record<ProductCategory, string> = {
+  WEDDING_HALL: "wedding-hall",
+  WEDDING: "wedding-hall", // 같은 엔드포인트 사용
+  STUDIO: "studio",
+  DRESS: "dress",
+  MAKEUP: "makeup",
+};
+
 /** ====== 유틸 ====== */
 const formatDateYMD = (iso: string) => {
   if (!iso) return "";
@@ -172,8 +181,16 @@ export default function MobileView() {
 
   /** ====== 상세보기 (상세 페이지 이동) ====== */
   const onViewDetail = (product: OwnerProduct) => {
-    // 상세 페이지에서 다시 쓰기 편하도록 state 로 전체 상품 정보 전달
-    nav(`/my-page/owner/products/management/${product.id}`, {
+    const slug = CATEGORY_SLUG_MAP[product.category];
+
+    if (!slug) {
+      console.error("[onViewDetail] invalid category:", product.category);
+      alert("알 수 없는 카테고리의 상품입니다.");
+      return;
+    }
+
+    // ✅ 새 라우트에 맞게 category + id 전달
+    nav(`/my-page/owner/products/${slug}/${product.id}`, {
       state: { product },
     });
   };
@@ -294,7 +311,6 @@ export default function MobileView() {
 
                       <div className="mt-3 space-y-2">
                         <div className="flex gap-2">
-                          {/* 🔹 여기: 상세보기 버튼으로 변경 */}
                           <ActionButton
                             onClick={() => onViewDetail(p)}
                             className="flex-1"

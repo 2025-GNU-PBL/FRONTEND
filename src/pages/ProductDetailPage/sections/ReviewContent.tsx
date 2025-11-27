@@ -20,6 +20,7 @@ type Review = {
   content: string;
 };
 
+// ✅ 실제 API 응답 형태에 맞게 수정
 type ReviewApiItem = {
   id: number;
   customerId: number;
@@ -28,7 +29,7 @@ type ReviewApiItem = {
   star: number;
   title: string;
   comment: string;
-  imageUrl: string | null;
+  imageUrls: string[]; // 🔥 imageUrl (단일) 이 아니라 imageUrls (배열)
   satisfaction: "SATISFIED" | "NEUTRAL" | "UNSATISFIED";
 };
 
@@ -78,9 +79,10 @@ const ReviewContent: React.FC<ReviewContentProps> = ({ targetId }) => {
     // createdAt 정보가 없어서 더미값 사용
     const createdAtText = "1주 전";
 
-    // 이미지: imageUrl 하나만 내려오므로 배열로 감싸서 사용
-    const images =
-      item.imageUrl && item.imageUrl.trim().length > 0 ? [item.imageUrl] : [];
+    // ✅ 이미지: imageUrls 배열을 그대로 사용 (빈 문자열 필터링)
+    const images = Array.isArray(item.imageUrls)
+      ? item.imageUrls.filter((url) => url && url.trim().length > 0)
+      : [];
 
     // 스키마에 없는 값들은 기존 더미값 유지
     const scheduleAnswer = "만족해요";
