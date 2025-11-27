@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState, useId } from "react";
+import { useCallback, useEffect, useMemo, useState, useId } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
@@ -8,9 +8,19 @@ interface WebBusinessInfoViewProps {
     bzName: string;
     bzNumber: string;
     bankAccount: string;
+    bankName: string;
   }) => void;
   onSkip?: () => void;
   title?: string;
+}
+
+// 🔹 location.state 타입 정의 (any 제거)
+interface OwnerSignUpLocationState {
+  bzName?: string;
+  bzNumber?: string;
+  bankAccount?: string;
+  bankName?: string;
+  [key: string]: unknown;
 }
 
 export default function WebView({
@@ -21,34 +31,42 @@ export default function WebView({
 }: WebBusinessInfoViewProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const prevState = (location.state as any) || {};
+
+  // 🔹 prevState를 useMemo로 분리 + 명시적 타입
+  const prevState = useMemo(
+    () => (location.state ?? {}) as OwnerSignUpLocationState,
+    [location.state]
+  );
 
   const [bzName, setBzName] = useState("");
   const [bzNumber, setBzNumber] = useState("");
+  const [bankName, setBankName] = useState("");
   const [bankAccount, setBankAccount] = useState("");
 
   const uid = useId();
   const idBzName = `${uid}-bzName`;
   const idBzNumber = `${uid}-bzNumber`;
+  const idBankName = `${uid}-bankName`;
   const idBankAccount = `${uid}-bankAccount`;
 
   const isComplete = useMemo(
-    () => Boolean(bzName && bzNumber && bankAccount),
-    [bzName, bzNumber, bankAccount]
+    () => Boolean(bzName && bzNumber && bankName && bankAccount),
+    [bzName, bzNumber, bankName, bankAccount]
   );
 
-  // 사업자번호 자동 하이픈(000-00-00000)
+  // ✅ 사업자번호 자동 하이픈(000-00-00000)
   const formatBizNumber = useCallback((value: string) => {
-    const digits = value.replace(/\D/g, "").slice(0, 10);
-    const parts: string[] = [];
-    if (digits.length <= 3) {
-      parts.push(digits);
-    } else if (digits.length <= 5) {
-      parts.push(digits.slice(0, 3), digits.slice(3));
+    const onlyNum = value.replace(/\D/g, "").slice(0, 10);
+
+    if (onlyNum.length <= 3) {
+      return onlyNum;
+    } else if (onlyNum.length <= 5) {
+      return `${onlyNum.slice(0, 3)}-${onlyNum.slice(3)}`;
     } else {
-      parts.push(digits.slice(0, 3), digits.slice(3, 5), digits.slice(5));
+      return `${onlyNum.slice(0, 3)}-${onlyNum.slice(3, 5)}-${onlyNum.slice(
+        5
+      )}`;
     }
-    return parts.filter(Boolean).join("-");
   }, []);
 
   const handleNext = useCallback(() => {
@@ -58,6 +76,7 @@ export default function WebView({
       bzName,
       bzNumber,
       bankAccount,
+      bankName,
     });
 
     navigate("/sign-up/owner/step4", {
@@ -66,9 +85,19 @@ export default function WebView({
         bzName,
         bzNumber,
         bankAccount,
+        bankName,
       },
     });
-  }, [isComplete, onNext, navigate, prevState, bzName, bzNumber, bankAccount]);
+  }, [
+    isComplete,
+    onNext,
+    navigate,
+    prevState,
+    bzName,
+    bzNumber,
+    bankAccount,
+    bankName,
+  ]);
 
   const handleSkip = useCallback(() => {
     onSkip?.();
@@ -91,11 +120,8 @@ export default function WebView({
   }, [handleNext]);
 
   return (
-    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-20">
-      {/* 상단 그라디언트 바 */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
-
-      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
+    <div className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-15">
+      <main className="mx-auto max-w-6xl w-full px-4 md:px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 items-center">
         {/* Left — Hero 카피 */}
         <section className="md:col-span-6 flex flex-col justify-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-[#FF4646]/10 text-[#FF4646] text-xs font-semibold px-3 py-1 w-fit ring-1 ring-[#FF4646]/20">
@@ -215,6 +241,26 @@ export default function WebView({
                   </div>
                 </div>
 
+                {/* 은행명 */}
+                <div className="space-y-2">
+                  <label
+                    htmlFor={idBankName}
+                    className="block text-[#666666] text-[12px] leading-[18px] -tracking-[0.1px]"
+                  >
+                    은행명
+                  </label>
+                  <div className="h-[54px] rounded-[12px] border border-[#E5E7EB] flex items-center bg-white">
+                    <input
+                      id={idBankName}
+                      type="text"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      placeholder="은행명"
+                      className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
                 {/* 계좌번호 */}
                 <div className="space-y-2">
                   <label
@@ -229,7 +275,7 @@ export default function WebView({
                       type="text"
                       value={bankAccount}
                       onChange={(e) => setBankAccount(e.target.value)}
-                      placeholder="은행명 + 계좌번호"
+                      placeholder="계좌번호"
                       className="w-full h-full px-4 text-[14px] tracking-[-0.2px] text-[#111827] placeholder:text-[#9D9D9D] focus:outline-none"
                     />
                   </div>

@@ -1,32 +1,51 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Icon } from "@iconify/react";
 import { useAppSelector } from "../../../../../../store/hooks";
 import type { UserData } from "../../../../../../store/userSlice";
 import type { UserRole } from "../../../../../../store/thunkFunctions";
 import api from "../../../../../../lib/api/axios";
 import MyPageHeader from "../../../../../../components/MyPageHeader";
+import { Icon } from "@iconify/react";
 
 /* -------------------------------------------------------------------------- */
 /*  타입 정의                                                                 */
 /* -------------------------------------------------------------------------- */
 
-/** 백엔드 응답 DTO */
 export interface PaymentMeItem {
   orderCode: string;
   productName: string;
   amount: number;
-  status: string; // "CANCELED" | "CANCEL_REQUESTED" | "DONE" | "FAILED" ...
+  status: string;
   approvedAt: string;
   shopName: string;
   paymentKey: string;
   productId: number;
-
-  // 실제 API 응답 필드명 반영
   thumbnailUrl?: string;
 }
 
-/** 화면 상태 라벨 */
+// 내 리뷰 목록 응답 타입 ( /api/v1/reviews/me )
+interface ReviewMeItem {
+  id: number;
+  customerId: number;
+  customerName: string;
+  productId: number;
+  star: number;
+  title: string;
+  comment: string;
+  imageUrl: string;
+  satisfaction: string; // "SATISFIED" | "DISSATISFIED" 등
+}
+
+interface ReviewMeResponse {
+  content: ReviewMeItem[];
+  page: {
+    size: number;
+    number: number;
+    totalElements: number;
+    totalPages: number;
+  };
+}
+
 type PaymentStatus = "취소완료" | "취소요청됨" | "결제완료" | "결제실패";
 
 interface PaymentItem {
@@ -39,24 +58,28 @@ interface PaymentItem {
   thumbnail?: string;
   productId: number;
   paymentKey: string;
+
+  // 이 결제(상품)에 대한 리뷰가 이미 작성되었는지 여부
+  isReviewed?: boolean;
 }
 
 interface PaymentCardProps {
   item: PaymentItem;
   onCancelRequest: (item: PaymentItem) => void;
+  onDeleteClick: (item: PaymentItem) => void;
 }
 
 interface PaymentSectionProps {
   status: PaymentStatus;
   items: PaymentItem[];
   onCancelRequest: (item: PaymentItem) => void;
+  onDeleteClick: (item: PaymentItem) => void;
 }
 
 /* -------------------------------------------------------------------------- */
 /*  유틸 함수                                                                 */
 /* -------------------------------------------------------------------------- */
 
-/** 백엔드 status → 화면 라벨 */
 function mapStatusToLabel(status: string): PaymentStatus {
   switch (status) {
     case "CANCELED":
@@ -71,7 +94,6 @@ function mapStatusToLabel(status: string): PaymentStatus {
   }
 }
 
-/** YYYY.MM.DD 포맷 */
 function formatDate(iso?: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -84,7 +106,6 @@ function formatDate(iso?: string | null): string {
   return `${y}.${m}.${day}`;
 }
 
-/** DTO → 화면 아이템 */
 function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
   return {
     id: dto.orderCode,
@@ -103,15 +124,29 @@ function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
 /*  프레젠테이션 컴포넌트                                                     */
 /* -------------------------------------------------------------------------- */
 
-function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
+function PaymentCard({
+  item,
+  onCancelRequest,
+  onDeleteClick,
+}: PaymentCardProps) {
   const nav = useNavigate();
-
-  // ✅ 취소 요청 상태 + 취소 완료 상태 모두 취소 요청 버튼 숨김
   const isCancelable =
     item.status !== "취소요청됨" && item.status !== "취소완료";
 
+  // 이미 리뷰를 쓴 상품이면 작성 불가능
+  const canWriteReview = !item.isReviewed;
+
   return (
-    <div className="w-full">
+    <div className="w-full relative">
+      {/* 삭제 아이콘 */}
+      <button
+        type="button"
+        className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center"
+        onClick={() => onDeleteClick(item)}
+      >
+        <Icon icon="meteor-icons:xmark" className="w-5 h-5 text-[#9D9D9D]" />
+      </button>
+
       <div className="flex">
         <div
           className="w-20 h-20 rounded-[4px] border border-[#F5F5F5] bg-[#F5F5F5] bg-cover bg-center"
@@ -141,7 +176,6 @@ function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
       </div>
 
       <div className="mt-4 flex gap-[6px]">
-        {/* 취소 요청 → 환불 요청 페이지로 이동 (취소요청됨/취소완료 상태에서는 숨김) */}
         {isCancelable && (
           <button
             type="button"
@@ -160,32 +194,44 @@ function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
           결제 상세
         </button>
 
-        <button
-          type="button"
-          className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333]"
-          onClick={() =>
-            nav("/my-page/client/payments/review", {
-              state: {
-                productId: item.productId,
-                shopName: item.shopName,
-                productName: item.productName,
-                thumbnailUrl: item.thumbnail,
-              },
-            })
-          }
-        >
-          리뷰 작성
-        </button>
+        {canWriteReview ? (
+          <button
+            type="button"
+            className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#333333]"
+            onClick={() =>
+              nav("/my-page/client/payments/review", {
+                state: {
+                  productId: item.productId,
+                  shopName: item.shopName,
+                  productName: item.productName,
+                  thumbnailUrl: item.thumbnail,
+                  paymentKey: item.paymentKey,
+                },
+              })
+            }
+          >
+            리뷰 작성
+          </button>
+        ) : (
+          // 이미 리뷰를 작성한 결제의 경우
+          <button
+            type="button"
+            disabled
+            className="flex-1 h-10 flex items-center justify-center px-2 border border-[#E4E4E4] rounded-[8px] text-[14px] text-[#BDBDBD] bg-[#F5F5F5] cursor-default"
+          >
+            작성 완료
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-/** 상태별 섹션 */
 function PaymentSection({
   status,
   items,
   onCancelRequest,
+  onDeleteClick,
 }: PaymentSectionProps) {
   if (items.length === 0) return null;
 
@@ -208,7 +254,11 @@ function PaymentSection({
 
       {items.map((item) => (
         <div key={item.id} className="mb-6 last:mb-0">
-          <PaymentCard item={item} onCancelRequest={onCancelRequest} />
+          <PaymentCard
+            item={item}
+            onCancelRequest={onCancelRequest}
+            onDeleteClick={onDeleteClick}
+          />
         </div>
       ))}
     </section>
@@ -231,20 +281,47 @@ export default function ListMobileView() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // 삭제 모달 상태
+  const [deleteTarget, setDeleteTarget] = React.useState<PaymentItem | null>(
+    null
+  );
+
+  const isDeleteModalOpen = !!deleteTarget;
+
   React.useEffect(() => {
     if (!role || role !== "CUSTOMER") {
       setPayments([]);
       return;
     }
 
-    const fetchPayments = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const { data } = await api.get<PaymentMeItem[]>("/api/v1/payments/me");
+        // 결제 내역 + 내 리뷰 목록을 함께 불러옴
+        const [paymentsRes, reviewsRes] = await Promise.all([
+          api.get<PaymentMeItem[]>("/api/v1/payments/me"),
+          api.get<ReviewMeResponse>("/api/v1/reviews/me"),
+        ]);
 
-        const mapped = (data || []).map(mapToPaymentItem);
+        const paymentData = paymentsRes.data || [];
+        const reviewData = reviewsRes.data?.content || [];
+
+        // 리뷰가 작성된 productId 집합
+        const reviewedProductIdSet = new Set(
+          reviewData.map((review) => review.productId)
+        );
+
+        // 결제 아이템에 isReviewed 플래그를 붙여서 저장
+        const mapped = paymentData.map((dto) => {
+          const base = mapToPaymentItem(dto);
+          return {
+            ...base,
+            isReviewed: reviewedProductIdSet.has(dto.productId),
+          };
+        });
+
         setPayments(mapped);
       } catch (e) {
         console.log(e);
@@ -254,10 +331,9 @@ export default function ListMobileView() {
       }
     };
 
-    fetchPayments();
+    fetchData();
   }, [role]);
 
-  // 상태별 분류
   const canceled = payments.filter((p) => p.status === "취소완료");
   const cancelRequested = payments.filter((p) => p.status === "취소요청됨");
   const completed = payments.filter((p) => p.status === "결제완료");
@@ -266,7 +342,6 @@ export default function ListMobileView() {
   const hasPayments = payments.length > 0;
   const isNotCustomer = role && role !== "CUSTOMER";
 
-  /* 취소 요청 버튼 클릭 → 환불 요청 페이지로 이동 */
   const handleGoRefundRequest = (item: PaymentItem) => {
     nav(`/my-page/client/payments/refund/${item.paymentKey}`, {
       state: {
@@ -279,93 +354,134 @@ export default function ListMobileView() {
     });
   };
 
+  // 삭제 아이콘 클릭 시 모달 오픈
+  const handleOpenDeleteModal = (item: PaymentItem) => {
+    setDeleteTarget(item);
+  };
+
+  const handleCloseDeleteModal = () => {
+    setDeleteTarget(null);
+  };
+
+  // 실제 삭제 로직 (일단 UI만, API 연동은 이후에)
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    // TODO: 삭제 API 연동
+    // 예: await api.delete(`/api/v1/payments/${deleteTarget.id}`);
+    // 여기서는 일단 UI 상에서만 삭제 처리
+    setPayments((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+    setDeleteTarget(null);
+  };
+
+  const sections = [
+    { items: cancelRequested, label: "취소요청됨" as PaymentStatus },
+    { items: canceled, label: "취소완료" as PaymentStatus },
+    { items: completed, label: "결제완료" as PaymentStatus },
+    { items: failed, label: "결제실패" as PaymentStatus },
+  ];
+
   return (
-    <div className="w-full bg-white">
-      <div className="mx-auto w-[390px] h-[844px] bg-[#FFFFFF] flex flex-col relative">
-        {/* 헤더 */}
-        <div className="sticky top-0 z-20 bg-[#FFFFFF] border-b border-gray-200">
-          <MyPageHeader
-            title="결제 내역"
-            onBack={() => nav(-1)}
-            showMenu={false}
-          />
-        </div>
-
-        {/* 컨텐츠 */}
-        <div className="flex-1 overflow-y-auto px-5 pt-8 pb-15">
-          <div className="w-[390px] h-2 bg-[#F7F9FA] -mx-5 mb-5" />
-
-          {/* 고객이 아닌 경우 */}
-          {isNotCustomer && (
-            <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
-              고객 전용 페이지입니다.
-            </div>
-          )}
-
-          {/* 로딩 */}
-          {!isNotCustomer && loading && (
-            <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
-              결제 내역을 불러오는 중입니다...
-            </div>
-          )}
-
-          {/* 에러 */}
-          {!isNotCustomer && !loading && error && (
-            <div className="w-full mt-10 flex justify-center text-[14px] text-red-500">
-              {error}
-            </div>
-          )}
-
-          {/* 데이터 있을 때 */}
-          {!isNotCustomer && !loading && !error && hasPayments && (
-            <>
-              {cancelRequested.length > 0 && (
-                <PaymentSection
-                  status="취소요청됨"
-                  items={cancelRequested}
-                  onCancelRequest={handleGoRefundRequest}
-                />
-              )}
-
-              {canceled.length > 0 && (
-                <PaymentSection
-                  status="취소완료"
-                  items={canceled}
-                  onCancelRequest={handleGoRefundRequest}
-                />
-              )}
-
-              {completed.length > 0 && (
-                <PaymentSection
-                  status="결제완료"
-                  items={completed}
-                  onCancelRequest={handleGoRefundRequest}
-                />
-              )}
-
-              {failed.length > 0 && (
-                <PaymentSection
-                  status="결제실패"
-                  items={failed}
-                  onCancelRequest={handleGoRefundRequest}
-                />
-              )}
-            </>
-          )}
-
-          {/* 데이터 없을 때 */}
-          {!isNotCustomer && !loading && !error && !hasPayments && (
-            <div className="w-full flex flex-col items-center mt-70">
-              <img
-                src="/images/document.png"
-                className="w-20 h-20 mb-3 text-[#D9D9D9]"
-              />
-              <p className="text-[18px] font-semibold text-[#333333]">
-                결제 내역이 없어요
+    <div className="relative w-full min-h-screen bg-[#FFFFFF] flex flex-col">
+      {/* 삭제 모달 */}
+      {isDeleteModalOpen && deleteTarget && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-[rgba(0,0,0,0.4)]">
+          <div className="relative w-[335px] h-[164px] bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)] rounded-[14px]">
+            {/* 상단 영역 */}
+            <div className="flex flex-col items-start px-5 pt-6 gap-2">
+              <div className="flex flex-row items-start gap-[14px] w-full h-6">
+                <p className="flex items-center text-[16px] leading-[24px] font-bold tracking-[-0.2px] text-[#1E2124]">
+                  결제 내역을 삭제하시겠어요?
+                </p>
+              </div>
+              <p className="flex items-center w-full text-[14px] leading-[21px] font-medium tracking-[-0.2px] text-[#9D9D9D]">
+                삭제내역은 복구하기 어려워요
               </p>
             </div>
-          )}
+
+            {/* 하단 버튼 영역 */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[335px] h-[78px] px-5 pb-6 pt-[10px] flex flex-row items-center gap-2 rounded-b-[10px]">
+              <button
+                type="button"
+                className="flex-1 h-11 flex items-center justify-center rounded-[10px] bg-[#F3F4F5]"
+                onClick={handleCloseDeleteModal}
+              >
+                <span className="text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999]">
+                  취소
+                </span>
+              </button>
+              <button
+                type="button"
+                className="flex-1 h-11 flex items-center justify-center rounded-[10px] bg-[#FF2233]"
+                onClick={handleConfirmDelete}
+              >
+                <span className="text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white">
+                  삭제
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
+      )}
+
+      <div className="sticky top-0 z-20 bg-[#FFFFFF] border-b border-gray-200">
+        <MyPageHeader
+          title="결제 내역"
+          onBack={() => nav(-1)}
+          showMenu={false}
+        />
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 pt-8 pb-15">
+        <div className="w-full h-2 bg-[#F7F9FA] -mx-5 mb-5" />
+
+        {isNotCustomer && (
+          <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
+            고객 전용 페이지입니다.
+          </div>
+        )}
+
+        {!isNotCustomer && loading && (
+          <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
+            결제 내역을 불러오는 중입니다...
+          </div>
+        )}
+
+        {!isNotCustomer && !loading && error && (
+          <div className="w-full mt-10 flex justify-center text-[14px] text-red-500">
+            {error}
+          </div>
+        )}
+
+        {!isNotCustomer && !loading && !error && hasPayments && (
+          <>
+            {sections.map((s, idx) =>
+              s.items.length > 0 ? (
+                <React.Fragment key={s.label}>
+                  {idx > 0 && <div className="w-full h-2 bg-[#F7F9FA] my-5" />}
+                  <PaymentSection
+                    status={s.label}
+                    items={s.items}
+                    onCancelRequest={handleGoRefundRequest}
+                    onDeleteClick={handleOpenDeleteModal}
+                  />
+                </React.Fragment>
+              ) : null
+            )}
+          </>
+        )}
+
+        {!isNotCustomer && !loading && !error && !hasPayments && (
+          <div className="w-full flex flex-col items-center mt-70">
+            <img
+              src="/images/document.png"
+              className="w-20 h-20 mb-3 text-[#D9D9D9]"
+            />
+            <p className="text-[18px] font-semibold text-[#333333]">
+              결제 내역이 없어요
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

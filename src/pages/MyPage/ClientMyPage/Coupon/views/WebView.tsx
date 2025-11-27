@@ -140,7 +140,7 @@ export default function WebView() {
     fetchMyCoupons();
   }, [isAuth]);
 
-  /** 카테고리 + 정렬 적용 리스트 (카테고리는 RAW → 한글 매핑) */
+  /** 카테고리 + 정렬 적용 리스트 (모바일처럼 사용 가능 위, 사용됨 아래) */
   const filtered = useMemo(() => {
     const list = coupons.filter((c) => {
       if (category === "전체") return true;
@@ -149,7 +149,22 @@ export default function WebView() {
       return koCategory === category;
     });
 
+    // 우선순위:
+    // 0: 사용 가능 (canUse && !USED)
+    // 1: 사용 불가 (!canUse && !USED)
+    // 2: 사용됨 (USED)
+    const rank = (c: Coupon) => {
+      const isUsed = c.status === "USED";
+      if (isUsed) return 2;
+      if (c.canUse) return 0;
+      return 1;
+    };
+
     list.sort((a, b) => {
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra !== rb) return ra - rb;
+
       const da = +new Date(a.downloadedAt || a.startDate);
       const db = +new Date(b.downloadedAt || b.startDate);
       return sort === "최신순" ? db - da : da - db;
@@ -326,12 +341,40 @@ function CouponCard({ c }: { c: Coupon }) {
   const periodLabel = `${formatDate(c.startDate)} ~ ${formatDate(
     c.expirationDate
   )}`;
+
   const isUsed = c.status === "USED";
+  const isApplicable = !isUsed && c.canUse;
+
+  let statusLabel = "";
+  let circleBg = "";
+  let icon = "";
+  let iconColor = "";
+  let textColor = "";
+
+  if (isUsed) {
+    statusLabel = "사용됨";
+    circleBg = "bg-[#F3F4F6]";
+    icon = "mdi:check-all";
+    iconColor = "text-[#6B7280]";
+    textColor = "text-[#6B7280]";
+  } else if (isApplicable) {
+    statusLabel = "사용 가능";
+    circleBg = "bg-[#ECFDF3]";
+    icon = "mdi:check-circle-outline";
+    iconColor = "text-[#16A34A]";
+    textColor = "text-[#16A34A]";
+  } else {
+    statusLabel = "사용 불가";
+    circleBg = "bg-[#F3F4F6]";
+    icon = "mdi:close-circle-outline";
+    iconColor = "text-[#9CA3AF]";
+    textColor = "text-[#9CA3AF]";
+  }
 
   return (
     <article className="relative flex overflow-hidden rounded-2xl bg-white border border-[#E6E9EF] shadow-sm">
       {/* 왼쪽: 쿠폰 정보 */}
-      <div className="flex-1 px-6 py-3">
+      <div className={`flex-1 px-6 py-3 ${!isApplicable ? "opacity-50" : ""}`}>
         {/* 타이틀 */}
         <div className="flex items-start gap-2">
           <Icon
@@ -360,23 +403,14 @@ function CouponCard({ c }: { c: Coupon }) {
       <div className="flex w-[120px] items-center justify-center bg-[#F6F7FB] border-l border-[#E6E9EF]">
         <div className="flex flex-col items-center gap-2">
           <div
-            className={`flex items-center justify-center w-[40px] h-[40px] rounded-full ${
-              isUsed ? "bg-[#F3F4F6]" : "bg-[#ECFDF3]"
-            }`}
+            className={`flex items-center justify-center w-[40px] h-[40px] rounded-full ${circleBg}`}
           >
-            <Icon
-              icon={isUsed ? "mdi:check-all" : "mdi:check-circle-outline"}
-              className={`w-5 h-5 ${
-                isUsed ? "text-[#6B7280]" : "text-[#16A34A]"
-              }`}
-            />
+            <Icon icon={icon} className={`w-5 h-5 ${iconColor}`} />
           </div>
           <span
-            className={`whitespace-nowrap text-[13px] font-medium ${
-              isUsed ? "text-[#6B7280]" : "text-[#16A34A]"
-            }`}
+            className={`whitespace-nowrap text-[13px] font-medium ${textColor}`}
           >
-            {isUsed ? "사용됨" : "사용 가능"}
+            {statusLabel}
           </span>
         </div>
       </div>

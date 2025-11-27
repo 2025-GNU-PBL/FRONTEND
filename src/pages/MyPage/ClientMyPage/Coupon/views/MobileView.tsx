@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo } from "react";
+// src/pages/MyPage/ClientMyPage/Coupons/MobileView.tsx
+
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../../../../lib/api/axios";
+import { useAppSelector } from "../../../../../store/hooks";
 
-// API에서 내려오는 category를 UI 표기로 매핑
 const categoryMap: Record<string, string> = {
   WEDDING_HALL: "웨딩홀",
   STUDIO: "스튜디오",
@@ -19,10 +21,11 @@ type CouponCategory =
   | "메이크업"
   | string;
 
-// API 응답 구조에 맞춘 Coupon 타입
+type SortOption = "최신순" | "오래된순";
+
 interface Coupon {
   userCouponId: number;
-  status: string;
+  status: "AVAILABLE" | "USED" | "EXPIRED" | "CANCELLED" | string;
   downloadedAt: string;
   usedAt: string | null;
   couponId: number;
@@ -54,17 +57,27 @@ interface CouponPageState {
   purchaseAmount?: number;
 }
 
+const formatDate = (dateStr: string): string => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}.${String(d.getDate()).padStart(2, "0")}`;
+};
+
 const MobileView: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<CouponCategory>("전체");
+  const [sort, setSort] = useState<SortOption>("최신순");
+  const [sortOpen, setSortOpen] = useState(false);
+
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [applicableCouponIds, setApplicableCouponIds] = useState<Set<number>>(
     new Set()
   );
-  const [selectedUserCouponId, setSelectedUserCouponId] = useState<
-    number | null
-  >(null); // ✅ 기본: 선택 없음
-
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
@@ -72,33 +85,68 @@ const MobileView: React.FC = () => {
   const { products = [], purchaseAmount } =
     (location.state as CouponPageState) || {};
 
-  // 기준 상품: 결제 순서상 맨 위 상품 기준
+  const isAuth = useAppSelector((s) => s.user.isAuth);
+
   const currentProduct = useMemo(
     () => (products.length > 0 ? products[0] : undefined),
     [products]
   );
 
-  // ✅ 기준 금액: 현재 상품(lineTotal) 우선, 없으면 purchaseAmount
   const effectiveAmount = useMemo(() => {
     if (currentProduct) return currentProduct.lineTotal;
     if (purchaseAmount !== undefined) return purchaseAmount;
     return 0;
   }, [currentProduct, purchaseAmount]);
 
+  // ⭐ 스크롤 여부 감지용 Ref & State
+  const categoryRef = useRef<HTMLDivElement>(null);
+  const [isScrollable, setIsScrollable] = useState(false);
+
+  // 정렬 드롭다운 바깥 클릭 감지용 ref
+  const sortRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
+    const checkScrollable = () => {
+      if (!categoryRef.current) return;
+      const { scrollWidth, clientWidth } = categoryRef.current;
+      setIsScrollable(scrollWidth > clientWidth);
+    };
+
+    checkScrollable();
+    window.addEventListener("resize", checkScrollable);
+    return () => window.removeEventListener("resize", checkScrollable);
+  }, []);
+
+  // 정렬 드롭다운 바깥 클릭 시 닫기
+  useEffect(() => {
+    if (!sortOpen) return;
+
+    const handleClick = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setSortOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [sortOpen]);
+
+  useEffect(() => {
+    if (!isAuth) {
+      setCoupons([]);
+      setApplicableCouponIds(new Set());
+      return;
+    }
+
     const fetchCoupons = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // 1) 내가 사용 가능한 쿠폰(보유 쿠폰) 전체
-        const availableRes = await api.get<Coupon[]>(
-          "/api/v1/customer/coupon/my/available"
-        );
-        const availableCoupons = availableRes.data ?? [];
-        setCoupons(availableCoupons);
+        const allRes = await api.get<Coupon[]>("/api/v1/customer/coupon/my");
+        const allCoupons = allRes.data ?? [];
+        setCoupons(allCoupons);
 
-        // 2) 현재 상품/금액 기준으로 적용 가능한 쿠폰 조회
         if (currentProduct && effectiveAmount > 0) {
           const applicableRes = await api.get<Coupon[]>(
             "/api/v1/customer/coupon/my/applicable",
@@ -110,24 +158,17 @@ const MobileView: React.FC = () => {
             }
           );
 
-          const applicableList = applicableRes.data ?? [];
           const idSet = new Set<number>(
-            applicableList.map((c) => c.userCouponId)
+            (applicableRes.data ?? []).map((c) => c.userCouponId)
           );
           setApplicableCouponIds(idSet);
-
-          // ✅ 자동 선택 제거: 선택 초기화
-          setSelectedUserCouponId(null);
         } else {
-          // 상품/금액 정보 없으면 일단 전부 적용 가능 처리
-          const idSet = new Set<number>(
-            availableCoupons.map((c) => c.userCouponId)
+          setApplicableCouponIds(
+            new Set(allCoupons.map((c) => c.userCouponId))
           );
-          setApplicableCouponIds(idSet);
-          setSelectedUserCouponId(null);
         }
-      } catch (err) {
-        console.error(err);
+      } catch (e) {
+        console.error(e);
         setError("쿠폰 정보를 불러오지 못했습니다.");
       } finally {
         setLoading(false);
@@ -135,113 +176,42 @@ const MobileView: React.FC = () => {
     };
 
     fetchCoupons();
-  }, [currentProduct, effectiveAmount]);
-
-  // UI 표기에 맞춰 category 변환
-  const convertCategory = (key: string): string => {
-    return categoryMap[key] ?? key;
-  };
-
-  // 할인율 또는 할인금액 포맷팅
-  const formatRate = (coupon: Coupon) => {
-    if (coupon.discountType === "RATE") {
-      return `${coupon.discountValue}%`;
-    }
-    return `${coupon.discountValue.toLocaleString("ko-KR")}원`;
-  };
-
-  // 조건 텍스트 포맷팅
-  const formatCondition = (coupon: Coupon) => {
-    return `최소 ${coupon.minPurchaseAmount.toLocaleString(
-      "ko-KR"
-    )}원 이상 구매 시`;
-  };
-
-  // 기간 텍스트 포맷팅
-  const formatPeriod = (coupon: Coupon) => {
-    return `${coupon.startDate} ~ ${coupon.expirationDate}`;
-  };
+  }, [isAuth, currentProduct, effectiveAmount]);
 
   const filteredCoupons =
     activeCategory === "전체"
       ? coupons
-      : coupons.filter((c) => convertCategory(c.category) === activeCategory);
+      : coupons.filter(
+          (c) => (categoryMap[c.category] ?? c.category) === activeCategory
+        );
 
-  // 적용 가능한 쿠폰 개수
-  const applicableCount = useMemo(
-    () => coupons.filter((c) => applicableCouponIds.has(c.userCouponId)).length,
-    [coupons, applicableCouponIds]
-  );
+  const sortedCoupons = useMemo(() => {
+    return [...filteredCoupons].sort((a, b) => {
+      // 1순위: 사용 가능 여부 (applicable)
+      const aApp = applicableCouponIds.has(a.userCouponId);
+      const bApp = applicableCouponIds.has(b.userCouponId);
+      if (aApp !== bApp) return aApp ? -1 : 1;
 
-  // 선택된 쿠폰
-  const selectedCoupon = useMemo(
-    () => coupons.find((c) => c.userCouponId === selectedUserCouponId) ?? null,
-    [coupons, selectedUserCouponId]
-  );
+      // 2순위: 사용 여부
+      const aUsed = a.status === "USED";
+      const bUsed = b.status === "USED";
+      if (aUsed !== bUsed) return aUsed ? 1 : -1;
 
-  // 선택된 쿠폰 기준 할인 금액
-  const selectedDiscountAmount = useMemo(() => {
-    if (!selectedCoupon || effectiveAmount <= 0) return 0;
+      // 3순위: 다운로드/시작 날짜 기준 정렬 (최신순 / 오래된순)
+      const aDate = +new Date(a.downloadedAt || a.startDate);
+      const bDate = +new Date(b.downloadedAt || b.startDate);
 
-    let discount = 0;
-
-    if (selectedCoupon.discountType === "RATE") {
-      discount = Math.floor(
-        (effectiveAmount * selectedCoupon.discountValue) / 100
-      );
-      if (
-        selectedCoupon.maxDiscountAmount &&
-        selectedCoupon.maxDiscountAmount > 0
-      ) {
-        discount = Math.min(discount, selectedCoupon.maxDiscountAmount);
+      if (sort === "최신순") {
+        return bDate - aDate; // 최신순
       }
-    } else {
-      discount = selectedCoupon.discountValue;
-    }
-
-    if (discount > effectiveAmount) discount = effectiveAmount;
-    return discount;
-  }, [selectedCoupon, effectiveAmount]);
-
-  // 쿠폰 카드 클릭: 적용 가능할 때만 단일 선택/해제
-  const handleSelectCoupon = (coupon: Coupon, isApplicable: boolean) => {
-    if (!isApplicable) return;
-    setSelectedUserCouponId((prev) =>
-      prev === coupon.userCouponId ? null : coupon.userCouponId
-    );
-  };
-
-  // ✅ "적용하기" 버튼: /use 호출 X, 선택 정보만 /checkout 으로 전달
-  const handleApplyCoupon = () => {
-    if (
-      !selectedCoupon ||
-      !selectedUserCouponId ||
-      selectedDiscountAmount <= 0
-    ) {
-      // 선택 안 했으면 쿠폰 미적용 상태로 결제 페이지로 복귀
-      navigate("/checkout");
-      return;
-    }
-
-    navigate("/checkout", {
-      state: {
-        selectedCouponId: selectedCoupon.userCouponId, // ✅ userCouponId 전달
-        selectedCoupon,
-        discountAmount: selectedDiscountAmount,
-        productId: currentProduct?.productId,
-        appliedAmount: effectiveAmount,
-        applicableCount,
-      },
+      return aDate - bDate; // 오래된순
     });
-  };
+  }, [filteredCoupons, applicableCouponIds, sort]);
 
   return (
-    <div className="min-h-screen flex justify-center bg-[#F5F5F5]">
-      {/* 폰 화면 프레임 */}
-      <div className="relative w-full max-w-[390px] min-h-screen bg-white">
-        {/* 🔹 상단(헤더 + 카테고리) 통째로 sticky 고정 */}
+    <div className="w-full min-h-screen bg-[#F5F5F5] flex flex-col">
+      <div className="w-full bg-white min-h-screen">
         <div className="sticky top-0 z-20 bg-white">
-          {/* 헤더 */}
           <header className="relative flex h-[60px] items-center justify-between px-5">
             <button
               type="button"
@@ -254,48 +224,39 @@ const MobileView: React.FC = () => {
               />
             </button>
 
-            <div className="absolute left-1/2 -translate-x-1/2 text-center text-[18px] font-semibold text-[#1E2124]">
-              쿠폰 선택
+            <div className="absolute left-1/2 -translate-x-1/2 text-[18px] font-semibold">
+              쿠폰함
             </div>
 
             <div className="h-6 w-6" />
           </header>
 
-          {/* 상단 개수 + 카테고리 탭 */}
           <section className="px-5 pt-5 pb-3">
-            <div className="w-full max-w-[350px] mx-auto flex flex-col gap-4">
-              {/* 상단 개수 */}
-              <div className="flex items-center justify-between h-[21px]">
-                <span className="text-[14px]">
-                  {`상품 쿠폰 ${coupons.length}장`}
-                </span>
-                <span className="text-[14px] text-[#999999]">
-                  {`적용 가능 ${applicableCount}장`}
-                </span>
-              </div>
-
-              {/* 카테고리 탭 */}
-              <div className="flex gap-2 h-[37px] flex-nowrap">
+            <div className="w-full mx-auto flex flex-col gap-4">
+              {/* ⭐ 변경된 카테고리 버튼 래퍼 */}
+              <div
+                ref={categoryRef}
+                className={`flex gap-2 overflow-x-auto scrollbar-hide w-full ${
+                  isScrollable
+                    ? "flex-nowrap justify-start"
+                    : "flex-nowrap justify-center"
+                }`}
+              >
                 {["전체", "웨딩홀", "스튜디오", "드레스", "메이크업"].map(
                   (label) => {
                     const key = label as CouponCategory;
-                    const isActive = activeCategory === key;
-
-                    const baseClass =
-                      "px-3 py-2 rounded-[20px] h-[37px] text-[14px] whitespace-nowrap";
-                    const activeClass =
-                      "bg-[#000000] text-[#FEFFFF] border border-[#000000]";
-                    const inactiveClass =
-                      "bg-[#FEFFFF] text-[#000000] border border-[#D9D9D9]";
+                    const active = activeCategory === key;
 
                     return (
                       <button
-                        key={key}
+                        key={label}
                         type="button"
-                        className={`${baseClass} ${
-                          isActive ? activeClass : inactiveClass
-                        }`}
                         onClick={() => setActiveCategory(key)}
+                        className={`px-3 py-2 rounded-[20px] text-[14px] border whitespace-nowrap ${
+                          active
+                            ? "bg-black text-white border-black"
+                            : "bg-white text-black border-[#D9D9D9]"
+                        }`}
                       >
                         {label}
                       </button>
@@ -303,88 +264,165 @@ const MobileView: React.FC = () => {
                   }
                 )}
               </div>
+
+              {/* 보유 쿠폰 + 정렬 드롭다운 */}
+              <div className="flex items-center justify-between">
+                <span className="text-[14px]">
+                  보유 쿠폰 {sortedCoupons.length}
+                </span>
+
+                <div className="relative" ref={sortRef}>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-[13px]"
+                    onClick={() => setSortOpen((prev) => !prev)}
+                  >
+                    {sort}
+                    <Icon
+                      icon="solar:alt-arrow-down-linear"
+                      className="w-4 h-4 text-[#9CA3AF]"
+                    />
+                  </button>
+
+                  {sortOpen && (
+                    <div className="absolute right-0 mt-1 w-[120px] rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
+                      <button
+                        type="button"
+                        className={`w-full text-left px-4 py-2.5 text-[13px] ${
+                          sort === "최신순"
+                            ? "bg-gray-100 font-semibold"
+                            : "hover:bg-gray-50"
+                        }`}
+                        onClick={() => {
+                          setSort("최신순");
+                          setSortOpen(false);
+                        }}
+                      >
+                        최신순
+                      </button>
+                      <button
+                        type="button"
+                        className={`w-full text-left px-4 py-2.5 text-[13px] ${
+                          sort === "오래된순"
+                            ? "bg-gray-100 font-semibold"
+                            : "hover:bg-gray-50"
+                        }`}
+                        onClick={() => {
+                          setSort("오래된순");
+                          setSortOpen(false);
+                        }}
+                      >
+                        오래된순
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
         </div>
 
-        {/* 🔹 쿠폰 리스트 영역 (실제 스크롤 되는 부분) */}
         <main className="px-5 pb-[96px] pt-2">
-          <div className="w-full max-w-[350px] mx-auto">
+          <div className="w-full mx-auto">
             {loading ? (
-              <div className="text-[13px] text-[#999999]">
+              <div className="text-[13px] text-[#999]">
                 쿠폰을 불러오는 중입니다...
               </div>
             ) : error ? (
               <div className="text-[13px] text-[#EF4444]">{error}</div>
-            ) : filteredCoupons.length === 0 ? (
-              <div className="text-[13px] text-[#999999]">
-                적용 가능한 쿠폰이 없습니다.
+            ) : sortedCoupons.length === 0 ? (
+              <div className="text-[13px] text-[#999]">
+                보유중인 쿠폰이 없습니다.
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                {filteredCoupons.map((coupon, index) => {
+                {sortedCoupons.map((coupon, idx) => {
                   const isApplicable = applicableCouponIds.has(
                     coupon.userCouponId
                   );
-                  const isSelected =
-                    selectedUserCouponId === coupon.userCouponId;
+                  const isUsed = coupon.status === "USED";
+
+                  const isRate = coupon.discountType === "RATE";
+                  const discountText = isRate
+                    ? `${coupon.discountValue}% 할인`
+                    : `${coupon.discountValue.toLocaleString()}원 할인`;
+
+                  const line1 =
+                    coupon.minPurchaseAmount > 0
+                      ? `${coupon.minPurchaseAmount.toLocaleString()}원 이상 구매 시${
+                          coupon.maxDiscountAmount > 0
+                            ? ` 최대 ${coupon.maxDiscountAmount.toLocaleString()}원`
+                            : ""
+                        }`
+                      : coupon.couponDetail;
+
+                  const line2 = `사용기간 : ${formatDate(
+                    coupon.startDate
+                  )} ~ ${formatDate(coupon.expirationDate)}`;
+
+                  let status = "";
+                  let circleBg = "";
+                  let icon = "";
+                  let iconColor = "";
+                  let textColor = "";
+
+                  if (isUsed) {
+                    status = "사용됨";
+                    circleBg = "bg-[#F3F4F6]";
+                    icon = "mdi:check-all";
+                    iconColor = "text-[#6B7280]";
+                    textColor = "text-[#6B7280]";
+                  } else if (isApplicable) {
+                    status = "사용 가능";
+                    circleBg = "bg-[#ECFDF3]";
+                    icon = "mdi:check-circle-outline";
+                    iconColor = "text-[#16A34A]";
+                    textColor = "text-[#16A34A]";
+                  } else {
+                    status = "사용 불가";
+                    circleBg = "bg-[#F3F4F6]";
+                    icon = "mdi:close-circle-outline";
+                    iconColor = "text-[#9CA3AF]";
+                    textColor = "text-[#9CA3AF]";
+                  }
 
                   return (
                     <div
-                      key={`${coupon.userCouponId}-${index}`}
-                      className="flex flex-row items-center w-[350px] h-[129px] cursor-pointer"
-                      onClick={() => handleSelectCoupon(coupon, isApplicable)}
+                      key={idx}
+                      className="w-full flex rounded-[16px] border border-[#F2F2F2] overflow-hidden"
                     >
-                      {/* 왼쪽 영역 */}
                       <div
-                        className={`flex flex-col items-start p-4 gap-[10px] w-[278px] h-[129px] border border-[#F2F2F2] border-r-0 rounded-l-[16px] ${
+                        className={`flex flex-col flex-1 min-w-0 p-4 gap-1 ${
                           !isApplicable ? "opacity-50" : ""
                         }`}
                       >
-                        <div className="flex flex-col items-start gap-1 w-[222px] h-[97px]">
-                          <p className="text-[14px] text-[#000000]">
-                            {coupon.couponName}
-                          </p>
+                        <p className="text-[14px] font-medium truncate">
+                          {coupon.couponName}
+                        </p>
 
-                          <p className="text-[20px] font-[700] text-[#000000]">
-                            {formatRate(coupon)}
-                          </p>
-                        </div>
+                        <p className="text-[20px] font-bold">{discountText}</p>
 
-                        <div className="flex flex-col items-start w-[220px] h-[36px]">
-                          <p className="text-[12px] text-[#999999]">
-                            {formatCondition(coupon)}
-                          </p>
-                          <p className="text-[12px] text-[#999999]">
-                            {formatPeriod(coupon)}
-                          </p>
-                        </div>
+                        <p className="text-[12px] text-[#999] truncate">
+                          {line1}
+                        </p>
+
+                        <p className="text-[12px] text-[#999] -mt-1">{line2}</p>
                       </div>
 
-                      {/* 오른쪽 선택/불가 영역 */}
-                      <div className="flex flex-row items-center px-[18px] w-[72px] h-[129px] bg-[#F6F7FB] border border-[#F2F2F2] border-l-0 rounded-r-[16px]">
-                        {isApplicable ? (
-                          <div
-                            className={`flex items-center justify-center w-[36px] h-[36px] rounded-[20px] ${
-                              isSelected ? "bg-[#000000]" : "bg-[#FFFFFF]"
-                            }`}
-                          >
-                            {isSelected ? (
-                              <Icon
-                                icon="mdi:check"
-                                className="w-4 h-4 text-[#FFFFFF]"
-                              />
-                            ) : (
-                              <div className="w-[10px] h-[10px] rounded-full border border-[#000000]" />
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center w-[36px] h-[36px] bg-[#F0F0F0] rounded-[20px]">
-                            <span className="text-[10px] text-[#BDBDBD] leading-none">
-                              불가
-                            </span>
-                          </div>
-                        )}
+                      <div className="w-[72px] bg-[#F6F7FB] flex flex-col items-center justify-center gap-2 border-l border-[#F2F2F2]">
+                        <div
+                          className={`w-[36px] h-[36px] rounded-full flex items-center justify-center ${circleBg}`}
+                        >
+                          <Icon
+                            icon={icon}
+                            className={`w-5 h-5 ${iconColor}`}
+                          />
+                        </div>
+                        <span
+                          className={`text-[11px] font-medium ${textColor}`}
+                        >
+                          {status}
+                        </span>
                       </div>
                     </div>
                   );
@@ -393,26 +431,6 @@ const MobileView: React.FC = () => {
             )}
           </div>
         </main>
-
-        {/* 🔹 하단 적용 버튼: 뷰포트 기준 완전 고정 */}
-        <div className="fixed left-1/2 bottom-0 -translate-x-1/2 w-full max-w-[390px] px-5 pb-5 pt-3 border-t border-[#F2F2F2] bg-white z-30">
-          <div className="w-full max-w-[350px] mx-auto">
-            <button
-              type="button"
-              onClick={handleApplyCoupon}
-              className="w-full h-[56px] rounded-[12px] bg-[#FF2233] flex items-center justify-center disabled:bg-[#F3F4F6]"
-              disabled={!selectedCoupon || selectedDiscountAmount <= 0}
-            >
-              <span className="text-[16px] font-[600] text-white">
-                {selectedCoupon && selectedDiscountAmount > 0
-                  ? `${selectedDiscountAmount.toLocaleString(
-                      "ko-KR"
-                    )}원 적용하기`
-                  : "적용 가능한 쿠폰이 없습니다"}
-              </span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

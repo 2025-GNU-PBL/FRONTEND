@@ -71,24 +71,6 @@ const regions: RegionItem[] = [
   { key: "부산", label: "부산", image: "/images/busan.png" },
 ];
 
-/* ========================= 드레스 태그 필터 ========================= */
-/*
-  행사 -
-    촬영+본식 -> SHOOTING_AND_CEREMONY
-    본식     -> CEREMONY
-    촬영     -> SHOOTING
-
-  주력소재 -
-    실크     -> SILK
-    레이스   -> LACE
-    비즈     -> BEADS
-
-  제작형태 -
-    국내           -> DOMESTIC
-    수입           -> IMPORTED
-    국내+수입      -> DOMESTIC_AND_IMPORTED
-*/
-
 type DressTag =
   | "SHOOTING_AND_CEREMONY"
   | "CEREMONY"
@@ -220,7 +202,7 @@ const MobileView: React.FC = () => {
     if (region === "서울") return "SEOUL";
     if (region === "경기") return "GYEONGGI";
     if (region === "부산") return "BUSAN";
-    if (region === "인천") return "ETC"; // 서버 규약 유지
+    if (region === "인천") return "INCHEON"; // 서버 규약 유지
     return undefined;
   };
 

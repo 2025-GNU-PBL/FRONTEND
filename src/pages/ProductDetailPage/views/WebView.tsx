@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import type { AxiosError } from "axios";
 import api from "../../../lib/api/axios";
 import { BasicInfoContent } from "../sections/BasicInfoContent";
 import { DetailContent } from "../sections/DetailContent";
@@ -16,6 +17,7 @@ import type {
   MyCoupon,
 } from "../../../type/product";
 import ReviewContent from "../sections/ReviewContent";
+import { toast } from "react-toastify";
 
 /* 날짜 포맷: 2025-11-19 -> 25.11.19 */
 const formatDate = (dateStr: string) => {
@@ -28,6 +30,24 @@ const formatDate = (dateStr: string) => {
   return `${yy}.${mm}.${dd}`;
 };
 
+/** 공유 타이틀 계산 (any 사용 X) */
+const getShareTitle = (data: NormalizedDetail | null): string => {
+  if (!data) return "웨딩 상품 상세";
+
+  if ("name" in data && typeof data.name === "string" && data.name) {
+    return data.name;
+  }
+
+  if (
+    "title" in data &&
+    typeof (data as { title?: string }).title === "string"
+  ) {
+    return (data as { title?: string }).title ?? "웨딩 상품 상세";
+  }
+
+  return "웨딩 상품 상세";
+};
+
 /* ========================= 컴포넌트 ========================= */
 
 const WebView = () => {
@@ -35,6 +55,17 @@ const WebView = () => {
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const isAuth = useAppSelector((s) => s.user.isAuth);
+
+  // OWNER일 때만 bzName 안전하게 꺼내기 (MobileView와 동일)
+  const ownerBzName = useAppSelector((s) => {
+    const data = s.user.userData;
+    const role = s.user.role;
+
+    if (role === "OWNER" && data && "bzName" in data) {
+      return data.bzName;
+    }
+    return undefined;
+  });
 
   const [activeTab, setActiveTab] = useState<"basic" | "detail" | "review">(
     "basic"
@@ -47,32 +78,19 @@ const WebView = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // 상품별 쿠폰 리스트 (오너가 설정한 쿠폰)
   const [coupons, setCoupons] = useState<Coupon[]>([]);
-  // 이미 내가 가진 쿠폰 id 목록 (couponId 기준)
   const [myCouponIds, setMyCouponIds] = useState<Set<number>>(
     () => new Set<number>()
   );
-  // 현재 세션에서 다운로드한 쿠폰 id 목록 (UI 즉시 반영용)
   const [downloadedCouponIds, setDownloadedCouponIds] = useState<number[]>([]);
 
-  // 상품예약 완료 모달
   const [showReservationModal, setShowReservationModal] = useState(false);
 
-  /* ========================= 네비게이션 ========================= */
+  /* ========================= 장바구니 / 예약 액션 ========================= */
 
-  /* ========= 장바구니 버튼용 (알럿 O) ========= */
-  const addToCart = async () => {
-    const ok = await addToCartCore();
-    if (!ok) return;
-    // 장바구니 버튼에서는 기존 알럿 유지
-    alert("상품이 장바구니에 담겼습니다.");
-  };
-
-  /* ========= 장바구니 공용 로직 (알럿 X) ========= */
   const addToCartCore = async (): Promise<boolean> => {
     if (!detailData || !id) {
-      alert("상품 정보를 불러올 수 없습니다.");
+      toast.error("상품 정보를 불러올 수 없습니다.");
       return false;
     }
 
@@ -86,29 +104,36 @@ const WebView = () => {
       return true;
     } catch (error) {
       console.error("장바구니 추가 실패:", error);
-      alert("장바구니 추가에 실패했습니다.");
+      toast.error("장바구니 추가에 실패했습니다.");
       return false;
     }
   };
 
-  /* ========= 상품 예약 버튼용 (모달 O, 알럿 X) ========= */
+  const addToCart = async () => {
+    const ok = await addToCartCore();
+    if (!ok) return;
+    toast.success("상품이 장바구니에 담겼습니다.");
+  };
+
   const handleProductReservation = async () => {
     const ok = await addToCartCore();
     if (!ok) return;
-
-    // 예약 완료 모달 오픈
     setShowReservationModal(true);
+  };
+
+  const handleEditProduct = () => {
+    if (!category || !id) {
+      toast.error("상품 정보를 불러올 수 없습니다.");
+      return;
+    }
+    navigate(`/my-page/owner/product/edit/${category}/${id}`);
   };
 
   /* ========================= 공유 / 채팅 ========================= */
 
-  // 웹 공유 / 클립보드 공유
   const handleShare = async () => {
     const url = window.location.href;
-    const title =
-      (detailData as any)?.name ||
-      (detailData as any)?.title ||
-      "웨딩 상품 상세";
+    const title = getShareTitle(detailData);
 
     if (navigator.share) {
       try {
@@ -136,10 +161,9 @@ const WebView = () => {
     }
   };
 
-  // 상품 기반 채팅방 열기
   const handleChat = async () => {
     if (!id) {
-      alert("상품 정보를 불러올 수 없습니다.");
+      toast.error("상품 정보를 불러올 수 없습니다.");
       return;
     }
 
@@ -149,21 +173,20 @@ const WebView = () => {
       });
 
       console.log("채팅방 생성/조회 결과:", data);
-
-      // TODO: 실제 채팅방 경로 확정되면 여기서 이동
-      // 예: navigate(`/chat/rooms/${data.roomId}`);
-      alert("판매자와의 채팅방이 열렸어요.");
-    } catch (error: any) {
+      toast.success("판매자와의 채팅방이 열렸어요.");
+      navigate(`/chat/${data}`);
+    } catch (error) {
       console.error("채팅방 열기 실패:", error);
 
-      const status = error?.response?.status;
+      const axiosError = error as AxiosError | undefined;
+      const status = axiosError?.response?.status;
 
       if (status === 401) {
-        alert("로그인이 필요한 서비스입니다.");
-        // 필요하다면 로그인 페이지로 이동
-        // navigate("/login");
+        toast.error("로그인이 필요한 서비스입니다.");
       } else {
-        alert("채팅방을 여는 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
+        toast.error(
+          "채팅방을 여는 중 문제가 발생했어요. 잠시 후 다시 시도해주세요."
+        );
       }
     }
   };
@@ -178,13 +201,10 @@ const WebView = () => {
     setIsCouponOpen(false);
   };
 
-  // 쿠폰 다운로드
   const handleCouponDownload = async (couponId: number) => {
-    // 이미 다운로드된 쿠폰이면 무시
     if (downloadedCouponIds.includes(couponId) || myCouponIds.has(couponId)) {
       return;
     }
-    // 토스트 떠 있는 동안 중복 클릭 방지
     if (showCouponToast) return;
 
     try {
@@ -194,26 +214,23 @@ const WebView = () => {
 
       console.log("쿠폰 다운로드 응답:", data);
 
-      // 세션용 다운로드 목록에 반영
       setDownloadedCouponIds((prev) =>
         prev.includes(couponId) ? prev : [...prev, couponId]
       );
 
-      // 내 쿠폰 Set에도 반영
       setMyCouponIds((prev) => {
         const next = new Set(prev);
         next.add(couponId);
         return next;
       });
 
-      // 토스트 표시
       setShowCouponToast(true);
       setTimeout(() => {
         setShowCouponToast(false);
-      }, 3000);
+      }, 2000);
     } catch (error) {
       console.error("쿠폰 다운로드 실패:", error);
-      alert("쿠폰 다운로드에 실패했습니다.");
+      toast.error("쿠폰 다운로드에 실패했습니다.");
     }
   };
 
@@ -299,7 +316,6 @@ const WebView = () => {
 
   /* ========================= 쿠폰 데이터 호출 ========================= */
 
-  // 1) 상품별 쿠폰 (오너 설정 쿠폰 목록)
   useEffect(() => {
     if (!id) return;
 
@@ -318,7 +334,6 @@ const WebView = () => {
     fetchCoupons();
   }, [id]);
 
-  // 2) 내 쿠폰 목록 (이미 다운로드한 쿠폰들)
   useEffect(() => {
     if (!isAuth) return;
 
@@ -328,11 +343,8 @@ const WebView = () => {
           "/api/v1/customer/coupon/my"
         );
 
-        // 서버에서 내려준 쿠폰 id들을 Set으로 관리
         const ids = new Set<number>(data.map((c) => c.couponId));
         setMyCouponIds(ids);
-
-        // UI 제어용 배열에도 동기화
         setDownloadedCouponIds(Array.from(ids));
       } catch (error) {
         console.error("내 쿠폰 목록 조회 실패:", error);
@@ -378,27 +390,24 @@ const WebView = () => {
       ? detailData.averageRating
       : undefined;
 
-  /* ========================= 탭 이동 핸들러 ========================= */
+  /* ========================= 오너 여부 판별 ========================= */
+
+  const isOwnerOfProduct =
+    !!detailData && !!ownerBzName && detailData.bzName === ownerBzName;
+
+  /* ========================= 탭 이동 ========================= */
 
   const handleGoDetailTab = () => {
     setActiveTab("detail");
     if (typeof window !== "undefined") {
-      window.scrollTo({
-        top: 0,
-        left: 0,
-        behavior: "auto",
-      });
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     }
   };
 
   const handleGoReviewTab = () => {
     setActiveTab("review");
     if (typeof window !== "undefined") {
-      window.scrollTo({
-        top: 0,
-        left: 0,
-        behavior: "auto",
-      });
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     }
   };
 
@@ -407,7 +416,6 @@ const WebView = () => {
   return (
     <div className="w-full min-h-screen bg-[#F5F7FA] text-[#111827]">
       <main className="max-w-6xl mx-auto px-8 pt-20 pb-10">
-        {/* 로딩/에러 */}
         {loading && !errorMsg && (
           <div className="w-full py-10 text-sm text-[#9CA3AF]">
             상세 정보를 불러오는 중입니다...
@@ -418,12 +426,10 @@ const WebView = () => {
           <div className="w-full py-10 text-sm text-red-500">{errorMsg}</div>
         )}
 
-        {/* 실제 컨텐츠 */}
         {!loading && !errorMsg && detailData && (
           <>
             {/* 상단 헤더 영역 */}
             <section className="mb-4 flex justify-between">
-              {/* 카테고리 / 위치 */}
               <div className="flex items-center gap-3 text-xs text-[#6B7280]">
                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-[#E5E7EB] text-[11px] font-medium text-[#4B5563]">
                   <Icon
@@ -465,9 +471,8 @@ const WebView = () => {
 
             {/* 메인 2컬럼 레이아웃 */}
             <section className="grid grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] gap-10 items-start">
-              {/* 좌측: 이미지 + 탭 컨텐츠 */}
+              {/* 좌측: 탭 컨텐츠 */}
               <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB]">
-                {/* 탭 버튼 */}
                 <div className="flex items-center gap-8 px-5 pt-4 border-b border-[#E5E7EB] text-sm font-medium">
                   <button
                     type="button"
@@ -504,14 +509,13 @@ const WebView = () => {
                   </button>
                 </div>
 
-                {/* 탭 컨텐츠 */}
                 <div className="px-5 py-6">
                   {activeTab === "basic" && (
                     <BasicInfoContent
                       data={detailData}
                       onOpenCoupon={handleOpenCoupon}
-                      onGoDetailTab={handleGoDetailTab} // ✅ 상품 상세 사진 전체보기 → 상품상세 탭 이동
-                      onGoReviewTab={handleGoReviewTab} // (필요시 리뷰 전체보기도 동일하게 사용 가능)
+                      onGoDetailTab={handleGoDetailTab}
+                      onGoReviewTab={handleGoReviewTab}
                     />
                   )}
 
@@ -525,11 +529,9 @@ const WebView = () => {
                 </div>
               </div>
 
-              {/* 우측: 예약 카드 (sticky) + 채팅/공유 버튼 */}
+              {/* 우측: 예약 카드 */}
               <aside className="sticky top-10 space-y-3">
-                {/* 예약 카드 */}
                 <div className="bg-white rounded-2xl shadow-md border border-[#E5E7EB] px-6 py-6 space-y-5">
-                  {/* 브랜드 / 타이틀 */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
@@ -541,6 +543,7 @@ const WebView = () => {
                         </span>
                       </div>
 
+                      {/* 쿠폰 받기 버튼 */}
                       <button
                         type="button"
                         className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-[#F3F4F6] text-[#6B7280]"
@@ -566,7 +569,6 @@ const WebView = () => {
                     )}
                   </div>
 
-                  {/* 요약 정보 (주소 + 이용 가능 시간) */}
                   <div className="rounded-xl bg-[#F9FAFB] px-4 py-3 space-y-2 text-[13px]">
                     <div className="flex items-start gap-3">
                       <Icon
@@ -596,57 +598,74 @@ const WebView = () => {
                     )}
                   </div>
 
-                  {/* 버튼 영역: 장바구니 / 예약 */}
                   <div className="space-y-2">
-                    <button
-                      type="button"
-                      className="w-full h-12 rounded-xl border border-[#D1D5DB] flex items-center justify-center gap-2 text-[14px] font-semibold text-[#111827] hover:bg-[#F9FAFB] transition-colors"
-                      onClick={addToCart}
-                    >
-                      <Icon
-                        icon="solar:cart-large-minimalistic-linear"
-                        className="w-5 h-5"
-                      />
-                      <span>장바구니 담기</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full h-12 rounded-xl bg-[#FF2233] text-white flex items-center justify-center gap-2 text-[14px] font-semibold hover:brightness-95 transition-all"
-                      onClick={handleProductReservation}
-                    >
-                      <Icon
-                        icon="solar:calendar-bold-duotone"
-                        className="w-5 h-5"
-                      />
-                      <span>상품 예약하기</span>
-                    </button>
+                    {isOwnerOfProduct ? (
+                      <button
+                        type="button"
+                        className="w-full h-12 rounded-xl bg-[#FF2233] text-white flex items-center justify-center gap-2 text-[14px] font-semibold hover:brightness-95 transition-all"
+                        onClick={handleEditProduct}
+                      >
+                        <Icon icon="solar:pen-bold" className="w-5 h-5" />
+                        <span>수정하기</span>
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="w-full h-12 rounded-xl border border-[#D1D5DB] flex items-center justify-center gap-2 text-[14px] font-semibold text-[#111827] hover:bg-[#F9FAFB] transition-colors"
+                          onClick={addToCart}
+                        >
+                          <Icon
+                            icon="solar:cart-large-minimalistic-linear"
+                            className="w-5 h-5"
+                          />
+                          <span>장바구니 담기</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="w-full h-12 rounded-xl bg-[#FF2233] text-white flex items-center justify-center gap-2 text-[14px] font-semibold hover:brightness-95 transition-all"
+                          onClick={handleProductReservation}
+                        >
+                          <Icon
+                            icon="solar:calendar-bold-duotone"
+                            className="w-5 h-5"
+                          />
+                          <span>상품 예약하기</span>
+                        </button>
+                      </>
+                    )}
                   </div>
 
-                  {/* 안내 문구 */}
-                  <p className="text-[11px] text-[#9CA3AF] leading-relaxed">
-                    예약 요청 후 담당 MD가 일정 및 세부 내용을 확인한 뒤
-                    알림으로 확정 여부를 안내드려요.
-                  </p>
+                  {!isOwnerOfProduct && (
+                    <p className="text-[11px] text-[#9CA3AF] leading-relaxed">
+                      예약 요청 후 담당 MD가 일정 및 세부 내용을 확인한 뒤
+                      알림으로 확정 여부를 안내드려요.
+                    </p>
+                  )}
 
-                  {/* 채팅 / 공유 버튼 (오른쪽 영역 전용) */}
-                  <div className="pt-4 mt-2 border-t border-[#E5E7EB] flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={handleChat}
-                      className="flex-1 h-11 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] flex items-center justify-center gap-2 text-[13px] font-medium text-[#111827] transition-colors"
-                    >
-                      <Icon icon="fluent:chat-16-regular" className="w-4 h-4" />
-                      <span>판매자와 채팅하기</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleShare}
-                      className="h-11 px-4 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] flex items-center justify-center gap-2 text-[13px] text-[#4B5563] transition-colors"
-                    >
-                      <Icon icon="solar:share-linear" className="w-4 h-4" />
-                      <span>공유</span>
-                    </button>
-                  </div>
+                  {!isOwnerOfProduct && (
+                    <div className="pt-4 mt-2 border-t border-[#E5E7EB] flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleChat}
+                        className="flex-1 h-11 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] flex items-center justify-center gap-2 text-[13px] font-medium text-[#111827] transition-colors"
+                      >
+                        <Icon
+                          icon="fluent:chat-16-regular"
+                          className="w-4 h-4"
+                        />
+                        <span>판매자와 채팅하기</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleShare}
+                        className="h-11 px-4 rounded-full border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] flex items-center justify-center gap-2 text-[13px] text-[#4B5563] transition-colors"
+                      >
+                        <Icon icon="solar:share-linear" className="w-4 h-4" />
+                        <span>공유</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </aside>
             </section>
@@ -654,24 +673,18 @@ const WebView = () => {
         )}
       </main>
 
-      {/* 쿠폰 모달 & 딤드: isCouponOpen일 때만 렌더 */}
+      {/* 쿠폰 모달 & 딤드 */}
       {isCouponOpen && (
         <>
-          {/* 딤드 */}
           <div
-            className="fixed inset-0 z-40 bg-[rgba(15,23,42,0.55)] backdrop-blur-[2px] transition-opacity duration-200"
+            className="fixed inset-0 z-40 bg-[rgba(15,23,42,0.55)] backdrop-blur-[2px]"
             onClick={handleCloseCoupon}
           />
-
-          {/* 모달 */}
           <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
             <div
-              className="w-full md:max-w-[520px] bg-white rounded-t-2xl md:rounded-2xl shadow-2xl
-                         md:mx-0 mx-0 pb-4 md:pb-6 overflow-hidden
-                         transform transition-all duration-200 ease-out"
+              className="w-full md:max-w-[520px] bg-white rounded-t-2xl md:rounded-2xl shadow-2xl md:mx-0 mx-0 pb-4 md:pb-6 overflow-hidden transform transition-all duration-200 ease-out"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* 헤더 */}
               <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#E5E7EB]">
                 <div className="space-y-1">
                   <p className="text-[15px] font-semibold text-[#111827]">
@@ -693,7 +706,6 @@ const WebView = () => {
                 </button>
               </div>
 
-              {/* 쿠폰 리스트 */}
               <div className="px-6 pt-3 pb-4 max-h-[60vh] md:max-h-[420px] overflow-y-auto">
                 {coupons.map((coupon, index) => {
                   const isFirst = index === 0;
@@ -706,7 +718,6 @@ const WebView = () => {
                     .filter(Boolean)
                     .join(" ");
 
-                  // 서버 + 세션 상태 모두 고려해서 다운로드 여부 체크
                   const isDownloaded =
                     downloadedCouponIds.includes(coupon.id) ||
                     myCouponIds.has(coupon.id);
@@ -737,7 +748,7 @@ const WebView = () => {
                       key={coupon.id}
                       className={`flex items-stretch ${wrapperMargin}`}
                     >
-                      <div className="flex-1 border border-r-0 border-[#E5E7EB] rounded-l-2xl p-4 flex flex-col gap-2">
+                      <div className="flex-1 border border-r-0 border-[#E5E7EB] rounded-2xl rounded-r-none p-4 flex flex-col gap-2">
                         <div className="text-[13px] text-[#111827] font-medium">
                           {coupon.couponName}
                         </div>
@@ -749,7 +760,7 @@ const WebView = () => {
                           {line2 && <span>{line2}</span>}
                         </div>
                       </div>
-                      <div className="w-[80px] bg-[#F9FAFB] border border-l-0 border-[#E5E7EB] rounded-r-2xl flex items-center justify-center">
+                      <div className="w-[80px] bg-[#F9FAFB] border border-l-0 border-[#E5E7EB] rounded-2xl rounded-l-none flex items-center justify-center">
                         <button
                           type="button"
                           className="w-10 h-10 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center shadow-sm"
@@ -785,22 +796,12 @@ const WebView = () => {
         </>
       )}
 
-      {/* 쿠폰 다운로드 토스트 */}
       <div
-        className={`
-          fixed left-1/2 -translate-x-1/2 bottom-8
-          w-[92%] max-w-[420px]
-          bg-[#111827] text-white
-          rounded-xl px-5 py-3.5
-          flex items-center gap-3
-          shadow-xl z-[60]
-          transition-all duration-200 ease-out
-          ${
-            showCouponToast
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-2 pointer-events-none"
-          }
-        `}
+        className={`fixed left-1/2 -translate-x-1/2 bottom-8 w-[92%] max-w-[420px] bg-[#111827] text-white rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-xl z-[60] transition-all duration-200 ease-out ${
+          showCouponToast
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-2 pointer-events-none"
+        }`}
       >
         <Icon
           icon="solar:check-circle-bold"
@@ -813,16 +814,12 @@ const WebView = () => {
         </p>
       </div>
 
-      {/* ================== 상품 예약 완료 모달 (웹뷰 전용 중앙 카드) ================== */}
       {showReservationModal && (
         <>
-          {/* 딤드 */}
           <div
             className="fixed inset-0 z-[70] bg-[rgba(0,0,0,0.6)]"
             onClick={() => setShowReservationModal(false)}
           />
-
-          {/* 중앙 카드 모달 */}
           <div className="fixed inset-0 z-[80] flex items-center justify-center px-4">
             <div className="w-full max-w-[420px] rounded-[24px] bg-white pt-8 pb-8 px-6 shadow-2xl">
               <div className="flex flex-col items-center">
@@ -834,8 +831,6 @@ const WebView = () => {
                   <br />
                   예약이 확정돼요
                 </p>
-
-                {/* 일러스트 영역 (모바일과 동일 이미지 사용) */}
                 <img
                   className="w-[204px] h-[204px] mb-6"
                   src="/images/reservation.png"

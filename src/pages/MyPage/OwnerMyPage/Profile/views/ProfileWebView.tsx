@@ -111,7 +111,7 @@ export default function WebView() {
     );
   }
 
-  // 모바일 뷰와 동일 필드 기준으로 추출
+  // 모바일 뷰와 동일 필드 기준으로 추출 (+ bankName 추가)
   const {
     name,
     email,
@@ -119,6 +119,7 @@ export default function WebView() {
     profileImage,
     bzNumber,
     bankAccount,
+    bankName,
     bzName,
     roadAddress,
     jibunAddress,
@@ -131,6 +132,7 @@ export default function WebView() {
     roadAddress?: string;
     jibunAddress?: string;
     buildingName?: string;
+    bankName?: string;
   };
 
   // 모바일과 동일 의미의 display 값들
@@ -158,10 +160,7 @@ export default function WebView() {
   })();
 
   return (
-    <main className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col">
-      {/* 상단 그라디언트 바 */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF4646] to-[#FF2D55]" />
-
+    <main className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-15">
       <div className="pt-16 pb-16">
         <div className="max-w-[960px] mx-auto px-6 space-y-8">
           {/* 상단 프로필 카드  */}
@@ -229,7 +228,9 @@ export default function WebView() {
               <InfoRow label="사업자 번호" value={bzNumber} />
               <InfoRow label="사업장 주소" value={displayBzAddress} />
               <InfoRow label="사업장 메일" value={email} />
-              <InfoRow label="정산 계좌" value={bankAccount} />
+              {/* ✅ 은행명 / 계좌번호 분리 */}
+              <InfoRow label="은행명" value={bankName} />
+              <InfoRow label="정산 계좌" value={bankAccount} mono />
             </div>
           </SectionCard>
 

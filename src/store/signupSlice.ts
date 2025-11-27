@@ -26,6 +26,7 @@ export interface OwnerSignupDraft {
   bzName: string;
   bzNumber: string;
   bankAccount: string;
+  bankName: string; // ✅ 은행명 추가
   profileImage: string; // 필수
   zipCode: string; // 필수
   roadAddress: string; // 필수
@@ -60,6 +61,7 @@ const initialState: SignupState = {
     bzName: "",
     bzNumber: "",
     bankAccount: "",
+    bankName: "", // ✅ 초기값 추가
     profileImage: "",
     zipCode: "",
     roadAddress: "",

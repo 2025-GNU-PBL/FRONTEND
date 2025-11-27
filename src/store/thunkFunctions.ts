@@ -225,6 +225,7 @@ type OwnerSignupValues = {
   bzName?: string; // step3
   bzNumber?: string; // step3
   bankAccount?: string; // step3
+  bankName?: string; // ✅ step3 추가
   profileImage?: string | null;
 
   zipCode?: string; // step2 (옵션)
@@ -257,14 +258,16 @@ export const submitOwnerSignup = createAsyncThunk<
       const bzName = d.bzName?.trim();
       const bzNumber = d.bzNumber?.trim();
       const bankAccount = d.bankAccount?.trim();
+      const bankName = d.bankName?.trim(); // ✅ 은행명
 
-      // DTO 기준 필수 4개만 검증
-      if (!phoneNumber || !bzName || !bzNumber || !bankAccount) {
+      // DTO 기준 필수 5개 검증 (phoneNumber, bzName, bzNumber, bankAccount, bankName)
+      if (!phoneNumber || !bzName || !bzNumber || !bankAccount || !bankName) {
         console.error("[submitOwnerSignup] missing required:", {
           phoneNumber,
           bzName,
           bzNumber,
           bankAccount,
+          bankName,
         });
         return rejectWithValue("사장 회원가입 정보가 충분하지 않습니다.");
       }
@@ -276,6 +279,7 @@ export const submitOwnerSignup = createAsyncThunk<
         bzNumber,
         bankAccount,
         bzName,
+        bankName, // ✅ payload에 추가
 
         // 아래는 전부 optional
         zipCode: d.zipCode ?? "",
@@ -313,6 +317,7 @@ export type OwnerUpdateValues = {
   bzName?: string;
   bzNumber?: string;
   bankAccount?: string;
+  bankName?: string; // ✅ 수정에도 은행명 포함
   zipCode?: string;
   roadAddress?: string;
   jibunAddress?: string;
@@ -332,6 +337,7 @@ export const updateOwnerInfo = createAsyncThunk<
       bzNumber: values.bzNumber || "",
       bankAccount: values.bankAccount || "",
       bzName: values.bzName || "",
+      bankName: values.bankName || "", // ✅ PATCH payload에 bankName 추가
       zipCode: values.zipCode || "",
       roadAddress: values.roadAddress || "",
       jibunAddress: values.jibunAddress || "",

@@ -14,11 +14,14 @@ type ImageItem = { src: string; file?: File };
 
 type Region = "SEOUL" | "GYEONGGI" | "INCHEON" | "BUSAN";
 
+// 카테고리 타입을 명시적으로 정의
+type Category = "웨딩홀" | "스튜디오" | "드레스" | "메이크업";
+
 type FormValues = {
   // 공통
   vendorName: string; // 읽기 전용
   address: string; // 읽기 전용
-  category: string | null;
+  category: Category | null;
   name: string;
   price: string;
   detail: string;
@@ -43,7 +46,7 @@ type FormValues = {
   reservationPolicy: string; // reservationPolicy
 };
 
-const categories = ["웨딩홀", "스튜디오", "드레스", "메이크업"] as const;
+const categories: Category[] = ["웨딩홀", "스튜디오", "드레스", "메이크업"];
 
 // ---------------------------------------------------------------------
 // 태그 그룹
@@ -153,13 +156,12 @@ const MAKEUP_TAG_GROUPS: TagGroup[] = [
   },
 ];
 
-const TAG_GROUPS_BY_CATEGORY: Record<(typeof categories)[number], TagGroup[]> =
-  {
-    웨딩홀: HALL_TAG_GROUPS,
-    스튜디오: STUDIO_TAG_GROUPS,
-    드레스: DRESS_TAG_GROUPS,
-    메이크업: MAKEUP_TAG_GROUPS,
-  };
+const TAG_GROUPS_BY_CATEGORY: Record<Category, TagGroup[]> = {
+  웨딩홀: HALL_TAG_GROUPS,
+  스튜디오: STUDIO_TAG_GROUPS,
+  드레스: DRESS_TAG_GROUPS,
+  메이크업: MAKEUP_TAG_GROUPS,
+};
 
 // ko ↔ en 매핑
 const KO_TO_EN: Record<string, string> = [
@@ -190,7 +192,16 @@ const EN_TO_KO: Record<string, string> = Object.keys(KO_TO_EN).reduce(
 const FILE_PART_KEY = "images";
 const JSON_PART_KEY = "request";
 
+// Region 값(백엔드용) 배열
 const regions: Region[] = ["SEOUL", "GYEONGGI", "INCHEON", "BUSAN"];
+
+// Region -> 프론트 표시용 한글 라벨 매핑
+const REGION_LABELS: Record<Region, string> = {
+  SEOUL: "서울",
+  GYEONGGI: "경기",
+  INCHEON: "인천",
+  BUSAN: "부산",
+};
 
 // OWNER 전용 유저 판별
 function ensureOwner(userData: UserData | null): OwnerData | null {
@@ -262,7 +273,7 @@ const WebView: React.FC = () => {
   });
 
   const images = useWatch({ control, name: "images" }) || [];
-  const category = useWatch({ control, name: "category" }) || null;
+  const category = useWatch({ control, name: "category" }) as Category | null;
   const selectedTags = useWatch({ control, name: "tags" }) || [];
 
   // ---------------------------------------------------------------------
@@ -309,9 +320,7 @@ const WebView: React.FC = () => {
   // 카테고리/태그
   // ---------------------------------------------------------------------
 
-  const handleCategoryToggle = (
-    nextCategory: (typeof categories)[number] | null
-  ) => {
+  const handleCategoryToggle = (nextCategory: Category | null) => {
     setValue("category", nextCategory, {
       shouldDirty: true,
       shouldTouch: true,
@@ -337,7 +346,7 @@ const WebView: React.FC = () => {
     : [];
 
   // ---------------------------------------------------------------------
-  // 제출 (MobileView와 완전 동일 로직)
+  // 제출
   // ---------------------------------------------------------------------
 
   const onSubmit = async (values: FormValues) => {
@@ -399,7 +408,6 @@ const WebView: React.FC = () => {
       address: values.address?.trim() ?? "",
       detail: values.detail.trim(),
       price: priceNumber,
-      // ✅ DB 컬럼 available_times 에 매핑되는 필드
       availableTimes: values.availableTime.trim(),
       thumbnail: values.thumbnail.trim() || undefined,
       region: values.region,
@@ -428,33 +436,8 @@ const WebView: React.FC = () => {
     const formData = new FormData();
     formData.append(JSON_PART_KEY, jsonBlob, "request.json");
 
-    console.groupCollapsed("[DEBUG] FormData(WebView)");
-    for (const [k, v] of formData.entries()) {
-      if (v instanceof File) {
-        console.log(
-          k,
-          `(File) name=${v.name}, type=${v.type}, size=${v.size}B`
-        );
-      } else if (v instanceof Blob) {
-        console.log(k, `(Blob) type=${v.type}`);
-      } else {
-        console.log(k, v);
-      }
-    }
-    const reqPart = formData.get("request");
-    if (reqPart instanceof Blob) {
-      try {
-        const text = await reqPart.text();
-        try {
-          console.log("request.json (parsed):", JSON.parse(text));
-        } catch {
-          console.log("request.json (raw text):", text);
-        }
-      } catch (e) {
-        console.warn("request.json 읽기 실패:", e);
-      }
-    }
-    console.groupEnd();
+    // 디버깅용 블록은 타입 문제를 피하기 위해 제거/단순화
+    // console.log("FormData to send:", body, images);
 
     images.forEach((img) => {
       if (img.file) formData.append(FILE_PART_KEY, img.file, img.file.name);
@@ -535,24 +518,7 @@ const WebView: React.FC = () => {
   // ---------------------------------------------------------------------
 
   return (
-    <div className="w-full min-h-screen bg-[#F5F6FA] pb-20">
-      {/* 헤더 */}
-      <div className="w-full bg-white border-b border-[#E5E7EB] sticky top-0 z-[20]">
-        <div className="max-w-[1040px] mx-auto h-[64px] px-6 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F3F4F6]"
-          >
-            <Icon icon="mdi:arrow-left" className="w-5 h-5 text-[#111827]" />
-          </button>
-          <h1 className="text-[18px] font-semibold text-[#111827]">
-            상품 추가
-          </h1>
-          <div className="w-8 h-8" />
-        </div>
-      </div>
-
+    <div className="w-full min-h-screen bg-[#F5F6FA] pb-10 mt-15">
       {/* 본문 */}
       <div className="max-w-[720px] mx-auto px-6 py-10 space-y-10">
         {/* 타이틀 */}
@@ -771,7 +737,7 @@ const WebView: React.FC = () => {
             {/* 이용 가능 시간 */}
             <div className="space-y-1">
               <label className="text-[14px] font-medium text-[#1E2124]">
-                이용 가능 시간 (availableTime)
+                이용 가능 시간
               </label>
               <textarea
                 placeholder="예: 09:00-11:00, 13:00-15:00"
@@ -784,7 +750,7 @@ const WebView: React.FC = () => {
             {/* 지역 */}
             <div className="space-y-1">
               <label className="text-[14px] font-medium text-[#1E2124]">
-                지역 (region)
+                지역
               </label>
               <select
                 {...register("region", { required: true })}
@@ -794,7 +760,7 @@ const WebView: React.FC = () => {
                 <option value="">지역 선택</option>
                 {regions.map((r) => (
                   <option key={r} value={r}>
-                    {r}
+                    {REGION_LABELS[r]}
                   </option>
                 ))}
               </select>
@@ -875,7 +841,7 @@ const WebView: React.FC = () => {
               {/* 수용 인원 */}
               <div className="space-y-1">
                 <label className="text-[14px] font-medium text-[#1E2124]">
-                  수용 인원 (capacity)
+                  수용 인원
                 </label>
                 <input
                   inputMode="numeric"
@@ -891,7 +857,7 @@ const WebView: React.FC = () => {
               {/* 최소 수용 인원 */}
               <div className="space-y-1">
                 <label className="text-[14px] font-medium text-[#1E2124]">
-                  최소 수용 인원 (minGuest)
+                  최소 수용 인원
                 </label>
                 <input
                   inputMode="numeric"
@@ -907,7 +873,7 @@ const WebView: React.FC = () => {
               {/* 최대 수용 인원 */}
               <div className="space-y-1">
                 <label className="text-[14px] font-medium text-[#1E2124]">
-                  최대 수용 인원 (maxGuest)
+                  최대 수용 인원
                 </label>
                 <input
                   inputMode="numeric"
@@ -923,7 +889,7 @@ const WebView: React.FC = () => {
               {/* 주차 수용량 */}
               <div className="space-y-1">
                 <label className="text-[14px] font-medium text-[#1E2124]">
-                  주차 수용량 (parkingCapacity)
+                  주차 수용량
                 </label>
                 <input
                   inputMode="numeric"
@@ -939,7 +905,7 @@ const WebView: React.FC = () => {
               {/* 뷔페 타입 */}
               <div className="space-y-1">
                 <label className="text-[14px] font-medium text-[#1E2124]">
-                  뷔페 타입 (cateringType)
+                  뷔페 타입
                 </label>
                 <input
                   type="text"
@@ -955,7 +921,7 @@ const WebView: React.FC = () => {
               {/* 예약 규칙 */}
               <div className="space-y-1">
                 <label className="text-[14px] font-medium text-[#1E2124]">
-                  예약 규칙 (reservationPolicy)
+                  예약 규칙
                 </label>
                 <textarea
                   placeholder="예: 예약 및 취소/환불 규정을 입력해 주세요."

@@ -202,7 +202,7 @@ const MobileView: React.FC = () => {
     if (region === "서울") return "SEOUL";
     if (region === "경기") return "GYEONGGI";
     if (region === "부산") return "BUSAN";
-    if (region === "인천") return "ETC";
+    if (region === "인천") return "INCHEON";
     return undefined;
   };
 

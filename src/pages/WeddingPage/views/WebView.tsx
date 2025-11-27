@@ -90,7 +90,7 @@ const getRegionQueryValue = (region: RegionKey): string | undefined => {
   if (region === "서울") return "SEOUL";
   if (region === "경기") return "GYEONGGI";
   if (region === "부산") return "BUSAN";
-  if (region === "인천") return "ETC";
+  if (region === "인천") return "INCHEON";
   return undefined;
 };
 
@@ -114,6 +114,7 @@ type WeddingTag =
   | "CONVENTION"
   | "HOTEL"
   | "HOUSE"
+  | "RESTARUANT" // 오타 방지용으로 남겨두고 싶다면 이렇게도 가능하지만, 아래에서 RESTAURANT 사용
   | "RESTAURANT"
   | "HANOK"
   | "CHURCH"
@@ -127,6 +128,7 @@ const TAG_LABEL: Record<WeddingTag, string> = {
   CONVENTION: "컨벤션",
   HOTEL: "호텔",
   HOUSE: "하우스",
+  RESTARUANT: "레스토랑", // 위 타입에 맞게 작성했으면 제거 가능
   RESTAURANT: "레스토랑",
   HANOK: "한옥",
   CHURCH: "교회/성당",
@@ -154,6 +156,12 @@ const TAG_GROUPS: { title: string; items: WeddingTag[] }[] = [
     items: ["SMALL", "CHAPEL", "OUTDOOR_GARDEN", "TRADITIONAL_WEDDING"],
   },
 ];
+
+/** ✅ 서버에서 오는 태그 코드(GENERAL 등)를 화면용 한글 라벨로 매핑 */
+const getTagLabelFromServer = (code: string): string => {
+  // code가 WeddingTag로 들어오는 경우에만 매핑, 아니면 그대로 노출
+  return (TAG_LABEL as Record<string, string>)[code] ?? code;
+};
 
 /* ========================= 유틸 ========================= */
 
@@ -235,7 +243,7 @@ const Card: React.FC<CardProps> = ({
         <div className="flex items-center justify-between">
           <p className="text-sm text-[#6B7280]">{product.ownerName}</p>
           <div className="flex items-center gap-1">
-            <img src="/images/star2.png" alt="평점" className="mb-[2px] h-3" />
+            <img src="/images/star4.png" alt="평점" className="mb-[2px] h-3" />
             <span className="text-xs text-[#374151]">{ratingText}</span>
           </div>
         </div>
@@ -250,15 +258,18 @@ const Card: React.FC<CardProps> = ({
           </p>
 
           <div className="flex max-w-[60%] flex-wrap items-center gap-1">
-            {tagList.slice(0, 2).map((t) => (
-              <span
-                key={(t.id ?? t.tagName).toString()}
-                className="truncate rounded-full border border-[#E5E7EB] px-2 py-0.5 text-[11px] text-[#4B5563]"
-                title={t.tagName}
-              >
-                {t.tagName}
-              </span>
-            ))}
+            {tagList.slice(0, 2).map((t) => {
+              const label = getTagLabelFromServer(t.tagName);
+              return (
+                <span
+                  key={(t.id ?? t.tagName).toString()}
+                  className="truncate rounded-full border border-[#E5E7EB] px-2 py-0.5 text-[11px] text-[#4B5563]"
+                  title={label}
+                >
+                  {label}
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>

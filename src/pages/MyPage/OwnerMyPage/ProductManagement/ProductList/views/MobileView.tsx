@@ -53,6 +53,15 @@ const DELETE_ENDPOINT_MAP: Record<ProductCategory, string> = {
   MAKEUP: "/api/v1/makeup",
 };
 
+/** ✅ 상세 페이지용 카테고리 슬러그 매핑 */
+const CATEGORY_SLUG_MAP: Record<ProductCategory, string> = {
+  WEDDING_HALL: "wedding-hall",
+  WEDDING: "wedding-hall", // 같은 엔드포인트 사용
+  STUDIO: "studio",
+  DRESS: "dress",
+  MAKEUP: "makeup",
+};
+
 /** ====== 유틸 ====== */
 const formatDateYMD = (iso: string) => {
   if (!iso) return "";
@@ -73,10 +82,13 @@ export default function MobileView() {
   const [items, setItems] = useState<OwnerProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // 페이지네이션 파라미터 (스웨거: pageNumber, pageSize)
-  const [pageNumber] = useState(1); // 현재는 1페이지 고정
+  // 페이지네이션 파라미터
+  const [pageNumber, setPageNumber] = useState(1);
   const [pageSize] = useState(20);
-  const [pageMeta, setPageMeta] = useState<PageMeta | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+
+  // pageMeta는 일단 백엔드 메타만 저장하고, 현재는 직접 사용하지 않음
+  const [, setPageMeta] = useState<PageMeta | null>(null);
 
   /** 목록 조회 */
   useEffect(() => {
@@ -97,16 +109,28 @@ export default function MobileView() {
 
         const mapped: OwnerProduct[] = (data?.content ?? []).map((p) => ({
           id: p.id,
-          name: p.detail, // detail = 상품명(카드 타이틀)
-          brandName: p.name, // name = 업체명
+          name: p.detail,
+          brandName: p.name,
           price: p.price,
           thumbnailUrl: p.thumbnail ?? undefined,
           category: p.category as ProductCategory,
           createdAt: p.createdAt,
         }));
 
-        setItems(mapped);
+        // 페이지별로 append
+        setItems((prev) => (pageNumber === 1 ? mapped : [...prev, ...mapped]));
+
         setPageMeta(data?.page ?? null);
+
+        // hasMore 계산 (총 개수 기준으로)
+        if (data?.page) {
+          const total = data.page.totalElements;
+          const loaded = pageNumber * pageSize;
+          setHasMore(loaded < total);
+        } else {
+          // page 정보 없으면 pageSize 기반으로만 추정
+          setHasMore(mapped.length === pageSize);
+        }
       } catch (e) {
         console.error("[ProductManageMobileView] fetch error:", e);
         setError("상품을 불러오지 못했어요.");
@@ -118,7 +142,7 @@ export default function MobileView() {
     fetchList();
   }, [pageNumber, pageSize]);
 
-  /** 상품 단위로 createdAt 기준 최신순 정렬 */
+  /** 최신순 정렬 */
   const sortedItems = useMemo(
     () =>
       [...items].sort(
@@ -140,11 +164,13 @@ export default function MobileView() {
     try {
       await api.delete(`${endpoint}/${productId}`);
 
-      // 로컬 상태에서 삭제
       setItems((prev) => prev.filter((p) => p.id !== productId));
       setPageMeta((prev) =>
         prev
-          ? { ...prev, totalElements: Math.max(prev.totalElements - 1, 0) }
+          ? {
+              ...prev,
+              totalElements: Math.max(prev.totalElements - 1, 0),
+            }
           : prev
       );
     } catch (e) {
@@ -153,58 +179,82 @@ export default function MobileView() {
     }
   };
 
-  /** ====== 수정 ====== */
-  const onEdit = (category: ProductCategory, productId: number) => {
-    nav(`/my-page/owner/product/edit/${category}/${productId}`);
+  /** ====== 상세보기 (상세 페이지 이동) ====== */
+  const onViewDetail = (product: OwnerProduct) => {
+    const slug = CATEGORY_SLUG_MAP[product.category];
+
+    if (!slug) {
+      console.error("[onViewDetail] invalid category:", product.category);
+      alert("알 수 없는 카테고리의 상품입니다.");
+      return;
+    }
+
+    // ✅ 새 라우트에 맞게 category + id 전달
+    nav(`/my-page/owner/products/${slug}/${product.id}`, {
+      state: { product },
+    });
   };
 
   const onRegisterProduct = () => {
     nav("/my-page/owner/product/create");
   };
 
-  /** “쿠폰 등록” 버튼 */
   const onRegisterCoupon = (productId: number, category: ProductCategory) => {
     nav(
       `/my-page/owner/coupons/register?productId=${productId}&category=${category}`
     );
   };
 
+  /** 스크롤 핸들러 (무한 스크롤) */
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.currentTarget;
+      const { scrollTop, scrollHeight, clientHeight } = target;
+
+      // 바닥 근처(+여유 80px) && 로딩 중이 아니고 && 더 불러올 게 있을 때
+      if (!loading && hasMore && scrollHeight - scrollTop - clientHeight < 80) {
+        setPageNumber((prev) => prev + 1);
+      }
+    },
+    [loading, hasMore]
+  );
+
   /** ====== 뷰 ====== */
+  const isInitialLoading = loading && items.length === 0;
+  const isEmpty = !loading && items.length === 0 && !error;
+
   return (
-    <div className="w-full bg-white">
-      {/* 모바일 프레임 390×844 */}
-      <div className="mx-auto w-[390px] h-[844px] bg-[#FFFFFF] relative overflow-hidden">
-        {/* 헤더 */}
-        <MyPageHeader
-          title="상품 관리"
-          onBack={() => nav(-1)}
-          showMenu={false}
-        />
+    <div className="w-full min-h-screen bg-white flex flex-col mt-15">
+      <MyPageHeader title="상품 관리" onBack={onBack} showMenu={false} />
 
-        {/* 스크롤 영역 */}
-        <div className="absolute inset-x-0 bottom-0 top-[60px] bg-white overflow-y-auto">
-          {/* 상단 구분선 */}
-          <div className="w-full h-2 bg-[#F7F9FA]" />
+      {/* 콘텐츠 영역: 화면 전체에서 헤더를 제외한 나머지 높이를 사용 */}
+      <div className="flex-1 bg-white overflow-y-auto" onScroll={handleScroll}>
+        {/* 초기 로딩 */}
+        {isInitialLoading && (
+          <div className="px-5 py-10 text-[14px] text-[#6B7280]">
+            불러오는 중...
+          </div>
+        )}
 
-          {/* 로딩/에러/목록 */}
-          {loading ? (
-            <div className="px-5 py-10 text-[14px] text-[#6B7280]">
-              불러오는 중...
-            </div>
-          ) : error ? (
-            <div className="px-5 py-10 text-[14px] text-[#EB5147]">{error}</div>
-          ) : sortedItems.length === 0 ? (
-            <div className="px-5 py-16 text-center text-[14px] text-[#9CA3AF]">
-              등록된 상품이 없습니다.
-            </div>
-          ) : (
-            <div className="pb-32">
-              {sortedItems.map((p) => (
-                <article
-                  key={p.id}
-                  className="px-5 pt-4 pb-5 border-b border-[#F3F4F5]"
-                >
-                  {/* 상품별 날짜 + X 삭제 버튼 */}
+        {/* 에러 (초기) */}
+        {error && items.length === 0 && (
+          <div className="px-5 py-10 text-[14px] text-[#EB5147]">{error}</div>
+        )}
+
+        {/* 비어 있을 때 */}
+        {isEmpty && (
+          <div className="px-5 py-16 text-center text-[14px] text-[#9CA3AF]">
+            등록된 상품이 없습니다.
+          </div>
+        )}
+
+        {/* 리스트 */}
+        {sortedItems.length > 0 && (
+          <div className="pb-3">
+            {sortedItems.map((p, i) => (
+              <React.Fragment key={p.id}>
+                <article className="px-5 pt-4 pb-5">
+                  {/* 날짜 + 삭제 */}
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[14px] font-semibold tracking-[-0.2px] text-[#1E2124]">
                       {formatDateYMD(p.createdAt)}
@@ -222,7 +272,7 @@ export default function MobileView() {
                     </button>
                   </div>
 
-                  {/* 카드 본문: 썸네일 + 텍스트 + 가격 */}
+                  {/* 카드 */}
                   <div className="flex gap-4">
                     {/* 썸네일 */}
                     <div className="w-[84px] h-[84px] rounded-[4px] border border-[#F5F5F5] overflow-hidden flex-shrink-0 bg-[#F6F7FB]">
@@ -242,34 +292,30 @@ export default function MobileView() {
                       )}
                     </div>
 
-                    {/* 텍스트 + 버튼 영역 */}
+                    {/* 텍스트 */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
                         <div className="min-w-0 pr-3">
-                          {/* 업체명 (응답 name) */}
-                          <div className="text-[12px] tracking-[-0.2px] text-[rgba(0,0,0,0.45)]">
+                          <div className="text-[12px] text-[rgba(0,0,0,0.45)] tracking-[-0.2px]">
                             {p.brandName}
                           </div>
-                          {/* 상품명 (응답 detail) */}
                           <div className="mt-1 text-[14px] leading-[20px] tracking-[-0.2px] text-[#1E2124] line-clamp-2 break-words">
                             {p.name}
                           </div>
                         </div>
-                        {/* 가격 */}
+
                         <div className="pt-1 text-[15px] font-semibold text-[#1E2124] whitespace-nowrap">
                           {formatPrice(p.price)}
                         </div>
                       </div>
 
-                      {/* 버튼들 */}
                       <div className="mt-3 space-y-2">
-                        {/* 수정 / 쿠폰 등록 */}
                         <div className="flex gap-2">
                           <ActionButton
-                            onClick={() => onEdit(p.category, p.id)}
+                            onClick={() => onViewDetail(p)}
                             className="flex-1"
                           >
-                            수정하기
+                            상세보기
                           </ActionButton>
                           <ActionButton
                             onClick={() => onRegisterCoupon(p.id, p.category)}
@@ -282,21 +328,40 @@ export default function MobileView() {
                     </div>
                   </div>
                 </article>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* 오른쪽 아래 플로팅 상품 등록 버튼 */}
-        <button
-          type="button"
-          onClick={onRegisterProduct}
-          className="absolute right-5 bottom-24 w-[56px] h-[56px] rounded-full bg-white border border-[#F3F4F5] shadow-[0_4px_4px_rgba(51,51,51,0.12)] flex items-center justify-center active:scale-95 z-30"
-          aria-label="add-product"
-        >
-          <Icon icon="mdi:plus" className="w-7 h-7" />
-        </button>
+                {/* ===== 새로운 구분선 ===== */}
+                {i < sortedItems.length - 1 && (
+                  <div className="w-full h-2 bg-[#F7F9FA]" />
+                )}
+              </React.Fragment>
+            ))}
+
+            {/* 추가 로딩 표시 (더 불러오는 중일 때) */}
+            {loading && items.length > 0 && (
+              <div className="py-3 text-center text-[12px] text-[#6B7280]">
+                불러오는 중...
+              </div>
+            )}
+
+            {/* 더 이상 불러올 게 없을 때 표시 (선택) */}
+            {!hasMore && !loading && (
+              <div className="py-3 text-center text-[12px] text-[#9CA3AF]">
+                마지막 상품입니다.
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* 우측 하단 플로팅 버튼 (화면 기준 고정) */}
+      <button
+        type="button"
+        onClick={onRegisterProduct}
+        className="fixed right-5 bottom-7.5 w-[56px] h-[56px] rounded-full bg-white border border-[#F3F4F5] shadow-[0_4px_4px_rgba(51,51,51,0.12)] flex items-center justify-center active:scale-95 z-30"
+        aria-label="add-product"
+      >
+        <Icon icon="mdi:plus" className="w-7 h-7" />
+      </button>
     </div>
   );
 }

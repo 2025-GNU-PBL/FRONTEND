@@ -46,6 +46,9 @@ export default function MobileView() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // 삭제 확인 모달용 타겟 id
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
   const hasReviews = !loading && reviews.length > 0;
 
   /** API 응답 → UI 모델 */
@@ -89,7 +92,7 @@ export default function MobileView() {
     fetchMyReviews();
   }, []);
 
-  /** 리뷰 삭제 */
+  /** 실제 삭제 로직 */
   const handleDelete = useCallback(async (id: string) => {
     try {
       await api.delete(`/api/v1/reviews/${id}`);
@@ -99,39 +102,72 @@ export default function MobileView() {
     }
   }, []);
 
+  /** 모달에서 '삭제하기' 눌렀을 때 */
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTargetId) return;
+    await handleDelete(deleteTargetId);
+    setDeleteTargetId(null);
+  }, [deleteTargetId, handleDelete]);
+
+  /** 삭제 버튼 눌렀을 때 모달 오픈 */
+  const openDeleteModal = useCallback((id: string) => {
+    setDeleteTargetId(id);
+  }, []);
+
+  /** 모달에서 '취소' 눌렀을 때 */
+  const closeDeleteModal = useCallback(() => {
+    setDeleteTargetId(null);
+  }, []);
+
   return (
-    <div className="w-full bg-white">
-      <div className="relative mx-auto w-[390px] h-[844px] bg-white flex flex-col overflow-hidden">
-        <div className="sticky top-0 z-20 bg-white border-b border-[#F3F4F5]">
-          <MyPageHeader title="리뷰 내역" onBack={onBack} showMenu={false} />
-        </div>
-
-        <div className="flex-1 w-full overflow-y-auto">
-          {loading ? (
-            <div className=" mt-30 flex-1 flex items-center justify-center text-[14px] text-[#999999]">
-              리뷰 내역을 불러오는 중입니다...
-            </div>
-          ) : hasReviews ? (
-            <div className="mt-15">
-              <div className="px-5 pt-5">
-                <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-                  리뷰 내역 {reviews.length}
-                </span>
-              </div>
-
-              <div className="mt-3 flex flex-col">
-                {reviews.map((r) => (
-                  <ReviewRow key={r.id} review={r} onDelete={handleDelete} />
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-65">
-              <EmptyState />
-            </div>
-          )}
-        </div>
+    <div className="w-full min-h-screen bg-white flex flex-col">
+      {/* 상단 헤더 */}
+      <div className="sticky top-0 z-20 bg-white border-b border-[#F3F4F5]">
+        <MyPageHeader title="리뷰 내역" onBack={onBack} showMenu={false} />
       </div>
+
+      {/* 내용 영역 */}
+      <div className="flex-1 w-full overflow-y-auto">
+        {loading ? (
+          <div className="mt-30 flex-1 flex items-center justify-center text-[14px] text-[#999999]">
+            리뷰 내역을 불러오는 중입니다...
+          </div>
+        ) : hasReviews ? (
+          <div className="mt-15">
+            <div className="px-5 pt-5">
+              <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
+                리뷰 내역 {reviews.length}
+              </span>
+            </div>
+
+            <div className="mt-3 flex flex-col">
+              {reviews.map((r) => (
+                <ReviewRow
+                  key={r.id}
+                  review={r}
+                  onClickDelete={openDeleteModal}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-65">
+            <EmptyState />
+          </div>
+        )}
+      </div>
+
+      {/* 삭제 확인 모달 */}
+      {deleteTargetId && (
+        <DeleteConfirmModal
+          title="리뷰를 삭제하시겠어요?"
+          description="삭제한 리뷰는 다시 되돌릴 수 없어요."
+          cancelText="취소"
+          confirmText="삭제하기"
+          onCancel={closeDeleteModal}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
     </div>
   );
 }
@@ -140,10 +176,10 @@ export default function MobileView() {
 
 function ReviewRow({
   review,
-  onDelete,
+  onClickDelete,
 }: {
   review: Review;
-  onDelete: (id: string) => void;
+  onClickDelete: (id: string) => void;
 }) {
   return (
     <div className="px-5">
@@ -196,7 +232,7 @@ function ReviewRow({
         <button
           type="button"
           className="ml-2 mt-1 text-[12px] leading-[18px] text-[#4B6FFF]"
-          onClick={() => onDelete(review.id)}
+          onClick={() => onClickDelete(review.id)}
         >
           삭제
         </button>
@@ -222,6 +258,66 @@ function EmptyState() {
         <p className="text-[14px] leading-[18px] tracking-[-0.1px] text-[#999999]">
           작성해주세요
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 삭제 확인 모달 컴포넌트 ---------- */
+
+type DeleteConfirmModalProps = {
+  title: string;
+  description: string;
+  cancelText?: string;
+  confirmText?: string;
+  onCancel: () => void;
+  onConfirm: () => void | Promise<void>;
+};
+
+function DeleteConfirmModal({
+  title,
+  description,
+  cancelText = "취소",
+  confirmText = "삭제하기",
+  onCancel,
+  onConfirm,
+}: DeleteConfirmModalProps) {
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+      <div className="relative w-full max-w-[335px] bg-white rounded-[14px] shadow-[4px_4px_10px_rgba(0,0,0,0.06)]">
+        {/* 상단 텍스트 영역 */}
+        <div className="flex flex-col items-start px-5 pt-6 pb-0 gap-2.5">
+          <div className="flex flex-row items-start gap-3 w-full">
+            <p className="flex items-center text-[16px] leading-[24px] font-bold tracking-[-0.2px] text-[#1E2124]">
+              {title}
+            </p>
+          </div>
+          <p className="flex items-center w-full text-[14px] leading-[21px] font-medium tracking-[-0.2px] text-[#9D9D9D]">
+            {description}
+          </p>
+        </div>
+
+        {/* 하단 버튼 영역 */}
+        <div className="mt-4 flex flex-row items-center px-5 pb-6 pt-2 gap-2.5">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 h-11 rounded-[10px] bg-[#F3F4F5] flex items-center justify-center"
+          >
+            <span className="text-[14px] leading-[21px] font-medium tracking-[-0.2px] text-[#999999]">
+              {cancelText}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="flex-1 h-11 rounded-[10px] bg-[#FF2233] flex items-center justify-center"
+          >
+            <span className="text-[14px] leading-[21px] font-medium tracking-[-0.2px] text-white">
+              {confirmText}
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   );

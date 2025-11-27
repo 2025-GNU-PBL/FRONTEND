@@ -4,6 +4,20 @@ import { Icon } from "@iconify/react";
 import { useAppDispatch, useAppSelector } from "../../../../../store/hooks";
 import { logoutUser } from "../../../../../store/thunkFunctions";
 
+interface ActionCardProps {
+  title: string;
+  description: string;
+  icon: string;
+  cta: string;
+  onClick: () => void;
+}
+
+interface MenuTileProps {
+  label: string;
+  icon: string;
+  onClick: () => void;
+}
+
 export default function WebView() {
   const nav = useNavigate();
   const dispatch = useAppDispatch();
@@ -102,9 +116,15 @@ export default function WebView() {
   );
 }
 
-/* 재사용 컴포넌트는 그대로 */
+/* 재사용 컴포넌트 타입 명시 */
 
-function ActionCard({ title, description, icon, cta, onClick }: any) {
+function ActionCard({
+  title,
+  description,
+  icon,
+  cta,
+  onClick,
+}: ActionCardProps) {
   return (
     <div className="w-full rounded-2xl bg-white border border-gray-100 shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition">
       <div className="flex items-start gap-3">
@@ -130,7 +150,7 @@ function ActionCard({ title, description, icon, cta, onClick }: any) {
   );
 }
 
-function MenuTile({ label, icon, onClick }: any) {
+function MenuTile({ label, icon, onClick }: MenuTileProps) {
   return (
     <button
       onClick={onClick}

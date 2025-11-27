@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import { FaInstagram, FaFacebook, FaYoutube } from "react-icons/fa";
+import { useAppSelector } from "../../../store/hooks";
 
 const WebView = () => {
+  const role = useAppSelector((s) => s.user.role); // ★ OWNER / CUSTOMER 확인
+
   return (
     <div className="hidden md:flex flex-col py-12">
       <div className="max-w-7xl mx-auto px-6 sm:px-12 lg:px-16 grid grid-cols-1 md:grid-cols-4 gap-15 text-center md:text-left">
@@ -56,9 +59,11 @@ const WebView = () => {
                 이벤트
               </Link>
             </li>
+
+            {/* ★ OWNER / CUSTOMER 별 마이페이지 분기 */}
             <li>
               <Link
-                to="/my-page"
+                to={role === "OWNER" ? "/my-page/owner" : "/my-page/client"}
                 className="text-gray-600 hover:text-gray-900 transition"
               >
                 마이페이지

@@ -83,13 +83,13 @@ const regions: RegionItem[] = [
   { key: "부산", label: "부산", image: "/images/busan.png" },
 ];
 
-// 서버 규약: 인천 → ETC
+// 서버 규약: 인천 → INCHEON
 const getRegionQueryValue = (region: RegionKey): string | undefined => {
   if (region === "전체") return undefined;
   if (region === "서울") return "SEOUL";
   if (region === "경기") return "GYEONGGI";
   if (region === "부산") return "BUSAN";
-  if (region === "인천") return "ETC";
+  if (region === "인천") return "INCHEON";
   return undefined;
 };
 
@@ -152,6 +152,11 @@ const TAG_GROUPS: { title: string; items: MakeupTag[] }[] = [
     items: ["FRUITY_TONE", "CLEAN_AND_BRIGHT", "CONTOUR_AND_SHADOW"],
   },
 ];
+
+/** 서버 태그 코드 → 한글 라벨 매핑 */
+const getMakeupTagLabel = (code: string): string => {
+  return (TAG_LABEL as Record<string, string>)[code] ?? code;
+};
 
 /* ========================= 유틸 ========================= */
 
@@ -248,15 +253,18 @@ const Card: React.FC<CardProps> = ({
           </p>
 
           <div className="flex max-w-[60%] flex-wrap items-center gap-1">
-            {tagList.slice(0, 2).map((t) => (
-              <span
-                key={(t.id ?? t.tagName).toString()}
-                className="truncate rounded-full border border-[#E5E7EB] px-2 py-0.5 text-[11px] text-[#4B5563]"
-                title={t.tagName}
-              >
-                {t.tagName}
-              </span>
-            ))}
+            {tagList.slice(0, 2).map((t) => {
+              const label = getMakeupTagLabel(t.tagName);
+              return (
+                <span
+                  key={(t.id ?? t.tagName).toString()}
+                  className="truncate rounded-full border border-[#E5E7EB] px-2 py-0.5 text-[11px] text-[#4B5563]"
+                  title={label}
+                >
+                  {label}
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>

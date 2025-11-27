@@ -131,9 +131,9 @@ const MobileView: React.FC = () => {
   };
 
   return (
-    <div className="relative mx-auto w-[390px] h-[844px] bg-white overflow-hidden">
+    <div className="relative w-full min-h-screen bg-white overflow-hidden flex flex-col">
       {/* 상단 헤더 */}
-      <div className="absolute top-0 left-0 w-full h-[60px] bg-white flex items-center justify-between px-5">
+      <div className="flex items-center justify-between h-[60px] px-5">
         {/* Back Button */}
         <button
           className="w-8 h-8 flex items-center justify-center"
@@ -147,14 +147,17 @@ const MobileView: React.FC = () => {
         </button>
 
         {/* Title */}
-        <h1 className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-[#1E2124]">
+        <h1 className="font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-[#1E2124]">
           회원 정보 수정
         </h1>
+
+        {/* 오른쪽 비워두거나 나중에 아이콘 추가 가능 */}
+        <div className="w-6 h-6" />
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="absolute left-1/2 -translate-x-1/2 top-[60px] w-full px-5">
-        <div className="w-full flex flex-col items-start gap-[30px] mt-[30px]">
+      <div className="flex-1 w-full px-5 mt-[30px] overflow-y-auto pb-[120px]">
+        <div className="w-full flex flex-col items-start gap-[30px]">
           {/* 프로필 */}
           <div className="flex flex-row items-center gap-4 h-[64px]">
             <div className="w-16 h-16 rounded-full bg-[#D9D9D9]" />
@@ -167,7 +170,7 @@ const MobileView: React.FC = () => {
           <div className="w-full flex flex-col items-start gap-[40px]">
             {/* 회원정보 */}
             <div className="w-full flex flex-col items-start gap-5">
-              {/* 제목 + 수정버튼 */}
+              {/* 제목 */}
               <div className="w-full flex flex-row items-center justify-between">
                 <span className="font-[Pretendard] text-[16px] leading-[26px] tracking-[-0.2px] text-black">
                   회원정보
@@ -267,15 +270,15 @@ const MobileView: React.FC = () => {
         </div>
       </div>
 
-      {/* ✅ 하단 수정하기 버튼 (디자인만 추가) */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[390px] h-[96px] flex flex-col items-start gap-[10px] px-5 py-5">
+      {/* ✅ 하단 수정하기 버튼 */}
+      <div className="absolute bottom-0 left-0 w-full h-[96px] flex flex-col items-start gap-[10px] px-5 py-5 bg-white">
         <button
           type="button"
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="flex flex-col justify-center items-center w-[350px] h-[56px] bg-[#FF2233] rounded-[12px] py-4 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex flex-col justify-center items-center w-full h-[56px] bg-[#FF2233] rounded-[12px] py-4 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <div className="flex flex-row justify-center items-center gap-2 w-[55px] h-[24px]">
+          <div className="flex flex-row justify-center items-center gap-2">
             <span className="font-semibold text-[16px] leading-[24px] tracking-[-0.2px] text-white">
               수정하기
             </span>

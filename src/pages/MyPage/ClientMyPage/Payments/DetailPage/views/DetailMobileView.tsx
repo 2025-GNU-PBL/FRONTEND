@@ -146,205 +146,150 @@ export default function DetailMobileView() {
   const pgLabel = mapPgProvider(detail?.pgProvider);
 
   return (
-    <div className="w-full min-h-screen bg-[#F5F6F8] flex justify-center">
-      <div className="w-[390px] min-h-screen bg-[#F5F6F8] flex flex-col">
-        {/* 헤더 */}
-        <header className="h-[60px] bg-white flex items-center px-5 relative">
-          <button
-            type="button"
-            className="w-8 h-8 flex items-center justify-center"
-            onClick={() => nav(-1)}
-          >
+    <div className="w-full min-h-screen bg-[#F5F6F8] flex flex-col">
+      {/* 헤더 */}
+      <header className="h-[60px] bg-white flex items-center px-5 relative">
+        <button
+          type="button"
+          className="w-8 h-8 flex items-center justify-center"
+          onClick={() => nav(-1)}
+        >
+          <Icon
+            icon="solar:alt-arrow-left-linear"
+            className="w-6 h-6 text-black"
+          />
+        </button>
+        <h1 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[18px] font-semibold text-black">
+          결제 내역 상세
+        </h1>
+      </header>
+
+      {/* 내용 */}
+      <main className="flex-1 pb-[90px]">
+        {loading && (
+          <div className="mt-6 px-5 flex items-center justify-center text-[13px] text-[#777777]">
+            상세 정보를 불러오는 중입니다...
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="mt-6 px-5 flex items-center justify-center text-[13px] text-red-500">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && !detail && (
+          <div className="mt-6 px-5 flex flex-col items-center text-[13px] text-[#777777]">
             <Icon
-              icon="solar:alt-arrow-left-linear"
-              className="w-6 h-6 text-black"
+              icon="mdi:file-document-outline"
+              className="w-10 h-10 mb-2 text-[#D9D9D9]"
             />
-          </button>
-          <h1 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[18px] font-semibold text-black">
-            결제 내역 상세
-          </h1>
-        </header>
+            결제 내역 상세를 찾을 수 없습니다.
+          </div>
+        )}
 
-        {/* 내용 */}
-        <main className="flex-1 pb-[90px]">
-          {loading && (
-            <div className="mt-6 px-5 flex items-center justify-center text-[13px] text-[#777777]">
-              상세 정보를 불러오는 중입니다...
-            </div>
-          )}
+        {!loading && !error && detail && (
+          <>
+            {/* 상태 + 날짜 */}
+            <section className="mt-5 px-5 flex items-center justify-between">
+              <span className="text-[16px] font-semibold text-[#1E2124]">
+                {statusLabel}
+              </span>
+              <span className="text-[14px] text-black/40">{dateLabel}</span>
+            </section>
 
-          {!loading && error && (
-            <div className="mt-6 px-5 flex items-center justify-center text-[13px] text-red-500">
-              {error}
-            </div>
-          )}
+            {/* 상품 정보 */}
+            <section className="mt-4 px-5">
+              <div className="w-full bg-white border border-[#F3F4F5] rounded-[12px] px-4 py-4">
+                <p className="text-[16px] font-semibold mb-3 text-[#1E2124]">
+                  상품정보
+                </p>
 
-          {!loading && !error && !detail && (
-            <div className="mt-6 px-5 flex flex-col items-center text-[13px] text-[#777777]">
-              <Icon
-                icon="mdi:file-document-outline"
-                className="w-10 h-10 mb-2 text-[#D9D9D9]"
-              />
-              결제 내역 상세를 찾을 수 없습니다.
-            </div>
-          )}
+                <div className="flex gap-4">
+                  <div
+                    className="w-20 h-20 rounded border border-[#F5F5F5] bg-gray-100 bg-cover bg-center overflow-hidden"
+                    style={
+                      detail.thumbnailUrl
+                        ? { backgroundImage: `url(${detail.thumbnailUrl})` }
+                        : undefined
+                    }
+                  />
 
-          {!loading && !error && detail && (
-            <>
-              {/* 상태 + 날짜 */}
-              <section className="mt-5 px-5 flex items-center justify-between">
-                <span className="text-[16px] font-semibold text-[#1E2124]">
-                  {statusLabel}
-                </span>
-                <span className="text-[14px] text-black/40">{dateLabel}</span>
-              </section>
-
-              {/* 상품 정보 */}
-              <section className="mt-4 px-5">
-                <div className="w-full bg-white border border-[#F3F4F5] rounded-[12px] px-4 py-4">
-                  <p className="text-[16px] font-semibold mb-3 text-[#1E2124]">
-                    상품정보
-                  </p>
-
-                  <div className="flex gap-4">
-                    <div
-                      className="w-20 h-20 rounded border border-[#F5F5F5] bg-gray-100 bg-cover bg-center overflow-hidden"
-                      style={
-                        detail.thumbnailUrl
-                          ? { backgroundImage: `url(${detail.thumbnailUrl})` }
-                          : undefined
-                      }
-                    />
-
-                    <div className="flex-1 flex flex-col justify-between">
-                      <div className="space-y-1">
-                        <p className="text-[14px] text-black/40">
-                          {detail.shopName}
-                        </p>
-                        <p className="text-[14px] text-[#1E2124] whitespace-pre-line">
-                          {detail.productName}
-                        </p>
-                      </div>
-
-                      <p className="text-[16px] font-semibold text-[#1E2124] text-right">
-                        {formatCurrency(productAmount)}
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div className="space-y-1">
+                      <p className="text-[14px] text-black/40">
+                        {detail.shopName}
+                      </p>
+                      <p className="text-[14px] text-[#1E2124] whitespace-pre-line">
+                        {detail.productName}
                       </p>
                     </div>
-                  </div>
-                </div>
-              </section>
 
-              {/* 결제내역 */}
-              <section className="mt-6 px-5">
-                <div className="w-full bg-white border border-[#F3F4F5] rounded-[12px] p-4">
-                  <div className="flex flex-col gap-4">
-                    <p className="text-[16px] font-semibold text-[#1E2124]">
-                      결제내역
+                    <p className="text-[16px] font-semibold text-[#1E2124] text-right">
+                      {formatCurrency(productAmount)}
                     </p>
+                  </div>
+                </div>
+              </div>
+            </section>
 
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] text-[#1E2124]">
-                          상품 금액
-                        </span>
-                        <span className="text-[12px] text-[#1E2124]">
-                          {formatCurrency(productAmount)}
-                        </span>
-                      </div>
+            {/* 결제내역 */}
+            <section className="mt-6 px-5">
+              <div className="w-full bg-white border border-[#F3F4F5] rounded-[12px] p-4">
+                <div className="flex flex-col gap-4">
+                  <p className="text-[16px] font-semibold text-[#1E2124]">
+                    결제내역
+                  </p>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] text-[#1E2124]">
-                          쿠폰 할인
-                        </span>
-                        <span className="text-[12px] text-[#1E2124]">
-                          {couponDiscount
-                            ? `-${Math.abs(couponDiscount).toLocaleString()}원`
-                            : "0원"}
-                        </span>
-                      </div>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[12px] text-[#1E2124]">
+                        상품 금액
+                      </span>
+                      <span className="text-[12px] text-[#1E2124]">
+                        {formatCurrency(productAmount)}
+                      </span>
                     </div>
 
-                    <div className="border-t border-[#EEEEEE]" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[12px] text-[#1E2124]">
+                        쿠폰 할인
+                      </span>
+                      <span className="text-[12px] text-[#1E2124]">
+                        {couponDiscount
+                          ? `-${Math.abs(couponDiscount).toLocaleString()}원`
+                          : "0원"}
+                      </span>
+                    </div>
+                  </div>
 
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] text-[#1E2124]">
-                          {pgLabel}
-                        </span>
-                        <span className="text-[12px] text-[#1E2124]">
-                          {formatCurrency(paymentAmount)}
-                        </span>
-                      </div>
+                  <div className="border-t border-[#EEEEEE]" />
 
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-[14px] font-semibold text-[#1E2124]">
-                          총 결제 금액
-                        </span>
-                        <span className="text-[14px] font-semibold text-[#1E2124]">
-                          {formatCurrency(paymentAmount)}
-                        </span>
-                      </div>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[12px] text-[#1E2124]">
+                        {pgLabel}
+                      </span>
+                      <span className="text-[12px] text-[#1E2124]">
+                        {formatCurrency(paymentAmount)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[14px] font-semibold text-[#1E2124]">
+                        총 결제 금액
+                      </span>
+                      <span className="text-[14px] font-semibold text-[#1E2124]">
+                        {formatCurrency(paymentAmount)}
+                      </span>
                     </div>
                   </div>
                 </div>
-              </section>
-            </>
-          )}
-        </main>
-
-        {/* 하단 GNB */}
-        <nav className="w-full max-w-[390px] h-[56px] border-t border-[#D9D9D9] bg-white px-[35px] flex items-center justify-between">
-          <button
-            type="button"
-            className="w-6 h-6 flex items-center justify-center"
-          >
-            <Icon
-              icon="solar:home-2-linear"
-              className="w-6 h-6 text-[#999999]"
-            />
-          </button>
-
-          <button
-            type="button"
-            className="w-6 h-6 flex items-center justify-center"
-          >
-            <Icon
-              icon="solar:heart-linear"
-              className="w-6 h-6 text-[#999999]"
-            />
-          </button>
-
-          <button
-            type="button"
-            className="w-6 h-6 flex items-center justify-center"
-          >
-            <Icon
-              icon="solar:magnifer-linear"
-              className="w-6 h-6 text-[#999999]"
-            />
-          </button>
-
-          <button
-            type="button"
-            className="w-6 h-6 flex items-center justify-center"
-          >
-            <Icon
-              icon="solar:chat-round-line-outline"
-              className="w-6 h-6 text-[#999999]"
-            />
-          </button>
-
-          <button
-            type="button"
-            className="w-6 h-6 flex items-center justify-center"
-          >
-            <Icon
-              icon="solar:user-rounded-linear"
-              className="w-6 h-6 text-black"
-            />
-          </button>
-        </nav>
-      </div>
+              </div>
+            </section>
+          </>
+        )}
+      </main>
     </div>
   );
 }

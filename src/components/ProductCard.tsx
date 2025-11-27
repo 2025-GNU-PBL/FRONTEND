@@ -32,7 +32,7 @@ const formatPrice = (price: number | string) => {
 export type CardProduct = {
   id: number;
   name: string;
-  ownerName: string;
+  bzName: string;
   price: number | string;
   thumbnail?: string | null;
   starCount?: number;
@@ -99,7 +99,7 @@ const ProductCard: React.FC<WeddingHallCardProps> = ({
 
       <div className="flex flex-col gap-1">
         <p className="text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
-          {product.ownerName}
+          {product.bzName}
         </p>
         <p className="text-[14px] leading-[21px] tracking-[-0.2px] text-black line-clamp-2">
           {product.name}

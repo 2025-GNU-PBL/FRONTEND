@@ -1,10 +1,4 @@
-import React, {
-  useMemo,
-  useState,
-  useCallback,
-  useRef,
-  useEffect,
-} from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import MyPageHeader from "../../../../../components/MyPageHeader";
@@ -145,248 +139,231 @@ export default function MobileView() {
   };
 
   return (
-    <div className="w-full bg-white">
-      {/* 화면 프레임(390×844) */}
-      <div className="mx-auto w-[390px] h-[844px] flex flex-col">
-        {/* 헤더 */}
-        <div className="sticky top-0 z-20">
-          <MyPageHeader title="예약 내역" onBack={onBack} showMenu={false} />
-        </div>
+    <div className="w-full min-h-screen bg-white flex flex-col">
+      {/* 헤더 */}
+      <MyPageHeader title="예약 내역" onBack={onBack} showMenu={false} />
 
-        {/* 콘텐츠 스크롤 영역 */}
-        <div className="absolute top-[65px] left-0 w-[390px] bottom-[34px] overflow-y-auto">
-          {/* 상단: 예약 개수 / 상태별 / 정렬 */}
-          <div className="px-5 pt-5 flex items-center justify-between gap-2">
-            <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-              {loading
-                ? "예약 내역 불러오는 중..."
-                : `예약 내역 ${filtered.length}`}
-            </span>
+      {/* 콘텐츠 스크롤 영역 */}
+      <div className="flex-1 overflow-y-auto">
+        {/* 상단: 예약 개수 / 상태별 / 정렬 */}
+        <div className="px-5 pt-5 flex items-center justify-between gap-2 mt-15">
+          <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
+            {loading
+              ? "예약 내역 불러오는 중..."
+              : `예약 내역 ${filtered.length}`}
+          </span>
 
-            <div className="flex items-center gap-3">
-              {/* 상태별 드롭다운 */}
-              <div className="relative" ref={statusRef}>
-                <button
-                  type="button"
-                  onClick={() => setStatusOpen((p) => !p)}
-                  className="flex items-center gap-1"
-                >
-                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-                    상태별
-                    {statusFilter !== "전체" && ` · ${statusFilter}`}
-                  </span>
-                  <Icon
-                    icon="solar:alt-arrow-down-linear"
-                    className="w-4 h-4 text-[#999999]"
-                  />
-                </button>
-                {statusOpen && (
-                  <div className="absolute right-0 mt-2 w-28 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
-                    <DropdownItem
-                      active={statusFilter === "전체"}
-                      onClick={() => {
-                        setStatusFilter("전체");
-                        setStatusOpen(false);
-                      }}
-                    >
-                      전체
-                    </DropdownItem>
-                    <DropdownItem
-                      active={statusFilter === "대기"}
-                      onClick={() => {
-                        setStatusFilter("대기");
-                        setStatusOpen(false);
-                      }}
-                    >
-                      대기
-                    </DropdownItem>
-                    <DropdownItem
-                      active={statusFilter === "확정"}
-                      onClick={() => {
-                        setStatusFilter("확정");
-                        setStatusOpen(false);
-                      }}
-                    >
-                      확정
-                    </DropdownItem>
-                    <DropdownItem
-                      active={statusFilter === "취소"}
-                      onClick={() => {
-                        setStatusFilter("취소");
-                        setStatusOpen(false);
-                      }}
-                    >
-                      취소
-                    </DropdownItem>
-                  </div>
-                )}
-              </div>
+          <div className="flex items-center gap-3">
+            {/* 상태별 드롭다운 */}
+            <div className="relative" ref={statusRef}>
+              <button
+                type="button"
+                onClick={() => setStatusOpen((p) => !p)}
+                className="flex items-center gap-1"
+              >
+                <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
+                  상태별
+                  {statusFilter !== "전체" && ` · ${statusFilter}`}
+                </span>
+                <Icon
+                  icon="solar:alt-arrow-down-linear"
+                  className="w-4 h-4 text-[#999999]"
+                />
+              </button>
+              {statusOpen && (
+                <div className="absolute right-0 mt-2 w-28 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
+                  {/* 전체 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("전체");
+                      setStatusOpen(false);
+                    }}
+                    className={[
+                      "w-full text-left px-4 py-2.5 text-[14px] leading-[21px] tracking-[-0.2px]",
+                      statusFilter === "전체"
+                        ? "bg-gray-100 font-semibold"
+                        : "hover:bg-gray-50",
+                    ].join(" ")}
+                  >
+                    전체
+                  </button>
+                  {/* 대기 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("대기");
+                      setStatusOpen(false);
+                    }}
+                    className={[
+                      "w-full text-left px-4 py-2.5 text-[14px] leading-[21px] tracking-[-0.2px]",
+                      statusFilter === "대기"
+                        ? "bg-gray-100 font-semibold"
+                        : "hover:bg-gray-50",
+                    ].join(" ")}
+                  >
+                    대기
+                  </button>
+                  {/* 확정 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("확정");
+                      setStatusOpen(false);
+                    }}
+                    className={[
+                      "w-full text-left px-4 py-2.5 text-[14px] leading-[21px] tracking-[-0.2px]",
+                      statusFilter === "확정"
+                        ? "bg-gray-100 font-semibold"
+                        : "hover:bg-gray-50",
+                    ].join(" ")}
+                  >
+                    확정
+                  </button>
+                  {/* 취소 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("취소");
+                      setStatusOpen(false);
+                    }}
+                    className={[
+                      "w-full text-left px-4 py-2.5 text-[14px] leading-[21px] tracking-[-0.2px]",
+                      statusFilter === "취소"
+                        ? "bg-gray-100 font-semibold"
+                        : "hover:bg-gray-50",
+                    ].join(" ")}
+                  >
+                    취소
+                  </button>
+                </div>
+              )}
+            </div>
 
-              {/* 정렬 드롭다운 */}
-              <div className="relative" ref={sortRef}>
-                <button
-                  type="button"
-                  onClick={() => setSortOpen((p) => !p)}
-                  className="flex items-center gap-1"
-                >
-                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-                    {sort}
-                  </span>
-                  <Icon
-                    icon="solar:alt-arrow-down-linear"
-                    className="w-4 h-4 text-[#999999]"
-                  />
-                </button>
-                {sortOpen && (
-                  <div className="absolute right-0 mt-2 w-28 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
-                    <DropdownItem
-                      active={sort === "최신순"}
-                      onClick={() => {
-                        setSort("최신순");
-                        setSortOpen(false);
-                      }}
-                    >
-                      최신순
-                    </DropdownItem>
-                    <DropdownItem
-                      active={sort === "오래된순"}
-                      onClick={() => {
-                        setSort("오래된순");
-                        setSortOpen(false);
-                      }}
-                    >
-                      오래된순
-                    </DropdownItem>
-                  </div>
-                )}
-              </div>
+            {/* 정렬 드롭다운 */}
+            <div className="relative" ref={sortRef}>
+              <button
+                type="button"
+                onClick={() => setSortOpen((p) => !p)}
+                className="flex items-center gap-1"
+              >
+                <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
+                  {sort}
+                </span>
+                <Icon
+                  icon="solar:alt-arrow-down-linear"
+                  className="w-4 h-4 text-[#999999]"
+                />
+              </button>
+              {sortOpen && (
+                <div className="absolute right-0 mt-2 w-28 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
+                  {/* 최신순 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSort("최신순");
+                      setSortOpen(false);
+                    }}
+                    className={[
+                      "w-full text-left px-4 py-2.5 text-[14px] leading-[21px] tracking-[-0.2px]",
+                      sort === "최신순"
+                        ? "bg-gray-100 font-semibold"
+                        : "hover:bg-gray-50",
+                    ].join(" ")}
+                  >
+                    최신순
+                  </button>
+                  {/* 오래된순 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSort("오래된순");
+                      setSortOpen(false);
+                    }}
+                    className={[
+                      "w-full text-left px-4 py-2.5 text-[14px] leading-[21px] tracking-[-0.2px]",
+                      sort === "오래된순"
+                        ? "bg-gray-100 font-semibold"
+                        : "hover:bg-gray-50",
+                    ].join(" ")}
+                  >
+                    오래된순
+                  </button>
+                </div>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* 리스트 영역 */}
-          <div className="mt-4 flex flex-col">
-            {loading ? (
-              <div className="w-full h-[489px] flex items-center justify-center text-[14px] text-[#999999]">
-                예약 정보를 불러오는 중입니다...
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="mt-35">
-                <EmptyState />
-              </div>
-            ) : (
-              filtered.map((r) => (
-                <ReservationRow
-                  key={r.id}
-                  r={r}
-                  onClick={() => onSelectInquiry(r.id)}
+        {/* 리스트 영역 */}
+        <div className="mt-4 flex flex-col px-5 pb-6">
+          {loading ? (
+            <div className="w-full flex items-center justify-center py-10 text-[14px] text-[#999999]">
+              예약 정보를 불러오는 중입니다...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="mt-10">
+              {/* EmptyState 인라인 */}
+              <div className="flex flex-col items-center justify-center py-10">
+                <img
+                  src="/images/document.png"
+                  className="w-[72px] h-[72px] text-[#D3D4D6] mb-4"
                 />
-              ))
-            )}
-          </div>
+                <div className="flex flex-col items-center">
+                  <p className="text-[18px] leading-[24px] font-semibold tracking-[-0.2px] text-black mb-2 text-center">
+                    1개월 내 예약 내역이 없어요
+                  </p>
+                  <p className="mb-1 text-[14px] leading-[18px] tracking-[-0.1px] text-[#999999] text-center">
+                    마음에 드는 상품 상세에서
+                  </p>
+                  <p className="text-[14px] leading-[18px] tracking-[-0.1px] text-[#999999] text-center">
+                    예약을 등록해 보세요
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            filtered.map((r) => (
+              <div
+                key={r.id}
+                className="w-full bg-white border-b border-[#F3F4F5] py-4"
+              >
+                <div className="w-full flex items-center justify-between gap-4">
+                  {/* 좌측 텍스트 */}
+                  <div className="flex flex-col gap-1 flex-1 min-w-0">
+                    <div className="text-[14px] leading-[21px] font-semibold tracking-[-0.2px] text-black truncate">
+                      {r.partner}
+                    </div>
+                    <div className="text-[16px] leading-[26px] tracking-[-0.2px] text-black break-words">
+                      {r.title}
+                    </div>
+                    <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
+                      예약일 {formatDate(r.createdAt)}
+                    </div>
+                  </div>
+
+                  {/* 상태 배지 (StatusBadge 인라인) */}
+                  <div
+                    className={[
+                      "min-w-[48px] h-[33px] px-3 flex items-center justify-center rounded-[20px]",
+                      r.status === "대기"
+                        ? "bg-[#FA9538]"
+                        : r.status === "확정"
+                        ? "bg-[#3DC061]"
+                        : r.status === "취소"
+                        ? "bg-[#EB5147]"
+                        : "",
+                    ].join(" ")}
+                  >
+                    <span className="text-white text-[14px] font-medium leading-[21px] tracking-[-0.2px]">
+                      {r.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-/** 공통 드롭다운 아이템 */
-function DropdownItem({
-  children,
-  active,
-  onClick,
-}: {
-  children: React.ReactNode;
-  active?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "w-full text-left px-4 py-2.5 text-[14px] leading-[21px] tracking-[-0.2px]",
-        active ? "bg-gray-100 font-semibold" : "hover:bg-gray-50",
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  );
-}
-
-/** 예약 상태 배지 */
-function StatusBadge({ status }: { status: ReservationStatus }) {
-  let bg = "";
-  if (status === "대기") bg = "bg-[#FA9538]";
-  if (status === "확정") bg = "bg-[#3DC061]";
-  if (status === "취소") bg = "bg-[#EB5147]";
-
-  return (
-    <div
-      className={[
-        "min-w-[48px] h-[33px] px-3 flex items-center justify-center rounded-[20px]",
-        bg,
-      ].join(" ")}
-    >
-      <span className="text-white text-[14px] font-medium leading-[21px] tracking-[-0.2px]">
-        {status}
-      </span>
-    </div>
-  );
-}
-
-/** 예약 리스트 행 */
-function ReservationRow({
-  r,
-  onClick,
-}: {
-  r: Reservation;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full px-5 bg-white text-left"
-    >
-      <div className="w-full max-w-[350px] mx-auto flex items-center justify-between gap-[40px] border-b border-[#F3F4F5] py-4">
-        {/* 좌측 텍스트 */}
-        <div className="flex flex-col gap-1 w-[207px]">
-          <div className="text-[14px] leading-[21px] font-semibold tracking-[-0.2px] text-black">
-            {r.partner}
-          </div>
-          <div className="text-[16px] leading-[26px] tracking-[-0.2px] text-black">
-            {r.title}
-          </div>
-          <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
-            예약일 {formatDate(r.createdAt)}
-          </div>
-        </div>
-
-        {/* 상태 배지 */}
-        <StatusBadge status={r.status} />
-      </div>
-    </button>
-  );
-}
-
-/** 빈 상태 뷰 */
-function EmptyState() {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center py-10">
-      <img
-        src="/images/document.png"
-        className="w-[72px] h-[72px] text-[#D3D4D6] mb-4"
-      />
-      <div className="flex flex-col items-center">
-        <p className="text-[18px] leading-[24px] font-semibold tracking-[-0.2px] text-black mb-2">
-          1개월 내 예약 내역이 없어요
-        </p>
-        <p className="mb-1 text-[14px] leading-[18px] tracking-[-0.1px] text-[#999999]">
-          마음에 드는 상품 상세에서
-        </p>
-        <p className="text-[14px] leading-[18px] tracking-[-0.1px] text-[#999999]">
-          예약을 등록해 보세요
-        </p>
       </div>
     </div>
   );

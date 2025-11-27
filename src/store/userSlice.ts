@@ -1,3 +1,4 @@
+// src/store/userSlice.ts
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import {
   kakaoLoginUser,
@@ -22,6 +23,7 @@ export type OwnerApiResponse = {
   phoneNumber: string;
   bzNumber: string;
   bankAccount: string;
+  bankName: string; // ✅ 은행명 추가
   userRole: string;
   email: string;
   name: string;
@@ -75,6 +77,7 @@ export type OwnerData = UserBase & {
   profileImage: string;
   bzNumber: string;
   bankAccount: string;
+  bankName: string; // ✅ 프론트 표준 타입에도 추가
   socialProvider: string;
   createdAt: string;
   updatedAt: string;
@@ -117,6 +120,7 @@ function mapOwner(resp: OwnerApiResponse): OwnerData {
     profileImage: resp.profileImage,
     bzNumber: resp.bzNumber,
     bankAccount: resp.bankAccount,
+    bankName: resp.bankName, // ✅ 매핑 추가
     socialProvider: resp.socialProvider,
     createdAt: resp.createdAt,
     updatedAt: resp.updatedAt,
@@ -189,7 +193,7 @@ const userSlice = createSlice({
       state.jwt = null;
       state.role = null;
       localStorage.removeItem("accessToken");
-      toast.info("로그아웃 되었습니다.", { className: "default-toast" }); // className 추가
+      toast.info("로그아웃 되었습니다.");
     },
   },
   extraReducers: (builder) => {
@@ -218,6 +222,7 @@ const userSlice = createSlice({
         if (action.payload?.accessToken) {
           localStorage.setItem("accessToken", action.payload.accessToken);
         }
+        toast.success("로그인 되었습니다.");
       }
     );
     builder.addCase(kakaoLoginUser.rejected, (state, action) => {
@@ -227,7 +232,7 @@ const userSlice = createSlice({
           ? action.payload
           : "카카오 로그인 실패";
       state.error = errorMessage;
-      toast.error(errorMessage, { className: "default-toast" }); // className 추가
+      toast.error(errorMessage);
     });
 
     /** 네이버 로그인 */
@@ -255,6 +260,7 @@ const userSlice = createSlice({
         if (action.payload?.accessToken) {
           localStorage.setItem("accessToken", action.payload.accessToken);
         }
+        toast.success("로그인 되었습니다.");
       }
     );
     builder.addCase(naverLoginUser.rejected, (state, action) => {
@@ -264,7 +270,7 @@ const userSlice = createSlice({
           ? action.payload
           : "네이버 로그인 실패";
       state.error = errorMessage;
-      toast.error(errorMessage, { className: "default-toast" }); // className 추가
+      toast.error(errorMessage);
     });
 
     /** 로그아웃 */
@@ -275,7 +281,7 @@ const userSlice = createSlice({
       state.jwt = null;
       state.role = null;
       localStorage.removeItem("accessToken");
-      toast.info("로그아웃 되었습니다.", { className: "default-toast" }); // className 추가
+      toast.info("로그아웃 되었습니다.");
     });
     builder.addCase(logoutUser.rejected, (state) => {
       state.isAuth = false;
@@ -309,7 +315,7 @@ const userSlice = createSlice({
           ? action.payload
           : "인증 정보 확인 실패";
       state.error = errorMessage;
-      toast.error(errorMessage, { className: "default-toast" }); // className 추가
+      toast.error(errorMessage);
     });
 
     /** 인증 유저 조회 (사장) */
@@ -334,7 +340,7 @@ const userSlice = createSlice({
           ? action.payload
           : "인증 정보 확인 실패";
       state.error = errorMessage;
-      toast.error(errorMessage, { className: "default-toast" }); // className 추가
+      toast.error(errorMessage);
     });
   },
 });

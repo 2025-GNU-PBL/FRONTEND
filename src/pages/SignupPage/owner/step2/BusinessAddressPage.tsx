@@ -1,4 +1,3 @@
-import React from "react";
 import MobileView from "./views/MobileView";
 import WebView from "./views/WebView";
 

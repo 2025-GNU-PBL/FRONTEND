@@ -4,7 +4,7 @@ interface MyPageHeaderProps {
   title: string;
   onBack?: () => void;
   onMenu?: () => void;
-  showMenu?: boolean; // 메뉴 버튼 표시 여부
+  showMenu?: boolean;
 }
 
 export default function MyPageHeader({
@@ -16,8 +16,8 @@ export default function MyPageHeader({
   return (
     <header
       className="
-        absolute top-[0px] left-0
-        w-[390px] h-[60px]
+        absolute top-0 left-0
+        w-full h-[60px]
         flex flex-row justify-between items-center
         px-[20px] gap-[4px]
         bg-white
@@ -35,17 +35,12 @@ export default function MyPageHeader({
         />
       </button>
 
-      {/* 가운데: 타이틀 */}
-      <h1
-        className="
-          text-[18px] font-semibold text-[#1E2124]
-          tracking-[-0.2px] select-none
-        "
-      >
+      {/* Title */}
+      <h1 className="text-[18px] font-semibold text-[#1E2124] tracking-[-0.2px] select-none">
         {title}
       </h1>
 
-      {/* 오른쪽: 메뉴 버튼 또는 placeholder */}
+      {/* Right Button or Empty Placeholder */}
       {showMenu ? (
         <button
           onClick={onMenu}

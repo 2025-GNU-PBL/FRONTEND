@@ -11,11 +11,9 @@ const MobileView: React.FC = () => {
   const { userData, role } = useAppSelector((state) => state.user);
   const { refreshAuth } = useRefreshAuth();
 
-  // role과 userData를 보고 CustomerData로 좁혀주기
   const customerData =
     role === "CUSTOMER" && userData ? (userData as CustomerData) : null;
 
-  // 회원 탈퇴 모달 오픈 여부
   const [showWithdrawModal, setShowWithdrawModal] = React.useState(false);
 
   const handleGoBack = () => {
@@ -26,23 +24,18 @@ const MobileView: React.FC = () => {
     navigate("/my-page/client/profile/edit");
   };
 
-  // 회원 탈퇴 버튼 클릭 -> 모달만 오픈
   const handleOpenWithdrawModal = () => {
     setShowWithdrawModal(true);
   };
 
-  // 모달에서 "취소" 클릭
   const handleCancelWithdraw = () => {
     setShowWithdrawModal(false);
   };
 
-  // 모달에서 "탈퇴할래요" 클릭 -> 실제 탈퇴 API 호출
   const handleConfirmWithdraw = async () => {
     try {
       await api.delete("/api/v1/customer");
-
       refreshAuth();
-
       navigate("/");
     } catch (error) {
       console.error("회원 탈퇴 요청 중 에러 발생:", error);
@@ -57,10 +50,9 @@ const MobileView: React.FC = () => {
       : "예식 장소";
 
   return (
-    <div className="relative mx-auto w-[390px] h-[844px] bg-white overflow-hidden">
+    <div className="relative w-full min-h-screen bg-white overflow-hidden flex flex-col">
       {/* 상단 헤더 */}
-      <div className="absolute top-0 left-0 w-full h-[60px] bg-white flex items-center justify-between px-5">
-        {/* Back Button */}
+      <div className="flex items-center justify-between h-[60px] px-5">
         <button
           className="w-8 h-8 flex items-center justify-center"
           type="button"
@@ -72,12 +64,10 @@ const MobileView: React.FC = () => {
           />
         </button>
 
-        {/* Title */}
-        <h1 className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-[#1E2124]">
+        <h1 className="font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-[#1E2124]">
           내 정보 조회
         </h1>
 
-        {/* 우측 상단 Group2085664926 아이콘 */}
         <button
           className="w-6 h-6 flex items-center justify-center z-[1]"
           type="button"
@@ -91,7 +81,7 @@ const MobileView: React.FC = () => {
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="absolute left-1/2 -translate-x-1/2 top-[60px] w-full px-5">
+      <div className="flex-1 w-full px-5 overflow-y-auto pb-[80px]">
         <div className="w-full flex flex-col items-start gap-[30px] mt-[30px]">
           {/* 프로필 */}
           <div className="flex flex-row items-center gap-4 h-[64px]">
@@ -101,11 +91,10 @@ const MobileView: React.FC = () => {
             </span>
           </div>
 
-          {/* 정보 섹션 전체 */}
+          {/* 정보 섹션 */}
           <div className="w-full flex flex-col items-start gap-[40px]">
             {/* 회원정보 */}
             <div className="w-full flex flex-col items-start gap-5">
-              {/* 제목 + 수정버튼 */}
               <div className="w-full flex flex-row items-center justify-between">
                 <span className="font-[Pretendard] text-[16px] leading-[26px] tracking-[-0.2px] text-black">
                   회원정보
@@ -128,44 +117,43 @@ const MobileView: React.FC = () => {
 
               <div className="w-full border-t border-[#D9D9D9]" />
 
-              {/* 1열(라벨) + 2열(값) 두 칼럼 정렬 */}
               <div className="w-full flex flex-col items-start gap-3">
                 {/* 고객명 */}
                 <div className="w-full flex flex-row items-center">
-                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
                     고객명
                   </span>
-                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                  <span className="text-[14px] text-black ml-3">
                     {customerData?.name || "홍종민"}
                   </span>
                 </div>
 
                 {/* 전화번호 */}
                 <div className="w-full flex flex-row items-center">
-                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
                     전화번호
                   </span>
-                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                  <span className="text-[14px] text-black ml-3">
                     {customerData?.phoneNumber || "010-1234-5678"}
                   </span>
                 </div>
 
                 {/* 이메일 */}
                 <div className="w-full flex flex-row items-center">
-                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
                     이메일
                   </span>
-                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                  <span className="text-[14px] text-black ml-3">
                     {customerData?.email || "이메일"}
                   </span>
                 </div>
 
                 {/* 주소 */}
                 <div className="w-full flex flex-row items-center">
-                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
                     주소
                   </span>
-                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                  <span className="text-[14px] text-black ml-3">
                     {customerData?.address || "주소"}
                   </span>
                 </div>
@@ -174,29 +162,27 @@ const MobileView: React.FC = () => {
 
             {/* 예식정보 */}
             <div className="w-full flex flex-col items-start gap-5">
-              <span className="font-[Pretendard] text-[16px] leading-[26px] tracking-[-0.2px] text-black">
+              <span className="font-[Pretendard] text-[16px] text-black">
                 예식정보
               </span>
 
               <div className="w-full border-t border-[#D9D9D9]" />
 
               <div className="w-full flex flex-col items-start gap-3">
-                {/* 예식일 */}
                 <div className="w-full flex flex-row items-center">
-                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
                     예식일
                   </span>
-                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                  <span className="text-[14px] text-black ml-3">
                     {customerData?.weddingDate || "예식일"}
                   </span>
                 </div>
 
-                {/* 예식 장소 */}
                 <div className="w-full flex flex-row items-center">
-                  <span className="w-[72px] text-[14px] leading-[21px] tracking-[-0.2px] text-[#999999]">
+                  <span className="w-[72px] text-[14px] text-[#999999]">
                     예식 장소
                   </span>
-                  <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black ml-3">
+                  <span className="text-[14px] text-black ml-3">
                     {weddingPlace}
                   </span>
                 </div>
@@ -204,23 +190,21 @@ const MobileView: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {/* 회원 탈퇴 */}
-        <div className="w-full flex justify-end mt-10 mb-10">
-          <button
-            className="text-[14px] text-[#999999]"
-            type="button"
-            onClick={handleOpenWithdrawModal}
-          >
-            회원 탈퇴
-          </button>
-        </div>
       </div>
+
+      {/* 오른쪽 아래 고정된 회원 탈퇴 버튼 */}
+      <button
+        className="absolute bottom-20 right-5 text-[14px] text-[#999999]"
+        type="button"
+        onClick={handleOpenWithdrawModal}
+      >
+        회원 탈퇴
+      </button>
 
       {/* 회원 탈퇴 확인 모달 */}
       {showWithdrawModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-[310px] rounded-2xl bg-white px-5 py-6 shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
+          <div className="w-full max-w-[310px] rounded-2xl bg-white px-5 py-6 shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
             <div className="w-full flex justify-center mb-3">
               <div className="w-10 h-10 rounded-full bg-[#FFF2F2] flex items-center justify-center">
                 <Icon
@@ -230,10 +214,10 @@ const MobileView: React.FC = () => {
               </div>
             </div>
 
-            <p className="text-center font-[Pretendard] text-[16px] leading-[24px] tracking-[-0.2px] text-[#1E2124] font-semibold">
+            <p className="text-center font-[Pretendard] text-[16px] font-semibold text-[#1E2124]">
               정말 탈퇴하시겠어요?
             </p>
-            <p className="mt-2 text-center text-[13px] leading-[20px] tracking-[-0.2px] text-[#777777]">
+            <p className="mt-2 text-center text-[13px] text-[#777777] leading-[20px]">
               탈퇴 후에는 계정 및 예식 정보가
               <br />
               복구되지 않을 수 있어요.
@@ -242,14 +226,15 @@ const MobileView: React.FC = () => {
             <div className="mt-5 flex flex-row gap-2">
               <button
                 type="button"
-                className="flex-1 h-11 rounded-full border border-[#D9D9D9] text-[14px] leading-[21px] tracking-[-0.2px] text-[#666666]"
+                className="flex-1 h-11 rounded-full border border-[#D9D9D9] text-[14px] text-[#666666]"
                 onClick={handleCancelWithdraw}
               >
                 취소
               </button>
+
               <button
                 type="button"
-                className="flex-1 h-11 rounded-full bg-[#FF4D4F] text-white text-[14px] leading-[21px] tracking-[-0.2px]"
+                className="flex-1 h-11 rounded-full bg-[#FF4D4F] text-white text-[14px]"
                 onClick={handleConfirmWithdraw}
               >
                 탈퇴할래요
