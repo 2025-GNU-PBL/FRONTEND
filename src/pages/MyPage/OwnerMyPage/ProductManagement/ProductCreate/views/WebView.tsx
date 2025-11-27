@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { multipartApi } from "../../../../../../lib/api/multipartApi";
 import { useAppSelector } from "../../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../../store/userSlice";
+import { toast } from "react-toastify";
 
 // ---------------------------------------------------------------------
 // 타입 정의
@@ -363,7 +364,7 @@ const WebView: React.FC = () => {
       !values.region ||
       !values.ownerName.trim()
     ) {
-      alert("필수 항목을 모두 입력해주세요.");
+      toast.error("필수 항목을 모두 입력해주세요.");
       return;
     }
 
@@ -377,7 +378,7 @@ const WebView: React.FC = () => {
         !values.cateringType.trim() ||
         !values.reservationPolicy.trim()
       ) {
-        alert("웨딩홀 정보 항목을 모두 입력해주세요.");
+        toast.error("웨딩홀 정보 항목을 모두 입력해주세요.");
         return;
       }
     }
@@ -398,7 +399,7 @@ const WebView: React.FC = () => {
         endpoint = "/api/v1/makeup";
         break;
       default:
-        alert("카테고리를 선택해주세요.");
+        toast.error("카테고리를 선택해주세요.");
         return;
     }
 
@@ -436,9 +437,6 @@ const WebView: React.FC = () => {
     const formData = new FormData();
     formData.append(JSON_PART_KEY, jsonBlob, "request.json");
 
-    // 디버깅용 블록은 타입 문제를 피하기 위해 제거/단순화
-    // console.log("FormData to send:", body, images);
-
     images.forEach((img) => {
       if (img.file) formData.append(FILE_PART_KEY, img.file, img.file.name);
     });
@@ -446,11 +444,11 @@ const WebView: React.FC = () => {
     try {
       const res = await multipartApi.post(endpoint, formData);
       console.log("등록 성공(WebView):", res.data);
-      alert("작성 완료!");
+      toast.success("작성 완료!");
       navigate("/my-page/owner/products/management");
     } catch (err) {
       console.error("등록 실패(WebView):", err);
-      alert("등록 중 오류가 발생했습니다.");
+      toast.error("등록 중 오류가 발생했습니다.");
     }
   };
 

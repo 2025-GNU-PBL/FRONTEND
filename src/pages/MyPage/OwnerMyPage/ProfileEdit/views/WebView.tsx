@@ -5,6 +5,7 @@ import type { OwnerData, UserData } from "../../../../../store/userSlice";
 import { updateOwnerInfo } from "../../../../../store/thunkFunctions";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { toast } from "react-toastify";
 
 /** OWNER 유저만 허용 */
 function ensureOwner(userData: UserData | null): OwnerData | null {
@@ -149,7 +150,7 @@ export default function WebView() {
 
     // 혹시 모를 방어 코드 (owner 없는데 버튼 눌리면)
     if (!owner) {
-      alert("사장님 정보가 없습니다. 다시 로그인해주세요.");
+      toast.error("사장님 정보가 없습니다. 다시 로그인해주세요.");
       return;
     }
 
@@ -174,11 +175,13 @@ export default function WebView() {
         })
       ).unwrap();
 
-      alert("회원 정보가 수정되었습니다.");
+      toast.success("회원 정보가 수정되었습니다.");
       nav(-1);
     } catch (error) {
       console.error(error);
-      alert("정보 수정 중 오류가 발생했습니다.");
+      toast.error(
+        "정보 수정 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+      );
     } finally {
       setIsSubmitting(false);
     }

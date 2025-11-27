@@ -6,6 +6,7 @@ import { multipartApi } from "../../../../../../lib/api/multipartApi";
 import { useAppSelector } from "../../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../../store/userSlice";
 import MyPageHeader from "../../../../../../components/MyPageHeader";
+import { toast } from "react-toastify";
 
 // -------------------- 타입 --------------------
 type ImageItem = { id?: number; src: string; file?: File };
@@ -514,14 +515,14 @@ const MobileView: React.FC = () => {
       !values.availableTime.trim() ||
       !values.region
     ) {
-      alert("필수 항목을 모두 입력해주세요.");
+      toast.error("필수 항목을 모두 입력해주세요.");
       return;
     }
 
     const cat = values.category;
     const endpoint = PATCH_ENDPOINT_MAP[cat];
     if (!endpoint) {
-      alert("카테고리를 다시 확인해 주세요.");
+      toast.error("카테고리를 다시 확인해 주세요.");
       return;
     }
 
@@ -587,11 +588,11 @@ const MobileView: React.FC = () => {
 
     try {
       await multipartApi.patch(`${endpoint}/${id}`, fd);
-      alert("수정 완료!");
+      toast.success("수정 완료!");
       navigate("/my-page/owner/products/management");
     } catch (err) {
       console.error("[상품 수정] 수정 실패:", err);
-      alert("수정 중 오류가 발생했습니다.");
+      toast.error("수정 중 오류가 발생했습니다.");
     }
   };
 

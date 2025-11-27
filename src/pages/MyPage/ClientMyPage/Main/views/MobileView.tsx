@@ -1,9 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useAppDispatch, useAppSelector } from "../../../../../store/hooks";
 import { logoutUser } from "../../../../../store/thunkFunctions";
 import SideMenu from "../../../../../components/SideMenu";
+import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
 type Props = {
   isMenuOpen: boolean;
@@ -16,6 +17,8 @@ export default function MobileView({ isMenuOpen, openMenu, closeMenu }: Props) {
   const dispatch = useAppDispatch();
   const userName = useAppSelector((state) => state.user.userData?.name ?? "");
 
+  const { refreshAuth } = useRefreshAuth(); // 🔹 auth 리프레시 훅 사용
+
   const go = useCallback((to: string) => nav(to), [nav]);
   const onBack = useCallback(() => nav(-1), [nav]);
 
@@ -26,6 +29,11 @@ export default function MobileView({ isMenuOpen, openMenu, closeMenu }: Props) {
       nav("/");
     }
   };
+
+  // 🔹 마이페이지 진입 시(컴포넌트 마운트 시) auth 갱신
+  useEffect(() => {
+    refreshAuth();
+  }, [refreshAuth]);
 
   return (
     <div className="w-full min-h-screen bg-white relative flex flex-col">
