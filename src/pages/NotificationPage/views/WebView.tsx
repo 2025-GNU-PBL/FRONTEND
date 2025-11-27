@@ -4,6 +4,8 @@ import "./WebView.css";
 import { getAllNotifications } from "../../../lib/api/axios";
 import { markNotificationAsRead } from "../../../lib/api/notification"; // markNotificationAsRead 추가
 import type { Notification } from "../../../type/notification";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../../store/store";
 
 interface WebViewProps {
   liveNotifications: Notification[];
@@ -14,6 +16,7 @@ const WebView: React.FC<WebViewProps> = ({ liveNotifications }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate(); // useNavigate 훅 사용
+  const userRole = useSelector((state: RootState) => state.user.role);
 
   // liveNotifications 변화 감지 및 콘솔 출력 (제거)
 
@@ -43,12 +46,38 @@ const WebView: React.FC<WebViewProps> = ({ liveNotifications }) => {
         prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
       );
 
+      // 알림 타입에 따른 라우팅
       if (notification.type === "PAYMENT_REQUIRED") {
-        navigate("/checkout"); // 결제 요청 알림일 경우 리다이렉트
-      } else if (notification.type === "PAYMENT_CANCELED") {
-        navigate("/my-page/client/payments"); // PAYMENT_CANCELED 알림일 경우 리다이렉트
+        // 결제 요청 알림
+        navigate("/checkout");
+      } else if (
+        userRole === "CUSTOMER" &&
+        (notification.type === "PAYMENT_CANCELED" ||
+          notification.type == "PAYMENT_COMPLETED")
+      ) {
+        navigate("/my-page/client/payments");
+      } else if (
+        userRole === "OWNER" &&
+        (notification.type === "PAYMENT_CANCELED" ||
+          notification.type == "PAYMENT_COMPLETED")
+      ) {
+        navigate("/my-page/owner/payments");
+      } else if (
+        userRole === "OWNER" &&
+        notification.type == "PAYMENT_CANCEL_REQUEST"
+      ) {
+        navigate("/my-page/owner/cancels");
+      } else if (
+        userRole === "OWNER" &&
+        notification.type == "RESERVATION_COMPLETED"
+      ) {
+        navigate("/my-page/owner/reservations");
+      } else if (notification.type === "REFUND" && notification.actionUrl) {
+        // 환불 관련 알림 → 백엔드에서 내려준 환불 요청/내역 페이지로 이동
+        navigate(notification.actionUrl);
       } else if (notification.actionUrl) {
-        navigate(notification.actionUrl); // actionUrl이 있다면 해당 URL로 이동
+        // 그 외: actionUrl 이 있으면 공통 처리
+        navigate(notification.actionUrl);
       }
     } catch (error) {
       console.error("Failed to mark notification as read or navigate:", error);

@@ -292,6 +292,7 @@ export default function SharedScheduleEditMobileView() {
       address: locationText,
       keepFileIds,
     };
+  console.log("[SharedScheduleEdit] requestBody:", requestBody);
 
     const formData = new FormData();
     formData.append(
@@ -340,7 +341,6 @@ export default function SharedScheduleEditMobileView() {
     files,
     nav,
   ]);
-
   /** 저장 버튼 비활성 여부 */
   const submitDisabled = submitting || loading;
 
