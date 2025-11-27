@@ -304,9 +304,6 @@ const WebView = () => {
             </div>
 
             <div className="web-popup-buttons-container">
-              <button className="web-popup-cart-button">
-                <span className="web-popup-cart-button-text">장바구니</span>
-              </button>
               <button className="web-popup-purchase-button" onClick={handlePurchase}>
                 <span className="web-popup-purchase-button-text">문의하기</span>
               </button>
