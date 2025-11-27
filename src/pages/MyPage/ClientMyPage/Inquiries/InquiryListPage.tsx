@@ -1,6 +1,5 @@
-import React from "react";
-import MobileView from "./views/InquiryMobileView";
-import WebView from "./views/InquiryWebView";
+import MobileView from "./views/ListMobileView";
+import WebView from "./views/ListWebView";
 
 export default function InquiryPage() {
   return (

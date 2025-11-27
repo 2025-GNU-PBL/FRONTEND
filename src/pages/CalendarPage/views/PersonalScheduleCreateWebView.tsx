@@ -43,19 +43,7 @@ function formatTime12h(timeStr: string) {
   return `${hh}:${mStr}`;
 }
 
-/** ====== 서버 DTO 맞춘 생성 요청 타입 ======
- * {
- *   "request": {
- *     "title": "...",
- *     "content": "...",
- *     "startScheduleDate": "2025-11-21",
- *     "endScheduleDate":   "2025-11-21",
- *     "startTime": "11:00",
- *     "endTime":   "13:00"
- *   },
- *   "file": [...]
- * }
- */
+/** ====== 생성 요청 DTO ====== */
 type ScheduleCreateRequest = {
   title: string;
   content: string;
@@ -63,6 +51,12 @@ type ScheduleCreateRequest = {
   endScheduleDate: string; // yyyy-MM-dd
   startTime: string; // HH:mm
   endTime: string; // HH:mm
+};
+
+type ErrorState = {
+  startDate?: string;
+  endDate?: string;
+  time?: string;
 };
 
 export default function PersonalScheduleCreateWebView() {
@@ -80,52 +74,92 @@ export default function PersonalScheduleCreateWebView() {
   const [endTime, setEndTime] = useState("13:00");
   const [memo, setMemo] = useState("");
 
+  /** 파일 첨부 (새 파일들만) */
+  const [files, setFiles] = useState<File[]>([]);
+
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<ErrorState>({});
 
-  /** 유효성 검사 */
+  /** 필수 값이 모두 채워졌는지만 체크 (버튼 색 결정용) */
+  const isAllFilled = useMemo(
+    () =>
+      !!title.trim() && !!startDate && !!endDate && !!startTime && !!endTime,
+    [title, startDate, endDate, startTime, endTime]
+  );
+
+  /** 유효성 검사 (제목은 에러 문구 없이 필수, 날짜/시간만 에러 문구) */
   const validate = useCallback(() => {
-    const next: Record<string, string> = {};
+    const trimmedTitle = title.trim();
+    const next: ErrorState = {};
 
-    if (!title.trim()) {
-      next.title = "제목을 입력해 주세요.";
+    // 제목은 반드시 입력되어야 하지만 에러 문구는 표시하지 않음
+    let valid = !!trimmedTitle;
+
+    // 날짜 검사
+    if (!startDate) {
+      next.startDate = "시작 일자를 선택해 주세요.";
+      valid = false;
     }
-
-    if (!startDate) next.startDate = "시작 일자를 선택해 주세요.";
-    if (!endDate) next.endDate = "종료 일자를 선택해 주세요.";
+    if (!endDate) {
+      next.endDate = "종료 일자를 선택해 주세요.";
+      valid = false;
+    }
 
     if (startDate && endDate) {
       const sd = new Date(startDate);
       const ed = new Date(endDate);
-
-      if (sd > ed) {
+      if (!Number.isNaN(+sd) && !Number.isNaN(+ed) && sd > ed) {
         next.endDate = "종료일은 시작일 이후여야 합니다.";
+        valid = false;
       }
-      // 여러 날짜 허용 → 같은 날짜인지까지는 검사하지 않음
     }
 
+    // 시간 검사
     if (!startTime || !endTime) {
       next.time = "시작/종료 시간을 모두 선택해 주세요.";
+      valid = false;
+    }
+
+    if (startDate && endDate && startTime && endTime) {
+      const startDateTime = new Date(`${startDate}T${startTime}:00`);
+      const endDateTime = new Date(`${endDate}T${endTime}:00`);
+
+      if (
+        !Number.isNaN(+startDateTime) &&
+        !Number.isNaN(+endDateTime) &&
+        startDateTime >= endDateTime
+      ) {
+        next.time = "종료 시간은 시작 시간보다 늦게 설정해 주세요.";
+        valid = false;
+      }
     }
 
     setErrors(next);
-    return Object.keys(next).length === 0;
+    return valid;
   }, [title, startDate, endDate, startTime, endTime]);
 
-  const isValid = useMemo(() => {
-    if (!title.trim() || !startDate || !endDate || !startTime || !endTime) {
-      return false;
-    }
-    const sd = new Date(startDate);
-    const ed = new Date(endDate);
-    // sd <= ed 만 체크
-    return sd <= ed;
-  }, [title, startDate, endDate, startTime, endTime]);
+  /** 파일 추가 */
+  const handleFilesChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const fileList = e.target.files;
+      if (!fileList || fileList.length === 0) return;
+      const newFiles = Array.from(fileList);
+      setFiles((prev) => [...prev, ...newFiles]);
+      e.target.value = "";
+    },
+    []
+  );
+
+  /** 파일 삭제 */
+  const handleRemoveFile = useCallback((index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   /** 등록 버튼 */
   const handleSubmit = useCallback(async () => {
     if (submitting) return;
-    if (!validate()) return;
+    const ok = validate();
+    if (!ok) return;
 
     const requestPayload: ScheduleCreateRequest = {
       title: title.trim(),
@@ -144,7 +178,11 @@ export default function PersonalScheduleCreateWebView() {
         type: "application/json",
       })
     );
-    // 현재는 파일 업로드 UI 없음 → file 파트 생략
+
+    // 개인 일정도 파일 업로드 가능
+    files.forEach((file) => {
+      formData.append("file", file);
+    });
 
     try {
       setSubmitting(true);
@@ -170,6 +208,7 @@ export default function PersonalScheduleCreateWebView() {
     endDate,
     startTime,
     endTime,
+    files,
     nav,
   ]);
 
@@ -219,7 +258,7 @@ export default function PersonalScheduleCreateWebView() {
         {/* 메인 카드 */}
         <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8">
           <div className="max-w-[720px]">
-            {/* 제목 입력 */}
+            {/* 제목 입력 (에러 문구 없음, 필수) */}
             <div className="mt-2 mb-8 flex items-center gap-3">
               <div className="w-1 h-8 rounded-[3px] bg-[#FF2233]" />
               <input
@@ -229,9 +268,6 @@ export default function PersonalScheduleCreateWebView() {
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
-            {errors.title && (
-              <p className="mb-3 text-[12px] text-[#EB5147]">{errors.title}</p>
-            )}
 
             {/* 날짜 선택 라인 */}
             <div className="mt-2">
@@ -255,22 +291,28 @@ export default function PersonalScheduleCreateWebView() {
                 </div>
               </div>
 
-              {/* 날짜 입력 pill - 가로 배치 */}
+              {/* 날짜 입력 pill (텍스트 박스 배경 흰색) */}
               <div className="mt-3 ml-9 flex gap-3">
-                <div className="w-[320px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
+                <div className="w-[320px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center px-4">
                   <input
                     type="date"
                     className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setErrors((prev) => ({ ...prev, startDate: "" }));
+                    }}
                   />
                 </div>
-                <div className="w-[320px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center px-4">
+                <div className="w-[320px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center px-4">
                   <input
                     type="date"
                     className="flex-1 bg-transparent text-[14px] text-[#111827] outline-none"
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      setErrors((prev) => ({ ...prev, endDate: "" }));
+                    }}
                   />
                 </div>
               </div>
@@ -306,12 +348,12 @@ export default function PersonalScheduleCreateWebView() {
                 {timeDateHint}
               </p>
 
-              {/* 시간 pill */}
+              {/* 시간 pill (텍스트 박스 배경 흰색) */}
               <div className="mt-3 ml-9 flex items-center gap-3">
                 {/* 시작 시간 */}
                 <button
                   type="button"
-                  className="relative w-[180px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
+                  className="relative w-[180px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center justify-between px-4"
                 >
                   <div className="flex flex-col text-left">
                     <span className="text-[11px] text-[#9CA3AF]">
@@ -329,7 +371,10 @@ export default function PersonalScheduleCreateWebView() {
                   <input
                     type="time"
                     value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
+                    onChange={(e) => {
+                      setStartTime(e.target.value);
+                      setErrors((prev) => ({ ...prev, time: "" }));
+                    }}
                     className="absolute inset-0 opacity-0 cursor-pointer"
                   />
                 </button>
@@ -339,7 +384,7 @@ export default function PersonalScheduleCreateWebView() {
                 {/* 종료 시간 */}
                 <button
                   type="button"
-                  className="relative w-[180px] h-[44px] rounded-[14px] bg-[#F7F8FC] border border-[#E5E7EB] flex items-center justify-between px-4"
+                  className="relative w-[180px] h-[44px] rounded-[14px] bg-white border border-[#E5E7EB] flex items-center justify-between px-4"
                 >
                   <div className="flex flex-col text-left">
                     <span className="text-[11px] text-[#9CA3AF]">
@@ -356,7 +401,10 @@ export default function PersonalScheduleCreateWebView() {
                   <input
                     type="time"
                     value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
+                    onChange={(e) => {
+                      setEndTime(e.target.value);
+                      setErrors((prev) => ({ ...prev, time: "" }));
+                    }}
                     className="absolute inset-0 opacity-0 cursor-pointer"
                   />
                 </button>
@@ -369,15 +417,64 @@ export default function PersonalScheduleCreateWebView() {
               )}
             </div>
 
-            {/* 메모 입력 */}
+            {/* 메모 입력 (텍스트 박스 배경 흰색) */}
             <div className="mt-8">
-              <div className="w-full h-[180px] bg-[#F6F7FB] rounded-[12px] px-4 py-3">
+              <div className="w-full h-[180px] bg-white border border-[#E5E7EB] rounded-[12px] px-4 py-3">
                 <textarea
-                  className="w-full h-full bg-transparent resize-none outline-none text-[14px] text-[#1E2124]"
+                  className="w-full h-full bg-transparent resize-none outline-none text-[14px] text-[#1E2124] placeholder:text-[#C4C4C4]"
                   placeholder="메모를 입력해 주세요"
                   value={memo}
                   onChange={(e) => setMemo(e.target.value)}
                 />
+              </div>
+            </div>
+
+            {/* 파일 첨부 (웹 전용, 카드 배경 흰색) */}
+            <div className="mt-6">
+              <div className="flex items-center gap-4 mb-2">
+                <Icon icon="f7:link" className="w-5 h-5 text-[#333333]" />
+                <span className="text-[12px] text-[#999999] leading-[18px]">
+                  파일 첨부
+                </span>
+              </div>
+
+              <div className="ml-9 w-full max-w-[720px] space-y-3">
+                {/* 파일 추가 버튼 */}
+                <label className="inline-flex items-center justify-center px-4 h-[40px] rounded-[12px] bg-white border border-dashed border-[#E5E7EB] text-[13px] text-[#4B5563] cursor-pointer">
+                  <span>파일 추가</span>
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={handleFilesChange}
+                  />
+                </label>
+
+                {/* 새 첨부 파일 목록 */}
+                {files.length > 0 && (
+                  <div className="mt-1 space-y-2">
+                    {files.map((file, index) => (
+                      <div
+                        key={`${file.name}-${index}`}
+                        className="w-full h-[40px] bg-white border border-[#E5E7EB] rounded-[12px] px-4 flex items-center justify-between"
+                      >
+                        <span className="text-[13px] text-[#111827] truncate">
+                          {file.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(index)}
+                          className="ml-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#E5E7EB] active:scale-95"
+                        >
+                          <Icon
+                            icon="solar:trash-bin-minimalistic-bold"
+                            className="w-4 h-4 text-[#9CA3AF]"
+                          />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -387,11 +484,11 @@ export default function PersonalScheduleCreateWebView() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!isValid || submitting}
+              disabled={submitting}
               className={[
                 "min-w-[200px] h-[52px] rounded-[12px] flex items-center justify-center",
                 "text-[16px] font-semibold tracking-[-0.2px]",
-                isValid && !submitting
+                !submitting && isAllFilled
                   ? "bg-[#FF2233] text-white active:scale-95"
                   : "bg-[#F6F6F6] text-[#ADB3B6]",
               ].join(" ")}

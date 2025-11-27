@@ -40,7 +40,7 @@ import JoinAddressPage from "./pages/SignupPage/client/step2/JoinAddressPage";
 import WeddingInfoPage from "./pages/SignupPage/client/step3/WeddingInfoPage";
 import SignupClientCompletePage from "./pages/SignupPage/client/step4/SignupCompletePage";
 import ClientSignupPage from "./pages/SignupPage/client/step1/ClientSignupPage";
-import InquiryPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryPage";
+import InquiryListPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryListPage";
 import ProductInquiryPage from "./pages/ProductInquiryPage/InquiryPage";
 import ReviewPage from "./pages/MyPage/ClientMyPage/Reviews/ReviewPage";
 import ProductCreate from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductCreate/ProductCreate";
@@ -78,6 +78,8 @@ import CustomNotificationToast from "./components/CustomNotificationToast/Custom
 import SupportPage from "./pages/SupportPage/SupportPage";
 import RefundRequestPage from "./pages/MyPage/ClientMyPage/Payments/RefundPage/RefundRequestPage";
 import CanceledDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CanceledDetailPage";
+import type { Notification } from "./type/notification";
+import InquiryDetailPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryDetailPage";
 import ProductDetail from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductDetail/ProductDetail";
 import CouponRegisterPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponRegister/CouponRegisterPage";
 import CouponListPage from "./pages/MyPage/OwnerMyPage/CouponManagement/CouponList/CouponListPage";
@@ -119,7 +121,6 @@ function Layout() {
     "/log-in/client",
     "/log-in/owner",
     "/inquiry", // InquiryPage에 Navbar 숨김
-    "/product-inquiry", // ProductInquiryPage에 Navbar 숨김
   ];
 
   // 푸터 숨길 경로 (정적)
@@ -268,6 +269,7 @@ const App = () => {
 
     // accessToken, userId, userRole이 모두 있을 때만 구독 시작
     if (
+      isAuth &&
       currentAccessToken &&
       currentUserId !== null &&
       currentUserRole !== null
@@ -310,7 +312,7 @@ const App = () => {
     }
 
     return cleanup;
-  }, [currentAccessToken, currentUserId, currentUserRole]); // 디코딩된 userId와 userRole을 의존성 배열에 추가
+  }, [isAuth, currentAccessToken, currentUserId, currentUserRole]); // 디코딩된 userId와 userRole을 의존성 배열에 추가
 
   // 리덕스 퍼시스트 완료 전까지 렌더링 지연
   if (!rehydrated) return null;
@@ -360,11 +362,11 @@ const App = () => {
             element={<PersonalScheduleCreatePage />}
           />
           <Route
-            path="/calendar/personal/edit/:id"
+            path="/calendar/personal/:id"
             element={<PersonalScheduleEditPage />}
           />
           <Route
-            path="/calendar/shared/edit/:id"
+            path="/calendar/shared/:id"
             element={<SharedScheduleEditPage />}
           />
           {/* 고객 마이페이지 */}
@@ -381,7 +383,14 @@ const App = () => {
             path="/my-page/client/coupons"
             element={<ClientCouponPage />}
           />
-          <Route path="/my-page/client/inquiries" element={<InquiryPage />} />
+          <Route
+            path="/my-page/client/inquiries"
+            element={<InquiryListPage />}
+          />
+          <Route
+            path="/my-page/client/inquiries/:inquiryId"
+            element={<InquiryDetailPage />}
+          />
           <Route path="/my-page/client/reviews" element={<ReviewPage />} />
           <Route
             path="/my-page/client/payments"

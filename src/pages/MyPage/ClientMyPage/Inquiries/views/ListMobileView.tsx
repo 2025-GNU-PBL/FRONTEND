@@ -14,13 +14,13 @@ type ReservationApiResponse = {
   ownerId: number;
   customerId: number;
   productId: number;
-  status: string; // WAITING / APPROVE / CANCEL
+  status: string; // WAITING / APPROVE / DENY
   reservationTime: string; // "2025-11-07T12:00:00"
   title: string;
   content: string;
 };
 
-/** 화면에서 사용할 예약 타입 */
+/** 화면에서 사용할 문의 타입 */
 type Reservation = {
   id: string;
   partner: string;
@@ -29,18 +29,12 @@ type Reservation = {
   createdAt: string; // YYYY-MM-DD
 };
 
-/** ----- 컴포넌트 밖으로 뺀 유틸 함수들 ----- */
-
 /** 서버 status → UI status 매핑 */
 const mapStatus = (status: string): ReservationStatus => {
   switch (status) {
     case "APPROVE":
-    case "APPROVED":
-    case "CONFIRM":
-    case "CONFIRMED":
       return "확정";
-    case "CANCEL":
-    case "CANCELED":
+    case "DENY":
       return "취소";
     default:
       return "대기";
@@ -137,6 +131,12 @@ export default function MobileView() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [statusOpen, sortOpen]);
+
+  /** 예약 한 건 선택 시 상세 페이지로 이동 */
+  const onSelectInquiry = (InquiryId: string) => {
+    // 라우팅 경로 그대로 사용
+    nav(`/my-page/client/inquiries/${InquiryId}`);
+  };
 
   return (
     <div className="w-full min-h-screen bg-white flex flex-col">

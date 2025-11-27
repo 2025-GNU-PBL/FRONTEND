@@ -14,9 +14,9 @@ const menuItems = [
 ];
 
 const Navbar = () => {
-  // ✅ Redux에서 로그인 여부 확인
+  // Redux에서 로그인 여부 확인
   const isAuth = useAppSelector((s) => s.user.isAuth);
-  const userRole = useAppSelector((state) => state.user.role); // ✅ Redux에서 role 가져오기
+  const userRole = useAppSelector((state) => state.user.role); // Redux에서 role 가져오기
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [cartCount, setCartCount] = useState<number>(0); // 장바구니 상품 개수 상태 추가
 

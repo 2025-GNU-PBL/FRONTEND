@@ -1,7 +1,7 @@
-import MobileView from "./views/MobileView";
-import WebView from "./views/WebView";
+import MobileView from "./views/DetailMobileView";
+import WebView from "./views/DetailWebView";
 
-export default function InquiryPage() {
+export default function InquiryDetailPage() {
   return (
     <div className="w-full bg-white">
       {/* Mobile */}

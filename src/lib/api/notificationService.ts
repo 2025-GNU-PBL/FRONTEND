@@ -9,6 +9,7 @@ export function subscribeToNotifications(onNotification: (notification: any) => 
 
   const controller = new AbortController();
   const signal = controller.signal;
+  let retryDelay = 1000; // 1초부터 시작하여 지수적으로 증가
 
   const connect = async () => {
     try {
@@ -63,6 +64,9 @@ export function subscribeToNotifications(onNotification: (notification: any) => 
       } else {
         console.error("SSE fetch error:", err);
         onError(err as Error);
+        // 재연결 로직
+        setTimeout(connect, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 30000); // 최대 30초까지 지연 증가
       }
     }
   };

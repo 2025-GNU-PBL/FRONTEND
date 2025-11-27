@@ -1,6 +1,6 @@
 /* MobileView.css */
 
-.cart-page-container {
+.mobile-cart-page-container {
   position: relative;
   width: 100%; /* 너비를 100%로 설정 */
   max-width: 390px; /* 최대 너비를 390px로 제한 */
@@ -14,7 +14,7 @@
 }
 
 /* Header */
-.cart-header {
+.mobile-cart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -27,14 +27,14 @@
   z-index: 100;
 }
 
-.header-back-arrow {
+.mobile-header-back-arrow {
   width: 24px;
   height: 24px;
   color: #1E2124;
   cursor: pointer;
 }
 
-.header-title {
+.mobile-header-title {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 600;
@@ -46,21 +46,21 @@
   flex-grow: 1;
 }
 
-.header-menu-icon {
+.mobile-header-menu-icon {
   width: 24px;
   height: 24px;
   visibility: hidden;
 }
 
 /* Separator */
-.separator-gray-8px {
+.mobile-separator-gray-8px {
   width: 100%;
   height: 8px;
   background: #F7F9FA;
 }
 
 /* Select all / Delete selected */
-.select-delete-section {
+.mobile-select-delete-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -68,19 +68,19 @@
   border-bottom: 1px solid #F3F4F5;
 }
 
-.select-all-group {
+.mobile-select-all-group {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.select-all-checkbox-vector {
+.mobile-select-all-checkbox-vector {
   width: 20px;
   height: 20px;
   background: #FF2233;
 }
 
-.select-all-text {
+.mobile-select-all-text {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -90,7 +90,7 @@
   color: #1E2124;
 }
 
-.delete-selected-text {
+.mobile-delete-selected-text {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -102,7 +102,7 @@
 }
 
 /* Product Item */
-.product-item-wrapper {
+.mobile-product-item-wrapper {
   display: flex;
   padding: 20px;
   gap: 12px;
@@ -110,7 +110,7 @@
   align-items: flex-start;
 }
 
-.product-item-checkbox {
+.mobile-product-item-checkbox {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
@@ -119,13 +119,13 @@
   cursor: pointer; /* 체크박스 클릭 가능 */
 }
 
-.product-item-checkbox-unchecked {
+.mobile-product-item-checkbox-unchecked {
   border: 1px solid #E8E8E8;
   border-radius: 4px;
   background: #FFFFFF;
 }
 
-.product-item-checkbox-checked {
+.mobile-product-item-checkbox-checked {
   background: #FF2233;
   border-radius: 4px;
   display: flex;
@@ -134,7 +134,7 @@
   color: #FFFFFF;
 }
 
-.product-item-image {
+.mobile-product-item-image {
   box-sizing: border-box;
   width: 80px;
   height: 80px;
@@ -144,13 +144,13 @@
   flex-shrink: 0;
 }
 
-.product-details {
+.mobile-product-details {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
 }
 
-.product-item-shop-name {
+.mobile-product-item-shop-name {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -161,7 +161,7 @@
   text-align: left;
 }
 
-.product-item-description {
+.mobile-product-item-description {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -173,7 +173,7 @@
   margin-top: 4px;
 }
 
-.product-price-section {
+.mobile-product-price-section {
   display: flex;
   justify-content: flex-end;
   align-items: baseline;
@@ -181,7 +181,7 @@
   margin-top: 8px;
 }
 
-.product-item-original-price {
+.mobile-product-item-original-price {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -192,7 +192,7 @@
   color: rgba(0, 0, 0, 0.4);
 }
 
-.product-item-discounted-price {
+.mobile-product-item-discounted-price {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 600;
@@ -202,7 +202,7 @@
   color: #1E2124;
 }
 
-.product-item-quantity-control {
+.mobile-product-item-quantity-control {
   box-sizing: border-box;
   width: 81px;
   height: 31px;
@@ -215,15 +215,15 @@
   margin-left: auto;
 }
 
-.quantity-minus-icon,
-.quantity-plus-icon {
+.mobile-quantity-minus-icon,
+.mobile-quantity-plus-icon {
   width: 16px;
   height: 16px;
   color: #1E2124;
   cursor: pointer;
 }
 
-.quantity-display {
+.mobile-quantity-display {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -234,20 +234,20 @@
 }
 
 /* Summary Section */
-.summary-section {
+.mobile-summary-section {
   padding: 20px;
   background: #FFFFFF;
   border-top: 8px solid #F7F9FA;
 }
 
-.summary-item {
+.mobile-summary-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.summary-item-label {
+.mobile-summary-item-label {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -257,7 +257,7 @@
   color: rgba(0, 0, 0, 0.8);
 }
 
-.summary-item-value {
+.mobile-summary-item-value {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 600;
@@ -267,7 +267,7 @@
   color: rgba(0, 0, 0, 0.8);
 }
 
-.summary-item-payment-amount {
+.mobile-summary-item-payment-amount {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 600;
@@ -277,7 +277,7 @@
   color: rgba(0, 0, 0, 0.8);
 }
 
-.summary-payment-value {
+.mobile-summary-payment-value {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 600;
@@ -287,7 +287,7 @@
   color: rgba(0, 0, 0, 0.8);
 }
 
-.summary-line-separator {
+.mobile-summary-line-separator {
   width: 100%;
   height: 1px;
   background: #EEEEEE;
@@ -295,7 +295,7 @@
 }
 
 /* Bottom Purchase Bar */
-.purchase-bar-container {
+.mobile-purchase-bar-container {
   position: fixed;
   bottom: 0;
   left: 0;
@@ -308,7 +308,7 @@
   z-index: 100;
 }
 
-.purchase-button {
+.mobile-purchase-button {
   width: 100%;
   max-width: 350px;
   height: 56px;
@@ -321,7 +321,7 @@
   border: none;
 }
 
-.purchase-button-text {
+.mobile-purchase-button-text {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 600;
@@ -333,7 +333,7 @@
 }
 
 /* Dimmed Overlay and Pop-up */
-.dimmed-overlay {
+.mobile-dimmed-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -346,7 +346,7 @@
   z-index: 200;
 }
 
-.popup-container {
+.mobile-popup-container {
   width: 100%;
   max-width: 390px;
   background: #FFFFFF;
@@ -357,24 +357,24 @@
   transition: transform 0.3s ease-out;
 }
 
-.popup-container.hidden {
+.mobile-popup-container.hidden {
   transform: translateY(100%);
 }
 
-.popup-header {
+.mobile-popup-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
 }
 
-.popup-product-info {
+.mobile-popup-product-info {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.popup-product-image {
+.mobile-popup-product-image {
   box-sizing: border-box;
   width: 80px;
   height: 80px;
@@ -384,13 +384,13 @@
   flex-shrink: 0;
 }
 
-.popup-product-text-group {
+.mobile-popup-product-text-group {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
 }
 
-.popup-product-shop-name {
+.mobile-popup-product-shop-name {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -401,7 +401,7 @@
   text-align: left;
 }
 
-.popup-product-description {
+.mobile-popup-product-description {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -413,7 +413,7 @@
   margin-top: 4px;
 }
 
-.popup-close-icon {
+.mobile-popup-close-icon {
   width: 20px;
   height: 20px;
   color: #999999;
@@ -421,20 +421,20 @@
   flex-shrink: 0;
 }
 
-.popup-summary-section {
+.mobile-popup-summary-section {
   padding-top: 10px;
 }
 
-.popup-summary-line {
+.mobile-popup-summary-line {
   width: 100%;
   height: 1px;
   background: #EEEEEE;
   margin: 20px 0;
 }
 
-.popup-total-price-row,
-.popup-coupon-discount-row,
-.popup-expected-payment-row {
+.mobile-popup-total-price-row,
+.mobile-popup-coupon-discount-row,
+.mobile-popup-expected-payment-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -442,8 +442,8 @@
   margin-bottom: 8px;
 }
 
-.popup-total-price-label,
-.popup-coupon-discount-label {
+.mobile-popup-total-price-label,
+.mobile-popup-coupon-discount-label {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -453,8 +453,8 @@
   color: #999999;
 }
 
-.popup-total-price-value,
-.popup-coupon-discount-value {
+.mobile-popup-total-price-value,
+.mobile-popup-coupon-discount-value {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -465,7 +465,7 @@
   color: #1E2124;
 }
 
-.popup-expected-payment-label {
+.mobile-popup-expected-payment-label {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 600;
@@ -475,7 +475,7 @@
   color: rgba(0, 0, 0, 0.8);
 }
 
-.popup-expected-payment-value {
+.mobile-popup-expected-payment-value {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 600;
@@ -485,7 +485,7 @@
   color: rgba(0, 0, 0, 0.8);
 }
 
-.popup-buttons-container {
+.mobile-popup-buttons-container {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
@@ -495,7 +495,7 @@
   margin-top: 20px;
 }
 
-.popup-cart-button {
+.mobile-popup-cart-button {
   box-sizing: border-box;
   flex-basis: 50%;
   height: 56px;
@@ -508,7 +508,7 @@
   cursor: pointer;
 }
 
-.popup-cart-button-text {
+.mobile-popup-cart-button-text {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 600;
@@ -518,7 +518,7 @@
   color: rgba(0, 0, 0, 0.8);
 }
 
-.popup-purchase-button {
+.mobile-popup-purchase-button {
   flex-basis: 50%;
   height: 56px;
   background: #FF2233;
@@ -530,7 +530,7 @@
   cursor: pointer;
 }
 
-.popup-purchase-button-text {
+.mobile-popup-purchase-button-text {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 600;
@@ -542,11 +542,11 @@
 }
 
 /* Home Indicator - Removed based on previous instruction */
-.home-indicator-container, .home-indicator-bar {
+.mobile-home-indicator-container, .mobile-home-indicator-bar {
   display: none; /* Hide all home indicator related elements */
 }
 
-.empty-cart-view {
+.mobile-empty-cart-view {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -556,20 +556,20 @@
   padding: 20px;
 }
 
-.empty-cart-icon-wrapper {
+.mobile-empty-cart-icon-wrapper {
   background-color: #F7F9FA;
   border-radius: 50%;
   padding: 20px;
   margin-bottom: 20px;
 }
 
-.empty-cart-icon {
+.mobile-empty-cart-icon {
   width: 48px;
   height: 48px;
   color: #B0B0B0;
 }
 
-.empty-cart-text {
+.mobile-empty-cart-text {
   font-family: 'Pretendard';
   font-style: normal;
   font-weight: 400;
@@ -580,7 +580,7 @@
   margin-bottom: 30px;
 }
 
-.go-to-products-button {
+.mobile-go-to-products-button {
   width: 100%;
   max-width: 200px; /* 버튼 너비 제한 */
   height: 48px;
