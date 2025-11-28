@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
-import MyPageHeader from "../../../../../components/MyPageHeader";
-import api from "../../../../../lib/api/axios";
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import api from "../../../../../../lib/api/axios";
+import MyPageHeader from "../../../../../../components/MyPageHeader";
 
 type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
 
@@ -62,7 +62,7 @@ function getStatusLabel(status?: ApiPaymentStatus): string {
   }
 }
 
-export default function PaymentDetailMobileView() {
+export default function MobileView() {
   const nav = useNavigate();
   const location = useLocation();
 
@@ -113,28 +113,28 @@ export default function PaymentDetailMobileView() {
   const paidAmount = formatAmount(payment?.paidAmount);
 
   return (
-    <div className="w-full bg-[#F5F6F8]">
-      {/* 390 x 844 디바이스 프레임 */}
-      <div className="mx-auto w-[390px] h-[844px] bg-[#F5F6F8] flex flex-col">
-        {/* 상단 헤더 */}
-        <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
-          <MyPageHeader
-            title="결제 내역 상세"
-            onBack={() => nav(-1)}
-            showMenu={false}
-          />
-        </div>
+    <div className="relative flex min-h-screen w-full flex-col bg-[#F5F6F8]">
+      {/* 상단 헤더 */}
+      <div className="sticky top-0 z-20 border-b border-gray-200 bg-white">
+        <MyPageHeader
+          title="결제 내역 상세"
+          onBack={() => nav(-1)}
+          showMenu={false}
+        />
+      </div>
 
-        {/* 본문 */}
-        <div className="flex-1 overflow-auto pb-6">
+      {/* 본문 영역 (스크롤) */}
+      <div className="flex-1 overflow-auto pb-6">
+        <div className="mx-auto flex w-full max-w-xl flex-col">
           {/* 로딩 / 에러 처리 */}
           {isLoading && (
-            <div className="mt-10 text-center text-sm text-gray-500">
+            <div className="mt-10 px-5 text-center text-sm text-gray-500">
               결제 정보를 불러오는 중입니다...
             </div>
           )}
+
           {errorMsg && !isLoading && (
-            <div className="mt-10 text-center text-sm text-red-500">
+            <div className="mt-10 px-5 text-center text-sm text-red-500">
               {errorMsg}
             </div>
           )}
@@ -142,7 +142,7 @@ export default function PaymentDetailMobileView() {
           {!isLoading && !errorMsg && payment && (
             <>
               {/* 예약 상태 + 날짜 영역 */}
-              <div className="mt-5 px-5 flex items-center justify-between">
+              <div className="mt-5 flex items-center justify-between px-5">
                 <span className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                   {statusLabel}
                 </span>
@@ -153,42 +153,42 @@ export default function PaymentDetailMobileView() {
 
               {/* 상품 정보 카드 */}
               <section className="mt-10 px-5">
-                <div className="w-full rounded-[12px] border border-[#F3F4F5] bg-white px-4 pt-4 pb-5">
+                <div className="w-full rounded-[12px] border border-[#F3F4F5] bg-white px-4 pb-5 pt-4">
                   {/* 카드 제목 */}
-                  <h2 className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124] mb-3">
+                  <h2 className="mb-3 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                     상품정보
                   </h2>
 
                   {/* 내용 */}
                   <div className="flex items-center gap-4">
                     {/* 썸네일 */}
-                    <div className="w-20 h-20 rounded-[4px] border border-[#F5F5F5] overflow-hidden bg-[#F9F9F9]">
+                    <div className="h-20 w-20 overflow-hidden rounded-[4px] border border-[#F5F5F5] bg-[#F9F9F9]">
                       {payment.thumbnailUrl ? (
                         <img
                           src={payment.thumbnailUrl}
                           alt={payment.productName}
-                          className="w-full h-full object-cover"
+                          className="h-full w-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[11px] text-gray-400">
+                        <div className="flex h-full w-full items-center justify-center text-[11px] text-gray-400">
                           이미지 없음
                         </div>
                       )}
                     </div>
 
                     {/* 텍스트 영역 */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] leading-[21px] tracking-[-0.2px] text-black/40 truncate">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] leading-[21px] tracking-[-0.2px] text-black/40">
                         {payment.shopName}
                       </p>
-                      <p className="mt-1 text-[14px] leading-[21px] tracking-[-0.2px] text-[#1E2124] line-clamp-2">
+                      <p className="mt-1 line-clamp-2 text-[14px] leading-[21px] tracking-[-0.2px] text-[#1E2124]">
                         {payment.productName}
                       </p>
                     </div>
 
                     {/* 금액 */}
                     <div className="ml-2 self-end">
-                      <span className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+                      <span className="whitespace-nowrap text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                         {productPrice}
                       </span>
                     </div>
@@ -243,7 +243,7 @@ export default function PaymentDetailMobileView() {
                       </div>
 
                       {/* 총 결제 금액 */}
-                      <div className="flex items-center justify-between mt-1">
+                      <div className="mt-1 flex items-center justify-between">
                         <span className="text-[14px] font-semibold leading-[21px] tracking-[-0.2px] text-[#1E2124]">
                           총 결제 금액
                         </span>

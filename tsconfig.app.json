@@ -29,6 +29,6 @@
   "include": [
     "src",
     "vite.config.ts",
-    "src/pages/CalendarPage/CalendarPage.tsx"
+    "src/pages/CalendarPage/main/CalendarPage.tsx"
   ]
 }

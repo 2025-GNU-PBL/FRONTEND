@@ -1,8 +1,7 @@
-import React from "react";
-import MobileView from "./views/SharedScheduleEditMobileView";
-import WebView from "./views/SharedScheduleEditWebView";
+import MobileView from "./views/MoblieView";
+import WebView from "./views/WebView";
 
-export default function SharedScheduleEditPage() {
+export default function CalendarPage() {
   return (
     <div className="w-full bg-white">
       {/* Mobile */}

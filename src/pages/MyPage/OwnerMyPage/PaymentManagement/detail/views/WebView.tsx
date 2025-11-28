@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import api from "../../../../../lib/api/axios";
+import api from "../../../../../../lib/api/axios";
 
 type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
 
@@ -32,51 +32,6 @@ type PaymentDetailLocationState = {
 function formatAmount(amount?: number): string {
   if (amount == null) return "0원";
   return `${amount.toLocaleString("ko-KR")}원`;
-}
-
-/** 날짜 포맷터: ISO -> "2025.10.14" */
-function formatDateLabel(iso?: string): string {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const date = String(d.getDate()).padStart(2, "0");
-  return `${year}.${month}.${date}`;
-}
-
-/** 상태 한글 라벨 */
-function getStatusLabel(status?: ApiPaymentStatus): string {
-  if (!status) return "예약중";
-  switch (status) {
-    case "DONE":
-      return "예약완료";
-    case "CANCELED":
-      return "예약취소";
-    case "CANCEL_REQUESTED":
-      return "취소요청";
-    case "FAILED":
-      return "결제실패";
-    default:
-      return "예약중";
-  }
-}
-
-/** 상태 뱃지 컬러 */
-function getStatusBadgeClass(status?: ApiPaymentStatus): string {
-  if (!status) {
-    return "bg-gray-100 text-gray-600";
-  }
-  switch (status) {
-    case "DONE":
-      return "bg-[#E5F0FF] text-[#4170FF]";
-    case "CANCELED":
-    case "CANCEL_REQUESTED":
-    case "FAILED":
-      return "bg-gray-100 text-gray-500";
-    default:
-      return "bg-gray-100 text-gray-600";
-  }
 }
 
 /* 공용 섹션 카드 (웹뷰 디자인 참고) */

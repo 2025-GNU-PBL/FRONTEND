@@ -1,9 +1,7 @@
-// === 아래 전체 파일 그대로 사용 ===
-
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import api from "../../../../src/lib/api/axios";
+import api from "../../../../lib/api/axios";
 
 /** ====== 서버 응답 DTO ====== */
 type ScheduleApiItem = {
@@ -49,7 +47,7 @@ function formatKoreanDate(d: Date): string {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
-function formatKoreanMonth(y: number, m: number): string {
+function formatKoreanMonth(m: number): string {
   return `${m + 1}월`;
 }
 
@@ -118,9 +116,8 @@ type WeekEventSegment = {
   textColor: string;
 };
 
-export default function CalendarWebView() {
+export default function WebView() {
   const nav = useNavigate();
-  const onBack = useCallback(() => nav(-1), [nav]);
 
   const accessorParam = useMemo(() => {
     try {
@@ -162,7 +159,7 @@ export default function CalendarWebView() {
         setLoading(true);
         setError(null);
 
-        const params: any = { year: curY, month: curM + 1 };
+        const params: Record<string, unknown> = { year: curY, month: curM + 1 };
         if (accessorParam) params.accessor = accessorParam;
 
         const { data } = await api.get("/api/v1/schedule", { params });
@@ -275,7 +272,7 @@ export default function CalendarWebView() {
       await api.delete(`/api/v1/schedule/${item.id}`);
 
       setScheduleByDate((prev) => {
-        const next: any = {};
+        const next: Record<string, ScheduleApiItem[]> = {};
         Object.entries(prev).forEach(([key, list]) => {
           const filtered = list.filter((x) => x.id !== item.id);
           if (filtered.length) next[key] = filtered;
@@ -306,10 +303,10 @@ export default function CalendarWebView() {
   const weekdayLabels = ["월", "화", "수", "목", "금", "토", "일"];
 
   return (
-    <div className="w-full min-h-screen bg-white mt-17">
-      <div className="max-w-[1200px] mx-auto px-6 py-8">
+    <div className="w-full min-h-screen bg-white mt-15 mb-10">
+      <div className="max-w-[1040px] mx-auto px-6 py-8">
         {/* ================== 상단 타이틀 ================== */}
-        <div className="mb-5">
+        <div className="mb-5 text-center">
           <h1 className="text-[22px] font-semibold text-[#111827]">
             월간 일정 한눈에 보기
           </h1>
@@ -319,7 +316,7 @@ export default function CalendarWebView() {
         </div>
 
         {/* ================== 1. 달력 ================== */}
-        <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm px-8 pt-6 pb-4 mb-6">
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm px-6 pt-6 pb-4 mb-6 max-w-[920px] mx-auto">
           <div className="flex items-center justify-between mb-4">
             <button
               type="button"
@@ -334,7 +331,7 @@ export default function CalendarWebView() {
             </button>
 
             <div className="text-[18px] font-semibold">
-              {curY}년 {formatKoreanMonth(curY, curM)}
+              {curY}년 {formatKoreanMonth(curM)}
             </div>
 
             <button
@@ -452,7 +449,7 @@ export default function CalendarWebView() {
         </div>
 
         {/* ================== 2. 일정 목록 (슬라이드 적용) ================== */}
-        <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm px-8 py-6">
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm px-6 py-6 max-w-[920px] mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-[13px] text-[#6B7280]">선택한 날짜</p>

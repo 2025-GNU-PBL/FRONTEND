@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import MyPageHeader from "../../../components/MyPageHeader";
-import api from "../../../lib/api/axios";
+import { toast } from "react-toastify";
+import api from "../../../../../lib/api/axios";
 
 /** ====== 유틸 ====== */
 const toDateInput = (d: Date) =>
@@ -54,14 +54,14 @@ type ScheduleCreateRequest = {
 };
 
 type ErrorState = {
+  title?: string;
   startDate?: string;
   endDate?: string;
   time?: string;
 };
 
-export default function PersonalScheduleCreateWebView() {
+export default function WebView() {
   const nav = useNavigate();
-  const onBack = useCallback(() => nav(-1), [nav]);
 
   /** 기본 값: 오늘 날짜, 11:00 ~ 13:00 */
   const today = useMemo(() => new Date(), []);
@@ -89,7 +89,7 @@ export default function PersonalScheduleCreateWebView() {
 
   /** ====== 유효성 검사 ====== */
   const validate = useCallback(() => {
-    const next: Record<string, string> = {};
+    const next: ErrorState = {};
 
     if (!title.trim()) {
       next.title = "제목을 입력해 주세요.";
@@ -163,8 +163,13 @@ export default function PersonalScheduleCreateWebView() {
   /** 등록 버튼 */
   const handleSubmit = useCallback(async () => {
     if (submitting) return;
+
     const ok = validate();
-    if (!ok) return;
+    if (!ok) {
+      // 유효성 검사 실패 토스트
+      toast.error("입력값을 다시 확인해 주세요.");
+      return;
+    }
 
     const requestPayload: ScheduleCreateRequest = {
       title: title.trim(),
@@ -196,11 +201,14 @@ export default function PersonalScheduleCreateWebView() {
           "Content-Type": "multipart/form-data",
         },
       });
-      alert("개인 일정이 등록되었습니다.");
+
+      // 성공 토스트
+      toast.success("개인 일정이 등록되었습니다.");
       nav(-1);
     } catch (e) {
       console.error("[PersonalScheduleCreateWebView] create error:", e);
-      alert("일정 등록 중 오류가 발생했습니다. 입력값을 확인해 주세요.");
+      // 실패 토스트
+      toast.error("일정 등록 중 오류가 발생했습니다. 입력값을 확인해 주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -237,21 +245,10 @@ export default function PersonalScheduleCreateWebView() {
 
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
-      {/* 상단 공통 헤더 영역 */}
-      <div className="w-full bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-[1040px] mx-auto">
-          <MyPageHeader
-            title="개인 일정 추가"
-            onBack={onBack}
-            showMenu={false}
-          />
-        </div>
-      </div>
-
       {/* 본문 */}
-      <div className="max-w-[1040px] mt-20 mx-auto px-6 py-8">
+      <div className="max-w-[1040px] mt-15 mx-auto px-6 py-8">
         {/* 상단 타이틀/설명 */}
-        <div className="mb-6">
+        <div className="mb-6 text-center">
           <h1 className="text-[22px] font-semibold text-[#111827] tracking-[-0.3px]">
             개인 일정 등록
           </h1>
@@ -262,7 +259,7 @@ export default function PersonalScheduleCreateWebView() {
 
         {/* 메인 카드 */}
         <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8">
-          <div className="max-w-[720px]">
+          <div className="max-w-[720px] mx-auto ">
             {/* 제목 입력 (에러 문구 없음, 필수) */}
             <div className="mt-2 mb-8 flex items-center gap-3">
               <div className="w-1 h-8 rounded-[3px] bg-[#FF2233]" />
