@@ -26,16 +26,19 @@ const MobileChatListItem: React.FC<{
   onDelete: () => void;
 }> = ({ room, formatTime, onNavigate, onDelete }) => {
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = React.useState({ x: 0, y: 0 });
+  const [contextMenuPosition, setContextMenuPosition] = React.useState({
+    x: 0,
+    y: 0,
+  });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
-  
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setContextMenuPosition({ x: e.clientX, y: e.clientY });
     setContextMenuOpen(true);
   };
-  
+
   React.useEffect(() => {
     const handleClickOutside = () => {
       setContextMenuOpen(false);
@@ -45,21 +48,21 @@ const MobileChatListItem: React.FC<{
       return () => document.removeEventListener("click", handleClickOutside);
     }
   }, [contextMenuOpen]);
-  
+
   const handleDeleteClick = () => {
     setContextMenuOpen(false);
     setDeleteConfirmOpen(true);
   };
-  
+
   const handleDeleteConfirm = () => {
     onDelete();
     setDeleteConfirmOpen(false);
   };
-  
+
   const handleDeleteCancel = () => {
     setDeleteConfirmOpen(false);
   };
-  
+
   return (
     <div onContextMenu={handleContextMenu} className="relative">
       <button
@@ -81,8 +84,10 @@ const MobileChatListItem: React.FC<{
                 const parent = e.currentTarget.parentElement;
                 if (parent && !parent.querySelector(".default-avatar-icon")) {
                   const iconDiv = document.createElement("div");
-                  iconDiv.className = "grid h-full w-full place-content-center default-avatar-icon";
-                  iconDiv.innerHTML = '<svg class="h-6 w-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>';
+                  iconDiv.className =
+                    "grid h-full w-full place-content-center default-avatar-icon";
+                  iconDiv.innerHTML =
+                    '<svg class="h-6 w-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>';
                   parent.appendChild(iconDiv);
                 }
               }}
@@ -150,7 +155,7 @@ const MobileChatListItem: React.FC<{
           </button>
         </div>
       )}
-      
+
       {/* 삭제 확인 모달 */}
       {deleteConfirmOpen && (
         <>
@@ -230,13 +235,16 @@ const MobileView: React.FC = () => {
     if (!userData || !role) return;
 
     const ws = getChatWebSocket();
-    
+
     // 사용자 정보 설정 (메시지 변환 시 socialId 사용하므로 일치시켜야 함)
     const userId = userData.socialId || String(userData.id);
     ws.setUserInfo(userId, role);
 
     const handleMessage = (message: ChatMessage, chatRoomId: number) => {
-      console.log("[MobileView] handleMessage called:", { message, chatRoomId });
+      console.log("[MobileView] handleMessage called:", {
+        message,
+        chatRoomId,
+      });
       const roomId = String(chatRoomId);
       dispatch(
         addMessage({
@@ -261,7 +269,8 @@ const MobileView: React.FC = () => {
     return () => {
       // 연결 해제하지 않음 (전역 연결 유지)
     };
-  }, [dispatch, userData, role]);
+    // 🔧 id 추가
+  }, [dispatch, userData, role, id]);
 
   // 채팅방 선택 시 메시지 조회 및 읽음 처리, WebSocket 구독
   React.useEffect(() => {
@@ -270,11 +279,11 @@ const MobileView: React.FC = () => {
       if (!isNaN(chatRoomId)) {
         console.log("[MobileView] Entering chat room:", chatRoomId);
         dispatch(selectRoom(id));
-        
+
         // 채팅방 메시지 조회 (DB에서 가져옴)
         console.log("[MobileView] Fetching messages for room:", chatRoomId);
         dispatch(fetchChatMessages({ chatRoomId }));
-        
+
         dispatch(
           markRoomAsRead({
             chatRoomId,
@@ -304,10 +313,14 @@ const MobileView: React.FC = () => {
   const filteredItems = React.useMemo(() => {
     let result = rooms;
     if (activeCategory !== "전체") {
-      result = result.filter((r: typeof rooms[0]) => r.category === activeCategory);
+      result = result.filter(
+        (r: (typeof rooms)[0]) => r.category === activeCategory
+      );
     }
     // sentAt 기준 최신순 정렬
-    return [...result].sort((a: typeof rooms[0], b: typeof rooms[0]) => b.sentAt - a.sentAt);
+    return [...result].sort(
+      (a: (typeof rooms)[0], b: (typeof rooms)[0]) => b.sentAt - a.sentAt
+    );
   }, [rooms, activeCategory]);
 
   // 선택된 채팅방 정보
@@ -320,21 +333,25 @@ const MobileView: React.FC = () => {
   const messages = React.useMemo(() => {
     if (!id) return [];
     const roomMessages = messagesByRoom[id] || [];
-    console.log("[MobileView] messages useMemo:", { id, messagesCount: roomMessages.length, messages: roomMessages });
+    console.log("[MobileView] messages useMemo:", {
+      id,
+      messagesCount: roomMessages.length,
+      messages: roomMessages,
+    });
     return roomMessages;
   }, [id, messagesByRoom]);
 
   // 입력 상태
   const [text, setText] = React.useState("");
   const threadRef = React.useRef<HTMLDivElement>(null);
-  
+
   // 채팅방 삭제 핸들러
   const handleDeleteRoom = (roomId: string) => {
     const chatRoomId = parseInt(roomId, 10);
     if (isNaN(chatRoomId)) return;
-    
+
     dispatch(deleteRoom({ chatRoomId }));
-    
+
     // 삭제된 채팅방이 현재 선택된 채팅방이면 목록으로 이동
     if (id === roomId) {
       navigate("/chat");
@@ -352,19 +369,19 @@ const MobileView: React.FC = () => {
     }
 
     const messageText = text.trim();
-    
+
     // 메시지 길이 제한 체크 (255자)
     if (messageText.length > 255) {
       setText(""); // 입력값 초기화
       toast.error("255자 이상 금지입니다");
       // 페이지 새로고침
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000); // 1초 후 새로고침
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000); // 1초 후 새로고침
       return;
     }
     const ws = getChatWebSocket();
-    
+
     if (ws.isConnected()) {
       // Optimistic update: 메시지를 보내기 전에 즉시 UI에 추가
       const tempMessageId = Date.now(); // 임시 ID (백엔드에서 받은 메시지로 교체됨)
@@ -391,7 +408,7 @@ const MobileView: React.FC = () => {
 
       // senderId는 socialId를 사용 (백엔드가 채팅방의 ownerId/customerId에 socialId 저장)
       const senderId = userData.socialId || String(userData.id);
-      
+
       console.log("[MobileView] Sending message with:", {
         chatRoomId,
         senderRole: role,
@@ -401,15 +418,17 @@ const MobileView: React.FC = () => {
         userDataSocialId: userData.socialId,
         usingSocialId: !!userData.socialId,
       });
-      
+
       // WebSocket으로 실시간 전송 (백엔드가 자동으로 DB에 저장함)
       const wsSuccess = ws.sendMessage(chatRoomId, role, senderId, messageText);
-      
+
       if (wsSuccess) {
         // WebSocket 메시지가 성공적으로 전송되면
         // 백엔드가 자동으로 DB에 저장하고 /sub/chatroom/{chatRoomId}를 통해
         // 실제 메시지를 다시 보내주므로, WebSocket 핸들러에서 처리됨
-        console.log("[MobileView] Message sent via WebSocket. Waiting for server response...");
+        console.log(
+          "[MobileView] Message sent via WebSocket. Waiting for server response..."
+        );
 
         setText("");
         // 스크롤을 맨 아래로
@@ -458,6 +477,18 @@ const MobileView: React.FC = () => {
     return !prev || prev.author !== "partner";
   };
 
+  // 같은 작성자 + 같은 시간(m.time 기준) 그룹의 마지막 메시지인지
+  const isLastOfTimeGroup = (arr: ChatMessage[], idx: number): boolean => {
+    const m = arr[idx];
+    if (!m) return false;
+    const next = arr[idx + 1];
+    if (!next) return true;
+    // 작성자 또는 시간(분 단위 문자열)이 바뀌면 현재가 그룹의 마지막
+    if (next.author !== m.author) return true;
+    if (next.time !== m.time) return true;
+    return false;
+  };
+
   // 읽음 표시 대상 메시지 ID 찾기
   const getReadReceiptMessageId = (messages: ChatMessage[]): string | null => {
     if (!messages.length) return null;
@@ -473,61 +504,106 @@ const MobileView: React.FC = () => {
     return null;
   };
 
-  // 메시지 행 컴포넌트
+  // 메시지 행 컴포넌트 (카카오톡 스타일)
   const MessageRow: React.FC<{
     m: ChatMessage;
     showPartnerAvatar?: boolean;
     partnerAvatar?: string;
     showReadReceipt?: boolean;
-  }> = ({ m, showPartnerAvatar, partnerAvatar, showReadReceipt }) => {
+    showTime?: boolean;
+  }> = ({
+    m,
+    showPartnerAvatar = false,
+    partnerAvatar,
+    showReadReceipt = false,
+    showTime = false,
+  }) => {
     const mine = m.author === "me";
-    return (
-      <div className={mine ? "flex justify-end" : "flex justify-start"}>
-        {!mine && showPartnerAvatar && (
-          <div className="mr-2 mt-0.5 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
-            {partnerAvatar ? (
-              <img
-                src={partnerAvatar}
-                alt=""
-                className="h-full w-full object-cover"
-                loading="lazy"
-                decoding="async"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            ) : null}
-          </div>
-        )}
-        <div className="max-w-[80%]">
-          <div
-            className={[
-              "inline-block rounded-[16px] px-3 py-1.5 text-[14px] leading-[1.5] tracking-[-0.2px]",
-              mine ? "bg-[#FF2233] text-white" : "bg-[#F3F4F5] text-black",
-            ].join(" ")}
-          >
-            <p className="whitespace-pre-wrap">{m.text}</p>
-          </div>
-          {mine ? (
-            <div className="mt-1.5 flex items-center justify-end gap-1 text-[12px] font-medium tracking-[-0.1px] text-[#999999]">
-              {showReadReceipt && (
-                <>
-                  <Icon icon="mingcute:check-line" className="h-3 w-3" />
-                  <span>읽음 {m.time}</span>
-                </>
-              )}
-              {!showReadReceipt && <span>{m.time}</span>}
+
+    // 내 메시지: 오른쪽 정렬, 시간은 말풍선 왼쪽에 같은 줄 하단 정렬
+    if (mine) {
+      return (
+        <div className="flex justify-end">
+          <div className="flex max-w-[80%] items-end gap-1">
+            {(showTime || showReadReceipt) && (
+              <div className="mb-[2px] text-[11px] font-medium tracking-[-0.1px] text-[#999999]">
+                {showReadReceipt ? (
+                  <div className="flex items-center gap-0.5">
+                    <Icon icon="mingcute:check-line" className="h-3 w-3" />
+                    <span>읽음 {m.time}</span>
+                  </div>
+                ) : (
+                  <span>{m.time}</span>
+                )}
+              </div>
+            )}
+            <div
+              className={[
+                "inline-block rounded-[16px] px-3 py-1.5 text-[14px] leading-[1.5] tracking-[-0.2px]",
+                "bg-[#FF2233] text-white",
+              ].join(" ")}
+            >
+              <p className="whitespace-pre-wrap">{m.text}</p>
             </div>
-          ) : (
-            <div className="h-0" />
-          )}
+          </div>
+        </div>
+      );
+    }
+
+    // 상대 메시지: 왼쪽 정렬
+    // - 그룹의 첫 메시지: 8x8 공간 안에 동그란 아바타
+    // - 같은 그룹의 나머지: 8x8 공간만 유지 (투명), 아바타는 없음
+    return (
+      <div className="flex justify-start">
+        <div className="flex max-w-[80%] items-end gap-1">
+          {/* 아바타 영역 (항상 8x8 공간 확보) */}
+          <div className="mr-1 h-8 w-8 flex-shrink-0">
+            {showPartnerAvatar && (
+              <div className="h-8 w-8 overflow-hidden rounded-full bg-gray-200">
+                {partnerAvatar && (
+                  <img
+                    src={partnerAvatar}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 말풍선 + 시간 */}
+          <div className="flex items-end gap-1">
+            <div
+              className={[
+                "inline-block rounded-[16px] px-3 py-1.5 text-[14px] leading-[1.5] tracking-[-0.2px]",
+                "bg-[#F3F4F5] text-black",
+              ].join(" ")}
+            >
+              <p className="whitespace-pre-wrap">{m.text}</p>
+            </div>
+            {(showTime || showReadReceipt) && (
+              <div className="mb-[2px] text-[11px] font-medium tracking-[-0.1px] text-[#999999]">
+                {/* 상대 메시지는 읽음 개념 안 쓰고, 시간만 오른쪽에 위치 */}
+                <span>{m.time}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
   };
 
   // 프로필 헤더 컴포넌트
-  const ProfileHeader: React.FC<{ room: typeof selectedRoom }> = ({ room }: { room: typeof selectedRoom }) => {
+  const ProfileHeader: React.FC<{ room: typeof selectedRoom }> = ({
+    room,
+  }: {
+    room: typeof selectedRoom;
+  }) => {
     if (!room) return null;
 
     return (
@@ -580,7 +656,8 @@ const MobileView: React.FC = () => {
     return (
       <div className="mt-7">
         <div className="px-4 pb-3">
-          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto">
+          {/* ✅ 카테고리 중앙 정렬 */}
+          <div className="no-scrollbar flex items-center justify-center gap-2 overflow-x-auto">
             {chips.map((c) => (
               <button
                 key={c}
@@ -618,7 +695,7 @@ const MobileView: React.FC = () => {
                 선택한 카테고리에 해당하는 대화가 없습니다.
               </div>
             ) : (
-              filteredItems.map((it: typeof rooms[0]) => (
+              filteredItems.map((it: (typeof rooms)[0]) => (
                 <MobileChatListItem
                   key={it.id}
                   room={it}
@@ -684,6 +761,7 @@ const MobileView: React.FC = () => {
               showPartnerAvatar={isFirstOfPartnerGroup(messages, idx)}
               partnerAvatar={selectedRoom.avatar}
               showReadReceipt={m.id === readReceiptId}
+              showTime={isLastOfTimeGroup(messages, idx)}
             />
           ))}
         </div>
@@ -691,8 +769,9 @@ const MobileView: React.FC = () => {
         {/* 하단 입력 영역 */}
         <div className="fixed bottom-5 left-0 right-0 bg-white">
           <div className="px-5 py-2">
-            <div className="flex items-center gap-2">
-              <div className="flex h-[41px] w-[318px] items-center gap-1 rounded-[20px] bg-[#F3F4F5] px-4 py-[10px]">
+            {/* ✅ 입력창 + 버튼 중앙 정렬 */}
+            <div className="flex items-center justify-center gap-2">
+              <div className="flex h-[41px] w-full items-center gap-1 rounded-[20px] bg-[#F3F4F5] px-4 py-[10px]">
                 <textarea
                   rows={1}
                   placeholder="메세지 보내기"

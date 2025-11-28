@@ -55,7 +55,7 @@ function SectionCard({
   );
 }
 
-/** 라벨 + 인풋 행 (웹 수정용) */
+/** 라벨 + 인풋 행 (웹 수정용, CUSTOMER InfoRow 스타일로 통일) */
 function EditableRow({
   label,
   value,
@@ -70,9 +70,9 @@ function EditableRow({
   return (
     <div className="grid grid-cols-[140px_1fr] items-center py-3">
       <div className="text-sm text-gray-500 tracking-[-0.2px]">{label}</div>
-      <div className="flex justify-end">
+      <div className="text-sm text-gray-900 tracking-[-0.2px]">
         <input
-          className="w-full max-w-xs text-sm text-gray-900 tracking-[-0.2px] text-right border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#FF4646]/60 focus:border-transparent placeholder:text-gray-300 bg-white"
+          className="w-full bg-transparent outline-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#FF4646] focus:ring-1 focus:ring-[#FF4646]/60 placeholder:text-gray-300"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
@@ -82,7 +82,7 @@ function EditableRow({
   );
 }
 
-/** 라벨 + 값 (읽기 전용 행) */
+/** 라벨 + 값 (읽기 전용 행, CUSTOMER InfoRow 스타일로 통일) */
 function ReadonlyRow({
   label,
   value,
@@ -92,13 +92,14 @@ function ReadonlyRow({
   value?: string;
   placeholder?: string;
 }) {
+  const displayValue =
+    value && value.trim().length > 0 ? value : placeholder ?? "-";
+
   return (
     <div className="grid grid-cols-[140px_1fr] items-center py-3">
       <div className="text-sm text-gray-500 tracking-[-0.2px]">{label}</div>
-      <div className="flex justify-end">
-        <span className="w-full max-w-xs text-sm text-gray-900 tracking-[-0.2px] text-right truncate">
-          {value && value.trim().length > 0 ? value : placeholder ?? "-"}
-        </span>
+      <div className="text-sm text-gray-900 tracking-[-0.2px] break-words">
+        <span>{displayValue}</span>
       </div>
     </div>
   );
@@ -215,7 +216,7 @@ export default function WebView() {
                 </div>
                 <div className="mt-1 text-sm text-gray-600 tracking-[-0.2px]">
                   {owner
-                    ? "사장님, 환영합니다 👋"
+                    ? "정보를 최신으로 업데이트해 보세요 ✏️"
                     : "사장님 계정으로 로그인 후 이용해 주세요."}
                 </div>
               </div>

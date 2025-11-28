@@ -97,7 +97,7 @@ export default function WebView() {
                 onClick={() => go("/calendar")}
               />
               <MenuTile
-                label="문의 내역"
+                label="예약 내역"
                 icon="mdi:message-question-outline"
                 onClick={() => go("/my-page/client/inquiries")}
               />
@@ -108,7 +108,7 @@ export default function WebView() {
               />
               <MenuTile
                 label="고객센터"
-                icon="mdi:lifetime-support"
+                icon="mdi:headset"
                 onClick={() => go("/support")}
               />
               <MenuTile

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import api from "../../../../../lib/api/axios";
+import { toast } from "react-toastify";
 
 /** 서버 응답 DTO (백엔드 스펙 기준) */
 type ReviewApiResponseItem = {
@@ -88,8 +89,12 @@ export default function WebView() {
     try {
       await api.delete(`/api/v1/reviews/${id}`);
       setReviews((prev) => prev.filter((r) => r.id !== id));
+      toast.success("리뷰가 삭제되었습니다.");
     } catch (err) {
       console.error("[Reviews/WebView] delete error:", err);
+      toast.error(
+        "리뷰 삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+      );
     }
   }, []);
 

@@ -5,6 +5,7 @@ import { useAppSelector } from "../../../../../store/hooks";
 import type { CustomerData } from "../../../../../store/userSlice";
 import api from "../../../../../lib/api/axios";
 import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
+import { toast } from "react-toastify";
 
 type CustomerFormState = {
   phoneNumber: string;
@@ -83,7 +84,7 @@ const MobileView: React.FC = () => {
   // ✨ 수정하기 버튼 클릭 시 PATCH 요청
   const handleSubmit = async () => {
     if (!customerData) {
-      alert("회원 정보를 불러오지 못했어요.");
+      toast.error("회원 정보를 불러오지 못했어요.");
       return;
     }
 
@@ -117,14 +118,14 @@ const MobileView: React.FC = () => {
           formData.weddingDate || customerData.weddingDate || "2025-11-20",
       });
 
-      alert("회원 정보가 수정되었어요.");
+      toast.success("회원 정보가 수정되었어요.");
 
       refreshAuth();
 
       navigate("/my-page/client/profile");
     } catch (error) {
       console.error(error);
-      alert("수정에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      toast.error("수정에 실패했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setIsSubmitting(false);
     }
@@ -280,7 +281,7 @@ const MobileView: React.FC = () => {
         >
           <div className="flex flex-row justify-center items-center gap-2">
             <span className="font-semibold text-[16px] leading-[24px] tracking-[-0.2px] text-white">
-              수정하기
+              {isSubmitting ? "수정 중..." : "수정하기"}
             </span>
           </div>
         </button>

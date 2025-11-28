@@ -1,22 +1,21 @@
-import { useState, useEffect } from "react";
+import React from "react";
 import MobileView from "./views/MobileView";
 import WebView from "./views/WebView";
 
-const CartPage = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768); // 768px 미만을 모바일로 간주
+const CartPage: React.FC = () => {
+  return (
+    <div className="w-full min-h-screen">
+      {/* 모바일 전용 */}
+      <div className="md:hidden">
+        <MobileView />
+      </div>
 
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
-  return isMobile ? <MobileView /> : <WebView />;
+      {/* 데스크탑 전용 */}
+      <div className="hidden md:block mt-15">
+        <WebView />
+      </div>
+    </div>
+  );
 };
 
 export default CartPage;

@@ -84,8 +84,25 @@ export default function WebView() {
   const rawUserData = useAppSelector((state) => state.user.userData);
   const owner = ensureOwner(rawUserData);
 
+  // 회원 탈퇴 모달 상태 (CUSTOMER WebView 로직 그대로 개념 적용)
+  const [showWithdrawModal, setShowWithdrawModal] = React.useState(false);
+
   const handleGoEdit = () => {
     nav("/my-page/owner/profile/edit");
+  };
+
+  const handleOpenWithdrawModal = () => {
+    setShowWithdrawModal(true);
+  };
+
+  const handleCancelWithdraw = () => {
+    setShowWithdrawModal(false);
+  };
+
+  const handleConfirmWithdraw = () => {
+    // TODO: OWNER 탈퇴 API 연동 후 실제 요청/리다이렉트 로직 추가
+    console.log("OWNER 회원 탈퇴 확인 버튼 클릭 - 추후 API 연동 예정");
+    setShowWithdrawModal(false);
   };
 
   // 비로그인/권한 불일치 처리 (모바일 문구와 통일)
@@ -247,7 +264,7 @@ export default function WebView() {
             <button
               type="button"
               className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-600 px-2 py-1"
-              onClick={() => alert("회원 탈퇴 프로세스를 연결하세요.")}
+              onClick={handleOpenWithdrawModal}
             >
               <Icon icon="solar:logout-2-bold-duotone" className="w-4 h-4" />
               회원 탈퇴
@@ -255,6 +272,48 @@ export default function WebView() {
           </div>
         </div>
       </div>
+
+      {/* 회원 탈퇴 확인 모달 (CUSTOMER WebView 형식 재사용, OWNER용 카피로 활용 가능) */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-[360px] rounded-2xl bg-white px-6 py-6 shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
+            <div className="w-full flex justify-center mb-3">
+              <div className="w-10 h-10 rounded-full bg-[#FFF2F2] flex items-center justify-center">
+                <Icon
+                  icon="solar:warning-triangle-bold"
+                  className="w-6 h-6 text-[#FF4D4F]"
+                />
+              </div>
+            </div>
+
+            <p className="text-center font-[Pretendard] text-[16px] leading-[24px] tracking-[-0.2px] text-[#1E2124] font-semibold">
+              정말 탈퇴하시겠어요?
+            </p>
+            <p className="mt-2 text-center text-[13px] leading-[20px] tracking-[-0.2px] text-[#777777]">
+              탈퇴 후에는 계정 및 정산 정보가
+              <br />
+              복구되지 않을 수 있어요.
+            </p>
+
+            <div className="mt-5 flex flex-row gap-2">
+              <button
+                type="button"
+                className="flex-1 h-11 rounded-full border border-[#D9D9D9] text-[14px] leading-[21px] tracking-[-0.2px] text-[#666666]"
+                onClick={handleCancelWithdraw}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="flex-1 h-11 rounded-full bg-[#FF4D4F] text-white text-[14px] leading-[21px] tracking-[-0.2px]"
+                onClick={handleConfirmWithdraw}
+              >
+                탈퇴할래요
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
