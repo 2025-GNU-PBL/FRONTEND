@@ -124,13 +124,15 @@ function PaymentCard({
 }) {
   const nav = useNavigate();
 
+  // 취소요청/취소완료 상태에서는 취소 요청 버튼 숨김
   const isCancelable =
     item.status !== "취소요청됨" && item.status !== "취소완료";
 
-  // 취소요청 상태가 아니고, 아직 리뷰를 안 쓴 경우에만 작성 가능 (모바일과 동일 로직)
-  const canWriteReview = !item.isReviewed && item.status !== "취소요청됨";
-
   const isCancelRequested = item.status === "취소요청됨";
+  const isCanceled = item.status === "취소완료";
+
+  // 리뷰 작성 가능: 결제완료 상태이고 아직 리뷰를 안 쓴 경우
+  const canWriteReview = item.status === "결제완료" && !item.isReviewed;
 
   return (
     <div className="w-full border border-[#E5E7EB] rounded-xl bg-white px-5 py-4 flex flex-col gap-3">
@@ -184,8 +186,11 @@ function PaymentCard({
           결제 상세
         </button>
 
-        {/* 리뷰 관련 버튼 영역: 취소요청이면 작성 불가, 아니면 모바일과 동일 */}
-        {isCancelRequested ? (
+        {/* 리뷰 관련 버튼 영역:
+            - 취소요청/취소완료 : 작성 불가
+            - 결제완료 + 미작성 : 리뷰 작성
+            - 그 외(이미 작성 등) : 작성 완료 */}
+        {isCancelRequested || isCanceled ? (
           <button
             type="button"
             disabled
