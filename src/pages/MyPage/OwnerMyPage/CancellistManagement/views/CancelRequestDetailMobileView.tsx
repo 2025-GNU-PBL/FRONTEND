@@ -60,8 +60,8 @@ interface MobileCancelDetailViewProps {
   onApproved?: () => void;
 }
 
-/** 사장님 - 결제 취소요청 상세 (모바일) */
-const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
+/** 사장님 - 결제 취소요청 상세 */
+const CancelRequestDetailMobileView: React.FC<MobileCancelDetailViewProps> = (
   props
 ) => {
   const location = useLocation();
@@ -360,7 +360,7 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
           </section>
         </div>
 
-        {/* 하단 버튼 영역 */}
+        {/* 하단 버튼 영역 (요청 상태 + canApprove=true 일 때만) */}
         {showApproveUI && (
           <div className="fixed bottom-18 left-1/2 z-30 w-full max-w-[390px] -translate-x-1/2 border-t border-[#F3F4F5] bg-[#F6F7FB]">
             <div className="flex w-full flex-row items-center gap-[12px] px-5 py-3">
@@ -368,7 +368,7 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
                 type="button"
                 onClick={handleReject}
                 disabled={approveLoading}
-                className={`flex h-[48px] flex-1 flex-row items-center justify-center rounded-[12px] border border-[#E1E1E1] bg-white text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999] ${
+                className={`flex h-[48px] flex-1 flex-row items-center justify-center rounded-[12px] border border-[#E1E1E1] bg-[#F6F7FB] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999] ${
                   approveLoading ? "opacity-60" : ""
                 }`}
               >
@@ -410,4 +410,4 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
   );
 };
 
-export default MobileCancelDetailView;
+export default CancelRequestDetailMobileView;

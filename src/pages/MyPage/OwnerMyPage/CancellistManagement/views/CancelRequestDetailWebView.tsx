@@ -104,7 +104,9 @@ function SectionCard({
   );
 }
 
-const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
+const CancelRequestDetailWebView: React.FC<WebCancelDetailViewProps> = (
+  props
+) => {
   const nav = useNavigate();
   const location = useLocation();
   const state = location.state as CancelDetailLocationState | undefined;
@@ -515,4 +517,4 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
   );
 };
 
-export default WebView;
+export default CancelRequestDetailWebView;
