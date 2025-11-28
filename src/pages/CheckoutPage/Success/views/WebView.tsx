@@ -7,7 +7,7 @@ interface WebViewProps {
   paymentKey: string;
   orderId: string;
 
-  // ✅ Success에서 내려주는 결제 상세 정보 관련 상태
+  // Success에서 내려주는 결제 상세 정보 관련 상태
   paymentDetail: PaymentDetail | null;
   detailLoading: boolean;
   detailError: string | null;
@@ -96,6 +96,12 @@ const WebView = ({
 
   const isDone = status === "DONE";
 
+  // ✅ 쿠폰 할인 표시: 0원이면 "0원", 0보다 크면 "-{금액}원"
+  const discountDisplay =
+    typeof discountAmount === "number" && discountAmount > 0
+      ? `-${discountAmount.toLocaleString()}원`
+      : "0원";
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#e5f1ff] to-[#f9fafb] flex flex-col items-center px-4 py-10">
       {/* 메인 카드 */}
@@ -166,38 +172,38 @@ const WebView = ({
 
           <div className="space-y-2.5 text-[13px] sm:text-[14px]">
             {shopName && (
-              <div className="flex justify-between gap-3">
+              <div className="flex gap-3">
                 <span className="text-[#6b7280]">가맹점</span>
-                <span className="font-medium text-[#111827] text-right break-words">
+                <span className="font-medium text-[#111827] text-right break-words flex-1">
                   {shopName}
                 </span>
               </div>
             )}
 
-            <div className="flex justify-between gap-3">
+            <div className="flex gap-3">
               <span className="text-[#6b7280]">주문번호</span>
-              <span className="font-medium text-[#111827] break-all text-right">
+              <span className="font-medium text-[#111827] break-all text-right flex-1">
                 {finalOrderCode}
               </span>
             </div>
 
             {formattedApprovedAt && (
-              <div className="flex justify-between gap-3">
+              <div className="flex gap-3">
                 <span className="text-[#6b7280]">결제 일시</span>
-                <span className="text-[#111827] text-right">
+                <span className="text-[#111827] text-right flex-1">
                   {formattedApprovedAt}
                 </span>
               </div>
             )}
 
             {receiptUrl && (
-              <div className="flex justify-between items-center gap-3">
+              <div className="flex items-center gap-3">
                 <span className="text-[#6b7280]">영수증</span>
                 <a
                   href={receiptUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[13px] sm:text-[14px] font-medium text-[#2563eb] hover:text-[#1d4ed8] underline underline-offset-2"
+                  className="text-[13px] sm:text-[14px] font-medium text-[#2563eb] hover:text-[#1d4ed8] underline underline-offset-2 text-right flex-1"
                 >
                   영수증 확인하기
                 </a>
@@ -240,23 +246,26 @@ const WebView = ({
 
           {/* 금액 디테일 */}
           <div className="space-y-2.5 text-[13px] sm:text-[14px]">
-            <div className="flex justify-between gap-3">
+            {/* 상품 금액 */}
+            <div className="flex gap-3">
               <span className="text-[#6b7280]">상품 금액</span>
-              <span className="font-medium text-[#111827] text-right">
+              <span className="font-medium text-[#111827] text-right flex-1">
                 {originalPrice.toLocaleString()}원
               </span>
             </div>
 
-            <div className="flex justify-between gap-3">
+            {/* 할인 금액 */}
+            <div className="flex gap-3">
               <span className="text-[#6b7280]">할인 금액</span>
-              <span className="font-medium text-[#16a34a] text-right">
-                -{discountAmount.toLocaleString()}원
+              <span className="font-medium text-[#16a34a] text-right flex-1">
+                {discountDisplay}
               </span>
             </div>
 
-            <div className="flex justify-between gap-3 pt-2 border-t border-dashed border-[#e5e7eb] mt-2">
+            {/* 최종 결제 금액 */}
+            <div className="flex gap-3 pt-2 border-t border-dashed border-[#e5e7eb] mt-2">
               <span className="text-[#4b5563] font-medium">최종 결제 금액</span>
-              <span className="font-semibold text-[#111827] text-right">
+              <span className="font-semibold text-[#111827] text-right flex-1">
                 {finalPaidAmount.toLocaleString()}원
               </span>
             </div>
@@ -270,7 +279,7 @@ const WebView = ({
         </p>
       </div>
 
-      {/* 하단 버튼 영역 (웹 스타일) */}
+      {/* 하단 버튼 영역 */}
       <div className="mt-6 w-full max-w-xl flex gap-3">
         <button
           type="button"
