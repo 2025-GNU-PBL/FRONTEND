@@ -18,6 +18,7 @@ type ReservationApiResponse = {
   reservationTime: string; // "2025-11-07T12:00:00"
   title: string;
   content: string;
+  createdAt: string;
 };
 
 /** 화면에서 사용할 문의 타입 */
@@ -43,7 +44,7 @@ const mapStatus = (status: string): ReservationStatus => {
 
 /** 응답 DTO → 화면용 모델 변환 */
 const toReservation = (r: ReservationApiResponse): Reservation => {
-  const dateOnly = (r.reservationTime || "").slice(0, 10) || "";
+  const dateOnly = (r.createdAt || "").slice(0, 10) || "";
   return {
     id: String(r.id),
     partner: r.title || "예약 업체",
@@ -134,7 +135,6 @@ export default function MobileView() {
 
   /** 예약 한 건 선택 시 상세 페이지로 이동 */
   const onSelectInquiry = (InquiryId: string) => {
-    // 라우팅 경로 그대로 사용
     nav(`/my-page/client/inquiries/${InquiryId}`);
   };
 
@@ -324,9 +324,11 @@ export default function MobileView() {
             </div>
           ) : (
             filtered.map((r) => (
-              <div
+              <button
                 key={r.id}
-                className="w-full bg-white border-b border-[#F3F4F5] py-4"
+                type="button"
+                onClick={() => onSelectInquiry(r.id)}
+                className="w-full bg-white border-b border-[#F3F4F5] py-4 text-left"
               >
                 <div className="w-full flex items-center justify-between gap-4">
                   {/* 좌측 텍스트 */}
@@ -360,7 +362,7 @@ export default function MobileView() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </button>
             ))
           )}
         </div>
