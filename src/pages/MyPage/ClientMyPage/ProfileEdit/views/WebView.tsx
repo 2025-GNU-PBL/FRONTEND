@@ -5,6 +5,7 @@ import { useAppSelector } from "../../../../../store/hooks";
 import type { CustomerData } from "../../../../../store/userSlice";
 import api from "../../../../../lib/api/axios";
 import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
+import { toast } from "react-toastify";
 
 type CustomerFormState = {
   phoneNumber: string;
@@ -17,20 +18,36 @@ type CustomerFormState = {
   weddingPlaceInput: string; // 화면에는 "시도 시군구" 한 줄로 보여주기
 };
 
-// 카드 레이아웃 컴포넌트
+/** 공용 카드 컴포넌트 (조회 페이지와 동일한 OWNER 기반 웹 스타일) */
 function SectionCard({
   title,
+  subtitle,
+  icon,
   children,
 }: {
   title: string;
+  subtitle?: string;
+  icon?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl bg-white/95 backdrop-blur border border-gray-200 shadow-[0_6px_20px_rgba(0,0,0,0.05)]">
+    <section className="rounded-3xl border border-gray-200 bg-white/95 backdrop-blur shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
       <div className="flex items-center justify-between px-6 pt-5 pb-4">
-        <h3 className="text-[18px] font-semibold tracking-[-0.3px] text-gray-900">
-          {title}
-        </h3>
+        <div className="flex items-center gap-3 min-w-0">
+          {icon ? (
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black/5">
+              <Icon icon={icon} className="w-5 h-5 text-[#1E2124]" />
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <h3 className="text-[18px] font-semibold tracking-[-0.3px] text-gray-900 truncate">
+              {title}
+            </h3>
+            {subtitle ? (
+              <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
+            ) : null}
+          </div>
+        </div>
       </div>
       <div className="px-6">
         <div className="h-px bg-gray-100" />
@@ -65,10 +82,6 @@ const WebView: React.FC = () => {
   // 모바일과 동일한 방식으로 CUSTOMER 데이터 좁히기
   const customerData =
     role === "CUSTOMER" && userData ? (userData as CustomerData) : null;
-
-  const handleGoBack = () => {
-    navigate(-1);
-  };
 
   const weddingPlace =
     customerData?.weddingSido && customerData?.weddingSigungu
@@ -123,7 +136,7 @@ const WebView: React.FC = () => {
   // ✨ 수정하기 버튼 클릭 시 PATCH 요청 (모바일과 동일 로직)
   const handleSubmit = async () => {
     if (!customerData) {
-      alert("회원 정보를 불러오지 못했어요.");
+      toast.error("회원 정보를 불러오지 못했어요.");
       return;
     }
 
@@ -157,45 +170,34 @@ const WebView: React.FC = () => {
           formData.weddingDate || customerData.weddingDate || "2025-11-20",
       });
 
-      alert("회원 정보가 수정되었어요.");
+      toast.success("회원 정보가 수정되었어요.");
 
       refreshAuth();
 
       navigate("/my-page/client/profile");
     } catch (error) {
       console.error(error);
-      alert("수정에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      toast.error("수정에 실패했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <main className="w-full bg-[#F6F7FB] min-h-screen mt-15">
-      <div className="pt-10 pb-16">
+    <main className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col mt-15">
+      <div className="pt-16 pb-16">
         <div className="max-w-[960px] mx-auto px-6 space-y-8">
-          {/* 상단 헤더 영역 */}
-          <header className="flex items-center justify-between mb-3">
-            <button
-              type="button"
-              onClick={handleGoBack}
-              className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
-            >
-              <Icon
-                icon="solar:alt-arrow-left-linear"
-                className="w-5 h-5 text-gray-500"
-              />
-              <span>내 정보로 돌아가기</span>
-            </button>
-
-            <div className="w-[120px]" />
-          </header>
-
-          {/* 프로필 히어로 카드 */}
-          <section className="rounded-2xl bg-white/95 backdrop-blur border border-gray-200 shadow-[0_6px_20px_rgba(0,0,0,0.05)]">
+          {/* 프로필 히어로 카드 (조회 페이지와 동일 톤) */}
+          <section className="relative rounded-3xl border border-gray-200 bg-white/95 backdrop-blur shadow-[0_10px_30px_rgba(0,0,0,0.06)] overflow-hidden">
+            <div className="absolute inset-0 -z-10 blur-xl rounded-3xl bg-gradient-to-br from-[#4170FF]/18 via-white to-[#111827]/6" />
             <div className="px-6 py-6">
               <div className="flex items-center gap-5">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-200 to-gray-300" />
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                  <Icon
+                    icon="solar:user-bold-duotone"
+                    className="w-7 h-7 text-gray-500"
+                  />
+                </div>
                 <div className="min-w-0">
                   <div className="text-[20px] font-semibold text-gray-900 tracking-[-0.2px] truncate">
                     {customerData?.name || "홍종민"}
@@ -208,8 +210,12 @@ const WebView: React.FC = () => {
             </div>
           </section>
 
-          {/* 회원정보 카드 (입력 가능) */}
-          <SectionCard title="회원정보">
+          {/* 회원정보 카드 (입력 가능, 카드 디자인 통일) */}
+          <SectionCard
+            title="회원정보"
+            subtitle="연락처와 기본 정보를 수정할 수 있어요"
+            icon="solar:card-2-bold-duotone"
+          >
             <div className="divide-y divide-gray-100">
               {/* 고객명 - 모바일처럼 read-only */}
               <InfoRow label="고객명">
@@ -221,7 +227,7 @@ const WebView: React.FC = () => {
               {/* 전화번호 - 입력 */}
               <InfoRow label="전화번호">
                 <input
-                  className="w-full bg-transparent outline-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#FF2233] focus:ring-1 focus:ring-[#FF2233]"
+                  className="w-full bg-transparent outline-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#4170FF] focus:ring-1 focus:ring-[#4170FF]"
                   value={formData.phoneNumber}
                   onChange={handleChange("phoneNumber")}
                   placeholder={customerData?.phoneNumber || "010-1234-5678"}
@@ -240,7 +246,7 @@ const WebView: React.FC = () => {
               {/* 주소 - 입력 */}
               <InfoRow label="주소">
                 <input
-                  className="w-full bg-transparent outline-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#FF2233] focus:ring-1 focus:ring-[#FF2233]"
+                  className="w-full bg-transparent outline-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#4170FF] focus:ring-1 focus:ring-[#4170FF]"
                   value={formData.address}
                   onChange={handleChange("address")}
                   placeholder={customerData?.address || "주소"}
@@ -249,14 +255,18 @@ const WebView: React.FC = () => {
             </div>
           </SectionCard>
 
-          {/* 예식정보 카드 (입력 가능) */}
-          <SectionCard title="예식정보">
+          {/* 예식정보 카드 (입력 가능, 카드 디자인 통일) */}
+          <SectionCard
+            title="예식정보"
+            subtitle="예식 관련 기본 정보를 수정해 주세요"
+            icon="hugeicons:wedding"
+          >
             <div className="divide-y divide-gray-100">
               {/* 예식일 */}
               <InfoRow label="예식일">
                 <input
                   type="date"
-                  className="w-full bg-transparent outline-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#FF2233] focus:ring-1 focus:ring-[#FF2233]"
+                  className="w-full bg-transparent outline-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#4170FF] focus:ring-1 focus:ring-[#4170FF]"
                   value={formData.weddingDate || ""}
                   onChange={handleChange("weddingDate")}
                   placeholder={customerData?.weddingDate || "예식일"}
@@ -268,7 +278,7 @@ const WebView: React.FC = () => {
               {/* 예식 장소 - "시도 시군구" 한 줄 */}
               <InfoRow label="예식 장소">
                 <input
-                  className="w-full bg-transparent outline-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#FF2233] focus:ring-1 focus:ring-[#FF2233]"
+                  className="w-full bg-transparent outline-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#4170FF] focus:ring-1 focus:ring-[#4170FF]"
                   value={formData.weddingPlaceInput}
                   onChange={handleChange("weddingPlaceInput")}
                   placeholder={weddingPlace}
@@ -277,15 +287,18 @@ const WebView: React.FC = () => {
             </div>
           </SectionCard>
 
-          {/* 하단 수정하기 버튼 */}
-          <div className="pt-4 flex justify-end">
+          {/* 하단 액션 */}
+          <div className="flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="inline-flex items-center justify-center px-8 h-[48px] rounded-[12px] bg-[#FF2233] text-white text-sm font-semibold tracking-[-0.2px] shadow-[0_8px_18px_rgba(255,34,51,0.35)] disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition-all"
+              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#4170FF] hover:bg-[#4170FF] shadow-[0_10px_25px_rgba(65,112,255,0.35)] transition-all ${
+                isSubmitting ? "opacity-60 cursor-not-allowed" : ""
+              }`}
             >
-              {isSubmitting ? "저장 중..." : "수정하기"}
+              <Icon icon="solar:pen-bold-duotone" className="w-4 h-4" />
+              {isSubmitting ? "수정 중..." : "정보 수정하기"}
             </button>
           </div>
         </div>

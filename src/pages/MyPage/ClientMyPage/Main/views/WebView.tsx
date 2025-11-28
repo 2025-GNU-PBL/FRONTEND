@@ -1,8 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useAppDispatch, useAppSelector } from "../../../../../store/hooks";
 import { logoutUser } from "../../../../../store/thunkFunctions";
+import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
 interface ActionCardProps {
   title: string;
@@ -24,6 +25,8 @@ export default function WebView() {
 
   const userName = useAppSelector((state) => state.user.userData?.name ?? "");
 
+  const { refreshAuth } = useRefreshAuth(); // 🔹 auth 리프레시 훅 사용
+
   const go = useCallback((to: string) => nav(to), [nav]);
 
   const handleLogout = async () => {
@@ -33,6 +36,11 @@ export default function WebView() {
       nav("/");
     }
   };
+
+  // 🔹 마이페이지 진입 시(컴포넌트 마운트 시) auth 갱신
+  useEffect(() => {
+    refreshAuth();
+  }, [refreshAuth]);
 
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
@@ -89,7 +97,7 @@ export default function WebView() {
                 onClick={() => go("/calendar")}
               />
               <MenuTile
-                label="문의 내역"
+                label="예약 내역"
                 icon="mdi:message-question-outline"
                 onClick={() => go("/my-page/client/inquiries")}
               />
@@ -100,7 +108,7 @@ export default function WebView() {
               />
               <MenuTile
                 label="고객센터"
-                icon="mdi:lifetime-support"
+                icon="mdi:headset"
                 onClick={() => go("/support")}
               />
               <MenuTile

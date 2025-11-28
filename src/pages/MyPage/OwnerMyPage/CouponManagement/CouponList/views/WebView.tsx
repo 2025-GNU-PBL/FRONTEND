@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../../../../lib/api/axios";
+import { toast } from "react-toastify"; // ✅ 추가
+import "react-toastify/dist/ReactToastify.css"; // ✅ 추가
 
 /** ====== 타입 ====== */
 type DiscountType = "AMOUNT" | "RATE";
@@ -95,6 +97,10 @@ export default function WebView() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // 삭제 모달 상태
+  const [deleteTarget, setDeleteTarget] = useState<OwnerCoupon | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   /** accessor (localStorage) -> query object */
   const accessorParam = useMemo(() => {
     try {
@@ -133,23 +139,43 @@ export default function WebView() {
     fetchCoupons();
   }, [fetchCoupons]);
 
-  /** 쿠폰 삭제 (DELETE /api/v1/owner/coupon/{id} 가정) */
-  const handleRemove = async (couponId: number) => {
-    if (!window.confirm("해당 쿠폰을 삭제하시겠어요?")) return;
+  /** 삭제 모달 열기 */
+  const openDeleteModal = (coupon: OwnerCoupon) => {
+    setDeleteTarget(coupon);
+  };
+
+  /** 삭제 모달 닫기 */
+  const closeDeleteModal = () => {
+    if (isDeleting) return;
+    setDeleteTarget(null);
+  };
+
+  /** 쿠폰 삭제 실제 수행 */
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
 
     try {
+      setIsDeleting(true);
+
       const config = {
         params: {
           accessor: accessorParam ?? {},
         },
       };
 
-      await api.delete(`/api/v1/owner/coupon/${couponId}`, config);
+      await api.delete(`/api/v1/owner/coupon/${deleteTarget.id}`, config);
 
-      setCoupons((prev) => prev.filter((c) => c.id !== couponId));
+      setCoupons((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      setDeleteTarget(null);
+
+      // ✅ 삭제 성공 토스트
+      toast.success("쿠폰이 삭제되었습니다.");
     } catch (e) {
       console.error("[CustomerCouponWebView] delete error:", e);
-      alert("쿠폰 삭제 중 오류가 발생했습니다.");
+      // ✅ 에러도 토스트로
+      toast.error("쿠폰 삭제 중 오류가 발생했습니다.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -248,7 +274,7 @@ export default function WebView() {
                         key={coupon.id}
                         className="flex w-full min-h-[112px] rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] overflow-hidden"
                       >
-                        {/* 왼쪽: 쿠폰 카드 (디자인 맞춤) */}
+                        {/* 왼쪽: 쿠폰 카드 */}
                         <div className="flex-1 flex flex-col justify-between bg-white px-5 py-4">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
@@ -320,8 +346,8 @@ export default function WebView() {
                         <div className="flex items-center justify-center w-[88px] bg-[#F3F4F6] border-l border-[#E5E7EB]">
                           <button
                             type="button"
-                            onClick={() => handleRemove(coupon.id)}
-                            className="flex flex-col items-center gap-1 px-3 py-2 rounded-[14px] bg-white hover:bg-[#FEF2F2] border border-[#E5E7EB] active:scale-95 transition"
+                            onClick={() => openDeleteModal(coupon)}
+                            className="flex flex-col items-center gap-1 px-3 py-2 rounded-[14px] bg:white hover:bg-[#FEF2F2] border border-[#E5E7EB] active:scale-95 transition"
                           >
                             <Icon
                               icon="solar:trash-bin-trash-outline"
@@ -341,7 +367,7 @@ export default function WebView() {
           )}
         </div>
 
-        {/* 하단 뒤로가기 버튼 (선택 사항) */}
+        {/* 하단 뒤로가기 버튼 */}
         <div className="mt-6 flex justify-end">
           <button
             type="button"
@@ -350,6 +376,83 @@ export default function WebView() {
           >
             <Icon icon="solar:arrow-left-linear" className="w-4 h-4" />
             마이페이지로 돌아가기
+          </button>
+        </div>
+      </div>
+
+      {/* 삭제 확인 모달 */}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          title="쿠폰을 삭제하시겠어요?"
+          description="삭제한 쿠폰은 다시 복구할 수 없어요."
+          onCancel={closeDeleteModal}
+          onConfirm={handleConfirmDelete}
+          isLoading={isDeleting}
+        />
+      )}
+    </div>
+  );
+}
+
+/** ====== 삭제 확인 모달 ====== */
+
+interface DeleteConfirmModalProps {
+  title: string;
+  description: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  isLoading?: boolean;
+}
+
+function DeleteConfirmModal({
+  title,
+  description,
+  onCancel,
+  onConfirm,
+  isLoading = false,
+}: DeleteConfirmModalProps) {
+  return (
+    <div
+      className="fixed inset-0 z-30 flex items-center justify-center bg-black/40"
+      onClick={onCancel}
+    >
+      <div
+        className="relative w-[335px] bg-white rounded-[14px] shadow-[4px_4px_10px_rgba(0,0,0,0.06)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 상단 내용 영역 */}
+        <div className="flex flex-col items-start gap-2 px-5 pt-6 pb-0">
+          <div className="flex flex-row items-start gap-[14px] w-full">
+            <p className="text-[16px] font-bold leading-[24px] tracking-[-0.2px] text-[#1E2124]">
+              {title}
+            </p>
+          </div>
+          <p className="w-full text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#9D9D9D]">
+            {description}
+          </p>
+        </div>
+
+        {/* 하단 버튼 영역 */}
+        <div className="mt-4 flex flex-row items-center justify-between gap-2 px-5 pb-6 pt-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isLoading}
+            className="flex h-11 w-[142px] flex-row items-center justify-center rounded-[10px] bg-[#F3F4F5] disabled:opacity-70"
+          >
+            <span className="text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999]">
+              취소
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="flex h-11 w-[143px] flex-row items-center justify-center rounded-[10px] bg-[#FF2233] disabled:bg-[#FF2233]/60"
+          >
+            <span className="text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white">
+              {isLoading ? "삭제 중..." : "삭제"}
+            </span>
           </button>
         </div>
       </div>

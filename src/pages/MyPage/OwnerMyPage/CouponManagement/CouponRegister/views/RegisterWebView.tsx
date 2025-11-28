@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { toast } from "react-toastify";
 
 // -------- 추가된 부분: 명확한 태그 타입 지정 --------
 interface ProductTag {
@@ -36,6 +37,18 @@ interface ProductPageResponse {
   category: ProductCategory;
   tags: ProductTag[];
 }
+
+// ★ 숫자 문자열에서 콤마 제거
+const removeCommas = (value: string) => value.replace(/,/g, "");
+
+// ★ 숫자에 콤마 찍기 (문자열 기준)
+const formatNumberWithCommas = (value: string) => {
+  if (!value) return "";
+  // 숫자만 남김
+  const numeric = value.replace(/[^\d]/g, "");
+  if (!numeric) return "";
+  return numeric.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
 
 // 오늘 날짜를 로컬 기준(브라우저 타임존)으로 YYYY-MM-DD 문자열로 반환
 const getTodayString = () => {
@@ -105,7 +118,7 @@ const RegisterWebView = () => {
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
       console.error("액세스 토큰이 없습니다.");
-      alert("로그인 정보가 없습니다. 다시 로그인해 주세요.");
+      toast.error("로그인 정보가 없습니다. 다시 로그인해 주세요.");
       navigate("/log-in");
       return;
     }
@@ -132,11 +145,11 @@ const RegisterWebView = () => {
         }
       } else {
         console.error("상품 목록 불러오기 실패:", response.statusText);
-        alert("상품 목록을 불러오는데 실패했습니다.");
+        toast.error("상품 목록을 불러오는데 실패했습니다.");
       }
     } catch (error) {
       console.error("상품 목록 API 호출 중 오류 발생:", error);
-      alert("상품 목록을 불러오는 중 오류가 발생했습니다.");
+      toast.error("상품 목록을 불러오는 중 오류가 발생했습니다.");
     }
   };
 
@@ -149,17 +162,17 @@ const RegisterWebView = () => {
 
   const handleSubmit = async () => {
     if (selectedProductId === null) {
-      alert("상품을 선택해 주세요.");
+      toast.error("상품을 선택해 주세요.");
       return;
     }
     if (selectedCategory === null) {
-      alert("상품 카테고리를 선택해 주세요.");
+      toast.error("상품 카테고리를 선택해 주세요.");
       return;
     }
 
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
-      alert("로그인 정보가 없습니다. 다시 로그인해 주세요.");
+      toast.error("로그인 정보가 없습니다. 다시 로그인해 주세요.");
       navigate("/log-in");
       return;
     }
@@ -170,9 +183,10 @@ const RegisterWebView = () => {
       couponName,
       couponDetail,
       discountType,
-      discountValue: parseFloat(discountValue) || 0,
-      maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
-      minPurchaseAmount: parseFloat(minPurchaseAmount) || 0,
+      // ★ 콤마 제거 후 숫자로 변환
+      discountValue: parseFloat(removeCommas(discountValue)) || 0,
+      maxDiscountAmount: parseFloat(removeCommas(maxDiscountAmount)) || 0,
+      minPurchaseAmount: parseFloat(removeCommas(minPurchaseAmount)) || 0,
       category: selectedCategory ?? ("DRESS" as ProductCategory),
       startDate,
       expirationDate,
@@ -189,15 +203,19 @@ const RegisterWebView = () => {
       });
 
       if (response.ok) {
-        alert("쿠폰이 성공적으로 등록되었습니다!");
+        toast.success("쿠폰이 성공적으로 등록되었습니다!");
         navigate("/my-page/owner/coupons");
       } else {
         const errorData = await response.json();
-        alert(`쿠폰 등록 실패: ${errorData.message || response.statusText}`);
+        toast.error(
+          `쿠폰 등록 실패: ${
+            errorData.message || response.statusText || "알 수 없는 오류"
+          }`
+        );
       }
     } catch (error) {
       console.error("API 호출 중 오류 발생:", error);
-      alert("쿠폰 등록 중 오류가 발생했습니다.");
+      toast.error("쿠폰 등록 중 오류가 발생했습니다.");
     }
   };
 
@@ -242,7 +260,7 @@ const RegisterWebView = () => {
               className="box-border flex flex-row items-center justify-between px-4 w-full h-[48px] border border-[#D1D5DB] rounded-[10px] bg-white text-left"
               onClick={() => {
                 if (products.length === 0) {
-                  alert("등록된 상품이 없습니다.");
+                  toast.error("등록된 상품이 없습니다.");
                 } else {
                   setIsProductDropdownOpen((prev) => !prev);
                 }
@@ -430,7 +448,7 @@ const RegisterWebView = () => {
             <div className="w-full h-[44px] px-3 flex items-center rounded-lg border border-[#E5E7EB] bg-white">
               <input
                 type="text"
-                placeholder="ex) 10000 (정액) / 10 (정율, %)"
+                placeholder="ex) 10,000 (정액) / 10 (정율, %)"
                 className={[
                   "w-full h-full text-[14px] bg-transparent outline-none",
                   discountValue
@@ -438,7 +456,9 @@ const RegisterWebView = () => {
                     : "placeholder:text-[#C1C1C1]",
                 ].join(" ")}
                 value={discountValue}
-                onChange={(e) => setDiscountValue(e.target.value)}
+                onChange={(e) =>
+                  setDiscountValue(formatNumberWithCommas(e.target.value))
+                }
               />
             </div>
             <p className="text-[11px] text-[#9CA3AF]">
@@ -467,7 +487,7 @@ const RegisterWebView = () => {
             <div className="w-full h-[44px] px-3 flex items-center rounded-lg border border-[#E5E7EB] bg-white">
               <input
                 type="text"
-                placeholder="ex) 30000"
+                placeholder="ex) 30,000"
                 className={[
                   "w-full h-full text-[14px] bg-transparent outline-none",
                   maxDiscountAmount
@@ -475,7 +495,9 @@ const RegisterWebView = () => {
                     : "placeholder:text-[#C1C1C1]",
                 ].join(" ")}
                 value={maxDiscountAmount}
-                onChange={(e) => setMaxDiscountAmount(e.target.value)}
+                onChange={(e) =>
+                  setMaxDiscountAmount(formatNumberWithCommas(e.target.value))
+                }
               />
             </div>
             <p className="text-[11px] text-[#9CA3AF]">
@@ -492,7 +514,7 @@ const RegisterWebView = () => {
             <div className="w-full h-[44px] px-3 flex items-center rounded-lg border border-[#E5E7EB] bg-white">
               <input
                 type="text"
-                placeholder="ex) 100000"
+                placeholder="ex) 10,000"
                 className={[
                   "w-full h-full text-[14px] bg-transparent outline-none",
                   minPurchaseAmount
@@ -500,7 +522,9 @@ const RegisterWebView = () => {
                     : "placeholder:text-[#C1C1C1]",
                 ].join(" ")}
                 value={minPurchaseAmount}
-                onChange={(e) => setMinPurchaseAmount(e.target.value)}
+                onChange={(e) =>
+                  setMinPurchaseAmount(formatNumberWithCommas(e.target.value))
+                }
               />
             </div>
             <p className="text-[11px] text-[#9CA3AF]">

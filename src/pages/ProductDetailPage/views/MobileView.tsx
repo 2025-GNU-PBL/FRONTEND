@@ -52,13 +52,14 @@ const MobileView = () => {
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const isAuth = useAppSelector((s) => s.user.isAuth);
+  const role = useAppSelector((s) => s.user.role); // 🔹 role 사용
 
   // ✅ OWNER일 때만 bzName 안전하게 꺼내기
   const ownerBzName = useAppSelector((s) => {
     const data = s.user.userData;
-    const role = s.user.role;
+    const userRole = s.user.role;
 
-    if (role === "OWNER" && data && "bzName" in data) {
+    if (userRole === "OWNER" && data && "bzName" in data) {
       return data.bzName;
     }
     return undefined;
@@ -498,8 +499,8 @@ const MobileView = () => {
               />
             </button>
 
-            {/* 카트 (로그인 + 이 상품 오너가 아닐 때만) */}
-            {isAuth && !isOwnerOfProduct && (
+            {/* 카트 (로그인 + role !== OWNER 일 때만) */}
+            {isAuth && role !== "OWNER" && (
               <button
                 type="button"
                 className="relative w-6 h-6 flex items-center justify-center"
@@ -590,7 +591,7 @@ const MobileView = () => {
         </main>
 
         {/* ================== 우측 하단 플로팅 버튼 (공유 / 채팅) ================== */}
-        {!isOwnerOfProduct && (
+        {role !== "OWNER" && (
           <div className="fixed right-4 bottom-[100px] flex flex-col items-center gap-2 z-40">
             {/* 채팅 버튼: ✅ isAuth일 때만 표시 */}
             {isAuth && (
@@ -620,37 +621,44 @@ const MobileView = () => {
           </div>
         )}
 
-        {/* 하단 고정 버튼 */}
-        {!loading && !errorMsg && detailData && (
-          <div className="fixed left-0 bottom-0 w-full bg-white px-4 pt-3 pb-5 z-30">
-            {isOwnerOfProduct ? (
-              <button
-                type="button"
-                className="w-full h-[56px] rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold flex items-center justify-center"
-                onClick={handleEditProduct}
-              >
-                수정하기
-              </button>
-            ) : (
-              <div className="flex gap-3">
+        {/* ===== 하단 고정 버튼 =====
+            - 일반 유저: 장바구니 / 상품예약
+            - OWNER + 내 업체 상품: 수정하기
+            - OWNER + 내 업체 상품 아님: 아예 숨김
+        */}
+        {!loading &&
+          !errorMsg &&
+          detailData &&
+          (role !== "OWNER" || isOwnerOfProduct) && (
+            <div className="fixed left-0 bottom-0 w-full bg-white px-4 pt-3 pb-5 z-30">
+              {isOwnerOfProduct ? (
                 <button
                   type="button"
-                  className="flex-1 h-[56px] border border-black/20 rounded-[12px] flex items-center justify-center text-[16px] font-semibold text-black/80"
-                  onClick={addToCart}
+                  className="w-full h-[56px] rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold flex items-center justify-center"
+                  onClick={handleEditProduct}
                 >
-                  장바구니
+                  수정하기
                 </button>
-                <button
-                  type="button"
-                  className="flex-1 h-[56px] rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold flex items-center justify-center"
-                  onClick={handleProductReservation}
-                >
-                  상품예약
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+              ) : (
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    className="flex-1 h-[56px] border border-black/20 rounded-[12px] flex items-center justify-center text-[16px] font-semibold text-black/80"
+                    onClick={addToCart}
+                  >
+                    장바구니
+                  </button>
+                  <button
+                    type="button"
+                    className="flex-1 h-[56px] rounded-[12px] bg-[#FF2233] text-white text-[16px] font-semibold flex items-center justify-center"
+                    onClick={handleProductReservation}
+                  >
+                    상품예약
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
         {/* 쿠폰 바텀시트 딤드 */}
         <div

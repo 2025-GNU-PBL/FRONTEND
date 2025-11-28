@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { toast } from "react-toastify";
 
 // -------- 추가된 부분: 명확한 태그 타입 지정 --------
 interface ProductTag {
@@ -44,6 +45,18 @@ const generateCouponCode = () => {
     result += characters.charAt(Math.floor(Math.random() * characters.length));
   }
   return result;
+};
+
+// 숫자 문자열에서 콤마 제거
+const removeCommas = (value: string) => value.replace(/,/g, "");
+
+// 숫자에 콤마 찍기 (문자열 기준)
+const formatNumberWithCommas = (value: string) => {
+  if (!value) return "";
+  // 숫자만 남김
+  const numeric = value.replace(/[^\d]/g, "");
+  if (!numeric) return "";
+  return numeric.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
 // 오늘 날짜를 로컬 기준(브라우저 타임존)으로 YYYY-MM-DD 문자열로 반환
@@ -104,7 +117,7 @@ const RegisterMobileView = () => {
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
       console.error("액세스 토큰이 없습니다.");
-      alert("로그인 정보가 없습니다. 다시 로그인해 주세요.");
+      toast.error("로그인 정보가 없습니다. 다시 로그인해 주세요.");
       navigate("/log-in");
       return;
     }
@@ -129,11 +142,11 @@ const RegisterMobileView = () => {
         }
       } else {
         console.error("상품 목록 불러오기 실패:", response.statusText);
-        alert("상품 목록을 불러오는데 실패했습니다.");
+        toast.error("상품 목록을 불러오는데 실패했습니다.");
       }
     } catch (error) {
       console.error("상품 목록 API 호출 중 오류 발생:", error);
-      alert("상품 목록을 불러오는 중 오류가 발생했습니다.");
+      toast.error("상품 목록을 불러오는 중 오류가 발생했습니다.");
     }
   };
 
@@ -146,17 +159,17 @@ const RegisterMobileView = () => {
 
   const handleSubmit = async () => {
     if (selectedProductId === null) {
-      alert("상품을 선택해 주세요.");
+      toast.error("상품을 선택해 주세요.");
       return;
     }
     if (selectedCategory === null) {
-      alert("상품 카테고리를 선택해 주세요.");
+      toast.error("상품 카테고리를 선택해 주세요.");
       return;
     }
 
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
-      alert("로그인 정보가 없습니다. 다시 로그인해 주세요.");
+      toast.error("로그인 정보가 없습니다. 다시 로그인해 주세요.");
       navigate("/log-in");
       return;
     }
@@ -167,9 +180,10 @@ const RegisterMobileView = () => {
       couponName,
       couponDetail,
       discountType,
-      discountValue: parseFloat(discountValue) || 0,
-      maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
-      minPurchaseAmount: parseFloat(minPurchaseAmount) || 0,
+      // ★ 콤마 제거 후 숫자로 변환
+      discountValue: parseFloat(removeCommas(discountValue)) || 0,
+      maxDiscountAmount: parseFloat(removeCommas(maxDiscountAmount)) || 0,
+      minPurchaseAmount: parseFloat(removeCommas(minPurchaseAmount)) || 0,
       category: selectedCategory ?? ("DRESS" as ProductCategory),
       startDate,
       expirationDate,
@@ -186,15 +200,19 @@ const RegisterMobileView = () => {
       });
 
       if (response.ok) {
-        alert("쿠폰이 성공적으로 등록되었습니다!");
+        toast.success("쿠폰이 성공적으로 등록되었습니다!");
         navigate("/my-page/owner/coupons");
       } else {
         const errorData = await response.json();
-        alert(`쿠폰 등록 실패: ${errorData.message || response.statusText}`);
+        toast.error(
+          `쿠폰 등록 실패: ${
+            errorData.message || response.statusText || "알 수 없는 오류"
+          }`
+        );
       }
     } catch (error) {
       console.error("API 호출 중 오류 발생:", error);
-      alert("쿠폰 등록 중 오류가 발생했습니다.");
+      toast.error("쿠폰 등록 중 오류가 발생했습니다.");
     }
   };
 
@@ -245,7 +263,7 @@ const RegisterMobileView = () => {
             className="box-border flex flex-row items-center justify-between px-[16px] w-full h-[49px] border border-[#D9D9D9] rounded-[8px]"
             onClick={() => {
               if (products.length === 0) {
-                alert("등록된 상품이 없습니다.");
+                toast.error("등록된 상품이 없습니다.");
               } else {
                 setIsProductDropdownOpen((prev) => !prev);
               }
@@ -406,12 +424,14 @@ const RegisterMobileView = () => {
             <div className="box-border flex flex-row items-center pl-[16px] w-full h-[49px] border border-[#D9D9D9] rounded-[8px]">
               <input
                 type="text"
-                placeholder="ex) 1,000원 => 1000 / 10% => 10"
+                placeholder="ex) 1,000원 => 1,000 / 10% => 10"
                 className={`w-full h-full font-['Pretendard'] text-sm leading-[150%] tracking-[-0.2px] border-none focus:outline-none bg-transparent ${
                   discountValue ? "text-black" : "text-[#9D9D9D]"
                 }`}
                 value={discountValue}
-                onChange={(e) => setDiscountValue(e.target.value)}
+                onChange={(e) =>
+                  setDiscountValue(formatNumberWithCommas(e.target.value))
+                }
               />
             </div>
           </div>
@@ -426,12 +446,14 @@ const RegisterMobileView = () => {
             <div className="box-border flex flex-row items-center pl-[16px] w-full h-[49px] border border-[#D9D9D9] rounded-[8px]">
               <input
                 type="text"
-                placeholder="ex) 1,000,000원 => 1000000"
+                placeholder="ex) 30,000"
                 className={`w-full h-full font-['Pretendard'] text-sm leading-[150%] tracking-[-0.2px] border-none focus:outline-none bg-transparent ${
                   maxDiscountAmount ? "text-black" : "text-[#9D9D9D]"
                 }`}
                 value={maxDiscountAmount}
-                onChange={(e) => setMaxDiscountAmount(e.target.value)}
+                onChange={(e) =>
+                  setMaxDiscountAmount(formatNumberWithCommas(e.target.value))
+                }
               />
             </div>
           </div>
@@ -446,12 +468,14 @@ const RegisterMobileView = () => {
             <div className="box-border flex flex-row items-center pl-[16px] w-full h-[49px] border border-[#D9D9D9] rounded-[8px]">
               <input
                 type="text"
-                placeholder="ex) 1,000원 => 1000"
+                placeholder="ex) 10,000"
                 className={`w-full h-full font-['Pretendard'] text-sm leading-[150%] tracking-[-0.2px] border-none focus:outline-none bg-transparent ${
                   minPurchaseAmount ? "text-black" : "text-[#9D9D9D]"
                 }`}
                 value={minPurchaseAmount}
-                onChange={(e) => setMinPurchaseAmount(e.target.value)}
+                onChange={(e) =>
+                  setMinPurchaseAmount(formatNumberWithCommas(e.target.value))
+                }
               />
             </div>
           </div>

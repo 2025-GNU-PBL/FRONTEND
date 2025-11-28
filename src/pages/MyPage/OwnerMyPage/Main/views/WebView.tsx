@@ -1,9 +1,9 @@
-import React, { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useAppSelector, useAppDispatch } from "../../../../../store/hooks";
 import { logoutUser } from "../../../../../store/thunkFunctions";
-import { forceLogout } from "../../../../../store/userSlice";
+import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
 
 export default function WebView() {
   const nav = useNavigate();
@@ -11,21 +11,22 @@ export default function WebView() {
 
   const userName = useAppSelector((state) => state.user.userData?.name ?? "");
 
+  const { refreshAuth } = useRefreshAuth(); // 🔹 auth 리프레시 훅 사용
+
   const go = useCallback((to: string) => nav(to), [nav]);
 
-  const onLogout = useCallback(async () => {
+  const handleLogout = async () => {
     try {
-      // 1차: 정식 로그아웃(thunk) - 서버에도 로그아웃 요청 + userSlice 초기화
       await dispatch(logoutUser()).unwrap();
-    } catch (e) {
-      // 실패해도 2차: 프론트 단 강제 로그아웃
-      console.error("logoutUser 실패, forceLogout 수행:", e);
-      dispatch(forceLogout());
     } finally {
-      // 콜백 URL 정리 & 로그인(or 메인)으로 이동
-      nav("/log-in"); // 필요하면 "/" 로 변경
+      nav("/");
     }
-  }, [dispatch, nav]);
+  };
+
+  // 🔹 마이페이지 진입 시(컴포넌트 마운트 시) auth 갱신
+  useEffect(() => {
+    refreshAuth();
+  }, [refreshAuth]);
 
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB]">
@@ -96,7 +97,11 @@ export default function WebView() {
                 icon="mdi:history"
                 onClick={() => go("/my-page/owner/cancels")}
               />
-              <MenuTile label="로그아웃" icon="mdi:logout" onClick={onLogout} />
+              <MenuTile
+                label="로그아웃"
+                icon="mdi:logout"
+                onClick={handleLogout}
+              />
             </div>
           </section>
         </div>
@@ -105,9 +110,31 @@ export default function WebView() {
   );
 }
 
-/* 재사용 컴포넌트는 그대로 */
+/* ========= 재사용 컴포넌트 타입 정의 ========= */
 
-function ActionCard({ title, description, icon, cta, onClick }: any) {
+type ActionCardProps = {
+  title: string;
+  description: string;
+  icon: string;
+  cta: string;
+  onClick: () => void;
+};
+
+type MenuTileProps = {
+  label: string;
+  icon: string;
+  onClick: () => void;
+};
+
+/* ========= 재사용 컴포넌트 구현 ========= */
+
+function ActionCard({
+  title,
+  description,
+  icon,
+  cta,
+  onClick,
+}: ActionCardProps) {
   return (
     <div className="w-full rounded-2xl bg-white border border-gray-100 shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition">
       <div className="flex items-start gap-3">
@@ -133,7 +160,7 @@ function ActionCard({ title, description, icon, cta, onClick }: any) {
   );
 }
 
-function MenuTile({ label, icon, onClick }: any) {
+function MenuTile({ label, icon, onClick }: MenuTileProps) {
   return (
     <button
       onClick={onClick}
