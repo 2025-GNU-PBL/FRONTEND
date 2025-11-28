@@ -3,6 +3,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import MyPageHeader from "../../../../../components/MyPageHeader";
 import api from "../../../../../lib/api/axios";
 
+/** ====== 유틸: Date -> YYYY-MM-DD ====== */
+const toDateInput = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+
 /** ====== 서버 응답 DTO  ====== */
 type ReservationDetailApiResponse = {
   id: number;
@@ -109,6 +115,9 @@ export default function MobileView() {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
 
+  /** 날짜/시간 에러 메시지 상태 */
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const accessorParam = useMemo(() => {
     try {
       const raw = localStorage.getItem("accessor");
@@ -119,6 +128,58 @@ export default function MobileView() {
       return undefined;
     }
   }, []);
+
+  /** ====== 유효성 검사 ====== */
+  const validate = useCallback(() => {
+    const next: Record<string, string> = {};
+
+    if (!startDate) next.startDate = "시작 일자를 선택해 주세요.";
+    if (!endDate) next.endDate = "종료 일자를 선택해 주세요.";
+
+    // 오늘 날짜(YYYY-MM-DD) 문자열
+    const todayStr = toDateInput(new Date());
+
+    // 시작일이 오늘 이전이면 에러
+    if (startDate && startDate < todayStr) {
+      next.startDate = "시작일은 오늘 이후 날짜만 선택할 수 있습니다.";
+    }
+
+    // 종료일이 오늘 이전이면 에러
+    if (endDate && endDate < todayStr) {
+      next.endDate = "종료일은 오늘 이후 날짜만 선택할 수 있습니다.";
+    }
+
+    if (startDate && endDate) {
+      const sd = new Date(startDate);
+      const ed = new Date(endDate);
+
+      if (sd > ed) {
+        next.endDate = "종료일은 시작일 이후여야 합니다.";
+      }
+    }
+
+    if (!startTime || !endTime) {
+      next.time = "시작/종료 시간을 모두 선택해 주세요.";
+    } else {
+      const [sh, sm] = startTime.split(":").map((v) => Number(v));
+      const [eh, em] = endTime.split(":").map((v) => Number(v));
+      if (
+        !Number.isNaN(sh) &&
+        !Number.isNaN(sm) &&
+        !Number.isNaN(eh) &&
+        !Number.isNaN(em)
+      ) {
+        const startTotal = sh * 60 + sm;
+        const endTotal = eh * 60 + em;
+        if (startTotal >= endTotal) {
+          next.time = "종료 시간은 시작 시간보다 늦게 설정해 주세요.";
+        }
+      }
+    }
+
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }, [startDate, endDate, startTime, endTime]);
 
   /** 상세 조회 */
   useEffect(() => {
@@ -191,8 +252,9 @@ export default function MobileView() {
   const handleApprove = async () => {
     if (!detail || detail.status !== "예약중") return;
 
-    if (!startDate || !endDate || !startTime || !endTime) {
-      window.alert("예약 시작/종료 날짜와 시간을 모두 입력해주세요.");
+    // 유효성 검사 먼저 실행
+    const isValid = validate();
+    if (!isValid) {
       return;
     }
 
@@ -370,6 +432,12 @@ export default function MobileView() {
                         />
                       </div>
 
+                      {(errors.startDate || errors.endDate) && (
+                        <p className="text-right text-[11px] leading-[16px] text-[#EB5147]">
+                          {errors.startDate || errors.endDate}
+                        </p>
+                      )}
+
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
                           시작 시간
@@ -393,6 +461,12 @@ export default function MobileView() {
                           onChange={(e) => setEndTime(e.target.value)}
                         />
                       </div>
+
+                      {errors.time && (
+                        <p className="text-right text-[11px] leading-[16px] text-[#EB5147]">
+                          {errors.time}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </section>
