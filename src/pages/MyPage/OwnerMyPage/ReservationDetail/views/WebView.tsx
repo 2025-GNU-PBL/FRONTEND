@@ -26,6 +26,7 @@ type ReservationDetailApiResponse = {
   title: string;
   content: string;
   thumbnail: string;
+  createdAt: string;
 };
 
 /** ====== UI용 타입 ====== */
@@ -45,6 +46,7 @@ type ReservationDetail = {
   customerPhone: string;
   customerId: string;
   requestMessage: string;
+  createdAt: string;
 };
 
 /** 승인용 Request Body 타입 */
@@ -87,7 +89,7 @@ function mapApiToUi(data: ReservationDetailApiResponse): ReservationDetail {
     id: data.id,
     status: mapDetailStatus(data.status),
     rawStatus: data.status,
-    date: formatDateDot(data.reservationTime),
+    date: formatDateDot(data.createdAt),
     reservationDateIso: data.reservationTime,
     productBrand: data.storeName,
     productTitle: data.productName,
@@ -97,6 +99,7 @@ function mapApiToUi(data: ReservationDetailApiResponse): ReservationDetail {
     customerPhone: data.customerPhoneNumber,
     customerId: data.customerEmail || String(data.customerId),
     requestMessage: data.content || "",
+    createdAt: data.createdAt,
   };
 }
 

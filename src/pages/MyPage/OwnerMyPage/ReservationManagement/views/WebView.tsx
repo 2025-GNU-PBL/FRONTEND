@@ -17,6 +17,7 @@ type ReservationApiResponse = {
   reservationTime: string; // "2025-11-07T12:00:00"
   title: string;
   content: string;
+  createdAt: string;
 };
 
 /** 화면에서 사용할 문의(=예약) 타입 */
@@ -42,7 +43,7 @@ const mapStatus = (status: string): InquiryStatus => {
 
 /** Reservation DTO -> Inquiry 뷰 모델 변환 (컴포넌트 밖으로 분리) */
 const toInquiry = (r: ReservationApiResponse): Inquiry => {
-  const createdAt = (r.reservationTime || "").slice(0, 10) || "";
+  const createdAt = (r.createdAt || "").slice(0, 10) || "";
   return {
     id: String(r.id),
     // 업체명 정보가 별도 필드에 없다면 title/기본값 사용
