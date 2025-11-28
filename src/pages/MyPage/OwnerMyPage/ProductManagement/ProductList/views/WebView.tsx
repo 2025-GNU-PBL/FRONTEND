@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../../../../lib/api/axios";
+import { toast } from "react-toastify"; // ⭐ 추가
 
 /** ====== 타입 ====== */
-// 모바일 뷰와 동일하게 WEDDING_HALL 포함
 type ProductCategory =
   | "WEDDING"
   | "STUDIO"
@@ -16,26 +16,24 @@ type ProductCategory =
 
 type OwnerProduct = {
   id: number;
-  name: string; // 카드 타이틀 (응답 detail)
-  brandName: string; // 업체명 (응답 name)
-  price: number; // 원 단위
-  thumbnailUrl?: string; // 썸네일 (응답 thumbnail)
+  name: string;
+  brandName: string;
+  price: number;
+  thumbnailUrl?: string;
   category: ProductCategory;
-  createdAt: string; // ISO (YYYY-MM-DDTHH:mm:ss)
+  createdAt: string;
 };
 
-/** 백엔드 실제 응답 DTO 타입 (모바일 뷰와 동일) */
 type ApiOwnerProduct = {
   id: number;
-  name: string; // 업체명
-  detail: string; // 상품명
+  name: string;
+  detail: string;
   price: number;
   thumbnail: string | null;
   category: string;
   createdAt: string;
 };
 
-// 스웨거 예시 DTO에 맞춘 페이지 응답 타입
 type PageMeta = {
   size: number;
   number: number;
@@ -48,23 +46,30 @@ type ApiOwnerProductPageResponse = {
   page: PageMeta;
 };
 
-/** ✅ 상세 페이지용 카테고리 슬러그 매핑 (모바일과 동일) */
 const CATEGORY_SLUG_MAP: Record<ProductCategory, string> = {
   WEDDING_HALL: "wedding-hall",
-  WEDDING: "wedding-hall", // 같은 엔드포인트 사용
+  WEDDING: "wedding-hall",
   STUDIO: "studio",
   DRESS: "dress",
   MAKEUP: "makeup",
+};
+
+const DELETE_ENDPOINT_MAP: Record<ProductCategory, string> = {
+  WEDDING_HALL: "/api/v1/wedding-hall",
+  WEDDING: "/api/v1/wedding-hall",
+  STUDIO: "/api/v1/studio",
+  DRESS: "/api/v1/dress",
+  MAKEUP: "/api/v1/makeup",
 };
 
 /** ====== 유틸 ====== */
 const formatDateYMD = (iso: string) => {
   if (!iso) return "";
   const d = new Date(iso);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}.${m}.${day}`;
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}.${String(d.getDate()).padStart(2, "0")}`;
 };
 
 const formatPrice = (n: number) => (n ?? 0).toLocaleString("ko-KR") + "원";
@@ -77,10 +82,23 @@ export default function WebView() {
   const [items, setItems] = useState<OwnerProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // 페이지네이션 파라미터 (스웨거: pageNumber, pageSize)
-  const [pageNumber] = useState(1); // 현재는 1페이지 고정
+  const [pageNumber] = useState(1);
   const [pageSize] = useState(20);
   const [pageMeta, setPageMeta] = useState<PageMeta | null>(null);
+
+  /** 삭제 모달용 */
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    category: ProductCategory;
+  } | null>(null);
+
+  const openDeleteModal = (id: number, category: ProductCategory) => {
+    setDeleteTarget({ id, category });
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteTarget(null);
+  };
 
   /** 목록 조회 */
   useEffect(() => {
@@ -92,18 +110,14 @@ export default function WebView() {
         const { data } = await api.get<ApiOwnerProductPageResponse>(
           "/api/v1/product",
           {
-            params: {
-              pageNumber,
-              pageSize,
-            },
+            params: { pageNumber, pageSize },
           }
         );
 
-        // ✅ 백엔드 응답을 화면용 타입으로 매핑 (모바일과 동일)
         const mapped: OwnerProduct[] = (data?.content ?? []).map((p) => ({
           id: p.id,
-          name: p.detail, // detail = 상품명
-          brandName: p.name, // name = 업체명
+          name: p.detail,
+          brandName: p.name,
           price: p.price,
           thumbnailUrl: p.thumbnail ?? undefined,
           category: p.category as ProductCategory,
@@ -114,6 +128,7 @@ export default function WebView() {
         setPageMeta(data?.page ?? null);
       } catch (e) {
         console.error("[ProductManageWebView] fetch error:", e);
+        toast.error("상품을 불러오는 중 오류가 발생했어요.");
         setError("상품을 불러오지 못했어요.");
       } finally {
         setLoading(false);
@@ -123,7 +138,7 @@ export default function WebView() {
     fetchList();
   }, [pageNumber, pageSize]);
 
-  /** 날짜 기준 최신순 정렬 (상품 단위) */
+  /** 최신순 정렬 */
   const sortedItems = useMemo(
     () =>
       [...items].sort(
@@ -132,33 +147,44 @@ export default function WebView() {
     [items]
   );
 
-  /** 삭제 */
-  const onDelete = async (id: number) => {
-    if (!confirm("이 상품을 삭제하시겠어요?")) return;
+  /** 실제 삭제 */
+  const deleteProduct = async (id: number, category: ProductCategory) => {
+    const endpoint = DELETE_ENDPOINT_MAP[category];
+
+    if (!endpoint) {
+      toast.error("삭제할 수 없는 카테고리입니다.");
+      return;
+    }
+
     try {
-      await api.delete(`/api/v1/product/${id}`);
+      await api.delete(`${endpoint}/${id}`);
       setItems((prev) => prev.filter((p) => p.id !== id));
+
       setPageMeta((prev) =>
         prev
-          ? {
-              ...prev,
-              totalElements: Math.max(prev.totalElements - 1, 0),
-            }
+          ? { ...prev, totalElements: Math.max(prev.totalElements - 1, 0) }
           : prev
       );
+
+      toast.success("상품이 삭제되었습니다.");
     } catch (e) {
       console.error("[delete product] error:", e);
-      alert("삭제 중 오류가 발생했습니다.");
+      toast.error("삭제 중 오류가 발생했습니다.");
     }
   };
 
-  /** ✅ 상세보기 (모바일과 동일한 상세 페이지 경로로 이동) */
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteProduct(deleteTarget.id, deleteTarget.category);
+    closeDeleteModal();
+  };
+
+  /* 상세보기 */
   const onViewDetail = (product: OwnerProduct) => {
     const slug = CATEGORY_SLUG_MAP[product.category];
 
     if (!slug) {
-      console.error("[onViewDetail] invalid category:", product.category);
-      alert("알 수 없는 카테고리의 상품입니다.");
+      toast.error("알 수 없는 카테고리의 상품입니다.");
       return;
     }
 
@@ -171,7 +197,6 @@ export default function WebView() {
     nav("/my-page/owner/product/create");
   };
 
-  /** “쿠폰 등록” 버튼 */
   const onRegisterCoupon = (productId: number, category: ProductCategory) => {
     nav(
       `/my-page/owner/coupons/register?productId=${productId}&category=${category}`
@@ -180,12 +205,11 @@ export default function WebView() {
 
   const hasItems = sortedItems.length > 0;
 
-  /** ====== 뷰 ====== */
   return (
     <div className="w-full min-h-screen bg-[#F6F7FB] mt-15">
       {/* 본문 */}
       <div className="max-w-[1040px] mx-auto px-6 py-8">
-        {/* 상단 타이틀/설명 */}
+        {/* 헤더 */}
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-[22px] font-semibold text-[#111827] tracking-[-0.3px]">
@@ -207,12 +231,12 @@ export default function WebView() {
           </button>
         </div>
 
-        {/* 메인 카드 영역 */}
+        {/* 카드 영역 */}
         <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6">
           {loading && (
             <div className="flex items-center justify-center h-[240px]">
               <p className="text-[14px] text-[#6B7280]">
-                상품 목록을 불러오는 중입니다...
+                상품을 불러오는 중...
               </p>
             </div>
           )}
@@ -230,8 +254,7 @@ export default function WebView() {
                 className="w-14 h-14 mb-3 text-[#D9D9D9]"
               />
               <p className="text-[14px] text-[#777777] tracking-[-0.2px]">
-                아직 등록된 상품이 없어요. 상단의 상품 등록 버튼을 눌러 첫
-                상품을 추가해 보세요.
+                등록된 상품이 없어요. 상단의 상품 등록 버튼을 눌러 추가하세요.
               </p>
             </div>
           )}
@@ -242,7 +265,7 @@ export default function WebView() {
                 <ProductRow
                   key={p.id}
                   item={p}
-                  onDelete={onDelete}
+                  onDelete={(id, category) => openDeleteModal(id, category)}
                   onViewDetail={onViewDetail}
                   onRegisterCoupon={onRegisterCoupon}
                 />
@@ -250,22 +273,52 @@ export default function WebView() {
 
               {pageMeta && (
                 <div className="mt-4 flex justify-end text-[12px] text-[#9CA3AF]">
-                  <span>
-                    총 {pageMeta.totalElements.toLocaleString()}개 /{" "}
-                    {pageMeta.totalPages}페이지
-                  </span>
+                  총 {pageMeta.totalElements.toLocaleString()}개 /{" "}
+                  {pageMeta.totalPages}페이지
                 </div>
               )}
             </div>
           )}
         </div>
       </div>
+
+      {/* 삭제 확인 모달 */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(0,0,0,0.45)]">
+          <div className="w-[335px] h-[164px] bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)] rounded-[14px] flex flex-col justify-between">
+            <div className="flex flex-col items-start px-5 pt-6 gap-[10px]">
+              <span className="text-[16px] font-bold text-[#1E2124]">
+                상품을 삭제하시겠어요?
+              </span>
+              <p className="text-[14px] font-medium text-[#9D9D9D]">
+                삭제된 상품은 복구할 수 없습니다.
+              </p>
+            </div>
+
+            <div className="flex flex-row items-center px-5 pb-6 pt-[10px] gap-[10px]">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                className="flex-1 h-11 rounded-[10px] bg-[#F3F4F5] text-[#999999] text-[14px] font-medium"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="flex-1 h-11 rounded-[10px] bg-[#FF2233] text-white text-[14px] font-medium"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /** ====== 서브 컴포넌트 ====== */
-
 function ProductRow({
   item,
   onDelete,
@@ -273,23 +326,18 @@ function ProductRow({
   onRegisterCoupon,
 }: {
   item: OwnerProduct;
-  onDelete: (id: number) => void;
+  onDelete: (id: number, category: ProductCategory) => void;
   onViewDetail: (product: OwnerProduct) => void;
   onRegisterCoupon: (id: number, category: ProductCategory) => void;
 }) {
   return (
     <article className="w-full border border-[#E5E7EB] rounded-xl bg-white px-5 py-4 flex flex-col gap-3">
-      {/* 상단: 날짜 */}
-      <div className="flex items-center justify-between">
-        <div className="text-[13px] text-[rgba(0,0,0,0.45)] tracking-[-0.2px]">
-          등록일 {formatDateYMD(item.createdAt)}
-        </div>
+      <div className="text-[13px] text-[rgba(0,0,0,0.45)]">
+        등록일 {formatDateYMD(item.createdAt)}
       </div>
 
-      {/* 중간: 썸네일 + 정보 + 가격 */}
       <div className="flex items-stretch gap-4">
-        {/* 썸네일 */}
-        <div className="w-[96px] h-[96px] rounded-[6px] border border-[#F3F4F6] bg-[#F9FAFB] overflow-hidden flex-shrink-0">
+        <div className="w-[96px] h-[96px] rounded-[6px] border border-[#F3F4F6] bg-[#F9FAFB] overflow-hidden">
           {item.thumbnailUrl ? (
             <img
               src={item.thumbnailUrl}
@@ -306,42 +354,40 @@ function ProductRow({
           )}
         </div>
 
-        {/* 텍스트 영역 */}
         <div className="flex-1 flex flex-col justify-between min-w-0">
-          <div className="min-w-0">
-            <p className="text-[13px] leading-[19px] text-[rgba(0,0,0,0.45)] tracking-[-0.2px]">
+          <div>
+            <p className="text-[13px] text-[rgba(0,0,0,0.45)]">
               {item.brandName}
             </p>
-            <p className="mt-1 text-[15px] leading-[22px] text-[#1E2124] tracking-[-0.2px] line-clamp-2 break-words">
+            <p className="mt-1 text-[15px] text-[#1E2124] line-clamp-2 break-words">
               {item.name}
             </p>
           </div>
-          <p className="mt-2 text-[16px] leading-[24px] font-semibold text-[#111827] tracking-[-0.2px]">
+
+          <p className="text-[16px] font-semibold text-[#111827]">
             {formatPrice(item.price)}
           </p>
         </div>
 
-        {/* 액션 버튼 세트*/}
-        <div className="flex flex-col justify-between items-end gap-2 ml-2">
-          {/* ✅ 수정하기 → 상세보기로 변경 */}
+        <div className="flex flex-col justify-between items-end gap-2">
           <button
             type="button"
             onClick={() => onViewDetail(item)}
-            className="px-3 py-1.5 rounded-[999px] border border-[#E5E7EB] bg-white text-[12px] text-[#374151] tracking-[-0.2px] hover:bg-[#F9FAFB]"
+            className="px-3 py-1.5 rounded-[999px] border border-[#E5E7EB] bg-white text-[12px] text-[#374151] hover:bg-[#F9FAFB]"
           >
             상세보기
           </button>
           <button
             type="button"
-            onClick={() => onDelete(item.id)}
-            className="px-3 py-1.5 rounded-[999px] border border-[#FFE2E5] bg-[#FFF5F6] text-[12px] text-[#DC2626] tracking-[-0.2px] hover:bg-[#FFECEF]"
+            onClick={() => onDelete(item.id, item.category)}
+            className="px-3 py-1.5 rounded-[999px] border border-[#FFE2E5] bg-[#FFF5F6] text-[12px] text-[#DC2626] hover:bg-[#FFECEF]"
           >
             삭제하기
           </button>
           <button
             type="button"
             onClick={() => onRegisterCoupon(item.id, item.category)}
-            className="px-3 py-1.5 rounded-[999px] bg-[#FF2233] text-white text-[12px] font-medium tracking-[-0.2px] hover:opacity-90"
+            className="px-3 py-1.5 rounded-[999px] bg-[#FF2233] text-white text-[12px] font-medium hover:opacity-90"
           >
             쿠폰 등록
           </button>

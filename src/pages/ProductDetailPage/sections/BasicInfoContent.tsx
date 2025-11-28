@@ -119,6 +119,34 @@ const mapTagLabel = (value: string): string => {
   return TAG_LABEL_MAP[key] ?? value; // 매핑 없으면 원본 그대로 사용
 };
 
+/* ========================= 태그 스타일 ========================= */
+/**
+ * 태그가 여러 개 들어와도 전부 보여주고,
+ * 색상은 순서대로 번갈아가면서 적용되도록 설정
+ */
+const TAG_STYLE_CLASSES: { bg: string; text: string }[] = [
+  {
+    bg: "bg-[#EFEBFF]",
+    text: "text-[#803BFF]",
+  }, // 퍼플
+  {
+    bg: "bg-[#E6F6FF]",
+    text: "text-[#007BC3]",
+  }, // 블루
+  {
+    bg: "bg-[#FFF4E5]",
+    text: "text-[#FF8A00]",
+  }, // 오렌지
+  {
+    bg: "bg-[#E7F8F2]",
+    text: "text-[#00A07A]",
+  }, // 그린
+  {
+    bg: "bg-[#FFEFF3]",
+    text: "text-[#FF4D7D]",
+  }, // 핑크
+];
+
 /* ========================= 컴포넌트 ========================= */
 
 export const BasicInfoContent = ({
@@ -172,9 +200,6 @@ export const BasicInfoContent = ({
     })
     .filter((t) => t && t.trim().length > 0);
 
-  const primaryTag = tagLabels[0];
-  const secondaryTag = tagLabels[1];
-
   // ✅ 평점 / 리뷰 수 (상단 요약 영역)
   const averageRating = detail.averageRating;
   const starCount = detail.starCount;
@@ -186,21 +211,7 @@ export const BasicInfoContent = ({
   const [isReviewLoading, setIsReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
 
-  /* ========================= 오너 여부 판별 ========================= */
-
-  const ownerBzName = useAppSelector((s) => {
-    const userData = s.user.userData;
-    const role = s.user.role;
-    if (role === "OWNER" && userData && "bzName" in userData) {
-      return userData.bzName as string;
-    }
-    return undefined;
-  });
-
-  const isOwnerOfProduct =
-    !!ownerBzName &&
-    typeof data.bzName === "string" &&
-    data.bzName === ownerBzName;
+  const role = useAppSelector((s) => s.user.role); // 🔹 추가: role 가져오기
 
   /* ========================= 리뷰 불러오기 ========================= */
 
@@ -275,12 +286,12 @@ export const BasicInfoContent = ({
             />
           </div>
 
-          {/* 찜 영역 (오너일 때는 숨김) */}
-          {!isOwnerOfProduct && (
+          {/* 찜 영역 (🔹 role이 OWNER일 때는 숨김) */}
+          {role !== "OWNER" && (
             <button type="button" className="flex items-center gap-1 px-2 py-1">
               <Icon
                 icon="solar:heart-linear"
-                className="w-4.h-4 text-[#000000]"
+                className="w-4 h-4 text-[#000000]"
               />
               <span className="text-[11px] text-[#000000]">452</span>
             </button>
@@ -313,8 +324,8 @@ export const BasicInfoContent = ({
           <div className="text-[24px] font-semibold text-[#000000] leading-[1.6]">
             {priceText || "가격 정보가 준비 중입니다."}
           </div>
-          {/* 오너일 때는 쿠폰 버튼 숨김 */}
-          {!isOwnerOfProduct && (
+          {/* 🔹 role이 OWNER일 때는 쿠폰 버튼 숨김 */}
+          {role !== "OWNER" && (
             <button
               type="button"
               className="px-3 py-2 bg-[#1E2124] rounded-[4px] text-[13px] text-white"
@@ -326,21 +337,22 @@ export const BasicInfoContent = ({
         </div>
 
         {/* 태그 / 뱃지 */}
-        <div className="mt-1 flex items-center gap-2">
-          {primaryTag && (
-            <span className="px-2 py-[2px] bg-[#EFEBFF] rounded-[4px] text-[12px] font-semibold text-[#803BFF]">
-              {primaryTag}
-            </span>
-          )}
-          {secondaryTag && (
-            <span className="px-2 py-[2px] bg-[#F5F5F5] rounded-[4px] text-[12px] font-semibold text-[#999999]">
-              {secondaryTag}
-            </span>
-          )}
-
-          {/* 태그가 하나도 없으면 기존 더미 유지 */}
-          {!primaryTag && !secondaryTag && (
+        <div className="mt-1 flex flex-wrap items-center gap-2 w-2/3">
+          {tagLabels.length > 0 ? (
+            tagLabels.map((label, index) => {
+              const style = TAG_STYLE_CLASSES[index % TAG_STYLE_CLASSES.length];
+              return (
+                <span
+                  key={`${label}-${index}`}
+                  className={`px-2 py-[2px] rounded-[4px] text-[12px] font-semibold ${style.bg} ${style.text}`}
+                >
+                  {label}
+                </span>
+              );
+            })
+          ) : (
             <>
+              {/* 태그가 하나도 없으면 기존 더미 유지 */}
               <span className="px-2 py-[2px] bg-[#EFEBFF] rounded-[4px] text-[12px] font-semibold text-[#803BFF]">
                 BEST
               </span>
@@ -366,6 +378,21 @@ export const BasicInfoContent = ({
             {data.detail && data.detail.trim().length > 0
               ? data.detail
               : "상품 기본 정보가 준비 중입니다."}
+          </div>
+        </section>
+      </div>
+
+      <div className="px-5 pt-4">
+        <section className="mt-3">
+          <h2 className="text-[16px] font-semibold text-[#1E2124] mb-3">
+            이용 가능 시간
+          </h2>
+
+          {/* ✅ data.detail 그대로 노출 (줄바꿈 유지) */}
+          <div className="text-[14px] text-[#1E2124] whitespace-pre-line">
+            {data.availableTimes && data.availableTimes.trim().length > 0
+              ? data.availableTimes
+              : "이용 가능 시간이 준비 중입니다."}
           </div>
         </section>
       </div>
@@ -517,7 +544,7 @@ export const BasicInfoContent = ({
 
                       {/* 이미지가 있는 경우 썸네일 */}
                       {review.imageUrl && (
-                        <div className="mt-2 w-full h-[72px] rounded-[4px] overflow-hidden bg-white">
+                        <div className="mt-2 w-full h-[72px] rounded-[4px] overflow-hidden bg화이트">
                           <img
                             src={review.imageUrl}
                             alt="리뷰 이미지"

@@ -6,6 +6,7 @@ import { multipartApi } from "../../../../../../lib/api/multipartApi";
 import { useAppSelector } from "../../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../../store/userSlice";
 import MyPageHeader from "../../../../../../components/MyPageHeader";
+import { toast } from "react-toastify";
 
 type ImageItem = { src: string; file?: File };
 
@@ -347,7 +348,7 @@ const MobileView: React.FC = () => {
       !values.region ||
       !values.ownerName.trim()
     ) {
-      alert("필수 항목을 모두 입력해주세요.");
+      toast.error("필수 항목을 모두 입력해주세요.");
       return;
     }
 
@@ -361,7 +362,7 @@ const MobileView: React.FC = () => {
         !values.cateringType.trim() ||
         !values.reservationPolicy.trim()
       ) {
-        alert("웨딩홀 정보 항목을 모두 입력해주세요.");
+        toast.error("웨딩홀 정보 항목을 모두 입력해주세요.");
         return;
       }
     }
@@ -382,7 +383,7 @@ const MobileView: React.FC = () => {
         endpoint = "/api/v1/makeup";
         break;
       default:
-        alert("카테고리를 선택해주세요.");
+        toast.error("카테고리를 선택해주세요.");
         return;
     }
 
@@ -427,11 +428,11 @@ const MobileView: React.FC = () => {
     try {
       const res = await multipartApi.post(endpoint, formData);
       console.log("등록 성공:", res.data);
-      alert("작성 완료!");
+      toast.success("작성 완료!");
       navigate("/my-page/owner/products/management");
     } catch (err) {
       console.error("등록 실패:", err);
-      alert("등록 중 오류가 발생했습니다.");
+      toast.error("등록 중 오류가 발생했습니다.");
     }
   };
 

@@ -5,6 +5,7 @@ import { useAppSelector } from "../../../../../store/hooks";
 import type { CustomerData } from "../../../../../store/userSlice";
 import api from "../../../../../lib/api/axios";
 import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
+import { toast } from "react-toastify";
 
 const MobileView: React.FC = () => {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ const MobileView: React.FC = () => {
   const [showWithdrawModal, setShowWithdrawModal] = React.useState(false);
 
   const handleGoBack = () => {
-    navigate(-1);
+    navigate("/my-page/client");
   };
 
   const handleGoToEdit = () => {
@@ -36,9 +37,13 @@ const MobileView: React.FC = () => {
     try {
       await api.delete("/api/v1/customer");
       refreshAuth();
+      toast.success("회원 탈퇴가 완료되었습니다.");
       navigate("/");
     } catch (error) {
       console.error("회원 탈퇴 요청 중 에러 발생:", error);
+      toast.error(
+        "회원 탈퇴 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+      );
     } finally {
       setShowWithdrawModal(false);
     }

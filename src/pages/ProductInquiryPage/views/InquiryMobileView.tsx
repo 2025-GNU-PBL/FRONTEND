@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../../lib/api/axios";
 import MyPageHeader from "../../../components/MyPageHeader";
+import { toast } from "react-toastify";
 
 interface InquiryDraft {
   prefillId: number;
@@ -94,6 +95,7 @@ const MobileView: React.FC = () => {
         }
       } catch (error) {
         console.error(`Failed to fetch inquiry draft ${draftId}:`, error);
+        toast.error("문의 상품 정보를 불러오지 못했어요.");
       }
     };
 
@@ -115,6 +117,7 @@ const MobileView: React.FC = () => {
   const handleSubmitInquiry = async () => {
     if (!title.trim() || !content.trim()) {
       console.warn("제목과 내용을 모두 입력해주세요.");
+      toast.error("제목과 내용을 모두 입력해주세요.");
       return;
     }
 
@@ -127,7 +130,7 @@ const MobileView: React.FC = () => {
     const { draftIds, cartItemIds } = state;
 
     if (!draftIds || draftIds.length === 0) {
-      alert("문의 초안 정보가 없습니다.");
+      toast.error("문의 초안 정보가 없습니다.");
       nav(-1);
       return;
     }
@@ -141,6 +144,7 @@ const MobileView: React.FC = () => {
         content,
       });
       console.info("문의가 성공적으로 접수되었습니다.");
+      toast.success("문의가 성공적으로 접수되었어요.");
 
       const remainingDraftIds = draftIds.slice(1);
       if (remainingDraftIds.length > 0) {
@@ -157,14 +161,14 @@ const MobileView: React.FC = () => {
             console.info("장바구니에서 모든 구매 상품이 삭제되었습니다.");
           } catch (deleteError) {
             console.error("장바구니 아이템 삭제 실패:", deleteError);
-            console.error("장바구니 아이템 삭제에 실패했습니다.");
+            toast.error("장바구니 상품 삭제에 실패했어요.");
           }
         }
         nav("/cart", { state: null });
       }
     } catch (error) {
       console.error("문의 접수 중 오류:", error);
-      console.error("문의 접수에 실패했습니다.");
+      toast.error("문의 접수에 실패했어요. 잠시 후 다시 시도해 주세요.");
     }
   };
 
@@ -172,6 +176,7 @@ const MobileView: React.FC = () => {
   const handleGoToProductDetail = () => {
     if (!productId) {
       console.warn("상품 ID가 없습니다.");
+      toast.error("상품 정보를 찾을 수 없어요.");
       return;
     }
 
@@ -260,7 +265,7 @@ const MobileView: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleGoToProductDetail}
-                  className="shrink-0 ml-2 rounded-[6px] px-4 py-1.5  bg-[#F5F7FA] text-[12px] eading-[1.5] font-medium tracking-[-0.2px] text-[#1E2124]shadow-sm active:scale-[0.98] transition-all whitespace-nowrap"
+                  className="shrink-0 ml-2 rounded-[6px] px-4 py-1.5 bg-[#F5F7FA] text-[12px] leading-[1.5] font-medium tracking-[-0.2px] text-[#1E2124] shadow-sm active:scale-[0.98] transition-all whitespace-nowrap"
                 >
                   상품 상세보기
                 </button>

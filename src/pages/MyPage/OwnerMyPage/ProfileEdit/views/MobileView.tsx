@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../store/userSlice";
 import { updateOwnerInfo } from "../../../../../store/thunkFunctions";
+import { toast } from "react-toastify";
 
 type OwnerFormState = {
   phoneNumber: string;
@@ -91,7 +92,7 @@ const MobileView: React.FC = () => {
   // =============================
   const handleSubmit = async () => {
     if (!owner) {
-      alert("사장님 정보가 없습니다. 다시 로그인해주세요.");
+      toast.error("사장님 정보가 없습니다. 다시 로그인해주세요.");
       return;
     }
     if (isSubmitting) return;
@@ -117,11 +118,13 @@ const MobileView: React.FC = () => {
         })
       ).unwrap();
 
-      alert("회원 정보가 수정되었습니다.");
+      toast.success("회원 정보가 수정되었습니다.");
       navigate(-1);
     } catch (error) {
       console.error(error);
-      alert("정보 수정 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      toast.error(
+        "정보 수정 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+      );
     } finally {
       setIsSubmitting(false);
     }

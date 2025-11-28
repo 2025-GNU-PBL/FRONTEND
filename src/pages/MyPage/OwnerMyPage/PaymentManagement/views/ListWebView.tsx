@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../../../../store/hooks";
@@ -28,6 +34,9 @@ interface SettlementsResponse {
   summary: SettlementSummary;
   items: SettlementItem[];
 }
+
+/** 상태 필터 타입 */
+type StatusFilter = "전체" | "결제완료" | "취소완료" | "취소요청";
 
 /* ----------------------------- OWNER 유저 확인 ----------------------------- */
 
@@ -70,7 +79,7 @@ function formatApprovedAt(iso?: string): {
 /* ----------------------------- 상태 뱃지 ----------------------------- */
 
 function StatusBadge({ status }: { status: ApiPaymentStatus }) {
-  // ❌ 더 이상 CANCEL_REQUESTED 를 취소로 보지 않음
+  // CANCEL_REQUESTED 는 취소 아님
   const isCanceled = status === "CANCELED" || status === "FAILED";
 
   if (isCanceled) {
@@ -81,7 +90,7 @@ function StatusBadge({ status }: { status: ApiPaymentStatus }) {
     );
   }
 
-  // DONE, CANCEL_REQUESTED 는 동일하게 "결제완료" 스타일
+  // DONE, CANCEL_REQUESTED -> 결제완료 스타일
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E5F0FF] text-[#4170FF]">
       결제완료
@@ -154,6 +163,11 @@ export default function WebView() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  /* ------- 상태 필터 ------- */
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("전체");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement | null>(null);
+
   /* ------- API 호출 ------- */
   const fetchSettlements = useCallback(async () => {
     try {
@@ -185,6 +199,21 @@ export default function WebView() {
   useEffect(() => {
     fetchSettlements();
   }, [fetchSettlements]);
+
+  /* ------- 필터 드롭다운 바깥 클릭 ------- */
+  useEffect(() => {
+    if (!filterOpen) return;
+
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (filterRef.current && !filterRef.current.contains(target)) {
+        setFilterOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [filterOpen]);
 
   /* ------- 월 이동 ------- */
   const moveMonth = (diff: number) => {
@@ -223,6 +252,19 @@ export default function WebView() {
 
   const totalSales = formatAmount(summary?.totalSalesAmount);
   const cancelCount = summary?.cancelCount ?? 0;
+
+  /* ------- 필터 적용된 리스트 ------- */
+  const filteredItems = useMemo(() => {
+    if (statusFilter === "전체") return items;
+
+    return items.filter((item) => {
+      if (statusFilter === "결제완료") return item.status === "DONE";
+      if (statusFilter === "취소완료") return item.status === "CANCELED";
+      if (statusFilter === "취소요청")
+        return item.status === "CANCEL_REQUESTED";
+      return true;
+    });
+  }, [items, statusFilter]);
 
   return (
     <main className="min-h-screen w-full bg-[#F6F7FB] text-gray-900 flex flex-col">
@@ -328,16 +370,50 @@ export default function WebView() {
                 </button>
               </div>
 
-              <button
-                type="button"
-                className="flex items-center gap-1 text-[14px] text-black tracking-[-0.2px]"
-              >
-                <span>전체</span>
-                <Icon
-                  icon="solar:alt-arrow-down-linear"
-                  className="w-4 h-4 text-[#999999]"
-                />
-              </button>
+              {/* 상태 필터 드롭다운 */}
+              <div className="relative" ref={filterRef}>
+                <button
+                  type="button"
+                  onClick={() => setFilterOpen((p) => !p)}
+                  className="flex items-center gap-1 text-[14px] text-black tracking-[-0.2px]"
+                >
+                  <span>{statusFilter}</span>
+                  <Icon
+                    icon="solar:alt-arrow-down-linear"
+                    className="w-4 h-4 text-[#999999]"
+                  />
+                </button>
+
+                {filterOpen && (
+                  <div className="absolute right-0 mt-2 w-28 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
+                    {(
+                      [
+                        "전체",
+                        "결제완료",
+                        "취소완료",
+                        "취소요청",
+                      ] as StatusFilter[]
+                    ).map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter(f);
+                          setFilterOpen(false);
+                        }}
+                        className={[
+                          "w-full text-left px-4 py-2.5 text-[14px] leading-[21px] tracking-[-0.2px]",
+                          statusFilter === f
+                            ? "bg-gray-100 font-semibold"
+                            : "hover:bg-gray-50",
+                        ].join(" ")}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 리스트 */}
@@ -363,21 +439,19 @@ export default function WebView() {
 
               {!isLoading && !errorMsg && (
                 <>
-                  {items.length === 0 ? (
+                  {filteredItems.length === 0 ? (
                     <div className="py-8 text-center text-gray-400 text-sm">
                       해당 기간의 매출 내역이 없습니다.
                     </div>
                   ) : (
-                    items.map((item, idx) => {
+                    filteredItems.map((item, idx) => {
                       const { dayLabel, fullLabel } = formatApprovedAt(
                         item.approvedAt
                       );
 
-                      // ❌ CANCEL_REQUESTED 는 더 이상 취소 취급 X
                       const isCanceled =
                         item.status === "CANCELED" || item.status === "FAILED";
 
-                      // DONE / CANCELED / CANCEL_REQUESTED 모두 클릭 가능 (로직은 그대로 유지)
                       const isClickable =
                         item.status === "DONE" ||
                         item.status === "CANCELED" ||
@@ -385,17 +459,14 @@ export default function WebView() {
 
                       const handleClick = () => {
                         if (item.status === "DONE") {
-                          // 결제 완료 상세
                           nav("/my-page/owner/payments/detail", {
                             state: { paymentKey: item.paymentKey },
                           });
                         } else if (item.status === "CANCELED") {
-                          // 취소 완료 상세
                           nav("/my-page/owner/cancels/detail/done", {
                             state: { paymentKey: item.paymentKey },
                           });
                         } else if (item.status === "CANCEL_REQUESTED") {
-                          // 취소 요청 상세 내역
                           nav("/my-page/owner/cancels/detail/request", {
                             state: {
                               paymentKey: item.paymentKey,
@@ -414,7 +485,7 @@ export default function WebView() {
                           onClick={isClickable ? handleClick : undefined}
                           className={[
                             "grid grid-cols-[90px_minmax(0,1.6fr)_minmax(0,1.2fr)_80px] px-5 py-4 text-sm items-center",
-                            idx !== items.length - 1
+                            idx !== filteredItems.length - 1
                               ? "border-b border-gray-50"
                               : "",
                             isClickable

@@ -44,54 +44,94 @@ const chips: readonly Chip[] = [
 // 하위 컴포넌트
 // ============================================
 
+// 카카오톡 스타일 MessageRow
 const MessageRow: React.FC<{
   m: ChatMessage;
   showPartnerAvatar?: boolean;
   partnerAvatar?: string;
   showReadReceipt?: boolean;
-}> = ({ m, showPartnerAvatar, partnerAvatar, showReadReceipt }) => {
+  showTime?: boolean;
+}> = ({
+  m,
+  showPartnerAvatar = false,
+  partnerAvatar,
+  showReadReceipt = false,
+  showTime = false,
+}) => {
   const mine = m.author === "me";
-  return (
-    <div className={mine ? "flex justify-end" : "flex justify-start"}>
-      {!mine && showPartnerAvatar && (
-        <div className="mr-2 mt-0.5 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
-          {partnerAvatar ? (
-            <img
-              src={partnerAvatar}
-              alt=""
-              className="h-full w-full object-cover"
-              loading="lazy"
-              decoding="async"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-          ) : null}
-        </div>
-      )}
-      <div className="max-w-[80%]">
-        <div
-          className={[
-            "inline-block rounded-[16px] px-3 py-1.5 text-[14px] leading-[1.5] tracking-[-0.2px]",
-            mine ? "bg-[#FF2233] text-white" : "bg-[#F3F4F5] text-black",
-          ].join(" ")}
-        >
-          <p className="whitespace-pre-wrap">{m.text}</p>
-        </div>
-        {mine ? (
-          <div className="mt-1.5 flex items-center justify-end gap-1 text-[12px] font-medium tracking-[-0.1px] text-[#999999]">
-            {showReadReceipt ? (
-              <>
-                <Icon icon="mingcute:check-line" className="h-3 w-3" />
-                <span>읽음 {m.time}</span>
-              </>
-            ) : (
-              <span>{m.time}</span>
-            )}
+
+  // 내 메시지: 오른쪽 정렬, 시간은 말풍선 왼쪽에 같은 줄 하단 정렬
+  if (mine) {
+    return (
+      <div className="flex justify-end">
+        <div className="flex max-w-[80%] items-end gap-1">
+          {(showTime || showReadReceipt) && (
+            <div className="mb-[2px] text-[11px] font-medium tracking-[-0.1px] text-[#999999]">
+              {showReadReceipt ? (
+                <div className="flex items-center gap-0.5">
+                  <Icon icon="mingcute:check-line" className="h-3 w-3" />
+                  <span>읽음 {m.time}</span>
+                </div>
+              ) : (
+                <span>{m.time}</span>
+              )}
+            </div>
+          )}
+          <div
+            className={[
+              "inline-block rounded-[16px] px-3 py-1.5 text-[14px] leading-[1.5] tracking-[-0.2px]",
+              "bg-[#FF2233] text-white",
+            ].join(" ")}
+          >
+            <p className="whitespace-pre-wrap">{m.text}</p>
           </div>
-        ) : (
-          <div className="h-0" />
-        )}
+        </div>
+      </div>
+    );
+  }
+
+  // 상대 메시지: 왼쪽 정렬
+  // - 그룹의 첫 메시지: 아바타 보임
+  // - 같은 그룹의 나머지: 아바타 없는 빈 8x8 공간 유지 (열 정렬)
+  return (
+    <div className="flex justify-start">
+      <div className="flex max-w-[80%] items-end gap-1">
+        {/* 아바타 자리 (항상 폭 유지) */}
+        <div className="mr-1 h-8 w-8 flex-shrink-0">
+          {showPartnerAvatar && (
+            <div className="h-8 w-8 overflow-hidden rounded-full bg-gray-200">
+              {partnerAvatar && (
+                <img
+                  src={partnerAvatar}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 말풍선 + 시간 */}
+        <div className="flex items-end gap-1">
+          <div
+            className={[
+              "inline-block rounded-[16px] px-3 py-1.5 text-[14px] leading-[1.5] tracking-[-0.2px]",
+              "bg-[#F3F4F5] text-black",
+            ].join(" ")}
+          >
+            <p className="whitespace-pre-wrap">{m.text}</p>
+          </div>
+          {showTime && (
+            <div className="mb-[2px] text-[11px] font-medium tracking-[-0.1px] text-[#999999]">
+              <span>{m.time}</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -105,7 +145,10 @@ const ChatListItem: React.FC<{
 }> = ({ room, isActive, onClick, onDelete }) => {
   const isUnread = room.unread > 0;
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = React.useState({ x: 0, y: 0 });
+  const [contextMenuPosition, setContextMenuPosition] = React.useState({
+    x: 0,
+    y: 0,
+  });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const itemRef = React.useRef<HTMLLIElement>(null);
 
@@ -148,12 +191,12 @@ const ChatListItem: React.FC<{
     setContextMenuOpen(false);
     setDeleteConfirmOpen(true);
   };
-  
+
   const handleDeleteConfirm = () => {
     onDelete();
     setDeleteConfirmOpen(false);
   };
-  
+
   const handleDeleteCancel = () => {
     setDeleteConfirmOpen(false);
   };
@@ -181,8 +224,10 @@ const ChatListItem: React.FC<{
                   const parent = e.currentTarget.parentElement;
                   if (parent && !parent.querySelector(".default-avatar-icon")) {
                     const iconDiv = document.createElement("div");
-                    iconDiv.className = "grid h-full w-full place-items-center default-avatar-icon";
-                    iconDiv.innerHTML = '<svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>';
+                    iconDiv.className =
+                      "grid h-full w-full place-items-center default-avatar-icon";
+                    iconDiv.innerHTML =
+                      '<svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>';
                     parent.appendChild(iconDiv);
                   }
                 }}
@@ -260,7 +305,7 @@ const ChatListItem: React.FC<{
           </button>
         </div>
       )}
-      
+
       {/* 삭제 확인 모달 */}
       {deleteConfirmOpen && (
         <>
@@ -331,6 +376,9 @@ const WebView: React.FC = () => {
   const selectedId = id ?? null;
   const panelOpen = Boolean(selectedId);
 
+  // 💡 채팅 스레드 영역 ref (자동 스크롤용)
+  const threadRef = React.useRef<HTMLDivElement | null>(null);
+
   // 채팅방 목록 조회 (카테고리 필터 적용)
   React.useEffect(() => {
     const category = activeCategory === "전체" ? null : activeCategory;
@@ -342,7 +390,7 @@ const WebView: React.FC = () => {
     if (!userData || !role) return;
 
     const ws = getChatWebSocket();
-    
+
     // 사용자 정보 설정 (메시지 변환 시 socialId 사용하므로 일치시켜야 함)
     const userId = userData.socialId || String(userData.id);
     ws.setUserInfo(userId, role);
@@ -357,6 +405,15 @@ const WebView: React.FC = () => {
         })
       );
       console.log("[WebView] addMessage dispatched");
+
+      // 새 메시지 수신 시 현재 방이면 스크롤 아래로
+      if (id === roomId && threadRef.current) {
+        setTimeout(() => {
+          if (threadRef.current) {
+            threadRef.current.scrollTop = threadRef.current.scrollHeight;
+          }
+        }, 50);
+      }
     };
 
     ws.onMessage(handleMessage);
@@ -365,7 +422,7 @@ const WebView: React.FC = () => {
     return () => {
       // 연결 해제하지 않음 (전역 연결 유지)
     };
-  }, [dispatch, userData, role]);
+  }, [dispatch, userData, role, id]);
 
   // 채팅방 선택 시 메시지 조회 및 읽음 처리, WebSocket 구독
   React.useEffect(() => {
@@ -374,11 +431,11 @@ const WebView: React.FC = () => {
       if (!isNaN(chatRoomId)) {
         console.log("[WebView] Entering chat room:", chatRoomId);
         dispatch(selectRoom(id));
-        
+
         // 채팅방 메시지 조회 (DB에서 가져옴)
         console.log("[WebView] Fetching messages for room:", chatRoomId);
         dispatch(fetchChatMessages({ chatRoomId }));
-        
+
         dispatch(
           markRoomAsRead({
             chatRoomId,
@@ -414,7 +471,11 @@ const WebView: React.FC = () => {
   const messages = React.useMemo(() => {
     if (!id) return [];
     const roomMessages = messagesByRoom[id] || [];
-    console.log("[WebView] messages useMemo:", { id, messagesCount: roomMessages.length, messages: roomMessages });
+    console.log("[WebView] messages useMemo:", {
+      id,
+      messagesCount: roomMessages.length,
+      messages: roomMessages,
+    });
     return roomMessages;
   }, [id, messagesByRoom]);
 
@@ -434,9 +495,9 @@ const WebView: React.FC = () => {
   const handleDeleteRoom = (roomId: string) => {
     const chatRoomId = parseInt(roomId, 10);
     if (isNaN(chatRoomId)) return;
-    
+
     dispatch(deleteRoom({ chatRoomId }));
-    
+
     // 삭제된 채팅방이 현재 선택된 채팅방이면 목록으로 이동
     if (selectedId === roomId) {
       navigate("/chat");
@@ -454,19 +515,19 @@ const WebView: React.FC = () => {
     }
 
     const messageText = text.trim();
-    
+
     // 메시지 길이 제한 체크 (255자)
     if (messageText.length > 255) {
       setText(""); // 입력값 초기화
       toast.error("255자 이상 금지입니다");
       // 페이지 새로고침
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000); // 1초 후 새로고침
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000); // 1초 후 새로고침
       return;
     }
     const ws = getChatWebSocket();
-    
+
     if (ws.isConnected()) {
       // Optimistic update: 메시지를 보내기 전에 즉시 UI에 추가
       const tempMessageId = Date.now(); // 임시 ID (백엔드에서 받은 메시지로 교체됨)
@@ -493,7 +554,7 @@ const WebView: React.FC = () => {
 
       // senderId는 socialId를 사용 (백엔드가 채팅방의 ownerId/customerId에 socialId 저장)
       const senderId = userData.socialId || String(userData.id);
-      
+
       console.log("[WebView] Sending message with:", {
         chatRoomId,
         senderRole: role,
@@ -503,19 +564,23 @@ const WebView: React.FC = () => {
         userDataSocialId: userData.socialId,
         usingSocialId: !!userData.socialId,
       });
-      
+
       // WebSocket으로 실시간 전송 (백엔드가 자동으로 DB에 저장함)
       const wsSuccess = ws.sendMessage(chatRoomId, role, senderId, messageText);
-      
-      if (wsSuccess) {
-        // WebSocket 메시지가 성공적으로 전송되면
-        // 백엔드가 자동으로 DB에 저장하고 /sub/chatroom/{chatRoomId}를 통해
-        // 실제 메시지를 다시 보내주므로, WebSocket 핸들러에서 처리됨
-        console.log("[WebView] Message sent via WebSocket. Waiting for server response...");
 
+      if (wsSuccess) {
+        console.log(
+          "[WebView] Message sent via WebSocket. Waiting for server response..."
+        );
         setText("");
+
+        // 💡 내가 보낸 직후 바로 스크롤 맨 아래로
+        setTimeout(() => {
+          if (threadRef.current) {
+            threadRef.current.scrollTop = threadRef.current.scrollHeight;
+          }
+        }, 50);
       } else {
-        // 전송 실패 시 임시 메시지 제거 (추후 구현 가능)
         toast.error("메시지 전송에 실패했습니다.");
       }
     } else {
@@ -523,12 +588,23 @@ const WebView: React.FC = () => {
     }
   };
 
-  // 파트너 연속 메시지 그룹의 첫 번째인지 확인
+  // 파트너 연속 메시지 그룹의 첫 번째인지 확인 (아바타 표시용)
   const isFirstOfPartnerGroup = (arr: ChatMessage[], idx: number): boolean => {
     const m = arr[idx];
     if (!m || m.author !== "partner") return false;
     const prev = arr[idx - 1];
     return !prev || prev.author !== "partner";
+  };
+
+  // 같은 작성자 + 같은 시간(m.time) 그룹의 마지막 메시지인지 (시간 표시용)
+  const isLastOfTimeGroup = (arr: ChatMessage[], idx: number): boolean => {
+    const m = arr[idx];
+    if (!m) return false;
+    const next = arr[idx + 1];
+    if (!next) return true;
+    if (next.author !== m.author) return true;
+    if (next.time !== m.time) return true;
+    return false;
   };
 
   // 읽음 표시 대상 메시지 ID 찾기
@@ -544,6 +620,13 @@ const WebView: React.FC = () => {
     }
     return null;
   };
+
+  // 💡 messages가 변할 때마다 자동으로 맨 아래로 스크롤
+  React.useEffect(() => {
+    if (panelOpen && threadRef.current) {
+      threadRef.current.scrollTop = threadRef.current.scrollHeight;
+    }
+  }, [panelOpen, messages]);
 
   return (
     <div className="h-screen w-full overflow-hidden bg-gray-50 font-[Pretendard]">
@@ -594,7 +677,8 @@ const WebView: React.FC = () => {
                       >
                         {c === "전체"
                           ? rooms.length
-                          : filteredItems.filter((it) => it.category === c).length}
+                          : filteredItems.filter((it) => it.category === c)
+                              .length}
                       </span>
                     </button>
                   );
@@ -686,17 +770,23 @@ const WebView: React.FC = () => {
 
                 {/* 날짜 캡션 */}
                 {messages.length > 0 && (
-                  <div className="px-4 pt-2 text-[10px] leading-[1.5] tracking-[-0.2px] text-[#999999] text-center">
-                    {new Date(messages[0].createdAt).toLocaleDateString("ko-KR", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                  <div className="px-4 pt-2 text-center text-[10px] leading-[1.5] tracking-[-0.2px] text-[#999999]">
+                    {new Date(messages[0].createdAt).toLocaleDateString(
+                      "ko-KR",
+                      {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      }
+                    )}
                   </div>
                 )}
 
                 {/* 메시지 영역 */}
-                <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 scrollbar-hide">
+                <div
+                  ref={threadRef}
+                  className="flex-1 space-y-4 overflow-y-auto px-4 py-4 scrollbar-hide"
+                >
                   {(() => {
                     const readReceiptId = getReadReceiptMessageId(messages);
                     return messages.map((m: ChatMessage, idx: number) => (
@@ -706,6 +796,7 @@ const WebView: React.FC = () => {
                         showPartnerAvatar={isFirstOfPartnerGroup(messages, idx)}
                         partnerAvatar={selectedRoom.avatar}
                         showReadReceipt={m.id === readReceiptId}
+                        showTime={isLastOfTimeGroup(messages, idx)}
                       />
                     ));
                   })()}
@@ -719,7 +810,9 @@ const WebView: React.FC = () => {
                         rows={1}
                         placeholder="메세지 보내기"
                         value={text}
-                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                        onChange={(
+                          e: React.ChangeEvent<HTMLTextAreaElement>
+                        ) => {
                           const newText = e.target.value;
                           // 255자 제한
                           if (newText.length <= 255) {
@@ -731,7 +824,7 @@ const WebView: React.FC = () => {
                             // 알림을 표시한 후 즉시 새로고침
                             setTimeout(() => {
                               window.location.reload();
-                            }, 1000); // 1초 후 새로고침
+                            }, 1000);
                           }
                         }}
                         disabled={isSending}
@@ -741,7 +834,9 @@ const WebView: React.FC = () => {
                           t.style.height = "21px";
                           t.style.height = `${Math.min(84, t.scrollHeight)}px`;
                         }}
-                        onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+                        onKeyDown={(
+                          e: React.KeyboardEvent<HTMLTextAreaElement>
+                        ) => {
                           if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();
                             onSend();

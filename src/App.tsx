@@ -152,6 +152,7 @@ function Layout() {
     "/sign-up/client/step2",
     "/sign-up/client/step3",
     "/sign-up/client/step4",
+    "/cart",
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)

@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import MyPageHeader from "../../../../../../components/MyPageHeader";
 import api from "../../../../../../lib/api/axios";
+import { toast } from "react-toastify";
 
 /** ====== 타입 ====== */
 type ProductCategory =
@@ -76,7 +77,7 @@ const formatPrice = (n: number) => (n ?? 0).toLocaleString("ko-KR") + "원";
 
 export default function MobileView() {
   const nav = useNavigate();
-  const onBack = useCallback(() => nav(-1), [nav]);
+  const onBack = useCallback(() => nav("/my-page/owner"), [nav]);
 
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<OwnerProduct[]>([]);
@@ -89,6 +90,20 @@ export default function MobileView() {
 
   // pageMeta는 일단 백엔드 메타만 저장하고, 현재는 직접 사용하지 않음
   const [, setPageMeta] = useState<PageMeta | null>(null);
+
+  /** 삭제 대상 모달 상태 */
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    category: ProductCategory;
+  } | null>(null);
+
+  const openDeleteModal = (productId: number, category: ProductCategory) => {
+    setDeleteTarget({ id: productId, category });
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteTarget(null);
+  };
 
   /** 목록 조회 */
   useEffect(() => {
@@ -151,13 +166,11 @@ export default function MobileView() {
     [items]
   );
 
-  /** ====== 삭제 ====== */
+  /** ====== 삭제 (실제 삭제 로직) ====== */
   const onDelete = async (productId: number, category: ProductCategory) => {
-    if (!confirm("이 상품을 삭제하시겠어요?")) return;
-
     const endpoint = DELETE_ENDPOINT_MAP[category];
     if (!endpoint) {
-      alert("삭제할 수 없는 카테고리입니다.");
+      toast.error("삭제할 수 없는 카테고리입니다.");
       return;
     }
 
@@ -173,10 +186,19 @@ export default function MobileView() {
             }
           : prev
       );
+
+      toast.success("상품이 삭제되었습니다.");
     } catch (e) {
       console.error("[delete product] error:", e);
-      alert("삭제 중 오류가 발생했습니다.");
+      toast.error("삭제 중 오류가 발생했습니다.");
     }
+  };
+
+  /** 모달에서 "삭제" 눌렀을 때 */
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    await onDelete(deleteTarget.id, deleteTarget.category);
+    closeDeleteModal();
   };
 
   /** ====== 상세보기 (상세 페이지 이동) ====== */
@@ -185,7 +207,7 @@ export default function MobileView() {
 
     if (!slug) {
       console.error("[onViewDetail] invalid category:", product.category);
-      alert("알 수 없는 카테고리의 상품입니다.");
+      toast.error("알 수 없는 카테고리의 상품입니다.");
       return;
     }
 
@@ -263,7 +285,7 @@ export default function MobileView() {
                       type="button"
                       className="w-5 h-5 rounded-full flex items-center justify-center"
                       aria-label="delete-card"
-                      onClick={() => onDelete(p.id, p.category)}
+                      onClick={() => openDeleteModal(p.id, p.category)}
                     >
                       <Icon
                         icon="meteor-icons:xmark"
@@ -362,6 +384,47 @@ export default function MobileView() {
       >
         <Icon icon="mdi:plus" className="w-7 h-7" />
       </button>
+
+      {/* ===== 삭제 확인 모달 (다른 디자인 건드리지 않고 오버레이만 추가) ===== */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(0,0,0,0.45)]">
+          <div className="w-[335px] h-[164px] bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)] rounded-[14px] flex flex-col justify-between">
+            {/* 상단 영역 */}
+            <div className="flex flex-col items-start px-5 pt-6 gap-[10px]">
+              <div className="flex flex-row items-start gap-[14px] w-full h-6">
+                <span className="text-[16px] font-bold leading-[150%] tracking-[-0.2px] text-[#1E2124] flex items-center">
+                  상품을 삭제하시겠어요?
+                </span>
+              </div>
+              <p className="w-full text-[14px] font-medium leading-[150%] tracking-[-0.2px] text-[#9D9D9D] flex items-center">
+                삭제된 상품은 복구할 수 없습니다.
+              </p>
+            </div>
+
+            {/* 하단 버튼 영역 */}
+            <div className="flex flex-row items-center px-5 pb-6 pt-[10px] gap-[10px]">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                className="flex-1 h-11 rounded-[10px] bg-[#F3F4F5] flex items-center justify-center"
+              >
+                <span className="text-[14px] font-medium leading-[150%] tracking-[-0.2px] text-[#999999]">
+                  취소
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="flex-1 h-11 rounded-[10px] bg-[#FF2233] flex items-center justify-center"
+              >
+                <span className="text-[14px] font-medium leading-[150%] tracking-[-0.2px] text-white">
+                  삭제
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -380,7 +443,7 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className={`h-10 rounded-[8px] border border-[#E4E4E4] bg-white text-[14px] text-[#333333] flex items-center justify-center ${
+      className={`h-10 rounded-[8px] border border-[#E4E4E4] bg.white text-[14px] text-[#333333] flex items-center justify-center ${
         className ?? ""
       }`}
     >
