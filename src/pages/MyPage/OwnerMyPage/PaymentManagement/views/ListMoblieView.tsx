@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import MyPageHeader from "../../../../../components/MyPageHeader";
@@ -29,6 +35,8 @@ interface SettlementsResponse {
   summary: SettlementSummary;
   items: SettlementItem[];
 }
+
+type StatusFilter = "전체" | "결제완료" | "취소완료" | "취소요청";
 
 function ensureOwner(userData: UserData | null): OwnerData | null {
   if (!userData) return null;
@@ -78,6 +86,11 @@ export default function MobileView() {
   const [items, setItems] = useState<SettlementItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // ==== 상태 필터 관련 ====
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("전체");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement | null>(null);
 
   if (!owner) {
     return (
@@ -137,6 +150,21 @@ export default function MobileView() {
     fetchSettlements();
   }, [fetchSettlements]);
 
+  // 필터 드롭다운 바깥 클릭 시 닫기
+  useEffect(() => {
+    if (!filterOpen) return;
+
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (filterRef.current && !filterRef.current.contains(target)) {
+        setFilterOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [filterOpen]);
+
   const moveMonth = (diff: number) => {
     const base = new Date(year, month - 1, 1);
     base.setMonth(base.getMonth() + diff);
@@ -145,6 +173,19 @@ export default function MobileView() {
   };
 
   const totalSalesText = formatAmount(summary?.totalSalesAmount);
+
+  // ==== 필터 적용된 리스트 계산 ====
+  const filteredItems = useMemo(() => {
+    if (statusFilter === "전체") return items;
+
+    return items.filter((item) => {
+      if (statusFilter === "결제완료") return item.status === "DONE";
+      if (statusFilter === "취소완료") return item.status === "CANCELED";
+      if (statusFilter === "취소요청")
+        return item.status === "CANCEL_REQUESTED";
+      return true;
+    });
+  }, [items, statusFilter]);
 
   return (
     <div className="w-full bg-white">
@@ -199,16 +240,50 @@ export default function MobileView() {
               </button>
             </div>
 
-            <button
-              type="button"
-              className="flex items-center gap-1 text-[14px] text-black tracking-[-0.2px]"
-            >
-              <span>전체</span>
-              <Icon
-                icon="solar:alt-arrow-down-linear"
-                className="w-4 h-4 text-[#999999]"
-              />
-            </button>
+            {/* 상태 필터 드롭다운 */}
+            <div className="relative" ref={filterRef}>
+              <button
+                type="button"
+                onClick={() => setFilterOpen((p) => !p)}
+                className="flex items-center gap-1 text-[14px] text-black tracking-[-0.2px]"
+              >
+                <span>{statusFilter}</span>
+                <Icon
+                  icon="solar:alt-arrow-down-linear"
+                  className="w-4 h-4 text-[#999999]"
+                />
+              </button>
+
+              {filterOpen && (
+                <div className="absolute right-0 mt-2 w-28 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
+                  {(
+                    [
+                      "전체",
+                      "결제완료",
+                      "취소완료",
+                      "취소요청",
+                    ] as StatusFilter[]
+                  ).map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(f);
+                        setFilterOpen(false);
+                      }}
+                      className={[
+                        "w-full text-left px-4 py-2.5 text-[14px] leading-[21px] tracking-[-0.2px]",
+                        statusFilter === f
+                          ? "bg-gray-100 font-semibold"
+                          : "hover:bg-gray-50",
+                      ].join(" ")}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {isLoading && (
@@ -225,12 +300,12 @@ export default function MobileView() {
 
           {!isLoading && !errorMsg && (
             <div className="mt-2">
-              {items.length === 0 ? (
+              {filteredItems.length === 0 ? (
                 <div className="py-10 text-center text-sm text-gray-400">
                   해당 기간의 매출 내역이 없습니다.
                 </div>
               ) : (
-                items.map((item) => {
+                filteredItems.map((item) => {
                   const { dayLabel, fullLabel } = formatApprovedAt(
                     item.approvedAt
                   );
@@ -245,17 +320,14 @@ export default function MobileView() {
 
                   const handleClick = () => {
                     if (item.status === "DONE") {
-                      // 결제 완료 상세
                       nav("/my-page/owner/payments/detail", {
                         state: { paymentKey: item.paymentKey },
                       });
                     } else if (item.status === "CANCELED") {
-                      // 취소 완료 상세
                       nav("/my-page/owner/cancels/detail/done", {
                         state: { paymentKey: item.paymentKey },
                       });
                     } else if (item.status === "CANCEL_REQUESTED") {
-                      // 취소 요청 상세
                       nav("/my-page/owner/cancels/detail/request", {
                         state: {
                           paymentKey: item.paymentKey,

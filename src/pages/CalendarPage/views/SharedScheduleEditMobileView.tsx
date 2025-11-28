@@ -200,6 +200,19 @@ export default function SharedScheduleEditMobileView() {
     if (!startDate) next.startDate = "시작 일자를 선택해 주세요.";
     if (!endDate) next.endDate = "종료 일자를 선택해 주세요.";
 
+    // 오늘 날짜(YYYY-MM-DD) 문자열
+    const todayStr = toDateInput(new Date());
+
+    // 시작일이 오늘 이전이면 에러
+    if (startDate && startDate < todayStr) {
+      next.startDate = "시작일은 오늘 이후 날짜만 선택할 수 있습니다.";
+    }
+
+    // 종료일이 오늘 이전이면 에러
+    if (endDate && endDate < todayStr) {
+      next.endDate = "종료일은 오늘 이후 날짜만 선택할 수 있습니다.";
+    }
+
     if (startDate && endDate) {
       const sd = new Date(startDate);
       const ed = new Date(endDate);
@@ -212,7 +225,6 @@ export default function SharedScheduleEditMobileView() {
     if (!startTime || !endTime) {
       next.time = "시작/종료 시간을 모두 선택해 주세요.";
     } else {
-      // === 여기 추가: 시작 시간이 종료 시간보다 항상 빠르도록 검사 ===
       const [sh, sm] = startTime.split(":").map((v) => Number(v));
       const [eh, em] = endTime.split(":").map((v) => Number(v));
       if (
@@ -292,7 +304,7 @@ export default function SharedScheduleEditMobileView() {
       address: locationText,
       keepFileIds,
     };
-  console.log("[SharedScheduleEdit] requestBody:", requestBody);
+    console.log("[SharedScheduleEdit] requestBody:", requestBody);
 
     const formData = new FormData();
     formData.append(

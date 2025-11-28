@@ -290,6 +290,19 @@ const App = () => {
                 onClick: () => {
                   if (newNotification.type === "PAYMENT_REQUIRED") {
                     window.location.href = "/checkout";
+                  } else if (
+                    newNotification.type === "PAYMENT_COMPLETED" &&
+                    newNotification.actionUrl
+                  ) {
+                    // 결제 완료 알림 → 결제 상세 페이지로 리다이렉트 (actionUrl 사용)
+                    window.location.href = newNotification.actionUrl;
+                  } else if (
+                    newNotification.type === "RESERVATION_COMPLETED" &&
+                    newNotification.recipientRole === "OWNER" &&
+                    newNotification.reservationId
+                  ) {
+                    // 예약 요청 알림 (사장님) → 예약 상세 페이지로 리다이렉트
+                    window.location.href = `/my-page/owner/reservations/${newNotification.reservationId}`;
                   } else if (newNotification.actionUrl) {
                     window.location.href = newNotification.actionUrl;
                   } else {

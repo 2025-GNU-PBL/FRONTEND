@@ -116,7 +116,6 @@ export default function SharedScheduleEditMobileView() {
   const [existingFiles, setExistingFiles] = useState<
     ScheduleDetailResponse["scheduleFiles"]
   >([]);
-  const [keepFileIds, setKeepFileIds] = useState<number[]>([]);
   const [files, setFiles] = useState<File[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
@@ -158,7 +157,6 @@ export default function SharedScheduleEditMobileView() {
 
         const serverFiles = data.scheduleFiles || [];
         setExistingFiles(serverFiles);
-        setKeepFileIds(serverFiles.map((f) => f.id));
       } catch (e) {
         console.error("[SharedScheduleEditMobileView] fetch detail error:", e);
         alert("일정 정보를 불러오는 중 오류가 발생했습니다.");
@@ -200,6 +198,19 @@ export default function SharedScheduleEditMobileView() {
     if (!startDate) next.startDate = "시작 일자를 선택해 주세요.";
     if (!endDate) next.endDate = "종료 일자를 선택해 주세요.";
 
+    // 오늘 날짜(YYYY-MM-DD) 문자열
+    const todayStr = toDateInput(new Date());
+
+    // 시작일이 오늘 이전이면 에러
+    if (startDate && startDate < todayStr) {
+      next.startDate = "시작일은 오늘 이후 날짜만 선택할 수 있습니다.";
+    }
+
+    // 종료일이 오늘 이전이면 에러
+    if (endDate && endDate < todayStr) {
+      next.endDate = "종료일은 오늘 이후 날짜만 선택할 수 있습니다.";
+    }
+
     if (startDate && endDate) {
       const sd = new Date(startDate);
       const ed = new Date(endDate);
@@ -212,7 +223,6 @@ export default function SharedScheduleEditMobileView() {
     if (!startTime || !endTime) {
       next.time = "시작/종료 시간을 모두 선택해 주세요.";
     } else {
-      // === 여기 추가: 시작 시간이 종료 시간보다 항상 빠르도록 검사 ===
       const [sh, sm] = startTime.split(":").map((v) => Number(v));
       const [eh, em] = endTime.split(":").map((v) => Number(v));
       if (
@@ -249,18 +259,15 @@ export default function SharedScheduleEditMobileView() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  /** 기존 파일 삭제 (keepFileIds + UI 둘 다에서 제거) */
   const handleDeleteExistingFile = useCallback((fileId: number) => {
-    setKeepFileIds((prev) => prev.filter((id) => id !== fileId));
     setExistingFiles((prev) => prev.filter((f) => f.id !== fileId));
   }, []);
 
-  /** 기존 파일 다운로드 (s3Key가 URL이라고 가정) */
+  /** 기존 파일 다운로드 */
   const handleDownloadExistingFile = useCallback(
     (file: { id: number; name: string; s3Key: string }) => {
       if (!file.s3Key) return;
 
-      // s3Key 가 이미 http 로 시작하면 그대로 사용, 아니면 BASE_URL 과 조합
       const url = file.s3Key.startsWith("http")
         ? file.s3Key
         : `${S3_BASE_URL}${
@@ -278,13 +285,16 @@ export default function SharedScheduleEditMobileView() {
     if (!scheduleId || Number.isNaN(scheduleId)) return;
     if (!validate()) return;
 
+    //여기서 현재 남아있는 existingFiles 기준으로 keepFileIds 계산
+    const keepFileIds = existingFiles.map((f) => f.id);
+
     const requestBody: ScheduleUpdateRequest = {
       title: title.trim(),
       content: memo.trim(),
       startScheduleDate: startDate,
       endScheduleDate: endDate,
-      startTime: startTime,
-      endTime: endTime,
+      startTime,
+      endTime,
       scheduleType,
       productName,
       customerName,
@@ -336,8 +346,8 @@ export default function SharedScheduleEditMobileView() {
     customerName,
     companyName,
     locationText,
-    keepFileIds,
     files,
+    existingFiles,
     nav,
   ]);
 
