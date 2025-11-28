@@ -35,7 +35,9 @@ const MobileView: React.FC<MobileViewProps> = ({ liveNotifications }) => {
     fetchNotifications();
   }, []);
 
-  const allNotifications = [...liveNotifications, ...notifications];
+  const allNotifications = Array.from(new Map(
+    [...liveNotifications, ...notifications].map(notification => [notification.id, notification])
+  ).values());
 
   const filteredNotifications = allNotifications.filter((notification) => {
     if (activeFilter === "전체") return true;
@@ -62,9 +64,13 @@ const MobileView: React.FC<MobileViewProps> = ({ liveNotifications }) => {
       if (notification.type === "PAYMENT_REQUIRED") {
         // 결제 요청 알림
         navigate("/checkout");
-      } else if (userRole === "CUSTOMER" && (notification.type === "PAYMENT_CANCELED" || notification.type == "PAYMENT_COMPLETED")) {
+      } else if (userRole === "CUSTOMER" && notification.type === "PAYMENT_COMPLETED") {
         navigate("/my-page/client/payments");
-      }else if (userRole === "OWNER" && (notification.type === "PAYMENT_CANCELED" || notification.type == "PAYMENT_COMPLETED")) {
+      } else if (userRole === "OWNER" && notification.type === "PAYMENT_COMPLETED") {
+        navigate("/my-page/owner/payments");
+      } else if (userRole === "CUSTOMER" && notification.type === "PAYMENT_CANCELED") {
+        navigate("/my-page/client/payments");
+      } else if (userRole === "OWNER" && notification.type === "PAYMENT_CANCELED") {
         navigate("/my-page/owner/payments");
       } else if(userRole === "OWNER" && notification.type == "PAYMENT_CANCEL_REQUEST"){
         navigate("/my-page/owner/cancels")

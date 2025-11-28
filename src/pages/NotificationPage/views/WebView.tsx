@@ -36,7 +36,9 @@ const WebView: React.FC<WebViewProps> = ({ liveNotifications }) => {
     fetchNotifications();
   }, []);
 
-  const allNotifications = [...liveNotifications, ...notifications];
+  const allNotifications = Array.from(new Map(
+    [...liveNotifications, ...notifications].map(notification => [notification.id, notification])
+  ).values());
   const unreadCount = allNotifications.filter((n) => !n.isRead).length; // 읽지 않은 알림 개수 계산
 
   const handleNotificationClick = async (notification: Notification) => {
@@ -50,12 +52,14 @@ const WebView: React.FC<WebViewProps> = ({ liveNotifications }) => {
       if (notification.type === "PAYMENT_REQUIRED") {
         // 결제 요청 알림
         navigate("/checkout");
-      } else if (
-        userRole === "CUSTOMER" &&
-        (notification.type === "PAYMENT_CANCELED" ||
-          notification.type == "PAYMENT_COMPLETED")
-      ) {
+      } else if (userRole === "CUSTOMER" && notification.type == "PAYMENT_COMPLETED") {
         navigate("/my-page/client/payments");
+      } else if (userRole === "OWNER" && notification.type == "PAYMENT_COMPLETED") {
+        navigate("/my-page/owner/payments");
+      } else if (userRole === "CUSTOMER" && notification.type === "PAYMENT_CANCELED") {
+        navigate("/my-page/client/payments");
+      } else if (userRole === "OWNER" && notification.type === "PAYMENT_CANCELED") {
+        navigate("/my-page/owner/payments");
       } else if (
         userRole === "OWNER" &&
         (notification.type === "PAYMENT_CANCELED" ||
