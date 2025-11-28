@@ -97,9 +97,10 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
 
-  /** 승인 확인 모달 / API 로딩 / 토스트 */
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  /** 승인/거절 API 로딩 */
   const [approveLoading, setApproveLoading] = useState(false);
+
+  /** 승인/거절 완료 토스트 */
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState<string>("");
 
@@ -160,21 +161,10 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
   /** 실제로 승인/거절 UI를 보여줄지 여부 */
   const showApproveUI = isRequested && canApprove;
 
-  /** 승인 버튼 클릭 (요청 건 + canApprove=true 일 때만 의미 있음) */
-  const handleApproveClick = () => {
-    if (!showApproveUI) return;
-    setConfirmOpen(true);
-  };
-
-  /** 모달 닫기만 할 때 사용 (거절 API 호출 X) */
-  const handleCancelConfirm = () => {
-    setConfirmOpen(false);
-  };
-
-  /** 승인 확정
+  /** 승인 처리
    *  POST /api/v1/payments/{paymentKey}/cancel-approve
    */
-  const handleApproveConfirm = async () => {
+  const handleApprove = async () => {
     if (!paymentKey) return;
     if (!showApproveUI) return;
 
@@ -182,10 +172,9 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
       setApproveLoading(true);
       await api.post(`/api/v1/payments/${paymentKey}/cancel-approve`);
 
-      setConfirmOpen(false);
-      setToastMessage("취소요청이 승인 됐어요");
+      setToastMessage("취소요청이 승인됐어요");
       setShowToast(true);
-      setPaymentStatus("CANCELED"); // 이제 완료 상태로 전환
+      setPaymentStatus("CANCELED"); // 완료 상태로 전환
       props.onApproved?.();
 
       setTimeout(() => {
@@ -202,7 +191,7 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
   /** 취소 요청 거절
    *  POST /api/v1/payments/{paymentKey}/cancel-reject
    */
-  const handleRejectConfirm = async () => {
+  const handleReject = async () => {
     if (!paymentKey) return;
     if (!showApproveUI) return;
 
@@ -212,10 +201,9 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
         rejectReason: "사장님이 취소 요청을 거절했습니다.",
       });
 
-      setConfirmOpen(false);
       setToastMessage("취소요청을 거절했어요");
       setShowToast(true);
-      // 이 화면에서는 더 이상 승인 버튼이 보이지 않도록 상태 변경
+      // 이 화면에서는 더 이상 승인/거절 버튼이 보이지 않도록 상태 변경
       setPaymentStatus("CANCELED");
       props.onApproved?.();
 
@@ -289,7 +277,7 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
   return (
     <>
       {/* 전체 화면 컨테이너 */}
-      <div className="relative mx-auto min-h-screen w/full max-w-[390px] bg-[#F5F6F8] pb-32">
+      <div className="relative mx-auto min-h-screen w-full max-w-[390px] bg-[#F5F6F8] pb-32">
         {/* 헤더 */}
         <div className="sticky top-0 z-20 bg-white">
           <MyPageHeader
@@ -372,66 +360,35 @@ const MobileCancelDetailView: React.FC<MobileCancelDetailViewProps> = (
           </section>
         </div>
 
-        {/* 하단 승인하기 버튼 영역 (요청 상태 + canApprove=true 일 때만 노출) */}
+        {/* 하단 버튼 영역 */}
         {showApproveUI && (
-          <div className="pointer-events-none fixed bottom-15 left-0 right-0 z-20 flex justify-center">
-            <div className="pointer-events-auto w-full max-w-[390px] px-5 pb-6 pt-4">
+          <div className="fixed bottom-18 left-1/2 z-30 w-full max-w-[390px] -translate-x-1/2 border-t border-[#F3F4F5] bg-[#F6F7FB]">
+            <div className="flex w-full flex-row items-center gap-[12px] px-5 py-3">
               <button
                 type="button"
-                onClick={handleApproveClick}
+                onClick={handleReject}
                 disabled={approveLoading}
-                className="flex h-14 w-full items-center justify-center rounded-[12px] bg-[#FF2233] text-[16px] font-semibold leading-[24px] tracking-[-0.2px] text-white disabled:opacity-60"
+                className={`flex h-[48px] flex-1 flex-row items-center justify-center rounded-[12px] border border-[#E1E1E1] bg-white text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999] ${
+                  approveLoading ? "opacity-60" : ""
+                }`}
               >
-                {approveLoading ? "승인 중..." : "승인하기"}
+                거절하기
+              </button>
+
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={approveLoading}
+                className={`flex h-[48px] flex-1 flex-row items-center justify-center rounded-[12px] bg-[#FF2233] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white ${
+                  approveLoading ? "opacity-60" : ""
+                }`}
+              >
+                승인하기
               </button>
             </div>
           </div>
         )}
       </div>
-
-      {/* 승인 / 거절 확인 모달 (canApprove=true 일 때만 의미 있음) */}
-      {confirmOpen && canApprove && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
-          <div className="relative h-[188px] w-[335px] rounded-[14px] bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]">
-            {/* 상단 내용 */}
-            <div className="flex h-[100px] w-full flex-col gap-[10px] px-5 pt-6">
-              <div className="flex h-6 items-center">
-                <p className="text-[16px] font-bold leading-[24px] tracking-[-0.2px] text-[#1E2124]">
-                  취소 요청을 승인 하시겠어요?
-                </p>
-              </div>
-              <p className="h-[42px] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#9D9D9D]">
-                요청 승인 시 주문은 취소되며,
-                <br />
-                결제금액은 고객에게 환불됩니다.
-              </p>
-            </div>
-
-            {/* 하단 버튼 영역 */}
-            <div className="absolute bottom-0 flex h-[78px] w-full items-center gap-2 px-5 pb-6 pt-2">
-              {/* 취소 요청 거절 버튼 */}
-              <button
-                type="button"
-                onClick={handleRejectConfirm}
-                disabled={approveLoading}
-                className="flex h-11 w-[142px] items-center justify-center rounded-[10px] bg-[#F3F4F5] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999] disabled:opacity-60"
-              >
-                {approveLoading ? "처리 중..." : "취소하기"}
-              </button>
-
-              {/* 취소 요청 승인 버튼 */}
-              <button
-                type="button"
-                onClick={handleApproveConfirm}
-                disabled={approveLoading}
-                className="flex h-11 w-[143px] flex-1 items-center justify-center rounded-[10px] bg-[#FF2233] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white disabled:opacity-60"
-              >
-                {approveLoading ? "승인 중..." : "승인하기"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 승인 / 거절 완료 토스트 */}
       {showToast && (
