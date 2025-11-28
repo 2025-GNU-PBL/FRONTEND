@@ -23,7 +23,7 @@ import MainPage from "./pages/MainPage/MainPage";
 import StudioPage from "./pages/StudioPage/StudioPage";
 import MakeupPage from "./pages/MakeupPage/MakeupPage";
 import QuotationPage from "./pages/QuotationPage/QuotationPage";
-import CalendarPage from "./pages/CalendarPage/CalendarPage";
+import CalendarPage from "./pages/CalendarPage/main/CalendarPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
 
 import ProtectedRoutes from "./components/ProtectedRoutes";
@@ -58,10 +58,10 @@ import OwnerProfilePage from "./pages/MyPage/OwnerMyPage/Profile/OwnerProfilePag
 import ReservationManagementPage from "./pages/MyPage/OwnerMyPage/ReservationManagement/ReservationManagementPage";
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
-import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentManagementPage";
+import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/list/OwnerPaymentManagementPage";
 import CancelListPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelListPage";
 import CancelDetailPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelDetailPage";
-import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/OwnerPaymentDetailPage";
+import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/detail/OwnerPaymentDetailPage";
 import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import Success from "./pages/CheckoutPage/Success/Success";
 import Fail from "./pages/CheckoutPage/Fail/Fail";
@@ -70,14 +70,14 @@ import CouponPage from "./pages/CheckoutPage/coupon/CouponPage";
 import ReviewCreate from "./pages/ReviewCreatePage/ReviewCreate";
 import ClientProfileEdit from "./pages/MyPage/ClientMyPage/ProfileEdit/ClientProfileEdit";
 import { useRefreshAuth } from "./hooks/useRefreshAuth";
-import PersonalScheduleCreatePage from "./pages/CalendarPage/PersonalScheduleCreatePage";
-import PersonalScheduleEditPage from "./pages/CalendarPage/PersonalScheduleEditPage";
-import SharedScheduleEditPage from "./pages/CalendarPage/SharedScheduleEdigPage";
+import PersonalScheduleCreatePage from "./pages/CalendarPage/personalschedule/create/PersonalScheduleCreatePage";
+import PersonalScheduleEditPage from "./pages/CalendarPage/personalschedule/edit/PersonalScheduleEditPage";
+import SharedScheduleEditPage from "./pages/CalendarPage/sharedschedule/SharedScheduleEdigPage";
 import { subscribeToNotifications } from "./lib/api/notificationService";
 import CustomNotificationToast from "./components/CustomNotificationToast/CustomNotificationToast";
 import SupportPage from "./pages/SupportPage/SupportPage";
 import RefundRequestPage from "./pages/MyPage/ClientMyPage/Payments/RefundPage/RefundRequestPage";
-import CanceledDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/CanceledDetailPage";
+import CanceledDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/cancel/CanceledDetailPage";
 import type { Notification } from "./type/notification";
 import InquiryDetailPage from "./pages/MyPage/ClientMyPage/Inquiries/InquiryDetailPage";
 import ProductDetail from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductDetail/ProductDetail";
@@ -111,7 +111,10 @@ function Layout() {
     "/my-page/owner/products/:category/:id"
   );
 
-  // 🔹 사장 상품 수정 디테일 페이지 매칭 (동적 파라미터)
+  const isCalendarShared = !!useMatch("/calendar/shared/:id");
+
+  const isCalendarPersonal = !!useMatch("/calendar/personal/:id");
+
   const isOwnerReservation = !!useMatch("/my-page/owner/reservations/:id");
 
   // 네비바 숨길 경로 (정적)
@@ -141,6 +144,7 @@ function Layout() {
     "/my-page/owner/coupons/register",
     "/my-page/owner/profile/edit",
     "/my-page/owner/reservations",
+    "/my-page/owner/payments",
 
     "/my-page/client/profile/edit",
     "/my-page/client/payments/review",
@@ -153,6 +157,8 @@ function Layout() {
     "/sign-up/client/step3",
     "/sign-up/client/step4",
     "/cart",
+    "/calendar",
+    "/calendar/personal",
   ];
 
   // 채팅 버튼 숨길 경로 (정적 prefix 포함)
@@ -183,7 +189,9 @@ function Layout() {
     isMakeupDetail ||
     isOwnerProductEdit ||
     isOwnerProductDetail ||
-    isOwnerReservation; // 🔹 추가
+    isOwnerReservation ||
+    isCalendarShared ||
+    isCalendarPersonal; // 🔹 추가
 
   const showFooter = !hideFooter;
 

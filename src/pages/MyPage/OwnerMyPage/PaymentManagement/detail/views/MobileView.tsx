@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
-import MyPageHeader from "../../../../../components/MyPageHeader";
-import api from "../../../../../lib/api/axios";
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import api from "../../../../../../lib/api/axios";
+import MyPageHeader from "../../../../../../components/MyPageHeader";
 
 type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
 

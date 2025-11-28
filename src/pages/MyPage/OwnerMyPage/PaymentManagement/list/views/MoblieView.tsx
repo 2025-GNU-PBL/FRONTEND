@@ -1,16 +1,10 @@
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useRef,
-  useMemo,
-} from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../../../components/MyPageHeader";
-import { useAppSelector } from "../../../../../store/hooks";
-import api from "../../../../../lib/api/axios";
-import type { OwnerData, UserData } from "../../../../../store/userSlice";
+import type { OwnerData, UserData } from "../../../../../../store/userSlice";
+import { useAppSelector } from "../../../../../../store/hooks";
+import api from "../../../../../../lib/api/axios";
+import MyPageHeader from "../../../../../../components/MyPageHeader";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
 
@@ -92,32 +86,20 @@ export default function MobileView() {
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement | null>(null);
 
-  if (!owner) {
-    return (
-      <div className="w-full bg-white">
-        <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col">
-          <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
-            <MyPageHeader
-              title="매출 관리"
-              onBack={() => nav(-1)}
-              showMenu={false}
-            />
-          </div>
-          <div className="flex-1 px-5 pt-20 flex items-center justify-center text-sm text-gray-500">
-            사장님 정보가 없습니다. 다시 로그인해주세요.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const storeName = (owner as OwnerData & { bzName?: string }).bzName;
+  const storeName = owner?.bzName;
   const displayStoreName =
     storeName && storeName.trim() !== ""
       ? storeName
       : summary?.ownerName || "내 매장";
 
   const fetchSettlements = useCallback(async () => {
+    // owner가 없으면 API 호출하지 않고 리스트 초기화만 수행
+    if (!owner) {
+      setSummary(null);
+      setItems([]);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setErrorMsg(null);
@@ -144,7 +126,7 @@ export default function MobileView() {
     } finally {
       setIsLoading(false);
     }
-  }, [year, month]);
+  }, [year, month, owner]);
 
   useEffect(() => {
     fetchSettlements();
@@ -188,16 +170,21 @@ export default function MobileView() {
   }, [items, statusFilter]);
 
   return (
-    <div className="w-full bg-white">
-      <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col">
-        <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
-          <MyPageHeader
-            title="매출 관리"
-            onBack={() => nav(-1)}
-            showMenu={false}
-          />
-        </div>
+    <div className="w-full min-h-screen bg-white flex flex-col">
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
+        <MyPageHeader
+          title="매출 관리"
+          onBack={() => nav(-1)}
+          showMenu={false}
+        />
+      </div>
 
+      {/* owner 유무에 따라 내용 분기 (훅은 위에서 이미 모두 호출됨) */}
+      {!owner ? (
+        <div className="flex-1 px-5 pt-20 flex items-center justify-center text-sm text-gray-500">
+          사장님 정보가 없습니다. 다시 로그인해주세요.
+        </div>
+      ) : (
         <div className="flex-1 overflow-auto px-5 pt-20 pb-8 space-y-4">
           <section className="w-full rounded-lg bg-[#F6F7FB] px-5 py-4 flex items-center justify-between">
             <div className="flex flex-col gap-2">
@@ -219,7 +206,8 @@ export default function MobileView() {
             </div>
           </section>
 
-          <div className="w-[390px] -mx-5 h-2 bg-[#F7F9FA]" />
+          {/* 상단 구분선: 고정폭 제거, 전체 너비로 */}
+          <div className="-mx-5 h-2 bg-[#F7F9FA]" />
 
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-4">
@@ -305,7 +293,7 @@ export default function MobileView() {
                   해당 기간의 매출 내역이 없습니다.
                 </div>
               ) : (
-                filteredItems.map((item) => {
+                filteredItems.map((item: SettlementItem) => {
                   const { dayLabel, fullLabel } = formatApprovedAt(
                     item.approvedAt
                   );
@@ -392,7 +380,7 @@ export default function MobileView() {
             </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import MyPageHeader from "../../../../../components/MyPageHeader";
-import api from "../../../../../lib/api/axios";
+import api from "../../../../../../lib/api/axios";
+import MyPageHeader from "../../../../../../components/MyPageHeader";
 
 /** 상품 정보 */
 type ProductInfo = {
@@ -62,9 +62,7 @@ interface MobileCanceledDetailViewProps {
 }
 
 /** 결제 취소 완료 상세 (모바일) */
-const MobileCanceledDetailView: React.FC<MobileCanceledDetailViewProps> = (
-  props
-) => {
+const MobileView: React.FC<MobileCanceledDetailViewProps> = (props) => {
   const location = useLocation();
   const nav = useNavigate();
   const state = location.state as CanceledDetailLocationState | undefined;
@@ -140,7 +138,7 @@ const MobileCanceledDetailView: React.FC<MobileCanceledDetailViewProps> = (
   /** 필수 데이터가 없을 때 */
   if (!paymentKey) {
     return (
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[390px] items-center justify-center bg-[#F5F6F8] px-5">
+      <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-[#F5F6F8] px-5">
         <div className="w-full rounded-2xl bg-white px-6 py-8 text-center shadow">
           <p className="mb-3 text-sm text-gray-700">
             취소 상세 정보를 찾을 수 없습니다. (paymentKey 없음)
@@ -160,7 +158,7 @@ const MobileCanceledDetailView: React.FC<MobileCanceledDetailViewProps> = (
   /** 상세 로딩 중일 때 */
   if (detailLoading && (!product || !customer)) {
     return (
-      <div className="relative mx-auto flex min-h-screen w/full max-w-[390px] items-center justify-center bg-[#F5F6F8] px-5">
+      <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-[#F5F6F8] px-5">
         <div className="w-full rounded-2xl bg-white px-6 py-8 text-center shadow">
           <p className="mb-3 text-sm text-gray-700">
             취소 상세 정보를 불러오는 중입니다...
@@ -173,7 +171,7 @@ const MobileCanceledDetailView: React.FC<MobileCanceledDetailViewProps> = (
   /** 로딩은 끝났는데도 필수 데이터가 없으면 에러 처리 */
   if ((!product || !customer) && !detailLoading) {
     return (
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[390px] items-center justify-center bg-[#F5F6F8] px-5">
+      <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-[#F5F6F8] px-5">
         <div className="w-full rounded-2xl bg-white px-6 py-8 text-center shadow">
           <p className="mb-2 text-sm text-gray-700">
             취소 상세 정보를 찾을 수 없습니다.
@@ -194,7 +192,7 @@ const MobileCanceledDetailView: React.FC<MobileCanceledDetailViewProps> = (
   }
 
   return (
-    <div className="relative mx-auto min-h-screen w-full max-w-[390px] bg-[#F5F6F8] pb-10">
+    <div className="relative flex min-h-screen w-full flex-col bg-[#F5F6F8] pb-10">
       {/* 헤더: 취소 완료 상세 내역 */}
       <div className="sticky top-0 z-20 bg-white">
         <MyPageHeader
@@ -212,7 +210,7 @@ const MobileCanceledDetailView: React.FC<MobileCanceledDetailViewProps> = (
             상품정보
           </div>
 
-          <div className="absolute left-4 top-[54px] flex">
+          <div className="absolute left-4 top-[54px] flex pr-4">
             {/* 썸네일 */}
             <div className="h-20 w-20 rounded-[4px] border border-[#F5F5F5] bg-cover bg-center">
               {product?.thumbnailUrl && (
@@ -225,11 +223,11 @@ const MobileCanceledDetailView: React.FC<MobileCanceledDetailViewProps> = (
             </div>
 
             {/* 텍스트 영역 */}
-            <div className="ml-4 flex w-[159px] flex-col justify-between">
+            <div className="ml-4 flex flex-1 flex-col justify-between">
               <p className="h-[21px] text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-black/40">
                 {product?.shopName}
               </p>
-              <p className="mt-1 h-[42px] text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-[#1E2124]">
+              <p className="mt-1 text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-[#1E2124]">
                 {product?.productName}
               </p>
             </div>
@@ -248,17 +246,23 @@ const MobileCanceledDetailView: React.FC<MobileCanceledDetailViewProps> = (
           </div>
 
           <div className="flex flex-col gap-2 text-[12px] leading-[18px] tracking-[-0.1px] text-[#1E2124]">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <span>이름</span>
-              <span className="text-right">{customer?.name}</span>
+              <span className="flex-1 text-right break-all">
+                {customer?.name}
+              </span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <span>전화번호</span>
-              <span className="text-right">{customer?.phone}</span>
+              <span className="flex-1 text-right break-all">
+                {customer?.phone}
+              </span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <span>고객 이메일</span>
-              <span className="text-right">{customer?.customerEmail}</span>
+              <span className="flex-1 text-right break-all">
+                {customer?.customerEmail}
+              </span>
             </div>
           </div>
         </section>
@@ -280,4 +284,4 @@ const MobileCanceledDetailView: React.FC<MobileCanceledDetailViewProps> = (
   );
 };
 
-export default MobileCanceledDetailView;
+export default MobileView;

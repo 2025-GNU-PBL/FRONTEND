@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import MyPageHeader from "../../../components/MyPageHeader";
-import api from "../../../lib/api/axios";
+import api from "../../../../lib/api/axios";
+import MyPageHeader from "../../../../components/MyPageHeader";
 
 /** ====== 서버 응답 DTO ====== */
 type ScheduleApiItem = {
@@ -53,7 +53,7 @@ function formatKoreanDate(d: Date): string {
 }
 
 /** 월 텍스트: 4월 */
-function formatKoreanMonth(year: number, monthIndex: number): string {
+function formatKoreanMonth(monthIndex: number): string {
   return `${monthIndex + 1}월`;
 }
 
@@ -139,7 +139,7 @@ type WeekBar = {
   color: string;
 };
 
-export default function CalendarMobileView() {
+export default function MobileView() {
   const nav = useNavigate();
   const onBack = useCallback(() => nav(-1), [nav]);
 
@@ -188,7 +188,7 @@ export default function CalendarMobileView() {
         setLoading(true);
         setError(null);
 
-        const params: Record<string, any> = {
+        const params: Record<string, unknown> = {
           year: currentYear,
           month: currentMonthIndex + 1,
         };
@@ -358,8 +358,9 @@ export default function CalendarMobileView() {
   const weekdayLabels = ["월", "화", "수", "목", "금", "토", "일"];
 
   return (
-    <div className="w-full bg-white">
-      <div className="mx-auto w-[390px] h-[844px] bg-white flex flex-col relative">
+    <div className="w-full min-h-screen bg-white flex flex-col">
+      {/* 이 div가 부모 폭을 그대로 따라감 (max-w 제거, mx-auto 제거) */}
+      <div className="w-full bg-white flex flex-col relative">
         {/* 헤더 */}
         <div className="sticky top-0 z-20 bg-white">
           <MyPageHeader title="캘린더" onBack={onBack} showMenu={false} />
@@ -377,7 +378,7 @@ export default function CalendarMobileView() {
                 />
               </button>
               <div className="mx-4 text-[18px] font-medium leading-[27px] tracking-[-0.2px] text-[#1E2124]">
-                {formatKoreanMonth(currentYear, currentMonthIndex)}
+                {formatKoreanMonth(currentMonthIndex)}
               </div>
               <button type="button" className="p-2 -mr-2" onClick={goNextMonth}>
                 <Icon
@@ -388,11 +389,11 @@ export default function CalendarMobileView() {
             </div>
 
             {/* 요일 헤더 */}
-            <div className="w-[350px] mx-auto flex flex-row justify-between mb-1">
+            <div className="w-full mx-auto grid grid-cols-7 mb-1">
               {weekdayLabels.map((label) => (
                 <div
                   key={label}
-                  className="w-[50px] h-[45.67px] flex items-center justify-center"
+                  className="flex items-center justify-center h-[45.67px]"
                 >
                   <span className="text-[15px] leading-[24px] tracking-[-0.22px] text-[#626262]">
                     {label}
@@ -402,7 +403,7 @@ export default function CalendarMobileView() {
             </div>
 
             {/* 캘린더 (날짜 + 연속 막대) */}
-            <div className="w-[350px] mx-auto">
+            <div className="w-full mx-auto">
               {Array.from({ length: 6 }).map((_, rowIndex) => (
                 <div
                   key={rowIndex}
@@ -427,7 +428,7 @@ export default function CalendarMobileView() {
                     ))}
 
                   {/* 날짜 버튼들 */}
-                  <div className="relative flex flex-row justify-between h-full">
+                  <div className="relative flex flex-row h-full">
                     {calendarCells
                       .slice(rowIndex * 7, rowIndex * 7 + 7)
                       .map((cell) => {
@@ -448,7 +449,7 @@ export default function CalendarMobileView() {
                             key={key}
                             type="button"
                             onClick={() => handleSelectDate(date)}
-                            className="w-[50px] h-full flex items-start justify-center pt-[6px]"
+                            className="flex-1 h-full flex items-start justify-center pt-[6px]"
                           >
                             <div className="flex flex-col items-center">
                               {/* 날짜 숫자 */}
@@ -515,7 +516,7 @@ export default function CalendarMobileView() {
                       return (
                         <div
                           key={item.id}
-                          className="relative w-[350px] min-h-[52px] overflow-hidden rounded-[12px]"
+                          className="relative w-full min-h-[52px] overflow-hidden rounded-[12px]"
                         >
                           {/* 뒤: 삭제 버튼 영역*/}
                           <div className="absolute inset-y-0 right-0 flex items-stretch">
@@ -578,7 +579,7 @@ export default function CalendarMobileView() {
                 <button
                   type="button"
                   onClick={handleAddSchedule}
-                  className="mt-3 mb-10 w-[350px] h-[52px] bg-[#F6F7FB] rounded-[12px] px-4 flex items-center"
+                  className="mt-3 mb-10 w-full h-[52px] bg-[#F6F7FB] rounded-[12px] px-4 flex items-center"
                 >
                   <div className="w-6 h-6 flex items-center justify-center mr-3">
                     <Icon

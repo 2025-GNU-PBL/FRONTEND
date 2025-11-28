@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import api from "../../../../../lib/api/axios";
+import api from "../../../../../../lib/api/axios";
 
 /** 상품 정보 */
 type ProductInfo = {
@@ -116,7 +116,7 @@ function SectionCard({
 }
 
 /** 결제 취소 완료 상세 (웹뷰) */
-const WebCanceledDetailView: React.FC<WebCanceledDetailViewProps> = (props) => {
+const WebView: React.FC<WebCanceledDetailViewProps> = (props) => {
   const location = useLocation();
   const nav = useNavigate();
   const state = location.state as CanceledDetailLocationState | undefined;
@@ -415,4 +415,4 @@ const WebCanceledDetailView: React.FC<WebCanceledDetailViewProps> = (props) => {
   );
 };
 
-export default WebCanceledDetailView;
+export default WebView;
