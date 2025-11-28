@@ -29,7 +29,7 @@ type Inquiry = {
   createdAt: string; // YYYY-MM-DD
 };
 
-/** 서버 status -> 화면 status 매핑 (컴포넌트 밖으로 분리) */
+/** 서버 status -> 화면 status 매핑 */
 const mapStatus = (status: string): InquiryStatus => {
   switch (status) {
     case "APPROVE":
@@ -37,25 +37,23 @@ const mapStatus = (status: string): InquiryStatus => {
     case "DENY":
       return "취소";
     default:
-      return "대기"; // WAITING 등 기본값
+      return "대기";
   }
 };
 
-/** Reservation DTO -> Inquiry 뷰 모델 변환 (컴포넌트 밖으로 분리) */
+/** Reservation DTO -> Inquiry 뷰 모델 변환 */
 const toInquiry = (r: ReservationApiResponse): Inquiry => {
   const createdAt = (r.createdAt || "").slice(0, 10) || "";
   return {
     id: String(r.id),
-    // 업체명 정보가 별도 필드에 없다면 title/기본값 사용
     partner: r.title || "예약 업체",
-    // 문의/예약 내용
     title: r.content || "",
     status: mapStatus(r.status),
     createdAt,
   };
 };
 
-/** YYYY-MM-DD → YYYY.MM.DD 포맷 (컴포넌트 밖으로 분리) */
+/** YYYY-MM-DD → YYYY.MM.DD 포맷 */
 const formatDate = (date: string) => {
   if (!date) return "";
   const [y, m, d] = date.split("-");
@@ -176,7 +174,6 @@ export default function WebView() {
               </button>
               {statusOpen && (
                 <div className="absolute right-0 mt-2 w-32 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
-                  {/* DropdownItem 인라인 - 전체 */}
                   <button
                     type="button"
                     onClick={() => {
@@ -192,7 +189,6 @@ export default function WebView() {
                   >
                     전체
                   </button>
-                  {/* 대기 */}
                   <button
                     type="button"
                     onClick={() => {
@@ -208,7 +204,6 @@ export default function WebView() {
                   >
                     대기
                   </button>
-                  {/* 확정 */}
                   <button
                     type="button"
                     onClick={() => {
@@ -224,7 +219,6 @@ export default function WebView() {
                   >
                     확정
                   </button>
-                  {/* 취소 */}
                   <button
                     type="button"
                     onClick={() => {
@@ -263,7 +257,6 @@ export default function WebView() {
               </button>
               {sortOpen && (
                 <div className="absolute right-0 mt-2 w-32 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
-                  {/* 최신순 */}
                   <button
                     type="button"
                     onClick={() => {
@@ -279,7 +272,6 @@ export default function WebView() {
                   >
                     최신순
                   </button>
-                  {/* 오래된순 */}
                   <button
                     type="button"
                     onClick={() => {
@@ -307,7 +299,6 @@ export default function WebView() {
             문의 내역을 불러오는 중입니다...
           </section>
         ) : filtered.length === 0 ? (
-          // WebEmptyState 인라인
           <section className="mt-8 bg-white rounded-2xl shadow-sm border border-[#E5E6EB] flex flex-col items-center justify-center py-16 gap-5">
             <Icon
               icon="solar:document-linear"
@@ -334,10 +325,7 @@ export default function WebView() {
 
             {/* 리스트 행들 */}
             <div>
-              {filtered.map((q, index) => {
-                const withSoftBackground = index === 1;
-
-                // StatusBadge 인라인
+              {filtered.map((q) => {
                 let statusBg = "";
                 if (q.status === "대기") statusBg = "bg-[#FA9538]";
                 if (q.status === "확정") statusBg = "bg-[#3DC061]";
@@ -350,12 +338,7 @@ export default function WebView() {
                     onClick={() => onSelectInquiry(q.id)}
                     className="w-full text-left hover:bg-[#F9FAFB] transition"
                   >
-                    <div
-                      className={[
-                        "grid grid-cols-[1.5fr_3fr_1.2fr_1.2fr] gap-3 px-6 py-4 border-t border-[#F3F4F5] items-center",
-                        withSoftBackground ? "bg-[#F6F7FB]" : "bg-white",
-                      ].join(" ")}
-                    >
+                    <div className="grid grid-cols-[1.5fr_3fr_1.2fr_1.2fr] gap-3 px-6 py-4 border-t border-[#F3F4F5] items-center bg-white">
                       <div className="text-[14px] font-semibold text-[#111827]">
                         {q.partner}
                       </div>

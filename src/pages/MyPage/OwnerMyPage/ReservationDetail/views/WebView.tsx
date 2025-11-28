@@ -4,6 +4,12 @@ import { useParams } from "react-router-dom";
 import api from "../../../../../lib/api/axios";
 import { toast } from "react-toastify";
 
+/** ====== 유틸: Date -> YYYY-MM-DD ====== */
+const toDateInput = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+
 /** ====== 서버 응답 DTO ====== */
 type ReservationDetailApiResponse = {
   id: number;
@@ -124,10 +130,8 @@ export default function WebView() {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
 
-  /** 모달 타입: 거절 / 승인 */
-  const [confirmType, setConfirmType] = useState<"reject" | "approve" | null>(
-    null
-  );
+  /** 날짜/시간 에러 메시지 */
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   /** accessor 쿼리 파라미터 (GET 전용) */
   const accessorParam = useMemo(() => {
@@ -148,15 +152,12 @@ export default function WebView() {
     if (!startDate) next.startDate = "시작 일자를 선택해 주세요.";
     if (!endDate) next.endDate = "종료 일자를 선택해 주세요.";
 
-    // 오늘 날짜(YYYY-MM-DD) 문자열
     const todayStr = toDateInput(new Date());
 
-    // 시작일이 오늘 이전이면 에러
     if (startDate && startDate < todayStr) {
       next.startDate = "시작일은 오늘 이후 날짜만 선택할 수 있습니다.";
     }
 
-    // 종료일이 오늘 이전이면 에러
     if (endDate && endDate < todayStr) {
       next.endDate = "종료일은 오늘 이후 날짜만 선택할 수 있습니다.";
     }
@@ -164,7 +165,6 @@ export default function WebView() {
     if (startDate && endDate) {
       const sd = new Date(startDate);
       const ed = new Date(endDate);
-
       if (sd > ed) {
         next.endDate = "종료일은 시작일 이후여야 합니다.";
       }
@@ -217,7 +217,6 @@ export default function WebView() {
         const ui = mapApiToUi(data);
         setDetail(ui);
 
-        // 승인용 기본값 세팅
         const baseDate = ui.reservationDateIso?.slice(0, 10) || "";
         setStartDate((prev) => prev || baseDate);
         setEndDate((prev) => prev || baseDate);
@@ -237,108 +236,69 @@ export default function WebView() {
   /** 가격 포맷 */
   const formatPrice = (n: number) => `${(n ?? 0).toLocaleString("ko-KR")}원`;
 
-  /** 거절 버튼 클릭 → 모달 오픈 */
-  const openRejectModal = () => {
-    if (!detail) return;
-    if (detail.status !== "예약중") return;
-    setConfirmType("reject");
-  };
-
-  /** 승인 버튼 클릭 → 검증 후 모달 오픈 */
-  const openApproveModal = () => {
+  /** 거절 버튼 클릭 → 바로 API 호출 (모달 없음) */
+  const handleReject = async () => {
     if (!detail) return;
     if (detail.status !== "예약중") return;
 
-    if (!startDate || !endDate || !startTime || !endTime) {
-      toast.warning("예약 시작/종료 날짜와 시간을 모두 입력해주세요.");
-      return;
+    try {
+      setActionLoading(true);
+
+      const body: ReservationRejectRequest = {
+        status: "DENY",
+      };
+
+      const { data } = await api.patch<ReservationDetailApiResponse>(
+        `/api/v1/reservation/${detail.id}/reject`,
+        body
+      );
+
+      setDetail(mapApiToUi(data));
+      toast.success("예약이 거절되었습니다.");
+    } catch (e) {
+      console.error("[Reservation/DetailWebView] reject error:", e);
+      toast.error("예약 거절 중 오류가 발생했습니다.");
+    } finally {
+      setActionLoading(false);
     }
-
-    setConfirmType("approve");
   };
 
-  /** 모달에서 최종 확인 클릭 시 실제 API 호출 */
-  const handleConfirmAction = async () => {
-    if (!detail || detail.status !== "예약중" || !confirmType) return;
+  /** 승인 버튼 클릭 → 유효성 검사 후 바로 API 호출 (모달 없음) */
+  const handleApprove = async () => {
+    if (!detail) return;
+    if (detail.status !== "예약중") return;
 
-    // 승인일 때 한 번 더 방어적으로 검증
-    if (
-      confirmType === "approve" &&
-      (!startDate || !endDate || !startTime || !endTime)
-    ) {
-      toast.warning("예약 시작/종료 날짜와 시간을 모두 입력해주세요.");
+    const isValid = validate();
+    if (!isValid) {
+      toast.warning("예약 날짜와 시간을 다시 확인해 주세요.");
       return;
     }
 
     try {
       setActionLoading(true);
 
-      if (confirmType === "reject") {
-        const body: ReservationRejectRequest = {
-          status: "DENY",
-        };
+      const body: ReservationApproveRequest = {
+        status: "APPROVE",
+        reservationStartDate: startDate,
+        reservationEndDate: endDate,
+        reservationStartTime: startTime,
+        reservationEndTime: endTime,
+      };
 
-        const { data } = await api.patch<ReservationDetailApiResponse>(
-          `/api/v1/reservation/${detail.id}/reject`,
-          body
-        );
+      const { data } = await api.patch<ReservationDetailApiResponse>(
+        `/api/v1/reservation/${detail.id}/approve`,
+        body
+      );
 
-        setDetail(mapApiToUi(data));
-        toast.success("예약이 거절되었습니다.");
-      } else if (confirmType === "approve") {
-        const body: ReservationApproveRequest = {
-          status: "APPROVE",
-          reservationStartDate: startDate,
-          reservationEndDate: endDate,
-          reservationStartTime: startTime,
-          reservationEndTime: endTime,
-        };
-
-        const { data } = await api.patch<ReservationDetailApiResponse>(
-          `/api/v1/reservation/${detail.id}/approve`,
-          body
-        );
-
-        setDetail(mapApiToUi(data));
-        toast.success("예약이 승인되었습니다.");
-      }
-
-      setConfirmType(null);
+      setDetail(mapApiToUi(data));
+      toast.success("예약이 승인되었습니다.");
     } catch (e) {
-      console.error("[Reservation/DetailWebView] action error:", e);
-
-      if (confirmType === "reject") {
-        toast.error("예약 거절 중 오류가 발생했습니다.");
-      } else if (confirmType === "approve") {
-        toast.error("예약 승인 중 오류가 발생했습니다.");
-      }
+      console.error("[Reservation/DetailWebView] approve error:", e);
+      toast.error("예약 승인 중 오류가 발생했습니다.");
     } finally {
       setActionLoading(false);
     }
   };
-
-  const handleCloseModal = () => {
-    if (!actionLoading) {
-      setConfirmType(null);
-    }
-  };
-
-  const confirmTitle =
-    confirmType === "reject"
-      ? "예약을 거절하시겠어요?"
-      : confirmType === "approve"
-      ? "예약을 승인하시겠어요?"
-      : "";
-
-  const confirmDescription =
-    confirmType === "reject"
-      ? "한 번 거절한 예약은 다시 복구할 수 없어요."
-      : confirmType === "approve"
-      ? "승인 후에는 예약 일정에 맞춰 진행해주세요."
-      : "";
-
-  const confirmButtonLabel =
-    confirmType === "reject" ? "거절" : confirmType === "approve" ? "승인" : "";
 
   return (
     <main className="min-h-screen w-full bg-[#F6F7FB]">
@@ -467,12 +427,10 @@ export default function WebView() {
                           />
                         </TimeFieldRow>
 
-                        {/* 날짜 관련 에러 메시지 */}
-                        {(errors.startDate || errors.endDate) && (
-                          <p className="col-span-2 mt-1 text-right text-[12px] leading-[18px] text-[#EB5147]">
-                            {errors.startDate || errors.endDate}
-                          </p>
-                        )}
+                        {/* 날짜 관련 에러 메시지 : 항상 렌더링해서 높이 고정 */}
+                        <p className="mt-1 text-right text-[12px] leading-[18px] text-[#EB5147] min-h-[18px]">
+                          {errors.startDate || errors.endDate || "\u00A0"}
+                        </p>
 
                         <TimeFieldRow label="시작 시간">
                           <input
@@ -492,12 +450,10 @@ export default function WebView() {
                           />
                         </TimeFieldRow>
 
-                        {/* 시간 관련 에러 메시지 */}
-                        {errors.time && (
-                          <p className="col-span-2 mt-1 text-right text-[12px] leading-[18px] text-[#EB5147]">
-                            {errors.time}
-                          </p>
-                        )}
+                        {/* 시간 관련 에러 메시지 : 항상 렌더링해서 높이 고정 */}
+                        <p className="mt-1 text-right text-[12px] leading-[18px] text-[#EB5147] min-h-[18px]">
+                          {errors.time || "\u00A0"}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -527,7 +483,7 @@ export default function WebView() {
                   <div className="flex w-full justify-end gap-3 sm:w-auto">
                     <button
                       type="button"
-                      onClick={openRejectModal}
+                      onClick={handleReject}
                       disabled={actionLoading}
                       className={`inline-flex flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] px-5 py-2.5 text-[14px] font-medium text-[#6B7280] transition hover:bg-[#F9FAFB] sm:flex-none sm:min-w-[120px] ${
                         actionLoading ? "opacity-60 cursor-not-allowed" : ""
@@ -537,7 +493,7 @@ export default function WebView() {
                     </button>
                     <button
                       type="button"
-                      onClick={openApproveModal}
+                      onClick={handleApprove}
                       disabled={actionLoading}
                       className={`inline-flex flex-1 items-center justify-center rounded-xl bg-gradient-to-r from-[#FF4646] to-[#FF2233] px-6 py-2.5 text-[14px] font-semibold text-white shadow-[0_12px_30px_rgba(255,34,51,0.35)] transition hover:brightness-105 sm:flex-none sm:min-w-[120px] ${
                         actionLoading ? "opacity-60 cursor-not-allowed" : ""
@@ -552,18 +508,6 @@ export default function WebView() {
           </>
         )}
       </div>
-
-      {/* 승인/거절 확인 모달 */}
-      {confirmType && (
-        <ConfirmModal
-          title={confirmTitle}
-          description={confirmDescription}
-          onCancel={handleCloseModal}
-          onConfirm={handleConfirmAction}
-          isLoading={actionLoading}
-          confirmLabel={confirmButtonLabel}
-        />
-      )}
     </main>
   );
 }
@@ -592,72 +536,6 @@ function TimeFieldRow({
     <div className="grid grid-cols-[80px_minmax(0,1fr)] items-center gap-3">
       <span className="text-[13px] text-[#6B7280]">{label}</span>
       {children}
-    </div>
-  );
-}
-
-/** ====== 확인 모달 (쿠폰 삭제 모달 패턴 재사용) ====== */
-
-interface ConfirmModalProps {
-  title: string;
-  description: string;
-  onCancel: () => void;
-  onConfirm: () => void;
-  isLoading?: boolean;
-  confirmLabel: string;
-}
-
-function ConfirmModal({
-  title,
-  description,
-  onCancel,
-  onConfirm,
-  isLoading = false,
-  confirmLabel,
-}: ConfirmModalProps) {
-  return (
-    <div
-      className="fixed inset-0 z-30 flex items-center justify-center bg-black/40"
-      onClick={onCancel}
-    >
-      <div
-        className="relative w-[335px] bg-white rounded-[14px] shadow-[4px_4px_10px_rgba(0,0,0,0.06)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex flex-col items-start gap-2 px-5 pt-6 pb-0">
-          <div className="flex flex-row items-start gap-[14px] w-full">
-            <p className="text-[16px] font-bold leading-[24px] tracking-[-0.2px] text-[#1E2124]">
-              {title}
-            </p>
-          </div>
-          <p className="w-full text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#9D9D9D]">
-            {description}
-          </p>
-        </div>
-
-        <div className="mt-4 flex flex-row items-center justify-between gap-2 px-5 pb-6 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isLoading}
-            className="flex h-11 w-[142px] flex-row items-center justify-center rounded-[10px] bg-[#F3F4F5] disabled:opacity-70"
-          >
-            <span className="text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999]">
-              취소
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="flex h-11 w-[143px] flex-row items-center justify-center rounded-[10px] bg-[#FF2233] disabled:bg-[#FF2233]/60"
-          >
-            <span className="text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white">
-              {isLoading ? "처리 중..." : confirmLabel}
-            </span>
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
