@@ -123,13 +123,16 @@ function mapToPaymentItem(dto: PaymentMeItem): PaymentItem {
 
 function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
   const nav = useNavigate();
+
+  // 취소요청, 취소완료 둘 다 취소요청 버튼 비노출
   const isCancelable =
     item.status !== "취소요청됨" && item.status !== "취소완료";
 
-  // 취소요청 상태가 아니고, 아직 리뷰를 안 쓴 경우에만 작성 가능
-  const canWriteReview = !item.isReviewed && item.status !== "취소요청됨";
-
   const isCancelRequested = item.status === "취소요청됨";
+  const isCanceled = item.status === "취소완료";
+
+  // 리뷰 작성 가능: "결제완료" 상태이면서 아직 리뷰를 안 쓴 경우
+  const canWriteReview = item.status === "결제완료" && !item.isReviewed;
 
   return (
     <div className="w-full relative">
@@ -181,8 +184,8 @@ function PaymentCard({ item, onCancelRequest }: PaymentCardProps) {
         </button>
 
         {/* 리뷰 관련 버튼 영역 */}
-        {isCancelRequested ? (
-          // 취소요청된 결제건: 리뷰 작성 불가
+        {isCancelRequested || isCanceled ? (
+          // 취소요청/취소완료 결제건: 리뷰 작성 불가
           <button
             type="button"
             disabled
