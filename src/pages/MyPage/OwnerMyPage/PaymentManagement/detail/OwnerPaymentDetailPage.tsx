@@ -1,4 +1,4 @@
-import MobileView from "../list/views/MoblieView";
+import MobileView from "./views/MobileView";
 import WebView from "./views/WebView";
 
 export default function OwnerPaymentDetailPage() {

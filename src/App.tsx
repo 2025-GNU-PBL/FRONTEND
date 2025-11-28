@@ -145,6 +145,8 @@ function Layout() {
     "/my-page/owner/profile/edit",
     "/my-page/owner/reservations",
     "/my-page/owner/payments",
+    "/my-page/owner/payments/detail",
+    "/my-page/owner/cancels/detail/request",
 
     "/my-page/client/profile/edit",
     "/my-page/client/payments/review",

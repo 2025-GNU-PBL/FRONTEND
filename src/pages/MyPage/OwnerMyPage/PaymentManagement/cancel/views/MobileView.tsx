@@ -61,7 +61,7 @@ interface MobileCanceledDetailViewProps {
   cancelReason?: string;
 }
 
-/** 결제 취소 완료 상세 (모바일) */
+/** 결제 취소 완료 상세 (모바일) - 반응형 */
 const MobileView: React.FC<MobileCanceledDetailViewProps> = (props) => {
   const location = useLocation();
   const nav = useNavigate();
@@ -139,14 +139,14 @@ const MobileView: React.FC<MobileCanceledDetailViewProps> = (props) => {
   if (!paymentKey) {
     return (
       <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-[#F5F6F8] px-5">
-        <div className="w-full rounded-2xl bg-white px-6 py-8 text-center shadow">
+        <div className="w-full max-w-md rounded-2xl bg-white px-6 py-8 text-center shadow">
           <p className="mb-3 text-sm text-gray-700">
             취소 상세 정보를 찾을 수 없습니다. (paymentKey 없음)
           </p>
           <button
             type="button"
             onClick={() => nav(-1)}
-            className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-medium text-white"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-medium text-white"
           >
             뒤로가기
           </button>
@@ -159,7 +159,7 @@ const MobileView: React.FC<MobileCanceledDetailViewProps> = (props) => {
   if (detailLoading && (!product || !customer)) {
     return (
       <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-[#F5F6F8] px-5">
-        <div className="w-full rounded-2xl bg-white px-6 py-8 text-center shadow">
+        <div className="w-full max-w-md rounded-2xl bg-white px-6 py-8 text-center shadow">
           <p className="mb-3 text-sm text-gray-700">
             취소 상세 정보를 불러오는 중입니다...
           </p>
@@ -172,7 +172,7 @@ const MobileView: React.FC<MobileCanceledDetailViewProps> = (props) => {
   if ((!product || !customer) && !detailLoading) {
     return (
       <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-[#F5F6F8] px-5">
-        <div className="w-full rounded-2xl bg-white px-6 py-8 text-center shadow">
+        <div className="w-full max-w-md rounded-2xl bg-white px-6 py-8 text-center shadow">
           <p className="mb-2 text-sm text-gray-700">
             취소 상세 정보를 찾을 수 없습니다.
           </p>
@@ -182,7 +182,7 @@ const MobileView: React.FC<MobileCanceledDetailViewProps> = (props) => {
           <button
             type="button"
             onClick={() => nav(-1)}
-            className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-medium text-white"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-medium text-white"
           >
             뒤로가기
           </button>
@@ -203,39 +203,44 @@ const MobileView: React.FC<MobileCanceledDetailViewProps> = (props) => {
       </div>
 
       {/* 본문 */}
-      <div className="px-5 pt-20">
+      <div className="mx-auto flex w-full max-w-xl flex-1 flex-col px-5 pt-20">
         {/* 상품정보 카드 */}
-        <section className="relative mb-4 h-[150px] w-full rounded-[12px] border border-[#F3F4F5] bg-white shadow-[0_0_0_rgba(0,0,0,0.06)]">
-          <div className="absolute left-4 top-4 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
+        <section className="mb-4 w-full rounded-[12px] border border-[#F3F4F5] bg-white p-4 shadow-[0_0_0_rgba(0,0,0,0.06)]">
+          <div className="mb-4 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
             상품정보
           </div>
 
-          <div className="absolute left-4 top-[54px] flex pr-4">
-            {/* 썸네일 */}
-            <div className="h-20 w-20 rounded-[4px] border border-[#F5F5F5] bg-cover bg-center">
-              {product?.thumbnailUrl && (
-                <img
-                  src={product.thumbnailUrl}
-                  alt={product.productName}
-                  className="h-full w-full rounded-[4px] object-cover"
-                />
-              )}
+          <div className="flex items-start justify-between gap-4">
+            {/* 썸네일 + 텍스트 */}
+            <div className="flex flex-1 items-start gap-4">
+              {/* 썸네일 */}
+              <div className="h-20 w-20 flex-shrink-0 rounded-[4px] border border-[#F5F5F5] bg-cover bg-center">
+                {product?.thumbnailUrl && (
+                  <img
+                    src={product.thumbnailUrl}
+                    alt={product.productName}
+                    className="h-full w-full rounded-[4px] object-cover"
+                  />
+                )}
+              </div>
+
+              {/* 텍스트 영역 */}
+              <div className="flex min-w-0 flex-1 flex-col">
+                <p className="text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-black/40">
+                  {product?.shopName}
+                </p>
+                <p className="mt-1 line-clamp-2 text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-[#1E2124]">
+                  {product?.productName}
+                </p>
+              </div>
             </div>
 
-            {/* 텍스트 영역 */}
-            <div className="ml-4 flex flex-1 flex-col justify-between">
-              <p className="h-[21px] text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-black/40">
-                {product?.shopName}
-              </p>
-              <p className="mt-1 text-[14px] font-normal leading-[21px] tracking-[-0.2px] text-[#1E2124]">
-                {product?.productName}
-              </p>
+            {/* 가격 */}
+            <div className="flex flex-col items-end justify-start">
+              <span className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124] whitespace-nowrap">
+                {formattedPrice}
+              </span>
             </div>
-          </div>
-
-          {/* 가격 */}
-          <div className="absolute right-4 top-[108px] h-[26px] text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
-            {formattedPrice}
           </div>
         </section>
 
