@@ -18,6 +18,7 @@ type ReservationApiResponse = {
   reservationTime: string; // "2025-11-07T12:00:00"
   title: string;
   content: string;
+  createdAt: string;
 };
 
 /** 화면에서 사용할 예약 타입 */
@@ -45,7 +46,7 @@ const mapStatus = (status: string): ReservationStatus => {
 
 /** Reservation DTO -> 화면용 예약 뷰 모델 변환 */
 const toReservation = (r: ReservationApiResponse): Reservation => {
-  const createdAt = (r.reservationTime || "").slice(0, 10) || "";
+  const createdAt = (r.createdAt || "").slice(0, 10) || "";
   return {
     id: String(r.id),
     partner: r.title || "예약 업체",

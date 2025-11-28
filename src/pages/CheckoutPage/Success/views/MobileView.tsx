@@ -107,6 +107,14 @@ const MobileView = ({
   const finalPaidAmount =
     typeof paidAmount === "number" && paidAmount > 0 ? paidAmount : totalPrice;
 
+  // ✅ 쿠폰 할인 금액 표시: 0이면 "0원", 0보다 크면 "-10,000원" 형태
+  const discountValue =
+    typeof discountAmount === "number" && discountAmount > 0
+      ? discountAmount
+      : 0;
+  const discountDisplay =
+    discountValue > 0 ? `-${discountValue.toLocaleString()}원` : "0원";
+
   const formattedApprovedAt = approvedAt
     ? new Date(approvedAt).toLocaleString("ko-KR", {
         year: "numeric",
@@ -129,7 +137,7 @@ const MobileView = ({
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[390px] flex-col bg-white text-[#1E2124]">
-      {/* ✅ 성공 화면: 헤더 제거 + 카드 제거, 컨텐츠를 화면에 그대로 펼침 */}
+      {/* 본문 */}
       <main className="flex-1 overflow-y-auto px-5 pt-6 pb-[120px]">
         {/* 상단 배지 + 타이틀 */}
         <div className="flex flex-col items-center text-center">
@@ -197,38 +205,38 @@ const MobileView = ({
 
           <div className="space-y-2.5 text-[12px]">
             {shopName && (
-              <div className="flex justify-between gap-3">
+              <div className="flex gap-3">
                 <span className="text-[#6b7280]">가맹점</span>
-                <span className="font-medium text-[#111827] text-right break-words">
+                <span className="font-medium text-[#111827] text-right break-words flex-1">
                   {shopName}
                 </span>
               </div>
             )}
 
-            <div className="flex justify-between gap-3">
+            <div className="flex gap-3">
               <span className="text-[#6b7280]">주문번호</span>
-              <span className="font-medium text-[#111827] break-all text-right">
+              <span className="font-medium text-[#111827] break-all text-right flex-1">
                 {finalOrderCode}
               </span>
             </div>
 
             {formattedApprovedAt && (
-              <div className="flex justify-between gap-3">
+              <div className="flex gap-3">
                 <span className="text-[#6b7280]">결제 일시</span>
-                <span className="text-[#111827] text-right">
+                <span className="text-[#111827] text-right flex-1">
                   {formattedApprovedAt}
                 </span>
               </div>
             )}
 
             {receiptUrl && (
-              <div className="flex justify-between items-center gap-3">
+              <div className="flex items-center gap-3">
                 <span className="text-[#6b7280]">영수증</span>
                 <a
                   href={receiptUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[12px] font-medium text-[#2563eb] hover:text-[#1d4ed8] underline underline-offset-2"
+                  className="text-[12px] font-medium text-[#2563eb] hover:text-[#1d4ed8] underline underline-offset-2 text-right flex-1"
                 >
                   영수증 확인하기
                 </a>
@@ -269,23 +277,26 @@ const MobileView = ({
 
           {/* 금액 디테일 */}
           <div className="space-y-2.5 text-[12px]">
-            <div className="flex justify-between gap-3">
+            {/* 상품 금액 */}
+            <div className="flex gap-3">
               <span className="text-[#6b7280]">상품 금액</span>
-              <span className="font-medium text-[#111827] text-right">
+              <span className="font-medium text-[#111827] text-right flex-1">
                 {originalPrice.toLocaleString()}원
               </span>
             </div>
 
-            <div className="flex justify-between gap-3">
+            {/* 할인 금액 - 오른쪽 끝 정렬 + 0원일 땐 마이너스 없이 */}
+            <div className="flex gap-3">
               <span className="text-[#6b7280]">할인 금액</span>
-              <span className="font-medium text-[#16a34a] text-right">
-                -{discountAmount.toLocaleString()}원
+              <span className="font-medium text-[#16a34a] text-right flex-1">
+                {discountDisplay}
               </span>
             </div>
 
-            <div className="flex justify-between gap-3 pt-2 border-t border-dashed border-[#e5e7eb] mt-2">
+            {/* 최종 결제 금액 */}
+            <div className="flex gap-3 pt-2 border-t border-dashed border-[#e5e7eb] mt-2">
               <span className="text-[#4b5563] font-medium">최종 결제 금액</span>
-              <span className="font-semibold text-[#111827] text-right">
+              <span className="font-semibold text-[#111827] text-right flex-1">
                 {finalPaidAmount.toLocaleString()}원
               </span>
             </div>
@@ -299,7 +310,7 @@ const MobileView = ({
         </p>
       </main>
 
-      {/* 하단 버튼 영역 (그대로 유지) */}
+      {/* 하단 버튼 영역 */}
       <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-white px-5 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
         <div className="flex gap-3">
           <button

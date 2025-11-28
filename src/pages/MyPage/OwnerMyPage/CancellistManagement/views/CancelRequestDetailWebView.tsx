@@ -61,7 +61,7 @@ interface WebCancelDetailViewProps {
   cancelReason?: string;
   /** 상위에서 강제로 승인 버튼 노출 여부 제어하고 싶을 때 */
   canApprove?: boolean;
-  /** 승인 완료 후 상위에서 추가 작업이 필요하면 사용 */
+  /** 승인/거절 완료 후 상위에서 추가 작업이 필요하면 사용 */
   onApproved?: () => void;
 }
 
@@ -104,7 +104,9 @@ function SectionCard({
   );
 }
 
-const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
+const CancelRequestDetailWebView: React.FC<WebCancelDetailViewProps> = (
+  props
+) => {
   const nav = useNavigate();
   const location = useLocation();
   const state = location.state as CancelDetailLocationState | undefined;
@@ -139,10 +141,10 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
 
-  /** 승인 확인 모달 / 승인 API 로딩 / 토스트 */
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  /** 승인/거절 API 로딩 / 토스트 */
   const [approveLoading, setApproveLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string>("");
 
   /** 금액 포맷  */
   const formattedPrice =
@@ -199,20 +201,13 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
   }, [paymentKey, paymentStatus, product, customer, cancelReason]);
 
   const isRequested = paymentStatus === "CANCEL_REQUESTED";
-  /** 실제로 승인 UI를 보여줄지 여부 */
+  /** 실제로 승인/거절 UI를 보여줄지 여부 */
   const showApproveUI = isRequested && canApprove;
 
-  /** 승인 버튼 클릭 (요청 + canApprove=true 인 경우에만 의미 있음) */
-  const handleApproveClick = () => {
-    if (!showApproveUI) return;
-    setConfirmOpen(true);
-  };
-
-  const handleCancelConfirm = () => {
-    setConfirmOpen(false);
-  };
-
-  const handleApproveConfirm = async () => {
+  /** 승인 처리
+   *  POST /api/v1/payments/{paymentKey}/cancel-approve
+   */
+  const handleApprove = async () => {
     if (!paymentKey) return;
     if (!showApproveUI) return;
 
@@ -220,7 +215,7 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
       setApproveLoading(true);
       await api.post(`/api/v1/payments/${paymentKey}/cancel-approve`);
 
-      setConfirmOpen(false);
+      setToastMessage("취소요청이 승인됐어요");
       setShowToast(true);
       setPaymentStatus("CANCELED");
       props.onApproved?.();
@@ -228,9 +223,50 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
       setTimeout(() => {
         setShowToast(false);
       }, 2500);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("승인 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      const serverCode = error?.response?.data?.code;
+      const serverMsg = error?.response?.data?.message;
+      alert(
+        serverMsg
+          ? `승인 처리 중 오류가 발생했습니다.\n(${serverCode} : ${serverMsg})`
+          : "승인 처리에 실패했습니다. 잠시 후 다시 시도해주세요."
+      );
+    } finally {
+      setApproveLoading(false);
+    }
+  };
+
+  /** 취소 요청 거절
+   *  POST /api/v1/payments/{paymentKey}/cancel-reject
+   */
+  const handleReject = async () => {
+    if (!paymentKey) return;
+    if (!showApproveUI) return;
+
+    try {
+      setApproveLoading(true);
+      await api.post(`/api/v1/payments/${paymentKey}/cancel-reject`, {
+        rejectReason: "사장님이 취소 요청을 거절했습니다.",
+      });
+
+      setToastMessage("취소요청을 거절했어요");
+      setShowToast(true);
+      setPaymentStatus("CANCELED");
+      props.onApproved?.();
+
+      setTimeout(() => {
+        setShowToast(false);
+      }, 2500);
+    } catch (error: any) {
+      console.error(error);
+      const serverCode = error?.response?.data?.code;
+      const serverMsg = error?.response?.data?.message;
+      alert(
+        serverMsg
+          ? `취소 요청 거절 중 오류가 발생했습니다.\n(${serverCode} : ${serverMsg})`
+          : "취소 요청 거절 처리에 실패했습니다. 잠시 후 다시 시도해주세요."
+      );
     } finally {
       setApproveLoading(false);
     }
@@ -400,7 +436,7 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
                   </div>
                 </div>
 
-                {/* 오른쪽: 취소 사유 + 승인 버튼 */}
+                {/* 오른쪽: 취소 사유 + 승인/거절 버튼 */}
                 <div className="flex flex-col gap-5">
                   {/* 취소 사유 카드 */}
                   <div className="rounded-[16px] border border-[#F3F4F5] bg-white px-5 py-4 shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
@@ -421,26 +457,35 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
                     </p>
                   </div>
 
-                  {/* 승인 버튼 영역 (요청 상태 + canApprove=true 일 때만 노출) */}
+                  {/* 승인/거절 버튼 영역 (요청 상태 + canApprove=true 일 때만 노출) */}
                   {showApproveUI && (
                     <div className="mt-auto rounded-2xl bg-white px-5 py-4 shadow-[0_4px_18px_rgba(15,23,42,0.06)]">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="space-y-1">
-                          <p className="text-[14px] font-semibold text-[#1E2124]">
-                            취소 요청 승인
-                          </p>
-                          <p className="text-[12px] text-gray-500">
-                            요청 내용을 확인하셨다면 아래 버튼을 눌러 취소를
-                            승인해 주세요.
-                          </p>
-                        </div>
+                      <div className="mb-3 space-y-1">
+                        <p className="text-[14px] font-semibold text-[#1E2124]">
+                          취소 요청 처리
+                        </p>
+                        <p className="text-[12px] text-gray-500">
+                          요청 내용을 확인하셨다면 승인 또는 거절을 선택해
+                          주세요.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-3">
                         <button
                           type="button"
-                          onClick={handleApproveClick}
+                          onClick={handleReject}
+                          disabled={approveLoading}
+                          className="inline-flex h-11 min-w-[110px] items-center justify-center rounded-[10px] border border-[#E5E7EB] bg-white px-4 text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#6B7280] hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {approveLoading ? "처리 중..." : "거절하기"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleApprove}
                           disabled={approveLoading}
                           className="inline-flex h-11 min-w-[130px] items-center justify-center rounded-[10px] bg-[#FF2233] px-4 text-[14px] font-semibold leading-[21px] tracking-[-0.2px] text-white shadow-sm hover:bg-[#ff1124] disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {approveLoading ? "승인 중..." : "승인하기"}
+                          {approveLoading ? "처리 중..." : "승인하기"}
                         </button>
                       </div>
                     </div>
@@ -452,48 +497,7 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
         </div>
       </main>
 
-      {/* 승인 확인 모달 (canApprove=true 일 때만 의미 있음) */}
-      {confirmOpen && canApprove && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
-          <div className="relative h-[188px] w-[335px] rounded-[14px] bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]">
-            {/* 상단 내용 */}
-            <div className="flex h-[100px] w-full flex-col gap-[10px] px-5 pt-6">
-              <div className="flex h-6 items-center">
-                <p className="text-[16px] font-bold leading-[24px] tracking-[-0.2px] text-[#1E2124]">
-                  취소 요청을 승인 하시겠어요?
-                </p>
-              </div>
-              <p className="h-[42px] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#9D9D9D]">
-                요청 승인 시 주문은 취소되며,
-                <br />
-                결제금액은 고객에게 환불됩니다.
-              </p>
-            </div>
-
-            {/* 하단 버튼 영역 */}
-            <div className="absolute bottom-0 flex h-[78px] w-full items-center gap-2 px-5 pb-6 pt-2">
-              <button
-                type="button"
-                onClick={handleCancelConfirm}
-                disabled={approveLoading}
-                className="flex h-11 w-[142px] items-center justify-center rounded-[10px] bg-[#F3F4F5] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-[#999999] disabled:opacity-60"
-              >
-                취소하기
-              </button>
-              <button
-                type="button"
-                onClick={handleApproveConfirm}
-                disabled={approveLoading}
-                className="flex h-11 w-[143px] flex-1 items-center justify-center rounded-[10px] bg-[#FF2233] text-[14px] font-medium leading-[21px] tracking-[-0.2px] text-white disabled:opacity-60"
-              >
-                {approveLoading ? "승인 중..." : "승인하기"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 승인 완료 토스트 */}
+      {/* 승인 / 거절 완료 토스트 */}
       {showToast && (
         <div className="fixed bottom-6 left-1/2 z-40 w-[350px] -translate-x-1/2 rounded-[30px] bg-[#4D4D4D] px-5 py-3">
           <div className="flex items-center gap-[8px]">
@@ -504,7 +508,7 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
               />
             </div>
             <span className="text-[16px] font-semibold leading-[24px] tracking-[-0.2px] text-white">
-              취소요청이 승인 됐어요
+              {toastMessage || "처리가 완료됐어요"}
             </span>
           </div>
         </div>
@@ -513,4 +517,4 @@ const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
   );
 };
 
-export default WebView;
+export default CancelRequestDetailWebView;
