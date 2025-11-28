@@ -1,7 +1,13 @@
 // src/pages/Customer/Reservation/DetailWebView.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import api from "../../../../../lib/api/axios";
+
+/** ====== 유틸: Date -> YYYY-MM-DD ====== */
+const toDateInput = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getMonth() + 1
+  ).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 /** ====== 서버 응답 DTO ====== */
 type ReservationDetailApiResponse = {
@@ -120,6 +126,9 @@ export default function WebView() {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
 
+  /** 날짜/시간 에러 메시지 상태 */
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   /** accessor 쿼리 파라미터 (GET 전용) */
   const accessorParam = useMemo(() => {
     try {
@@ -131,6 +140,58 @@ export default function WebView() {
       return undefined;
     }
   }, []);
+
+  /** ====== 유효성 검사 ====== */
+  const validate = useCallback(() => {
+    const next: Record<string, string> = {};
+
+    if (!startDate) next.startDate = "시작 일자를 선택해 주세요.";
+    if (!endDate) next.endDate = "종료 일자를 선택해 주세요.";
+
+    // 오늘 날짜(YYYY-MM-DD) 문자열
+    const todayStr = toDateInput(new Date());
+
+    // 시작일이 오늘 이전이면 에러
+    if (startDate && startDate < todayStr) {
+      next.startDate = "시작일은 오늘 이후 날짜만 선택할 수 있습니다.";
+    }
+
+    // 종료일이 오늘 이전이면 에러
+    if (endDate && endDate < todayStr) {
+      next.endDate = "종료일은 오늘 이후 날짜만 선택할 수 있습니다.";
+    }
+
+    if (startDate && endDate) {
+      const sd = new Date(startDate);
+      const ed = new Date(endDate);
+
+      if (sd > ed) {
+        next.endDate = "종료일은 시작일 이후여야 합니다.";
+      }
+    }
+
+    if (!startTime || !endTime) {
+      next.time = "시작/종료 시간을 모두 선택해 주세요.";
+    } else {
+      const [sh, sm] = startTime.split(":").map((v) => Number(v));
+      const [eh, em] = endTime.split(":").map((v) => Number(v));
+      if (
+        !Number.isNaN(sh) &&
+        !Number.isNaN(sm) &&
+        !Number.isNaN(eh) &&
+        !Number.isNaN(em)
+      ) {
+        const startTotal = sh * 60 + sm;
+        const endTotal = eh * 60 + em;
+        if (startTotal >= endTotal) {
+          next.time = "종료 시간은 시작 시간보다 늦게 설정해 주세요.";
+        }
+      }
+    }
+
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }, [startDate, endDate, startTime, endTime]);
 
   /** 상세 조회 */
   useEffect(() => {
@@ -176,7 +237,7 @@ export default function WebView() {
   /** 가격 포맷 */
   const formatPrice = (n: number) => `${(n ?? 0).toLocaleString("ko-KR")}원`;
 
-  /** 거절하기 (모바일처럼 날짜/시간 검증 없이) */
+  /** 거절하기 */
   const handleReject = async () => {
     if (!detail) return;
     if (detail.status !== "예약중") return;
@@ -211,8 +272,10 @@ export default function WebView() {
     if (!detail) return;
     if (detail.status !== "예약중") return;
 
-    if (!startDate || !endDate || !startTime || !endTime) {
-      window.alert("예약 시작/종료 날짜와 시간을 모두 입력해주세요.");
+    // 유효성 검사 먼저 실행 (alert 대신 errors 상태만 세팅)
+    const isValid = validate();
+    if (!isValid) {
+      // 에러가 있으면 그냥 반환, 화면에 빨간 글씨로 표시됨
       return;
     }
 
@@ -349,7 +412,7 @@ export default function WebView() {
                     </div>
                   </div>
 
-                  {/* 예약 시간 설정 : 예약중일 때만 노출 (모바일과 동일한 동작) */}
+                  {/* 예약 시간 설정 : 예약중일 때만 노출 */}
                   {detail.status === "예약중" && (
                     <div className="rounded-2xl bg-[#F9FAFB] px-6 py-5">
                       <h3 className="mb-4 text-[15px] font-semibold tracking-[-0.2px] text-[#111827]">
@@ -375,6 +438,13 @@ export default function WebView() {
                           />
                         </TimeFieldRow>
 
+                        {/* 날짜 관련 에러 메시지 */}
+                        {(errors.startDate || errors.endDate) && (
+                          <p className="col-span-2 mt-1 text-right text-[12px] leading-[18px] text-[#EB5147]">
+                            {errors.startDate || errors.endDate}
+                          </p>
+                        )}
+
                         <TimeFieldRow label="시작 시간">
                           <input
                             type="time"
@@ -392,6 +462,13 @@ export default function WebView() {
                             onChange={(e) => setEndTime(e.target.value)}
                           />
                         </TimeFieldRow>
+
+                        {/* 시간 관련 에러 메시지 */}
+                        {errors.time && (
+                          <p className="col-span-2 mt-1 text-right text-[12px] leading-[18px] text-[#EB5147]">
+                            {errors.time}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}

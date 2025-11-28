@@ -76,25 +76,51 @@ export default function PersonalScheduleCreateMobileView() {
   const validate = useCallback(() => {
     const next: Record<string, string> = {};
 
-    if (!title.trim()) next.title = "제목을 입력해 주세요.";
+    if (!title.trim()) {
+      next.title = "제목을 입력해 주세요.";
+    }
+
     if (!startDate) next.startDate = "시작 일자를 선택해 주세요.";
     if (!endDate) next.endDate = "종료 일자를 선택해 주세요.";
 
-    /** 날짜 유효성 검사: 시작일 ≤ 종료일 */
+    // 오늘 날짜(YYYY-MM-DD) 문자열
+    const todayStr = toDateInput(new Date());
+
+    // 시작일이 오늘 이전이면 에러
+    if (startDate && startDate < todayStr) {
+      next.startDate = "시작일은 오늘 이후 날짜만 선택할 수 있습니다.";
+    }
+
+    // 종료일이 오늘 이전이면 에러
+    if (endDate && endDate < todayStr) {
+      next.endDate = "종료일은 오늘 이후 날짜만 선택할 수 있습니다.";
+    }
+
     if (startDate && endDate) {
       const sd = new Date(startDate);
       const ed = new Date(endDate);
-      if (sd > ed) next.endDate = "종료일은 시작일 이후여야 합니다.";
+
+      if (sd > ed) {
+        next.endDate = "종료일은 시작일 이후여야 합니다.";
+      }
     }
 
-    /** 시간 유효성 검사: 시작 < 종료 */
     if (!startTime || !endTime) {
       next.time = "시작/종료 시간을 모두 선택해 주세요.";
     } else {
-      const [sh, sm] = startTime.split(":").map(Number);
-      const [eh, em] = endTime.split(":").map(Number);
-      if (sh * 60 + sm >= eh * 60 + em) {
-        next.time = "종료 시간은 시작 시간보다 늦게 설정해 주세요.";
+      const [sh, sm] = startTime.split(":").map((v) => Number(v));
+      const [eh, em] = endTime.split(":").map((v) => Number(v));
+      if (
+        !Number.isNaN(sh) &&
+        !Number.isNaN(sm) &&
+        !Number.isNaN(eh) &&
+        !Number.isNaN(em)
+      ) {
+        const startTotal = sh * 60 + sm;
+        const endTotal = eh * 60 + em;
+        if (startTotal >= endTotal) {
+          next.time = "종료 시간은 시작 시간보다 늦게 설정해 주세요.";
+        }
       }
     }
 

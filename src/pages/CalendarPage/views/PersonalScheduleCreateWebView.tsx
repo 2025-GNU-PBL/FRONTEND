@@ -87,55 +87,60 @@ export default function PersonalScheduleCreateWebView() {
     [title, startDate, endDate, startTime, endTime]
   );
 
-  /** 유효성 검사 (제목은 에러 문구 없이 필수, 날짜/시간만 에러 문구) */
+  /** ====== 유효성 검사 ====== */
   const validate = useCallback(() => {
-    const trimmedTitle = title.trim();
-    const next: ErrorState = {};
+    const next: Record<string, string> = {};
 
-    // 제목은 반드시 입력되어야 하지만 에러 문구는 표시하지 않음
-    let valid = !!trimmedTitle;
-
-    // 날짜 검사
-    if (!startDate) {
-      next.startDate = "시작 일자를 선택해 주세요.";
-      valid = false;
+    if (!title.trim()) {
+      next.title = "제목을 입력해 주세요.";
     }
-    if (!endDate) {
-      next.endDate = "종료 일자를 선택해 주세요.";
-      valid = false;
+
+    if (!startDate) next.startDate = "시작 일자를 선택해 주세요.";
+    if (!endDate) next.endDate = "종료 일자를 선택해 주세요.";
+
+    // 오늘 날짜(YYYY-MM-DD) 문자열
+    const todayStr = toDateInput(new Date());
+
+    // 시작일이 오늘 이전이면 에러
+    if (startDate && startDate < todayStr) {
+      next.startDate = "시작일은 오늘 이후 날짜만 선택할 수 있습니다.";
+    }
+
+    // 종료일이 오늘 이전이면 에러
+    if (endDate && endDate < todayStr) {
+      next.endDate = "종료일은 오늘 이후 날짜만 선택할 수 있습니다.";
     }
 
     if (startDate && endDate) {
       const sd = new Date(startDate);
       const ed = new Date(endDate);
-      if (!Number.isNaN(+sd) && !Number.isNaN(+ed) && sd > ed) {
+
+      if (sd > ed) {
         next.endDate = "종료일은 시작일 이후여야 합니다.";
-        valid = false;
       }
     }
 
-    // 시간 검사
     if (!startTime || !endTime) {
       next.time = "시작/종료 시간을 모두 선택해 주세요.";
-      valid = false;
-    }
-
-    if (startDate && endDate && startTime && endTime) {
-      const startDateTime = new Date(`${startDate}T${startTime}:00`);
-      const endDateTime = new Date(`${endDate}T${endTime}:00`);
-
+    } else {
+      const [sh, sm] = startTime.split(":").map((v) => Number(v));
+      const [eh, em] = endTime.split(":").map((v) => Number(v));
       if (
-        !Number.isNaN(+startDateTime) &&
-        !Number.isNaN(+endDateTime) &&
-        startDateTime >= endDateTime
+        !Number.isNaN(sh) &&
+        !Number.isNaN(sm) &&
+        !Number.isNaN(eh) &&
+        !Number.isNaN(em)
       ) {
-        next.time = "종료 시간은 시작 시간보다 늦게 설정해 주세요.";
-        valid = false;
+        const startTotal = sh * 60 + sm;
+        const endTotal = eh * 60 + em;
+        if (startTotal >= endTotal) {
+          next.time = "종료 시간은 시작 시간보다 늦게 설정해 주세요.";
+        }
       }
     }
 
     setErrors(next);
-    return valid;
+    return Object.keys(next).length === 0;
   }, [title, startDate, endDate, startTime, endTime]);
 
   /** 파일 추가 */
