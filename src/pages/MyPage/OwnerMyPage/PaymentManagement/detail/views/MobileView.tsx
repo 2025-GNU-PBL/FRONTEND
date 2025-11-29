@@ -125,16 +125,17 @@ export default function MobileView() {
 
       {/* 본문 영역 (스크롤) */}
       <div className="flex-1 overflow-auto pb-6">
-        <div className="mx-auto flex w-full max-w-xl flex-col">
+        {/* 취소요청 상세와 동일한 느낌: w-full + px-5 */}
+        <div className="w-full px-5">
           {/* 로딩 / 에러 처리 */}
           {isLoading && (
-            <div className="mt-10 px-5 text-center text-sm text-gray-500">
+            <div className="mt-10 text-center text-sm text-gray-500">
               결제 정보를 불러오는 중입니다...
             </div>
           )}
 
           {errorMsg && !isLoading && (
-            <div className="mt-10 px-5 text-center text-sm text-red-500">
+            <div className="mt-10 text-center text-sm text-red-500">
               {errorMsg}
             </div>
           )}
@@ -142,7 +143,7 @@ export default function MobileView() {
           {!isLoading && !errorMsg && payment && (
             <>
               {/* 예약 상태 + 날짜 영역 */}
-              <div className="mt-5 flex items-center justify-between px-5">
+              <div className="mt-5 flex items-center justify-between">
                 <span className="text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
                   {statusLabel}
                 </span>
@@ -152,7 +153,7 @@ export default function MobileView() {
               </div>
 
               {/* 상품 정보 카드 */}
-              <section className="mt-10 px-5">
+              <section className="mt-10 w-full">
                 <div className="w-full rounded-[12px] border border-[#F3F4F5] bg-white px-4 pb-5 pt-4">
                   {/* 카드 제목 */}
                   <h2 className="mb-3 text-[16px] font-semibold leading-[26px] tracking-[-0.2px] text-[#1E2124]">
@@ -197,7 +198,7 @@ export default function MobileView() {
               </section>
 
               {/* 결제 내역 카드 */}
-              <section className="mt-4 px-5">
+              <section className="mt-4 w-full">
                 <div className="w-full rounded-[12px] border border-[#F3F4F5] bg-white px-4 py-4">
                   <div className="flex flex-col gap-4">
                     {/* 제목 */}

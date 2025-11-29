@@ -15,6 +15,7 @@ import {
 import userReducer from "./userSlice";
 import signupReducer from "./signupSlice";
 import chatReducer from "./chatSlice";
+import cartReducer from "./cartSlice";
 
 const userPersistConfig = {
   key: "user",
@@ -38,6 +39,7 @@ const rootReducer = combineReducers({
   user: persistReducer(userPersistConfig, userReducer),
   signup: persistReducer(signupPersistConfig, signupReducer),
   chat: persistReducer(chatPersistConfig, chatReducer), // 채팅방 목록 persist
+  cart: cartReducer,
 });
 
 const persistConfig = {

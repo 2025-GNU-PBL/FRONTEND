@@ -1,9 +1,10 @@
+// src/components/layout/Navbar.tsx (예시 경로)
 import { Link } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { useAppSelector } from "../../store/hooks";
+import { useAppSelector, useAppDispatch } from "../../store/hooks";
 import { useEffect, useState } from "react";
 import { getUnreadNotificationCount } from "../../lib/api/notification";
-import api from "../../lib/api/axios"; // axios 인스턴스 임포트
+import { fetchCartCount } from "../../store/cartSlice";
 
 const menuItems = [
   { name: "웨딩홀", path: "/wedding" },
@@ -14,35 +15,35 @@ const menuItems = [
 ];
 
 const Navbar = () => {
+  const dispatch = useAppDispatch();
+
   // Redux에서 로그인 여부 확인
   const isAuth = useAppSelector((s) => s.user.isAuth);
-  const userRole = useAppSelector((state) => state.user.role); // Redux에서 role 가져오기
+  const userRole = useAppSelector((state) => state.user.role);
+
+  // 알림 개수는 로컬 상태 대신, 필요하면 여전히 로컬로
   const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [cartCount, setCartCount] = useState<number>(0); // 장바구니 상품 개수 상태 추가
+
+  // ✅ 장바구니 개수는 이제 Redux에서 가져옴
+  const cartCount = useAppSelector((s) => s.cart.count);
 
   useEffect(() => {
-    if (isAuth) {
-      const fetchUnreadCount = async () => {
-        try {
-          const count = await getUnreadNotificationCount();
-          setUnreadCount(count);
-        } catch (error) {
-          console.error("Failed to fetch unread notification count:", error);
-        }
-      };
-      fetchUnreadCount();
+    if (!isAuth) return;
 
-      const fetchCartCount = async () => {
-        try {
-          const response = await api.get<number>("/api/v1/cart/count");
-          setCartCount(response.data);
-        } catch (error) {
-          console.error("Failed to fetch cart count:", error);
-        }
-      };
-      fetchCartCount();
-    }
-  }, [isAuth]);
+    const fetchUnreadCount = async () => {
+      try {
+        const count = await getUnreadNotificationCount();
+        setUnreadCount(count);
+      } catch (error) {
+        console.error("Failed to fetch unread notification count:", error);
+      }
+    };
+
+    fetchUnreadCount();
+
+    // ✅ 로그인 되어있을 때마다 장바구니 개수도 서버에서 동기화
+    dispatch(fetchCartCount());
+  }, [isAuth, dispatch]);
 
   return (
     // 데스크톱 전용 네비게이션

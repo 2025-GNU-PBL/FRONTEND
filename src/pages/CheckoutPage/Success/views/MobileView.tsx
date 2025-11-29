@@ -25,7 +25,7 @@ const MobileView = ({
   // confirm 로딩이거나, detail 로딩 중이면 로딩 화면
   if (loading || detailLoading) {
     return (
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[390px] flex-col bg-white">
+      <div className="relative flex min-h-screen w-full flex-col bg-white">
         <header className="flex h-[60px] items-center justify-between px-5">
           <div className="h-6 w-6" />
           <div className="text-[18px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#1E2124]">
@@ -35,8 +35,8 @@ const MobileView = ({
         </header>
 
         <main className="flex flex-1 items-center justify-center px-5 pb-10">
-          <div className="bg-white rounded-2xl shadow-lg px-6 py-5 text-[#4b5563] flex items-center gap-3 w-full border border-[#e5e7eb]">
-            <div className="w-6 h-6 border-2 border-[#3182f6] border-t-transparent rounded-full animate-spin" />
+          <div className="flex w-full items-center gap-3 rounded-2xl border border-[#e5e7eb] bg-white px-6 py-5 text-[#4b5563] shadow-lg">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3182f6] border-t-transparent" />
             <span className="text-[13px]">
               결제 정보를 확인하는 중입니다. 잠시만 기다려 주세요.
             </span>
@@ -49,7 +49,7 @@ const MobileView = ({
   // detail 에러
   if (detailError || !paymentDetail) {
     return (
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[390px] flex-col bg-white">
+      <div className="relative flex min-h-screen w-full flex-col bg-white">
         <header className="flex h-[60px] items-center justify-between px-5">
           <button
             type="button"
@@ -70,11 +70,11 @@ const MobileView = ({
         </header>
 
         <main className="flex flex-1 items-center justify-center px-5 pb-10">
-          <div className="bg-white rounded-2xl shadow-lg px-6 py-6 text-center text-[#4b5563] w-full border border-[#e5e7eb]">
-            <h2 className="text-[18px] font-semibold text-[#111827] mb-2">
+          <div className="w-full rounded-2xl border border-[#e5e7eb] bg-white px-6 py-6 text-center text-[#4b5563] shadow-lg">
+            <h2 className="mb-2 text-[18px] font-semibold text-[#111827]">
               결제 정보를 불러오지 못했어요
             </h2>
-            <p className="text-[13px] text-[#6b7280] mb-3">
+            <p className="mb-3 text-[13px] text-[#6b7280]">
               잠시 후 다시 시도해 주세요. 문제가 계속된다면 고객센터로 문의해
               주세요.
             </p>
@@ -136,20 +136,20 @@ const MobileView = ({
   };
 
   return (
-    <div className="relative mx-auto flex min-h-screen w-full max-w-[390px] flex-col bg-white text-[#1E2124]">
+    <div className="relative flex min-h-screen w-full flex-col bg-white text-[#1E2124]">
       {/* 본문 */}
       <main className="flex-1 overflow-y-auto px-5 pt-6 pb-[120px]">
         {/* 상단 배지 + 타이틀 */}
         <div className="flex flex-col items-center text-center">
           <div
-            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-medium mb-4 ${
+            className={`mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium ${
               isDone
                 ? "bg-[#ecfdf3] text-[#15803d]"
                 : "bg-[#fff7ed] text-[#c2410c]"
             }`}
           >
             <span
-              className={`w-2 h-2 rounded-full ${
+              className={`h-2 w-2 rounded-full ${
                 isDone ? "bg-[#22c55e]" : "bg-[#f97316]"
               }`}
             />
@@ -178,7 +178,7 @@ const MobileView = ({
         </div>
 
         {/* 주요 금액 섹션 */}
-        <div className="mt-6 rounded-2xl bg-[#f9fafb] border border-[#e5e7eb] px-4 py-3 flex items-center justify-between">
+        <div className="mt-6 flex items-center justify-between rounded-2xl border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3">
           <div className="flex flex-col text-left">
             <span className="text-[12px] text-[#6b7280]">총 결제 금액</span>
             <span className="mt-1 text-[20px] font-semibold text-[#111827]">
@@ -187,7 +187,7 @@ const MobileView = ({
           </div>
           {paymentMethod && (
             <div className="text-right">
-              <span className="inline-flex items-center rounded-full bg-white border border-[#e5e7eb] px-3 py-1 text-[11px] text-[#4b5563]">
+              <span className="inline-flex items-center rounded-full border border-[#e5e7eb] bg-white px-3 py-1 text-[11px] text-[#4b5563]">
                 결제수단&nbsp;
                 <span className="font-semibold text-[#111827]">
                   {paymentMethod}
@@ -199,7 +199,7 @@ const MobileView = ({
 
         {/* 결제 기본 정보 섹션 */}
         <div className="mt-5">
-          <h3 className="text-[13px] font-semibold text-[#111827] mb-3">
+          <h3 className="mb-3 text-[13px] font-semibold text-[#111827]">
             결제 정보
           </h3>
 
@@ -207,7 +207,7 @@ const MobileView = ({
             {shopName && (
               <div className="flex gap-3">
                 <span className="text-[#6b7280]">가맹점</span>
-                <span className="font-medium text-[#111827] text-right break-words flex-1">
+                <span className="flex-1 break-words text-right font-medium text-[#111827]">
                   {shopName}
                 </span>
               </div>
@@ -215,7 +215,7 @@ const MobileView = ({
 
             <div className="flex gap-3">
               <span className="text-[#6b7280]">주문번호</span>
-              <span className="font-medium text-[#111827] break-all text-right flex-1">
+              <span className="flex-1 break-all text-right font-medium text-[#111827]">
                 {finalOrderCode}
               </span>
             </div>
@@ -223,7 +223,7 @@ const MobileView = ({
             {formattedApprovedAt && (
               <div className="flex gap-3">
                 <span className="text-[#6b7280]">결제 일시</span>
-                <span className="text-[#111827] text-right flex-1">
+                <span className="flex-1 text-right text-[#111827]">
                   {formattedApprovedAt}
                 </span>
               </div>
@@ -236,7 +236,7 @@ const MobileView = ({
                   href={receiptUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[12px] font-medium text-[#2563eb] hover:text-[#1d4ed8] underline underline-offset-2 text-right flex-1"
+                  className="flex-1 text-right text-[12px] font-medium text-[#2563eb] underline underline-offset-2 hover:text-[#1d4ed8]"
                 >
                   영수증 확인하기
                 </a>
@@ -250,24 +250,24 @@ const MobileView = ({
 
         {/* 상품 결제 정보 섹션 */}
         <div>
-          <h3 className="text-[13px] font-semibold text-[#111827] mb-3">
+          <h3 className="mb-3 text-[13px] font-semibold text-[#111827]">
             상품 결제 정보
           </h3>
 
           {/* 상품 카드 */}
-          <div className="flex gap-3 items-center mb-4">
+          <div className="mb-4 flex items-center gap-3">
             {thumbnailUrl && (
-              <div className="w-16 h-16 rounded-xl bg-[#f3f4f6] overflow-hidden flex-shrink-0">
+              <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-[#f3f4f6]">
                 <img
                   src={thumbnailUrl}
                   alt="img"
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 />
               </div>
             )}
             <div className="flex-1">
               {shopName && (
-                <p className="text-[11px] text-[#9ca3af] mb-0.5">{shopName}</p>
+                <p className="mb-0.5 text-[11px] text-[#9ca3af]">{shopName}</p>
               )}
               <p className="text-[14px] font-medium text-[#111827] break-words">
                 {productName}
@@ -280,23 +280,23 @@ const MobileView = ({
             {/* 상품 금액 */}
             <div className="flex gap-3">
               <span className="text-[#6b7280]">상품 금액</span>
-              <span className="font-medium text-[#111827] text-right flex-1">
+              <span className="flex-1 text-right font-medium text-[#111827]">
                 {originalPrice.toLocaleString()}원
               </span>
             </div>
 
-            {/* 할인 금액 - 오른쪽 끝 정렬 + 0원일 땐 마이너스 없이 */}
+            {/* 할인 금액 */}
             <div className="flex gap-3">
               <span className="text-[#6b7280]">할인 금액</span>
-              <span className="font-medium text-[#16a34a] text-right flex-1">
+              <span className="flex-1 text-right font-medium text-[#16a34a]">
                 {discountDisplay}
               </span>
             </div>
 
             {/* 최종 결제 금액 */}
-            <div className="flex gap-3 pt-2 border-t border-dashed border-[#e5e7eb] mt-2">
-              <span className="text-[#4b5563] font-medium">최종 결제 금액</span>
-              <span className="font-semibold text-[#111827] text-right flex-1">
+            <div className="mt-2 flex gap-3 border-t border-dashed border-[#e5e7eb] pt-2">
+              <span className="font-medium text-[#4b5563]">최종 결제 금액</span>
+              <span className="flex-1 text-right font-semibold text-[#111827]">
                 {finalPaidAmount.toLocaleString()}원
               </span>
             </div>
@@ -304,15 +304,15 @@ const MobileView = ({
         </div>
 
         {/* 하단 안내 문구 */}
-        <p className="mt-5 text-[11px] text-[#9ca3af] leading-relaxed">
+        <p className="mt-5 text-[11px] leading-relaxed text-[#9ca3af]">
           주문 내역 및 결제 취소가 필요하신 경우, 서비스 내 주문/결제 내역에서
           상세 정보를 확인하시거나 고객센터로 문의해 주세요.
         </p>
       </main>
 
       {/* 하단 버튼 영역 */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-white px-5 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-        <div className="flex gap-3">
+      <div className="fixed bottom-0 left-0 right-0 w-full bg-white py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+        <div className="flex w-full gap-3 px-5">
           <button
             type="button"
             onClick={handleGoHome}

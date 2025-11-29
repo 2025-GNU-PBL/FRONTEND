@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
-import { useAppSelector } from "../../../../../store/hooks";
-import type { OwnerData, UserData } from "../../../../../store/userSlice";
-import api from "../../../../../lib/api/axios";
+import type { OwnerData, UserData } from "../../../../../../store/userSlice";
+import api from "../../../../../../lib/api/axios";
+import { useAppSelector } from "../../../../../../store/hooks";
 
 /** 서버 결제 상태 타입 */
 type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";

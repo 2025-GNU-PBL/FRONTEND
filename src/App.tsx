@@ -59,8 +59,8 @@ import ReservationManagementPage from "./pages/MyPage/OwnerMyPage/ReservationMan
 import ProductList from "./pages/MyPage/OwnerMyPage/ProductManagement/ProductList/ProductList";
 import CheckoutPage from "./pages/CheckoutPage/main/CheckoutPage";
 import OwnerPaymentManagementPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/list/OwnerPaymentManagementPage";
-import CancelListPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelListPage";
-import CancelDetailPage from "./pages/MyPage/OwnerMyPage/CancellistManagement/CancelDetailPage";
+import CancelListPage from "./pages/MyPage/OwnerMyPage/CancelManagement/list/CancelListPage";
+import CancelDetailPage from "./pages/MyPage/OwnerMyPage/CancelManagement/detail/CancelDetailPage";
 import OwnerPaymentDetailPage from "./pages/MyPage/OwnerMyPage/PaymentManagement/detail/OwnerPaymentDetailPage";
 import PaymentPage from "./pages/CheckoutPage/payment/PaymentPage";
 import Success from "./pages/CheckoutPage/Success/Success";
@@ -367,8 +367,6 @@ const App = () => {
         <Route path="/success" element={<Success />} />
         <Route path="/fail" element={<Fail />} />
         <Route path="/support" element={<SupportPage />} />
-
-        <Route path="/test" element={<OwnerSignupPage />} />
 
         {/* 로그인한 사람만 접근 가능 */}
         <Route element={<ProtectedRoutes isAuth={isAuth} />}>

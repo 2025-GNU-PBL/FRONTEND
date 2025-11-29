@@ -1,5 +1,5 @@
-import MobileView from "./views/CancelRequestListMobileView";
-import WebView from "./views/CancelRequestListWebView";
+import MobileView from "./views/MobileView";
+import WebView from "./views/WebView";
 
 export default function CancelListPage() {
   return (
