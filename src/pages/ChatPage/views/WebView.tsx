@@ -45,7 +45,7 @@ const chips: readonly Chip[] = [
 // ============================================
 
 // 카카오톡 스타일 MessageRow
-const MessageRow: React.FC<{
+const MessageRowRow: React.FC<{
   m: ChatMessage;
   showPartnerAvatar?: boolean;
   partnerAvatar?: string;
@@ -60,7 +60,7 @@ const MessageRow: React.FC<{
 }) => {
   const mine = m.author === "me";
 
-  // 내 메시지: 오른쪽 정렬, 시간은 말풍선 왼쪽에 같은 줄 하단 정렬
+  // 내 메시지
   if (mine) {
     return (
       <div className="flex justify-end">
@@ -90,13 +90,11 @@ const MessageRow: React.FC<{
     );
   }
 
-  // 상대 메시지: 왼쪽 정렬
-  // - 그룹의 첫 메시지: 아바타 보임
-  // - 같은 그룹의 나머지: 아바타 없는 빈 8x8 공간 유지 (열 정렬)
+  // 상대 메시지
   return (
     <div className="flex justify-start">
       <div className="flex max-w-[80%] items-end gap-1">
-        {/* 아바타 자리 (항상 폭 유지) */}
+        {/* 아바타 자리 */}
         <div className="mr-1 h-8 w-8 flex-shrink-0">
           {showPartnerAvatar && (
             <div className="h-8 w-8 overflow-hidden rounded-full bg-gray-200">
@@ -168,7 +166,7 @@ const ChatListItem: React.FC<{
     return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
   };
 
-  // 우클릭 이벤트 처리
+  // 우클릭 메뉴
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -176,7 +174,6 @@ const ChatListItem: React.FC<{
     setContextMenuOpen(true);
   };
 
-  // 컨텍스트 메뉴 외부 클릭 시 닫기
   React.useEffect(() => {
     const handleClickOutside = () => {
       setContextMenuOpen(false);
@@ -219,7 +216,6 @@ const ChatListItem: React.FC<{
                 className="h-full w-full object-cover"
                 loading="lazy"
                 onError={(e) => {
-                  // 이미지 로드 실패 시 아바타 숨기고 기본 아이콘 표시
                   e.currentTarget.style.display = "none";
                   const parent = e.currentTarget.parentElement;
                   if (parent && !parent.querySelector(".default-avatar-icon")) {
@@ -309,13 +305,11 @@ const ChatListItem: React.FC<{
       {/* 삭제 확인 모달 */}
       {deleteConfirmOpen && (
         <>
-          {/* Dimmed 배경 */}
           <div
             className="fixed inset-0 z-40 bg-[rgba(0,0,0,0.6)] transition-opacity duration-300"
             onClick={handleDeleteCancel}
             aria-hidden="true"
           />
-          {/* 모달 */}
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             <div
               className="w-full max-w-[320px] rounded-2xl bg-white shadow-xl"
@@ -376,22 +370,19 @@ const WebView: React.FC = () => {
   const selectedId = id ?? null;
   const panelOpen = Boolean(selectedId);
 
-  // 💡 채팅 스레드 영역 ref (자동 스크롤용)
   const threadRef = React.useRef<HTMLDivElement | null>(null);
 
-  // 채팅방 목록 조회 (카테고리 필터 적용)
+  // 채팅방 목록 조회
   React.useEffect(() => {
     const category = activeCategory === "전체" ? null : activeCategory;
     dispatch(fetchChatRooms({ category }));
   }, [dispatch, activeCategory]);
 
-  // WebSocket 연결 및 메시지 수신
+  // WebSocket 연결 및 수신
   React.useEffect(() => {
     if (!userData || !role) return;
 
     const ws = getChatWebSocket();
-
-    // 사용자 정보 설정 (메시지 변환 시 socialId 사용하므로 일치시켜야 함)
     const userId = userData.socialId || String(userData.id);
     ws.setUserInfo(userId, role);
 
@@ -406,7 +397,6 @@ const WebView: React.FC = () => {
       );
       console.log("[WebView] addMessage dispatched");
 
-      // 새 메시지 수신 시 현재 방이면 스크롤 아래로
       if (id === roomId && threadRef.current) {
         setTimeout(() => {
           if (threadRef.current) {
@@ -420,11 +410,11 @@ const WebView: React.FC = () => {
     ws.connect();
 
     return () => {
-      // 연결 해제하지 않음 (전역 연결 유지)
+      // 연결 유지
     };
   }, [dispatch, userData, role, id]);
 
-  // 채팅방 선택 시 메시지 조회 및 읽음 처리, WebSocket 구독
+  // 채팅방 선택 시 메시지 조회 + 읽음 처리 + 구독
   React.useEffect(() => {
     if (id && role && userData) {
       const chatRoomId = parseInt(id, 10);
@@ -432,7 +422,6 @@ const WebView: React.FC = () => {
         console.log("[WebView] Entering chat room:", chatRoomId);
         dispatch(selectRoom(id));
 
-        // 채팅방 메시지 조회 (DB에서 가져옴)
         console.log("[WebView] Fetching messages for room:", chatRoomId);
         dispatch(fetchChatMessages({ chatRoomId }));
 
@@ -443,8 +432,9 @@ const WebView: React.FC = () => {
         );
         dispatch(clearUnreadCount(id));
 
-        // WebSocket 구독
         const ws = getChatWebSocket();
+        const userId = userData.socialId || String(userData.id);
+        ws.setUserInfo(userId, role);
         if (ws.isConnected()) {
           ws.subscribeToRoom(chatRoomId);
         }
@@ -454,11 +444,11 @@ const WebView: React.FC = () => {
     }
 
     return () => {
-      // 채팅방을 떠날 때 구독 해제하지 않음 (백엔드가 자동 처리)
+      // 구독 해제는 백엔드에서 처리
     };
   }, [dispatch, id, role, userData]);
 
-  // 필터링된 채팅방 목록 (백엔드에서 이미 카테고리 필터링되어 오므로 정렬만 수행)
+  // 필터링된 채팅방 목록(정렬)
   const filteredItems = React.useMemo(() => {
     return [...rooms].sort((a, b) => b.sentAt - a.sentAt);
   }, [rooms]);
@@ -479,6 +469,43 @@ const WebView: React.FC = () => {
     return roomMessages;
   }, [id, messagesByRoom]);
 
+  // 상품 상세 페이지 이동 로직
+  const handleGoToProductDetail = () => {
+    if (!selectedRoom) return;
+
+    const productId = selectedRoom.lastProductId;
+
+    if (!productId) {
+      toast.error("상품 정보를 찾을 수 없어요.");
+      return;
+    }
+
+    let basePath = "/wedding";
+
+    switch (selectedRoom.category) {
+      case "웨딩홀":
+        basePath = "/wedding";
+        break;
+      case "스튜디오":
+        basePath = "/studio";
+        break;
+      case "드레스":
+        basePath = "/dress";
+        break;
+      case "메이크업":
+        basePath = "/makeup";
+        break;
+      default:
+        console.warn(
+          "[WebView] 알 수 없는 카테고리입니다. 기본 경로(/wedding)를 사용합니다.",
+          selectedRoom.category
+        );
+        break;
+    }
+
+    navigate(`${basePath}/${productId}`);
+  };
+
   const containerWidth = panelOpen
     ? LIST_BLOCK_WIDTH + PANEL_GAP + PANEL_WIDTH
     : LIST_BLOCK_WIDTH;
@@ -498,13 +525,12 @@ const WebView: React.FC = () => {
 
     dispatch(deleteRoom({ chatRoomId }));
 
-    // 삭제된 채팅방이 현재 선택된 채팅방이면 목록으로 이동
     if (selectedId === roomId) {
       navigate("/chat");
     }
   };
 
-  // 메시지 전송 (STOMP WebSocket 사용)
+  // 메시지 전송
   const onSend = () => {
     if (!id || !text.trim() || isSending || !role || !userData) return;
 
@@ -516,21 +542,18 @@ const WebView: React.FC = () => {
 
     const messageText = text.trim();
 
-    // 메시지 길이 제한 체크 (255자)
     if (messageText.length > 255) {
-      setText(""); // 입력값 초기화
+      setText("");
       toast.error("255자 이상 금지입니다");
-      // 페이지 새로고침
       setTimeout(() => {
         window.location.reload();
-      }, 1000); // 1초 후 새로고침
+      }, 1000);
       return;
     }
     const ws = getChatWebSocket();
 
     if (ws.isConnected()) {
-      // Optimistic update: 메시지를 보내기 전에 즉시 UI에 추가
-      const tempMessageId = Date.now(); // 임시 ID (백엔드에서 받은 메시지로 교체됨)
+      const tempMessageId = Date.now();
       const tempMessage: ChatMessage = {
         id: `temp-${tempMessageId}`,
         author: "me",
@@ -541,10 +564,9 @@ const WebView: React.FC = () => {
           hour12: false,
         }),
         createdAt: Date.now(),
-        messageId: -tempMessageId, // 음수로 임시 ID 표시 (중복 체크 우회)
+        messageId: -tempMessageId,
       };
 
-      // 즉시 Redux에 추가
       dispatch(
         addMessage({
           roomId: id,
@@ -552,7 +574,6 @@ const WebView: React.FC = () => {
         })
       );
 
-      // senderId는 socialId를 사용 (백엔드가 채팅방의 ownerId/customerId에 socialId 저장)
       const senderId = userData.socialId || String(userData.id);
 
       console.log("[WebView] Sending message with:", {
@@ -565,7 +586,6 @@ const WebView: React.FC = () => {
         usingSocialId: !!userData.socialId,
       });
 
-      // WebSocket으로 실시간 전송 (백엔드가 자동으로 DB에 저장함)
       const wsSuccess = ws.sendMessage(chatRoomId, role, senderId, messageText);
 
       if (wsSuccess) {
@@ -574,7 +594,6 @@ const WebView: React.FC = () => {
         );
         setText("");
 
-        // 💡 내가 보낸 직후 바로 스크롤 맨 아래로
         setTimeout(() => {
           if (threadRef.current) {
             threadRef.current.scrollTop = threadRef.current.scrollHeight;
@@ -588,7 +607,7 @@ const WebView: React.FC = () => {
     }
   };
 
-  // 파트너 연속 메시지 그룹의 첫 번째인지 확인 (아바타 표시용)
+  // 그룹 계산 유틸
   const isFirstOfPartnerGroup = (arr: ChatMessage[], idx: number): boolean => {
     const m = arr[idx];
     if (!m || m.author !== "partner") return false;
@@ -596,7 +615,6 @@ const WebView: React.FC = () => {
     return !prev || prev.author !== "partner";
   };
 
-  // 같은 작성자 + 같은 시간(m.time) 그룹의 마지막 메시지인지 (시간 표시용)
   const isLastOfTimeGroup = (arr: ChatMessage[], idx: number): boolean => {
     const m = arr[idx];
     if (!m) return false;
@@ -607,13 +625,12 @@ const WebView: React.FC = () => {
     return false;
   };
 
-  // 읽음 표시 대상 메시지 ID 찾기
-  const getReadReceiptMessageId = (messages: ChatMessage[]): string | null => {
-    if (!messages.length) return null;
-    const last = messages[messages.length - 1];
+  const getReadReceiptMessageId = (msgs: ChatMessage[]): string | null => {
+    if (!msgs.length) return null;
+    const last = msgs[msgs.length - 1];
     if (last.author === "me") return null;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i];
       if (m.author === "me" && m.read) {
         return m.id;
       }
@@ -621,7 +638,7 @@ const WebView: React.FC = () => {
     return null;
   };
 
-  // 💡 messages가 변할 때마다 자동으로 맨 아래로 스크롤
+  // 메시지 변경 시 자동 스크롤
   React.useEffect(() => {
     if (panelOpen && threadRef.current) {
       threadRef.current.scrollTop = threadRef.current.scrollHeight;
@@ -759,12 +776,13 @@ const WebView: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* 상품 상세보기 버튼 */}
                   <button
-                    onClick={() => alert("스토어 보기 (데모)")}
+                    onClick={handleGoToProductDetail}
                     className="inline-flex h-[30px] items-center justify-center rounded-lg bg-[#FFEEEC] px-3 text-[11.5px] font-semibold tracking-[-0.2px] text-[#FF2D9E]"
-                    title="스토어 보기"
+                    title="상품 상세보기"
                   >
-                    스토어 보기
+                    상품 상세보기
                   </button>
                 </div>
 
@@ -790,7 +808,7 @@ const WebView: React.FC = () => {
                   {(() => {
                     const readReceiptId = getReadReceiptMessageId(messages);
                     return messages.map((m: ChatMessage, idx: number) => (
-                      <MessageRow
+                      <MessageRowRow
                         key={m.id}
                         m={m}
                         showPartnerAvatar={isFirstOfPartnerGroup(messages, idx)}
@@ -814,14 +832,11 @@ const WebView: React.FC = () => {
                           e: React.ChangeEvent<HTMLTextAreaElement>
                         ) => {
                           const newText = e.target.value;
-                          // 255자 제한
                           if (newText.length <= 255) {
                             setText(newText);
                           } else {
-                            // 255자 초과 시 즉시 차단하고 알림 후 새로고침
-                            setText(""); // 먼저 입력값 초기화
+                            setText("");
                             toast.error("255자 이상 금지입니다");
-                            // 알림을 표시한 후 즉시 새로고침
                             setTimeout(() => {
                               window.location.reload();
                             }, 1000);
