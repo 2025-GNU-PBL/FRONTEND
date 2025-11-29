@@ -79,7 +79,6 @@ const MobileChatListItem: React.FC<{
               loading="lazy"
               decoding="async"
               onError={(e) => {
-                // 이미지 로드 실패 시 아바타 숨기고 기본 아이콘 표시
                 e.currentTarget.style.display = "none";
                 const parent = e.currentTarget.parentElement;
                 if (parent && !parent.querySelector(".default-avatar-icon")) {
@@ -236,7 +235,6 @@ const MobileView: React.FC = () => {
 
     const ws = getChatWebSocket();
 
-    // 사용자 정보 설정 (메시지 변환 시 socialId 사용하므로 일치시켜야 함)
     const userId = userData.socialId || String(userData.id);
     ws.setUserInfo(userId, role);
 
@@ -253,7 +251,6 @@ const MobileView: React.FC = () => {
         })
       );
       console.log("[MobileView] addMessage dispatched");
-      // 현재 선택된 채팅방이면 스크롤을 맨 아래로
       if (id === roomId) {
         setTimeout(() => {
           if (threadRef.current) {
@@ -267,9 +264,8 @@ const MobileView: React.FC = () => {
     ws.connect();
 
     return () => {
-      // 연결 해제하지 않음 (전역 연결 유지)
+      // 전역 연결 유지
     };
-    // 🔧 id 추가
   }, [dispatch, userData, role, id]);
 
   // 채팅방 선택 시 메시지 조회 및 읽음 처리, WebSocket 구독
@@ -280,7 +276,6 @@ const MobileView: React.FC = () => {
         console.log("[MobileView] Entering chat room:", chatRoomId);
         dispatch(selectRoom(id));
 
-        // 채팅방 메시지 조회 (DB에서 가져옴)
         console.log("[MobileView] Fetching messages for room:", chatRoomId);
         dispatch(fetchChatMessages({ chatRoomId }));
 
@@ -291,9 +286,7 @@ const MobileView: React.FC = () => {
         );
         dispatch(clearUnreadCount(id));
 
-        // WebSocket 구독
         const ws = getChatWebSocket();
-        // 사용자 정보 설정 (메시지 변환 시 socialId 사용하므로 일치시켜야 함)
         const userId = userData.socialId || String(userData.id);
         ws.setUserInfo(userId, role);
         if (ws.isConnected()) {
@@ -305,7 +298,7 @@ const MobileView: React.FC = () => {
     }
 
     return () => {
-      // 채팅방을 떠날 때 구독 해제하지 않음 (백엔드가 자동 처리)
+      // 구독 해제는 백엔드에서 자동 처리
     };
   }, [dispatch, id, role, userData]);
 
@@ -317,7 +310,6 @@ const MobileView: React.FC = () => {
         (r: (typeof rooms)[0]) => r.category === activeCategory
       );
     }
-    // sentAt 기준 최신순 정렬
     return [...result].sort(
       (a: (typeof rooms)[0], b: (typeof rooms)[0]) => b.sentAt - a.sentAt
     );
@@ -352,7 +344,6 @@ const MobileView: React.FC = () => {
 
     dispatch(deleteRoom({ chatRoomId }));
 
-    // 삭제된 채팅방이 현재 선택된 채팅방이면 목록으로 이동
     if (id === roomId) {
       navigate("/chat");
     }
@@ -370,21 +361,18 @@ const MobileView: React.FC = () => {
 
     const messageText = text.trim();
 
-    // 메시지 길이 제한 체크 (255자)
     if (messageText.length > 255) {
-      setText(""); // 입력값 초기화
+      setText("");
       toast.error("255자 이상 금지입니다");
-      // 페이지 새로고침
       setTimeout(() => {
         window.location.reload();
-      }, 1000); // 1초 후 새로고침
+      }, 1000);
       return;
     }
     const ws = getChatWebSocket();
 
     if (ws.isConnected()) {
-      // Optimistic update: 메시지를 보내기 전에 즉시 UI에 추가
-      const tempMessageId = Date.now(); // 임시 ID (백엔드에서 받은 메시지로 교체됨)
+      const tempMessageId = Date.now();
       const tempMessage: ChatMessage = {
         id: `temp-${tempMessageId}`,
         author: "me",
@@ -395,10 +383,9 @@ const MobileView: React.FC = () => {
           hour12: false,
         }),
         createdAt: Date.now(),
-        messageId: -tempMessageId, // 음수로 임시 ID 표시 (중복 체크 우회)
+        messageId: -tempMessageId,
       };
 
-      // 즉시 Redux에 추가
       dispatch(
         addMessage({
           roomId: id,
@@ -406,7 +393,6 @@ const MobileView: React.FC = () => {
         })
       );
 
-      // senderId는 socialId를 사용 (백엔드가 채팅방의 ownerId/customerId에 socialId 저장)
       const senderId = userData.socialId || String(userData.id);
 
       console.log("[MobileView] Sending message with:", {
@@ -419,26 +405,20 @@ const MobileView: React.FC = () => {
         usingSocialId: !!userData.socialId,
       });
 
-      // WebSocket으로 실시간 전송 (백엔드가 자동으로 DB에 저장함)
       const wsSuccess = ws.sendMessage(chatRoomId, role, senderId, messageText);
 
       if (wsSuccess) {
-        // WebSocket 메시지가 성공적으로 전송되면
-        // 백엔드가 자동으로 DB에 저장하고 /sub/chatroom/{chatRoomId}를 통해
-        // 실제 메시지를 다시 보내주므로, WebSocket 핸들러에서 처리됨
         console.log(
           "[MobileView] Message sent via WebSocket. Waiting for server response..."
         );
 
         setText("");
-        // 스크롤을 맨 아래로
         setTimeout(() => {
           if (threadRef.current) {
             threadRef.current.scrollTop = threadRef.current.scrollHeight;
           }
         }, 100);
       } else {
-        // 전송 실패 시 임시 메시지 제거
         toast.error("메시지 전송에 실패했습니다.");
       }
     } else {
@@ -483,7 +463,6 @@ const MobileView: React.FC = () => {
     if (!m) return false;
     const next = arr[idx + 1];
     if (!next) return true;
-    // 작성자 또는 시간(분 단위 문자열)이 바뀌면 현재가 그룹의 마지막
     if (next.author !== m.author) return true;
     if (next.time !== m.time) return true;
     return false;
@@ -504,7 +483,7 @@ const MobileView: React.FC = () => {
     return null;
   };
 
-  // 메시지 행 컴포넌트 (카카오톡 스타일)
+  // 메시지 행 컴포넌트
   const MessageRow: React.FC<{
     m: ChatMessage;
     showPartnerAvatar?: boolean;
@@ -520,7 +499,6 @@ const MobileView: React.FC = () => {
   }) => {
     const mine = m.author === "me";
 
-    // 내 메시지: 오른쪽 정렬, 시간은 말풍선 왼쪽에 같은 줄 하단 정렬
     if (mine) {
       return (
         <div className="flex justify-end">
@@ -550,13 +528,9 @@ const MobileView: React.FC = () => {
       );
     }
 
-    // 상대 메시지: 왼쪽 정렬
-    // - 그룹의 첫 메시지: 8x8 공간 안에 동그란 아바타
-    // - 같은 그룹의 나머지: 8x8 공간만 유지 (투명), 아바타는 없음
     return (
       <div className="flex justify-start">
         <div className="flex max-w-[80%] items-end gap-1">
-          {/* 아바타 영역 (항상 8x8 공간 확보) */}
           <div className="mr-1 h-8 w-8 flex-shrink-0">
             {showPartnerAvatar && (
               <div className="h-8 w-8 overflow-hidden rounded-full bg-gray-200">
@@ -576,7 +550,6 @@ const MobileView: React.FC = () => {
             )}
           </div>
 
-          {/* 말풍선 + 시간 */}
           <div className="flex items-end gap-1">
             <div
               className={[
@@ -588,7 +561,6 @@ const MobileView: React.FC = () => {
             </div>
             {(showTime || showReadReceipt) && (
               <div className="mb-[2px] text-[11px] font-medium tracking-[-0.1px] text-[#999999]">
-                {/* 상대 메시지는 읽음 개념 안 쓰고, 시간만 오른쪽에 위치 */}
                 <span>{m.time}</span>
               </div>
             )}
@@ -598,13 +570,43 @@ const MobileView: React.FC = () => {
     );
   };
 
-  // 프로필 헤더 컴포넌트
-  const ProfileHeader: React.FC<{ room: typeof selectedRoom }> = ({
-    room,
-  }: {
-    room: typeof selectedRoom;
-  }) => {
+  // 프로필 헤더 컴포넌트 (제품 상세보기 버튼 포함)
+  const ProfileHeader: React.FC<{ room: ChatRoom | null }> = ({ room }) => {
     if (!room) return null;
+
+    const handleGoToProductDetail = () => {
+      const productId = room.lastProductId;
+
+      if (!productId) {
+        toast.error("상품 정보를 찾을 수 없어요.");
+        return;
+      }
+
+      let basePath = "/wedding";
+
+      switch (room.category) {
+        case "웨딩홀":
+          basePath = "/wedding";
+          break;
+        case "스튜디오":
+          basePath = "/studio";
+          break;
+        case "드레스":
+          basePath = "/dress";
+          break;
+        case "메이크업":
+          basePath = "/makeup";
+          break;
+        default:
+          console.warn(
+            "[MobileView] 알 수 없는 카테고리입니다. 기본 경로(/wedding)를 사용합니다.",
+            room.category
+          );
+          break;
+      }
+
+      navigate(`${basePath}/${productId}`);
+    };
 
     return (
       <div className="fixed top-[60px] left-0 right-0 z-20 h-[84px] border-b border-[#F3F4F5] bg-white">
@@ -640,11 +642,11 @@ const MobileView: React.FC = () => {
           </div>
           <button
             type="button"
-            onClick={() => alert("스토어 보기(데모)")}
-            className="absolute right-[20px] top-[27px] h-[30px] w-[78px] rounded-[8px] bg-[#FFEEEC] px-3 text-[12px] font-semibold leading-[1.5] tracking-[-0.2px] text-[#FF2D9E] active:opacity-90"
-            title="스토어 보기"
+            onClick={handleGoToProductDetail}
+            className="absolute right-[20px] top-[27px] h-[30px] w-[90px] rounded-[8px] bg-[#FFEEEC] px-3 text-[12px] font-semibold leading-[1.5] tracking-[-0.2px] text-[#FF2D9E] active:opacity-90"
+            title="제품 상세보기"
           >
-            스토어 보기
+            제품 상세보기
           </button>
         </div>
       </div>
@@ -656,7 +658,6 @@ const MobileView: React.FC = () => {
     return (
       <div className="mt-7">
         <div className="px-4 pb-3">
-          {/* ✅ 카테고리 중앙 정렬 */}
           <div className="no-scrollbar flex items-center justify-center gap-2 overflow-x-auto">
             {chips.map((c) => (
               <button
@@ -769,7 +770,6 @@ const MobileView: React.FC = () => {
         {/* 하단 입력 영역 */}
         <div className="fixed bottom-5 left-0 right-0 bg-white">
           <div className="px-5 py-2">
-            {/* ✅ 입력창 + 버튼 중앙 정렬 */}
             <div className="flex items-center justify-center gap-2">
               <div className="flex h-[41px] w-full items-center gap-1 rounded-[20px] bg-[#F3F4F5] px-4 py-[10px]">
                 <textarea
@@ -778,17 +778,14 @@ const MobileView: React.FC = () => {
                   value={text}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                     const newText = e.target.value;
-                    // 255자 제한
                     if (newText.length <= 255) {
                       setText(newText);
                     } else {
-                      // 255자 초과 시 즉시 차단하고 알림 후 새로고침
-                      setText(""); // 먼저 입력값 초기화
+                      setText("");
                       toast.error("255자 이상 금지입니다");
-                      // 알림을 표시한 후 즉시 새로고침
                       setTimeout(() => {
                         window.location.reload();
-                      }, 1000); // 1초 후 새로고침
+                      }, 1000);
                     }
                   }}
                   disabled={isSending}
