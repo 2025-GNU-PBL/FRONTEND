@@ -122,13 +122,16 @@ const WebView: React.FC = () => {
       return;
     }
 
-    const satisfaction = mapSatisfaction(q1Answer);
+    // ✅ MobileView와 동일하게 필드 분리
+    const timeSatisfaction = mapSatisfaction(q1Answer);
+    const picSatisfaction = mapSatisfaction(q2Answer);
 
     const requestBody = {
       title: productName,
       star: rating,
       comment: review.trim(),
-      satisfaction,
+      timeSatisfaction,
+      picSatisfaction,
     };
 
     const jsonBlob = new Blob([JSON.stringify(requestBody)], {

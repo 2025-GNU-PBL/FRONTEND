@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
 import api from "../../../../lib/api/axios";
 
 type OrderStatus = "WAITING_FOR_PAYMENT" | "PAID" | string;
@@ -201,12 +202,14 @@ const MobileView: React.FC = () => {
       });
     } catch (e) {
       console.error("[ORDER_COUPON_APPLY_ERROR]", e);
-      alert("쿠폰 적용 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+      toast.error(
+        "쿠폰 적용 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+      );
     }
   };
 
   return (
-    <div className="relative mx-auto flex min-h-screen w-full max-w-[390px] flex-col bg-white text-[#1E2124]">
+    <div className="relative flex min-h-screen w-full flex-col bg-white text-[#1E2124]">
       {/* 헤더 */}
       <header className="relative flex h-[60px] items-center justify-between px-5">
         <button
@@ -230,7 +233,7 @@ const MobileView: React.FC = () => {
       {/* 컨텐츠 */}
       <main className="flex-1 overflow-y-auto px-5 pb-[140px]">
         {/* 총 주문 상품 */}
-        <div className="mt-5 mb-5 flex items-center gap-3">
+        <div className="mb-5 mt-5 flex items-center gap-3">
           <span className="text-[18px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#1E2124]">
             총 주문 상품 {products.length}개
           </span>
@@ -255,9 +258,9 @@ const MobileView: React.FC = () => {
               <React.Fragment
                 key={`${product.orderId}-${product.productId}-${index}`}
               >
-                <div className="flex gap-3 px-5 pb-3 pl-5 pr-5">
+                <div className="flex gap-3 pb-3">
                   <div
-                    className="h-20 w-20 flex-shrink-0 rounded border border-[#F5F5F5] bg-center bg-cover"
+                    className="h-20 w-20 flex-shrink-0 rounded border border-[#F5F5F5] bg-cover bg-center"
                     style={{
                       backgroundImage: `url('${product.thumbnailUrl}')`,
                     }}
@@ -292,7 +295,7 @@ const MobileView: React.FC = () => {
         )}
 
         {/* 회색 바 */}
-        <div className="-mx-5 my-5 h-2 w-[calc(100%+40px)] bg-[#F7F9FA]" />
+        <div className="-mx-5 my-5 h-2 bg-[#F7F9FA]" />
 
         {/* 쿠폰 섹션 */}
         <section className="mt-5 flex flex-col gap-5">
@@ -302,6 +305,7 @@ const MobileView: React.FC = () => {
             </span>
           </div>
 
+          {/* 🔧 여기 버튼 여백 조정 */}
           <button
             onClick={() =>
               navigate("/checkout/coupon", {
@@ -317,16 +321,16 @@ const MobileView: React.FC = () => {
                 },
               })
             }
-            className="flex h-[54px] w-full items-center justify-center rounded-[10px] border border-[#E8E8E8] active:bg-gray-100"
+            className="flex h-[54px] w-full items-center rounded-[10px] border border-[#E8E8E8] px-4 active:bg-gray-100"
           >
-            <div className="flex w-[310px] h-[22px] items-center justify-between">
+            <div className="flex h-[22px] w-full items-center justify-between">
               {selectedCouponName ? (
                 <>
-                  <span className="w-[228px] text-[14px] leading-[1.5] tracking-[-0.2px] text-[#000000] truncate">
+                  <span className="flex-1 truncate text-[14px] leading-[1.5] tracking-[-0.2px] text-[#000000]">
                     {selectedCouponName}
                   </span>
-                  <div className="flex items-center gap-1 justify-end">
-                    <span className="whitespace-nowrap text-[14px] text-[#444444] text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="whitespace-nowrap text-right text-[14px] text-[#444444]">
                       {couponDiscountAmount > 0
                         ? `-${formatPrice(couponDiscountAmount)}`
                         : "-0원"}
@@ -342,7 +346,7 @@ const MobileView: React.FC = () => {
                   <span className="text-[14px] font-medium text-[#1E2124]">
                     쿠폰
                   </span>
-                  <div className="flex items-center gap-1 justify-end">
+                  <div className="flex items-center justify-end gap-1">
                     <span className="whitespace-nowrap text-right text-[14px] text-[#444444]">
                       {`사용 가능 ${displayApplicableCouponCount}장`}
                     </span>
@@ -358,7 +362,7 @@ const MobileView: React.FC = () => {
         </section>
 
         {/* 회색 바 */}
-        <div className="-mx-5 my-8 h-2 w-[calc(100%+40px)] bg-[#F7F9FA]" />
+        <div className="-mx-5 my-8 h-2 bg-[#F7F9FA]" />
 
         {/* 안내 문구 */}
         <div className="mb-4 rounded-[10px] bg-[#F9FAFB] px-3 py-3 text-[12px] leading-[1.5] text-[#6B7280]">
@@ -401,7 +405,7 @@ const MobileView: React.FC = () => {
       </main>
 
       {/* 하단 결제 버튼 */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-white px-5 py-5 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+      <div className="fixed bottom-0 left-0 right-0 w-full bg-white px-5 py-5 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
         <button
           type="button"
           onClick={handleClickPayment}

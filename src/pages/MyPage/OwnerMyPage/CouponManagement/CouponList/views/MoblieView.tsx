@@ -119,24 +119,24 @@ export default function MobileView() {
   const registeredCount = coupons.length;
 
   return (
-    <div className="w-full min-h-screen bg-white flex flex-col mb-15">
+    <div className="relative flex min-h-screen w-full flex-col bg-white">
       {/* 헤더 */}
-      <div className="sticky top-0 z-20 bg-white border-b border-[#F2F2F2]">
-        <div className="h-[59px] flex items-center justify-between px-5">
+      <div className="sticky top-0 z-20 border-b border-[#F2F2F2] bg-white">
+        <div className="flex h-[59px] items-center justify-between px-5">
           <button onClick={onBack} aria-label="back">
-            <Icon icon="solar:alt-arrow-left-linear" className="w-6 h-6" />
+            <Icon icon="solar:alt-arrow-left-linear" className="h-6 w-6" />
           </button>
           <h1 className="text-[18px] font-semibold">쿠폰함</h1>
           <button onClick={() => nav("register")} aria-label="add coupon">
-            <Icon icon="majesticons:plus-line" className="w-6 h-6" />
+            <Icon icon="majesticons:plus-line" className="h-6 w-6" />
           </button>
         </div>
       </div>
 
       {/* 내용 */}
-      <div className="relative flex-1 overflow-y-auto">
-        <div className="px-5 pt-5 pb-6 w-full max-w-xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
+      <div className="relative flex flex-1 overflow-y-auto">
+        <div className="w-full px-5 pt-5 pb-6">
+          <div className="mb-4 flex items-center justify-between">
             {registeredCount > 0 && (
               <p className="text-[14px] text-[#000000]">
                 {loading
@@ -218,9 +218,9 @@ function CouponCard({ c: coupon, onRemove }: CouponCardProps) {
   )}`;
 
   return (
-    <div className="w-full flex">
-      <div className="flex-1 border border-r-0 border-[#F2F2F2] rounded-l-[16px] p-4 flex flex-col gap-1 bg-white">
-        <div className="flex flex-col gap-1 w-full">
+    <div className="flex w-full">
+      <div className="flex flex-1 flex-col gap-1 rounded-l-[16px] border border-r-0 border-[#F2F2F2] bg-white p-4">
+        <div className="flex w-full flex-col gap-1">
           <div className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
             {coupon.couponName}
           </div>
@@ -228,8 +228,8 @@ function CouponCard({ c: coupon, onRemove }: CouponCardProps) {
             {discountLabel}
           </div>
         </div>
-        <div className="flex flex-col w-full">
-          <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999] line-clamp-1">
+        <div className="flex w-full flex-col">
+          <div className="line-clamp-1 text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
             {line1}
           </div>
           <div className="text-[12px] leading-[18px] tracking-[-0.1px] text-[#999999]">
@@ -238,13 +238,13 @@ function CouponCard({ c: coupon, onRemove }: CouponCardProps) {
         </div>
       </div>
 
-      <div className="w-[72px] bg-[#F6F7FB] border border-l-0 border-[#F2F2F2] rounded-r-[16px] flex items-center justify-center px-[18px]">
+      <div className="flex w-[72px] items-center justify-center rounded-r-[16px] border border-l-0 border-[#F2F2F2] bg-[#F6F7FB] px-[18px]">
         <button
-          className="w-9 h-9 rounded-[20px] bg-white flex items-center justify-center active:scale-95"
+          className="flex h-9 w-9 items-center justify-center rounded-[20px] bg-white active:scale-95"
           aria-label="delete-coupon"
           onClick={() => onRemove(coupon)}
         >
-          <Icon icon="majesticons:close" className="w-5 h-5" />
+          <Icon icon="majesticons:close" className="h-5 w-5" />
         </button>
       </div>
     </div>
@@ -255,13 +255,13 @@ function CouponCard({ c: coupon, onRemove }: CouponCardProps) {
 
 function EmptyState() {
   return (
-    <div className="w-full flex items-center justify-center py-20">
+    <div className="flex w-full items-center justify-center py-20">
       <div className="flex flex-col items-center gap-4">
         <Icon
           icon="material-symbols:credit-card-outline"
-          className="w-[80px] h-[80px] opacity-50"
+          className="h-[80px] w-[80px] opacity-50"
         />
-        <p className="text-center font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-black">
+        <p className="text-center text-[18px] font-semibold leading-[29px] tracking-[-0.2px] text-black">
           보유중인 쿠폰이 없어요
         </p>
       </div>
@@ -292,11 +292,11 @@ function DeleteConfirmModal({
       onClick={onCancel}
     >
       <div
-        className="relative w-[335px] bg-white rounded-[14px] shadow-[4px_4px_10px_rgba(0,0,0,0.06)]"
+        className="relative w-[335px] rounded-[14px] bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col items-start gap-2 px-5 pt-6 pb-0">
-          <div className="flex flex-row items-start gap-[14px] w-full">
+        <div className="flex flex-col items-start gap-2 px-5 pb-0 pt-6">
+          <div className="flex w-full flex-row items-start gap-[14px]">
             <p className="text-[16px] font-bold leading-[24px] tracking-[-0.2px] text-[#1E2124]">
               {title}
             </p>

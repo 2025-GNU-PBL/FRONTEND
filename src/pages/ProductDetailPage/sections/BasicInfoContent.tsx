@@ -504,7 +504,7 @@ export const BasicInfoContent = ({
             {/* ✅ 리뷰 리스트: 가로 스크롤 카드 */}
             {!isReviewLoading && !reviewError && reviews.length > 0 && (
               <div className="-mx-5 px-5">
-                <div className="flex gap-3 overflow-x-auto pb-2">
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                   {reviews.map((review) => (
                     <div
                       key={review.id}

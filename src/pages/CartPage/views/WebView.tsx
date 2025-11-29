@@ -1,9 +1,13 @@
 // views/WebView.tsx
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../lib/api/axios";
 import { toast } from "react-toastify";
+
+// ⭐️ Redux hooks & cartSlice 추가
+import { useAppDispatch } from "../../../store/hooks";
+import { setCartCount } from "../../../store/cartSlice";
 
 // ==== API 응답 타입 ====
 interface CartItem {
@@ -39,37 +43,50 @@ const WebView: React.FC = () => {
   const [isAllChecked, setIsAllChecked] = useState(false);
 
   const navigate = useNavigate();
+  const dispatch = useAppDispatch(); // ⭐️ Redux dispatch 사용
 
   const formatPrice = (value: number) => `${value.toLocaleString("ko-KR")}원`;
 
-  // 장바구니 데이터 조회
-  const fetchCartData = async (isInitial: boolean = false) => {
-    try {
-      if (isInitial) {
-        setInitialLoading(true);
-      }
-      const response = await api.get<CartData>("/api/v1/cart");
-      setCartData(response.data);
+  // ✅ 장바구니 데이터 조회 (useCallback으로 래핑해서 의존성 해결)
+  const fetchCartData = useCallback(
+    async (isInitial: boolean = false) => {
+      try {
+        if (isInitial) {
+          setInitialLoading(true);
+        }
 
-      const allSelected =
-        response.data.items.length > 0 &&
-        response.data.items.every((item) => item.selected);
-      setIsAllChecked(allSelected);
+        const response = await api.get<CartData>("/api/v1/cart");
+        const data = response.data;
 
-      setError(null);
-    } catch (err) {
-      console.error("Failed to fetch cart data:", err);
-      setError("장바구니 데이터를 불러오는데 실패했습니다.");
-    } finally {
-      if (isInitial) {
-        setInitialLoading(false);
+        setCartData(data);
+
+        // ✅ 전체 선택 여부 계산
+        const allSelected =
+          data.items.length > 0 && data.items.every((item) => item.selected);
+        setIsAllChecked(allSelected);
+
+        // ✅ 네비게이션 뱃지 숫자 동기화
+        // 👉 "총 수량" 기준
+        const count = data.items.reduce((sum, item) => sum + item.quantity, 0);
+        dispatch(setCartCount(count));
+
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch cart data:", err);
+        setError("장바구니 데이터를 불러오는데 실패했습니다.");
+      } finally {
+        if (isInitial) {
+          setInitialLoading(false);
+        }
       }
-    }
-  };
+    },
+    [dispatch] // ⭐️ 의존성은 dispatch만
+  );
 
   useEffect(() => {
-    fetchCartData(true); // ✅ 처음에만 initialLoading 사용
-  }, []);
+    // ⭐️ dependency에 fetchCartData 넣어주기 → eslint 만족
+    fetchCartData(true);
+  }, [fetchCartData]);
 
   const togglePopup = () => {
     setIsPopupOpen((prev) => !prev);
@@ -172,7 +189,7 @@ const WebView: React.FC = () => {
         cartItemIds: selectedCartItemIds,
       });
       toast.success("선택된 상품이 삭제되었습니다.");
-      await fetchCartData(false);
+      await fetchCartData(false); // ✅ 여기서 다시 불러오면서 Redux count도 같이 갱신됨
     } catch (err) {
       console.error("Failed to delete selected items:", err);
       setError("선택된 상품 삭제에 실패했습니다.");

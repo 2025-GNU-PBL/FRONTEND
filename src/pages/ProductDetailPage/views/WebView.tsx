@@ -1,3 +1,4 @@
+// WebView.tsx (형님이 쓰는 경로 기준으로 사용)
 import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -5,7 +6,7 @@ import type { AxiosError } from "axios";
 import api from "../../../lib/api/axios";
 import { BasicInfoContent } from "../sections/BasicInfoContent";
 import { DetailContent } from "../sections/DetailContent";
-import { useAppSelector } from "../../../store/hooks";
+import { useAppSelector, useAppDispatch } from "../../../store/hooks";
 import type {
   Category,
   NormalizedDetail,
@@ -18,6 +19,7 @@ import type {
 } from "../../../type/product";
 import ReviewContent from "../sections/ReviewContent";
 import { toast } from "react-toastify";
+import { fetchCartCount } from "../../../store/cartSlice";
 
 /* 날짜 포맷: 2025-11-19 -> 25.11.19 */
 const formatDate = (dateStr: string) => {
@@ -55,6 +57,7 @@ const WebView = () => {
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const isAuth = useAppSelector((s) => s.user.isAuth);
+  const dispatch = useAppDispatch();
 
   // OWNER일 때만 bzName 안전하게 꺼내기 (MobileView와 동일)
   const ownerBzName = useAppSelector((s) => {
@@ -100,6 +103,9 @@ const WebView = () => {
         productId: Number(id),
         quantity,
       });
+
+      // ✅ 서버에 장바구니 담기 성공 후, 전역 cartCount 다시 가져오기
+      dispatch(fetchCartCount());
 
       return true;
     } catch (error) {
@@ -763,7 +769,7 @@ const WebView = () => {
                       <div className="w-[80px] bg-[#F9FAFB] border border-l-0 border-[#E5E7EB] rounded-2xl rounded-l-none flex items-center justify-center">
                         <button
                           type="button"
-                          className="w-10 h-10 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center shadow-sm"
+                          className="w-10 h-10 rounded-full bg:white border border-[#E5E7EB] flex items-center justify-center shadow-sm"
                           onClick={
                             isDownloaded
                               ? undefined
@@ -817,10 +823,10 @@ const WebView = () => {
       {showReservationModal && (
         <>
           <div
-            className="fixed inset-0 z-[70] bg-[rgba(0,0,0,0.6)]"
+            className="fixed inset-0 z:[70] bg-[rgba(0,0,0,0.6)]"
             onClick={() => setShowReservationModal(false)}
           />
-          <div className="fixed inset-0 z-[80] flex items-center justify-center px-4">
+          <div className="fixed inset-0 z:[80] flex items-center justify-center px-4">
             <div className="w-full max-w-[420px] rounded-[24px] bg-white pt-8 pb-8 px-6 shadow-2xl">
               <div className="flex flex-col items-center">
                 <p className="text-[15px] text-[#FF2233] font-medium mb-2 text-center">

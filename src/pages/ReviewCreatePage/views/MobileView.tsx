@@ -127,13 +127,16 @@ const MobileView: React.FC = () => {
       return;
     }
 
-    const satisfaction = mapSatisfaction(q1Answer);
+    // ✅ 백엔드 스펙에 맞게 필드 분리
+    const timeSatisfaction = mapSatisfaction(q1Answer);
+    const picSatisfaction = mapSatisfaction(q2Answer);
 
     const requestBody = {
       title: productName,
       star: rating,
       comment: review.trim(),
-      satisfaction,
+      timeSatisfaction,
+      picSatisfaction,
     };
 
     const jsonBlob = new Blob([JSON.stringify(requestBody)], {
@@ -258,10 +261,10 @@ const MobileView: React.FC = () => {
         {/* 하단 구분선 */}
         <div className="mt-6 h-2 w-[calc(100%+40px)] -mx-5 bg-[#F7F9FA]" />
 
-        {/* 질문 1: 일정이 관리가 편했나요? */}
+        {/* 질문 1: 일정이 잘 지켜졌나요? */}
         <section className="mt-6">
           <p className="mb-3 text-[14px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#1E2124]">
-            일정이 관리가 편했나요?
+            일정이 잘 지켜졌나요?
           </p>
 
           <div className="flex gap-2">
@@ -329,7 +332,7 @@ const MobileView: React.FC = () => {
         {/* 질문 2 */}
         <section className="mt-6">
           <p className="mb-3 text-[14px] font-semibold leading-[1.6] tracking-[-0.2px] text-[#1E2124]">
-            일정이 관리가 편했나요?
+            사진과 비슷했나요?
           </p>
 
           <div className="flex gap-2">

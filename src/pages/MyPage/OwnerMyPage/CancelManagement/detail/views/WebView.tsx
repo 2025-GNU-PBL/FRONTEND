@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router-dom";
-import api from "../../../../../lib/api/axios";
+import api from "../../../../../../lib/api/axios";
 
 /** 상품 정보 타입 */
 type ProductInfo = {
@@ -17,9 +17,6 @@ type CustomerInfo = {
   phone: string;
   customerEmail: string;
 };
-
-/** 서버 결제 상태 타입  */
-type ApiPaymentStatus = "DONE" | "CANCELED" | "CANCEL_REQUESTED" | "FAILED";
 
 /** 상세 화면에서 실제로 쓸 상태  */
 type DetailPaymentStatus = "CANCEL_REQUESTED" | "CANCELED";
@@ -65,6 +62,28 @@ interface WebCancelDetailViewProps {
   onApproved?: () => void;
 }
 
+/** 서버 에러 객체에서 code / message 추출 (unknown 안전 처리) */
+function extractServerError(error: unknown): {
+  code?: string;
+  message?: string;
+} {
+  if (error && typeof error === "object" && "response" in error) {
+    const response = (
+      error as {
+        response?: { data?: { code?: string; message?: string } };
+      }
+    ).response;
+
+    const data = response?.data;
+    return {
+      code: data?.code,
+      message: data?.message,
+    };
+  }
+
+  return {};
+}
+
 /** 공용 섹션 카드 */
 function SectionCard({
   title,
@@ -104,9 +123,7 @@ function SectionCard({
   );
 }
 
-const CancelRequestDetailWebView: React.FC<WebCancelDetailViewProps> = (
-  props
-) => {
+const WebView: React.FC<WebCancelDetailViewProps> = (props) => {
   const nav = useNavigate();
   const location = useLocation();
   const state = location.state as CancelDetailLocationState | undefined;
@@ -189,7 +206,7 @@ const CancelRequestDetailWebView: React.FC<WebCancelDetailViewProps> = (
         setCancelReason((prev) =>
           prev && prev.trim() ? prev : data.cancelReason
         );
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("[Web CancelDetail] fetchDetail error:", error);
         setDetailError("취소 상세 정보를 불러오는 중 오류가 발생했습니다.");
       } finally {
@@ -223,13 +240,15 @@ const CancelRequestDetailWebView: React.FC<WebCancelDetailViewProps> = (
       setTimeout(() => {
         setShowToast(false);
       }, 2500);
-    } catch (error: any) {
-      console.error(error);
-      const serverCode = error?.response?.data?.code;
-      const serverMsg = error?.response?.data?.message;
+    } catch (error: unknown) {
+      console.error("[Web CancelDetail] approve error:", error);
+      const { code, message } = extractServerError(error);
+
       alert(
-        serverMsg
-          ? `승인 처리 중 오류가 발생했습니다.\n(${serverCode} : ${serverMsg})`
+        message
+          ? `승인 처리 중 오류가 발생했습니다.\n(${code ?? "UNKNOWN"} : ${
+              message ?? ""
+            })`
           : "승인 처리에 실패했습니다. 잠시 후 다시 시도해주세요."
       );
     } finally {
@@ -258,13 +277,15 @@ const CancelRequestDetailWebView: React.FC<WebCancelDetailViewProps> = (
       setTimeout(() => {
         setShowToast(false);
       }, 2500);
-    } catch (error: any) {
-      console.error(error);
-      const serverCode = error?.response?.data?.code;
-      const serverMsg = error?.response?.data?.message;
+    } catch (error: unknown) {
+      console.error("[Web CancelDetail] reject error:", error);
+      const { code, message } = extractServerError(error);
+
       alert(
-        serverMsg
-          ? `취소 요청 거절 중 오류가 발생했습니다.\n(${serverCode} : ${serverMsg})`
+        message
+          ? `취소 요청 거절 중 오류가 발생했습니다.\n(${code ?? "UNKNOWN"} : ${
+              message ?? ""
+            })`
           : "취소 요청 거절 처리에 실패했습니다. 잠시 후 다시 시도해주세요."
       );
     } finally {
@@ -517,4 +538,4 @@ const CancelRequestDetailWebView: React.FC<WebCancelDetailViewProps> = (
   );
 };
 
-export default CancelRequestDetailWebView;
+export default WebView;

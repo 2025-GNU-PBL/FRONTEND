@@ -15,12 +15,14 @@ type Review = {
   rating: number; // 1~5
   createdAtText: string; // 예: "1주 전" (API에 없어서 더미값)
   images?: string[]; // 이미지 경로 배열, 없으면 포토 없는 리뷰
-  scheduleAnswer: string; // 예: "만족해요" (더미)
-  photoSimilarAnswer: string; // 예: "보통이에요" (더미)
+  scheduleAnswer: string; // 일정 만족도 (한국어 라벨)
+  photoSimilarAnswer: string; // 사진 유사도 만족도 (한국어 라벨)
   content: string;
 };
 
 // ✅ 실제 API 응답 형태에 맞게 수정
+type SatisfactionEnum = "SATISFIED" | "NEUTRAL" | "UNSATISFIED";
+
 type ReviewApiItem = {
   id: number;
   customerId: number;
@@ -29,8 +31,9 @@ type ReviewApiItem = {
   star: number;
   title: string;
   comment: string;
-  imageUrls: string[]; // 🔥 imageUrl (단일) 이 아니라 imageUrls (배열)
-  satisfaction: "SATISFIED" | "NEUTRAL" | "UNSATISFIED";
+  imageUrls: string[];
+  timeSatisfaction: SatisfactionEnum;
+  picSatisfaction: SatisfactionEnum;
 };
 
 type ReviewApiResponse = {
@@ -48,6 +51,21 @@ type ReviewContentProps = {
 };
 
 const PAGE_SIZE = 10;
+const MAX_STARS = 5;
+
+// ✅ enum → 화면 표시용 한글 라벨 매핑
+const mapSatisfactionLabel = (value?: SatisfactionEnum): string => {
+  switch (value) {
+    case "SATISFIED":
+      return "만족해요";
+    case "NEUTRAL":
+      return "보통이에요";
+    case "UNSATISFIED":
+      return "별로에요";
+    default:
+      return "-";
+  }
+};
 
 const ReviewContent: React.FC<ReviewContentProps> = ({ targetId }) => {
   // 실제 리뷰 리스트
@@ -77,16 +95,16 @@ const ReviewContent: React.FC<ReviewContentProps> = ({ targetId }) => {
     const userNameMasked = `${firstChar}**`;
 
     // createdAt 정보가 없어서 더미값 사용
-    const createdAtText = "1주 전";
+    const createdAtText = "오늘";
 
     // ✅ 이미지: imageUrls 배열을 그대로 사용 (빈 문자열 필터링)
     const images = Array.isArray(item.imageUrls)
       ? item.imageUrls.filter((url) => url && url.trim().length > 0)
       : [];
 
-    // 스키마에 없는 값들은 기존 더미값 유지
-    const scheduleAnswer = "만족해요";
-    const photoSimilarAnswer = "보통이에요";
+    // ✅ API에서 내려주는 enum을 한글 문구로 변환
+    const scheduleAnswer = mapSatisfactionLabel(item.timeSatisfaction);
+    const photoSimilarAnswer = mapSatisfactionLabel(item.picSatisfaction);
 
     const content = item.comment?.trim().length
       ? item.comment
@@ -147,13 +165,16 @@ const ReviewContent: React.FC<ReviewContentProps> = ({ targetId }) => {
 
         // 다음에 불러올 페이지 번호
         setPageNumber(2);
-      } catch (e) {
+      } catch (error) {
         if (!isMounted) return;
+        console.error(error);
         setError("리뷰를 불러오는 중 오류가 발생했어요.");
         setHasMore(false);
       } finally {
-        if (!isMounted) return;
-        setLoading(false);
+        // ⚠️ no-unsafe-finally 회피: return 사용하지 않고 guard만
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -207,7 +228,8 @@ const ReviewContent: React.FC<ReviewContentProps> = ({ targetId }) => {
       });
 
       setPageNumber((prev) => prev + 1);
-    } catch (e) {
+    } catch (error) {
+      console.error(error);
       setError("리뷰를 불러오는 중 오류가 발생했어요.");
     } finally {
       isFetchingRef.current = false;
@@ -321,11 +343,19 @@ const ReviewContent: React.FC<ReviewContentProps> = ({ targetId }) => {
                         {review.userNameMasked}
                       </span>
                       <div className="flex items-center">
-                        {Array.from({ length: review.rating }).map((_, i) => (
+                        {Array.from({ length: MAX_STARS }).map((_, i) => (
                           <Icon
                             key={i}
-                            icon="mdi:star"
-                            className="w-5 h-5 text-[#FFD900]"
+                            icon={
+                              i < review.rating
+                                ? "mdi:star"
+                                : "mdi:star-outline"
+                            }
+                            className={`w-5 h-5 ${
+                              i < review.rating
+                                ? "text-[#FFD900]"
+                                : "text-[#E0E0E0]"
+                            }`}
                           />
                         ))}
                       </div>
@@ -336,13 +366,13 @@ const ReviewContent: React.FC<ReviewContentProps> = ({ targetId }) => {
                   </div>
                 </div>
 
-                {/* 이미지 영역 (이미지가 있는 리뷰만) */}
+                {/* 이미지 영역 (이미지가 있는 리뷰만, 전체 다 표시 - 가로 스크롤) */}
                 {review.images && review.images.length > 0 && (
-                  <div className="mt-4 flex gap-1">
-                    {review.images.slice(0, 2).map((src, i) => (
+                  <div className="mt-4 flex gap-1 overflow-x-auto scrollbar-hide">
+                    {review.images.map((src, i) => (
                       <div
                         key={i}
-                        className="w-[110px] h-[110px] rounded-lg border border-[#F5F5F5] bg-center bg-cover"
+                        className="min-w-[110px] h-[110px] rounded-lg border border-[#F5F5F5] bg-center bg-cover"
                         style={{ backgroundImage: `url(${src})` }}
                       />
                     ))}

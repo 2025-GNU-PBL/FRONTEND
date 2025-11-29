@@ -10,7 +10,7 @@ export const buildKakaoAuthUrl = (role: UserRole) => {
     `?response_type=code` +
     `&client_id=${clientId}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&state=${state}`
-    // `&prompt=login`
+    `&state=${state}` +
+    `&prompt=login`
   );
 };
