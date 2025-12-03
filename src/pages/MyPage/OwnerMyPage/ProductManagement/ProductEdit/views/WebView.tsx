@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import { multipartApi } from "../../../../../../lib/api/multipartApi";
+import api from "../../../../../../lib/api/axios";
 import { useAppSelector } from "../../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../../store/userSlice";
 import { toast } from "react-toastify";
@@ -352,18 +353,8 @@ const WebView: React.FC = () => {
       const url = `${GET_ENDPOINT_MAP[categoryKoFromParam]}/${id}`;
 
       try {
-        const res = await fetch(url);
-        if (!res.ok) {
-          console.error(
-            "[상품 수정] 상품 로딩 실패 (status:",
-            res.status,
-            "):",
-            url
-          );
-          return;
-        }
-
-        const data = (await res.json()) as LoadedProduct;
+        // 🔧 fetch → axios 인스턴스로 교체
+        const { data } = await api.get<LoadedProduct>(url);
 
         // 가격 문자열 포맷
         const priceStr = data.price
