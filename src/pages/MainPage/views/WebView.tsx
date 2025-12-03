@@ -412,7 +412,11 @@ export default function WebView({
               </div>
 
               {/* 무한 스크롤 sentinel */}
-              <div ref={sentinelRef} className="h-px w-full" aria-hidden />
+              <div
+                ref={sentinelRef}
+                className="h-px w-full opacity-0"
+                aria-hidden
+              />
 
               {/* 그라데이션 페이드 */}
               <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent" />
