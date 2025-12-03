@@ -22,7 +22,6 @@ export const DetailContent = ({ data }: DetailContentProps) => {
   const detailText =
     data.detail && data.detail.trim().length > 0 ? data.detail : null;
 
-  // any 대신, 보다 넓은 타입으로 한 번만 캐스팅해서 사용
   const dataWithTimes = data as DetailWithAvailableTimes;
 
   const availableTimes =
@@ -268,10 +267,11 @@ export const DetailContent = ({ data }: DetailContentProps) => {
                 key={`${img.id ?? img.url}-${index}`}
                 className="relative w-full overflow-hidden rounded-[14px] bg-[#F3F4F6] border border-[#E5E7EB] shadow-[0_10px_25px_rgba(15,23,42,0.06)]"
               >
+                {/* ⭐ 이미지 원본 비율 유지 — 잘림 방지 */}
                 <img
                   src={img.url}
                   alt={`${data.name} 상세 이미지 ${index + 1}`}
-                  className="w-full max-h-[540px] object-cover"
+                  className="w-full h-auto object-contain"
                   loading="lazy"
                 />
 

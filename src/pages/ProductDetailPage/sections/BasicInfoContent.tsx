@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import type { NormalizedDetail } from "../../../type/product";
 import { useAppSelector } from "../../../store/hooks";
+import api from "../../../lib/api/axios";
 
 /* ========================= Types ========================= */
 
@@ -211,7 +212,7 @@ export const BasicInfoContent = ({
   const [isReviewLoading, setIsReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
 
-  const role = useAppSelector((s) => s.user.role); // 🔹 추가: role 가져오기
+  const role = useAppSelector((s) => s.user.role); // 🔹 role 가져오기
 
   /* ========================= 리뷰 불러오기 ========================= */
 
@@ -225,16 +226,14 @@ export const BasicInfoContent = ({
         setIsReviewLoading(true);
         setReviewError(null);
 
-        // 필요하면 여기 fetch 대신 프로젝트 api.get으로 변경해서 사용
-        const res = await fetch(`/api/v1/products/${productId}/reviews`, {
-          signal: controller.signal,
-        });
+        const res = await api.get<ReviewResponse>(
+          `/api/v1/products/${productId}/reviews`,
+          {
+            signal: controller.signal,
+          }
+        );
 
-        if (!res.ok) {
-          throw new Error(`Failed to load reviews: ${res.status}`);
-        }
-
-        const json: ReviewResponse = await res.json();
+        const json = res.data;
 
         const list = Array.isArray(json.content) ? json.content : [];
         setReviews(list);
@@ -388,7 +387,6 @@ export const BasicInfoContent = ({
             이용 가능 시간
           </h2>
 
-          {/* ✅ data.detail 그대로 노출 (줄바꿈 유지) */}
           <div className="text-[14px] text-[#1E2124] whitespace-pre-line">
             {data.availableTimes && data.availableTimes.trim().length > 0
               ? data.availableTimes
@@ -403,7 +401,7 @@ export const BasicInfoContent = ({
       {/* 상품 상세 사진 썸네일: images 기반 썸네일 */}
       <div className="px-5 pt-4">
         <section className="mt-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items센터 justify-between">
             <h2 className="text-[16px] font-semibold text-[#1E2124]">
               상품 상세 사진
             </h2>
@@ -425,12 +423,14 @@ export const BasicInfoContent = ({
               ? data.images.slice(0, 6).map((img, index) => (
                   <div
                     key={`${img.id ?? img.url}-${index}`}
-                    className="w-full aspect-square bg-white border border-[#F5F5F5] rounded-[4px] overflow-hidden"
+                    className="w-full aspect-square bg-white border border-[#F5F5F5] rounded-[4px] overflow-hidden
+                               flex items-center justify-center" // ✅ 가운데 정렬
                   >
+                    {/* ✅ 세로/가로 비율 그대로 보여주고 싶을 때: object-contain + max-w/max-h */}
                     <img
                       src={img.url}
                       alt={data.name}
-                      className="w-full h-full object-cover"
+                      className="max-w-full max-h-full object-contain"
                     />
                   </div>
                 ))
@@ -544,7 +544,7 @@ export const BasicInfoContent = ({
 
                       {/* 이미지가 있는 경우 썸네일 */}
                       {review.imageUrl && (
-                        <div className="mt-2 w-full h-[72px] rounded-[4px] overflow-hidden bg화이트">
+                        <div className="mt-2 w-full h-[72px] rounded-[4px] overflow-hidden bg-white">
                           <img
                             src={review.imageUrl}
                             alt="리뷰 이미지"
