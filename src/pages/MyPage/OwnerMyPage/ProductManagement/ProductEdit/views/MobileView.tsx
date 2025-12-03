@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import { multipartApi } from "../../../../../../lib/api/multipartApi";
+import api from "../../../../../../lib/api/axios";
 import { useAppSelector } from "../../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../../store/userSlice";
 import MyPageHeader from "../../../../../../components/MyPageHeader";
@@ -326,7 +327,7 @@ const MobileView: React.FC = () => {
           EN_CATEGORY_TO_KO[key3];
       }
 
-      // 매핑 실패 시, 더 이상 다른 카테고리를 시도하지 않고 종료
+      // 매핑 실패 시 종료
       if (!categoryKoFromParam) {
         console.error(
           "[상품 수정] URL 카테고리 값을 한글 카테고리로 매핑할 수 없습니다:",
@@ -338,18 +339,8 @@ const MobileView: React.FC = () => {
       const url = `${GET_ENDPOINT_MAP[categoryKoFromParam]}/${id}`;
 
       try {
-        const res = await fetch(url);
-        if (!res.ok) {
-          console.error(
-            "[상품 수정] 상품 로딩 실패 (status:",
-            res.status,
-            "):",
-            url
-          );
-          return;
-        }
-
-        const data = await res.json();
+        // ✅ fetch → axios 인스턴스로 변경
+        const { data } = await api.get(url);
 
         // 가격 문자열 포맷
         const priceStr = data.price
