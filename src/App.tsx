@@ -328,7 +328,6 @@ const App = () => {
         },
         (error) => {
           console.error("SSE subscription error:", error);
-          toast.error("알림 구독 중 오류가 발생했습니다.");
         }
       );
     } else {
