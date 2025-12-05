@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from "../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../store/userSlice";
 import { updateOwnerInfo } from "../../../../../store/thunkFunctions";
 import { toast } from "react-toastify";
+import api from "../../../../../lib/api/axios";
 
 type OwnerFormState = {
   phoneNumber: string;
@@ -59,6 +60,12 @@ const MobileView: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 프로필 이미지 미리보기 + 새 파일
+  const [profilePreview, setProfilePreview] = useState<string>(
+    profileImage || ""
+  );
+  const [profileFile, setProfileFile] = useState<File | null>(null);
+
   // owner 데이터 변경 시 동기화
   useEffect(() => {
     if (!owner) return;
@@ -71,6 +78,10 @@ const MobileView: React.FC = () => {
       bankName: owner.bankName ?? "",
       bankAccount: owner.bankAccount ?? "",
     });
+
+    // 서버에 저장된 프로필 이미지 기준으로 미리보기 초기화
+    setProfilePreview(owner.profileImage || "");
+    setProfileFile(null);
   }, [owner]);
 
   const handleGoBack = () => {
@@ -87,6 +98,40 @@ const MobileView: React.FC = () => {
       }));
     };
 
+  // 프로필 이미지 선택 (로컬 미리보기 + 파일 저장)
+  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 미리보기용
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setProfilePreview(result); // 화면에 보여줄 이미지
+    };
+    reader.readAsDataURL(file);
+
+    // 업로드용 파일 저장
+    setProfileFile(file);
+  };
+
+  // 프로필 이미지 업로드 API (multipart/form-data)
+  const uploadProfileImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const { data } = await api.post<{
+      key: string;
+      imageUrl: string;
+    }>("/api/v1/owner/profile/image", formData);
+
+    if (!data.imageUrl) {
+      throw new Error("이미지 URL이 응답에 없습니다.");
+    }
+
+    return data.imageUrl;
+  };
+
   // =============================
   //   회원 정보 수정 요청
   // =============================
@@ -100,9 +145,26 @@ const MobileView: React.FC = () => {
     try {
       setIsSubmitting(true);
 
+      // 1) 새 프로필 이미지를 선택했다면 먼저 업로드
+      let finalProfileImage = profileImage;
+
+      if (profileFile) {
+        try {
+          const uploadedUrl = await uploadProfileImage(profileFile);
+          finalProfileImage = uploadedUrl || profileImage;
+        } catch (err) {
+          console.error(err);
+          toast.error(
+            "프로필 이미지 업로드 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+          );
+          // 업로드 실패 시에도 나머지 정보 수정은 그대로 진행 (원래 이미지 유지)
+        }
+      }
+
+      // 2) 소유자 정보 수정 PATCH
       await dispatch(
         updateOwnerInfo({
-          profileImage,
+          profileImage: finalProfileImage,
           phoneNumber: formData.phoneNumber,
           bzName: formData.bzName,
           bzNumber: formData.bzNumber,
@@ -196,18 +258,39 @@ const MobileView: React.FC = () => {
         <div className="w-full flex flex-col items-start gap-[30px]">
           {/* 프로필 */}
           <div className="flex flex-row items-center gap-4 h-[64px]">
-            {profileImage ? (
-              <img
-                src={profileImage}
-                alt="프로필 이미지"
-                className="w-16 h-16 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-[#D9D9D9]" />
-            )}
-            <span className="font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-black">
-              {name || "사장님"}
-            </span>
+            {/* 프로필 클릭 시 파일 선택 */}
+            <label className="flex flex-row items-center gap-4 h-[64px] cursor-pointer">
+              <div className="relative w-16 h-16">
+                {profilePreview ? (
+                  <img
+                    src={profilePreview}
+                    alt="프로필 이미지"
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-[#D9D9D9]" />
+                )}
+
+                {/* 우하단 카메라 아이콘 */}
+                <div className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-[#4170FF] flex items-center justify-center">
+                  <Icon
+                    icon="mdi:camera-outline"
+                    className="w-3.5 h-3.5 text-white"
+                  />
+                </div>
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleProfileImageChange}
+                />
+              </div>
+
+              <span className="font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-black">
+                {name || "사장님"}
+              </span>
+            </label>
           </div>
 
           {/* 정보 섹션 전체 */}
