@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from "../../../../../store/hooks";
 import { logoutUser } from "../../../../../store/thunkFunctions";
 import SideMenu from "../../../../../components/SideMenu";
 import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth"; // 🔹 경로는 프로젝트 구조에 맞게 조정
+import type { OwnerData, UserData } from "../../../../../store/userSlice";
 
 // 메인 페이지처럼 메뉴 상태를 부모에서 내려받도록 Props 정의
 type Props = {
@@ -13,11 +14,25 @@ type Props = {
   closeMenu: () => void;
 };
 
+/** OWNER 유저만 허용 */
+function ensureOwner(userData: UserData | null): OwnerData | null {
+  if (!userData) return null;
+  if ("bzNumber" in userData && userData.userRole === "OWNER") {
+    return userData as OwnerData;
+  }
+  return null;
+}
+
 export default function MobileView({ isMenuOpen, openMenu, closeMenu }: Props) {
   const nav = useNavigate();
   const dispatch = useAppDispatch();
 
-  const userName = useAppSelector((state) => state.user.userData?.name ?? "");
+  // 전체 userData에서 OWNER를 보장해서 꺼내고, 거기서 name / profileImage 사용
+  const rawUserData = useAppSelector((state) => state.user.userData);
+  const owner = ensureOwner(rawUserData);
+
+  const userName = owner?.name ?? "";
+  const profileImage = owner?.profileImage ?? "";
 
   const { refreshAuth } = useRefreshAuth(); // 🔹 auth 리프레시 훅 사용
 
@@ -76,7 +91,15 @@ export default function MobileView({ isMenuOpen, openMenu, closeMenu }: Props) {
           <div className="w-full px-5 pt-6 pb-6">
             {/* 프로필 */}
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-[#D9D9D9]" />
+              {profileImage ? (
+                <img
+                  src={profileImage}
+                  alt="프로필 이미지"
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-[#D9D9D9]" />
+              )}
               <div className="text-[18px] font-semibold tracking-[-0.2px] text-black">
                 {userName || "로그인이 필요합니다"}
               </div>

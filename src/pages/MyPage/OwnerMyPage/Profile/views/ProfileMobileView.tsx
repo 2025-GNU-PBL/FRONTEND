@@ -3,6 +3,8 @@ import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../store/userSlice";
+import api from "../../../../../lib/api/axios";
+import { toast } from "react-toastify";
 
 /** OWNER 유저만 허용 */
 function ensureOwner(userData: UserData | null): OwnerData | null {
@@ -17,7 +19,35 @@ const MobileView: React.FC = () => {
   const navigate = useNavigate();
 
   const rawUserData = useAppSelector((state) => state.user.userData);
-  const owner = ensureOwner(rawUserData);
+
+  // Redux 값으로 초기 owner 설정
+  const [owner, setOwner] = React.useState<OwnerData | null>(() =>
+    ensureOwner(rawUserData)
+  );
+
+  // Redux userData 변경 시 동기화
+  React.useEffect(() => {
+    setOwner(ensureOwner(rawUserData));
+  }, [rawUserData]);
+
+  // Swagger DTO 기준 /api/v1/owner 호출해서 최신 소유자 정보(profileImage 포함) 가져오기
+  React.useEffect(() => {
+    const fetchOwner = async () => {
+      try {
+        const { data } = await api.get<OwnerData>("/api/v1/owner");
+        // 혹시라도 OWNER가 아닐 수 있으니 한 번 더 필터
+        const ensured = ensureOwner(data as unknown as UserData);
+        if (ensured) {
+          setOwner(ensured);
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("소유자 정보를 불러오는 중 오류가 발생했습니다.");
+      }
+    };
+
+    fetchOwner();
+  }, []);
 
   const handleGoBack = () => {
     navigate(-1);
@@ -40,7 +70,7 @@ const MobileView: React.FC = () => {
 
   const handleConfirmWithdraw = () => {
     // 실제 탈퇴 로직은 추후 API 연동
-    alert("회원 탈퇴 프로세스를 연결해주세요.");
+    toast.error("회원 탈퇴 프로세스를 연결해주세요.");
     setShowWithdrawModal(false);
   };
 

@@ -4,8 +4,9 @@ import { useAppDispatch, useAppSelector } from "../../../../../store/hooks";
 import type { OwnerData, UserData } from "../../../../../store/userSlice";
 import { updateOwnerInfo } from "../../../../../store/thunkFunctions";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import api from "../../../../../lib/api/axios";
 
 /** OWNER 유저만 허용 */
 function ensureOwner(userData: UserData | null): OwnerData | null {
@@ -143,6 +144,59 @@ export default function WebView() {
   const [bizBankName, setBizBankName] = useState(bankName);
   const [bizAccount, setBizAccount] = useState(bankAccount);
 
+  // 프로필 이미지 미리보기 + 새 파일 (모바일 기준으로 추가)
+  const [profilePreview, setProfilePreview] = useState<string>(
+    profileImage || ""
+  );
+  const [profileFile, setProfileFile] = useState<File | null>(null);
+
+  // owner 변경 시 값 동기화 (프로필 포함)
+  useEffect(() => {
+    if (!owner) return;
+
+    setMemberPhone(owner.phoneNumber ?? "");
+    setBizName(owner.bzName ?? "");
+    setBizNumber(owner.bzNumber ?? "");
+    setBizDetailAddress(owner.detailAddress ?? "");
+    setBizBankName(owner.bankName ?? "");
+    setBizAccount(owner.bankAccount ?? "");
+
+    setProfilePreview(owner.profileImage || "");
+    setProfileFile(null);
+  }, [owner]);
+
+  // 프로필 이미지 선택 (로컬 미리보기 + 파일 저장) - 모바일 기준
+  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setProfilePreview(result);
+    };
+    reader.readAsDataURL(file);
+
+    setProfileFile(file);
+  };
+
+  // 프로필 이미지 업로드 API (multipart/form-data) - 모바일 기준
+  const uploadProfileImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const { data } = await api.post<{
+      key: string;
+      imageUrl: string;
+    }>("/api/v1/owner/profile/image", formData);
+
+    if (!data.imageUrl) {
+      throw new Error("이미지 URL이 응답에 없습니다.");
+    }
+
+    return data.imageUrl;
+  };
+
   // =============================
   //   회원 정보 수정 요청
   // =============================
@@ -158,9 +212,26 @@ export default function WebView() {
     try {
       setIsSubmitting(true);
 
+      // 1) 새 프로필 이미지를 선택했다면 먼저 업로드 (모바일과 동일 로직)
+      let finalProfileImage = profileImage;
+
+      if (profileFile) {
+        try {
+          const uploadedUrl = await uploadProfileImage(profileFile);
+          finalProfileImage = uploadedUrl || profileImage;
+        } catch (err) {
+          console.error(err);
+          toast.error(
+            "프로필 이미지 업로드 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+          );
+          // 업로드 실패 시에도 나머지 정보 수정은 그대로 진행 (원래 이미지 유지)
+        }
+      }
+
+      // 2) 회원 정보 수정 PATCH
       await dispatch(
         updateOwnerInfo({
-          profileImage,
+          profileImage: finalProfileImage,
           phoneNumber: memberPhone,
           bzName: bizName,
           bzNumber: bizNumber,
@@ -196,20 +267,30 @@ export default function WebView() {
           <section className="relative rounded-3xl border border-gray-200 bg-white/95 backdrop-blur shadow-[0_10px_30px_rgba(0,0,0,0.06)] overflow-hidden">
             <div className="absolute inset-0 -z-10 blur-xl rounded-3xl bg-gradient-to-br from-[#FF4646]/15 via-white to-[#111827]/5" />
             <div className="px-6 py-6 flex items-center gap-5">
-              {profileImage ? (
-                <img
-                  src={profileImage}
-                  alt="프로필 이미지"
-                  className="w-16 h-16 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                  <Icon
-                    icon="solar:user-bold-duotone"
-                    className="w-7 h-7 text-gray-500"
+              {/* 프로필 영역: 디자인 유지 + 클릭 시 파일 선택만 추가 */}
+              <label className="inline-block cursor-pointer">
+                {profilePreview ? (
+                  <img
+                    src={profilePreview}
+                    alt="프로필 이미지"
+                    className="w-16 h-16 rounded-full object-cover"
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                    <Icon
+                      icon="solar:user-bold-duotone"
+                      className="w-7 h-7 text-gray-500"
+                    />
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleProfileImageChange}
+                />
+              </label>
+
               <div className="min-w-0 flex-1">
                 <div className="text-[20px] font-semibold text-gray-900 tracking-[-0.2px] truncate">
                   {name || "게스트"}

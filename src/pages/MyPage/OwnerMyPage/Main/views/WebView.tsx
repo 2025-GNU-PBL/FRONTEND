@@ -4,12 +4,26 @@ import { Icon } from "@iconify/react";
 import { useAppSelector, useAppDispatch } from "../../../../../store/hooks";
 import { logoutUser } from "../../../../../store/thunkFunctions";
 import { useRefreshAuth } from "../../../../../hooks/useRefreshAuth";
+import type { UserData, OwnerData } from "../../../../../store/userSlice";
+
+/** OWNER 유저만 허용 */
+function ensureOwner(userData: UserData | null): OwnerData | null {
+  if (!userData) return null;
+  if ("bzNumber" in userData && userData.userRole === "OWNER") {
+    return userData as OwnerData;
+  }
+  return null;
+}
 
 export default function WebView() {
   const nav = useNavigate();
   const dispatch = useAppDispatch();
 
-  const userName = useAppSelector((state) => state.user.userData?.name ?? "");
+  const rawUserData = useAppSelector((state) => state.user.userData);
+  const owner = ensureOwner(rawUserData);
+
+  const userName = owner?.name ?? "";
+  const profileImage = owner?.profileImage ?? "";
 
   const { refreshAuth } = useRefreshAuth(); // 🔹 auth 리프레시 훅 사용
 
@@ -36,7 +50,15 @@ export default function WebView() {
           <section className="space-y-6">
             <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-[#D9D9D9]" />
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt="프로필 이미지"
+                    className="w-14 h-14 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-[#D9D9D9]" />
+                )}
                 <div>
                   <div className="text-[18px] font-semibold tracking-[-0.2px] text-black">
                     {userName || "로그인이 필요합니다"}
