@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
+import api from "../../../../../../lib/api/axios";
 
 // -------- 추가된 부분: 명확한 태그 타입 지정 --------
 interface ProductTag {
@@ -114,39 +115,27 @@ const RegisterMobileView = () => {
   }, []);
 
   const fetchProducts = async () => {
-    const accessToken = localStorage.getItem("accessToken");
-    if (!accessToken) {
-      console.error("액세스 토큰이 없습니다.");
-      toast.error("로그인 정보가 없습니다. 다시 로그인해 주세요.");
-      navigate("/log-in");
-      return;
-    }
     try {
-      const response = await fetch("/api/v1/product?pageNumber=1&pageSize=10", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const list: ProductPageResponse[] = data.content || [];
-        setProducts(list);
+      const response = await api.get<{ content: ProductPageResponse[] }>(
+        "/api/v1/product?pageNumber=1&pageSize=10"
+      );
+      const list = response.data.content || [];
+      setProducts(list);
 
-        if (list.length > 0 && selectedProductId === null) {
-          const firstProduct = list[0];
-          setSelectedProductId(firstProduct.id);
-          setSelectedProductName(firstProduct.name);
-          setSelectedCategory(firstProduct.category);
-        }
-      } else {
-        console.error("상품 목록 불러오기 실패:", response.statusText);
-        toast.error("상품 목록을 불러오는데 실패했습니다.");
+      if (list.length > 0 && selectedProductId === null) {
+        const firstProduct = list[0];
+        setSelectedProductId(firstProduct.id);
+        setSelectedProductName(firstProduct.name);
+        setSelectedCategory(firstProduct.category);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("상품 목록 API 호출 중 오류 발생:", error);
-      toast.error("상품 목록을 불러오는 중 오류가 발생했습니다.");
+      toast.error(
+        error.response?.data?.message || "상품 목록을 불러오는 중 오류가 발생했습니다."
+      );
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        navigate("/log-in");
+      }
     }
   };
 
@@ -158,61 +147,80 @@ const RegisterMobileView = () => {
   };
 
   const handleSubmit = async () => {
-    if (selectedProductId === null) {
-      toast.error("상품을 선택해 주세요.");
-      return;
-    }
-    if (selectedCategory === null) {
-      toast.error("상품 카테고리를 선택해 주세요.");
+    // 유효성 검사
+    if (
+      !couponCode ||
+      !couponName ||
+      !couponDetail ||
+      !discountValue ||
+      !minPurchaseAmount ||
+      !startDate ||
+      !expirationDate ||
+      selectedProductId === null ||
+      selectedCategory === null
+    ) {
+      toast.error("모든 필드를 입력해 주세요.");
       return;
     }
 
-    const accessToken = localStorage.getItem("accessToken");
-    if (!accessToken) {
-      toast.error("로그인 정보가 없습니다. 다시 로그인해 주세요.");
-      navigate("/log-in");
+    const parsedDiscountValue = parseFloat(removeCommas(discountValue));
+    const parsedMaxDiscountAmount = maxDiscountAmount
+      ? parseFloat(removeCommas(maxDiscountAmount))
+      : null;
+    const parsedMinPurchaseAmount = parseFloat(removeCommas(minPurchaseAmount));
+
+    if (parsedDiscountValue <= 0) {
+      toast.error("할인 값은 0보다 커야 합니다.");
+      return;
+    }
+    if (
+      parsedMaxDiscountAmount !== null &&
+      parsedMaxDiscountAmount <= 0
+    ) {
+      toast.error("최대 할인 금액은 0보다 커야 합니다.");
+      return;
+    }
+    if (parsedMinPurchaseAmount < 0) {
+      toast.error("최소 구매 금액은 0보다 크거나 같아야 합니다.");
+      return;
+    }
+
+    if (new Date(startDate) > new Date(expirationDate)) {
+      toast.error("시작일은 종료일보다 빨라야 합니다.");
       return;
     }
 
     const couponData = {
-      productId: selectedProductId,
       couponCode,
       couponName,
       couponDetail,
       discountType,
-      // ★ 콤마 제거 후 숫자로 변환
-      discountValue: parseFloat(removeCommas(discountValue)) || 0,
-      maxDiscountAmount: parseFloat(removeCommas(maxDiscountAmount)) || 0,
-      minPurchaseAmount: parseFloat(removeCommas(minPurchaseAmount)) || 0,
-      category: selectedCategory ?? ("DRESS" as ProductCategory),
+      discountValue: parsedDiscountValue,
+      maxDiscountAmount: parsedMaxDiscountAmount,
+      minPurchaseAmount: parsedMinPurchaseAmount,
       startDate,
       expirationDate,
+      productId: selectedProductId,
+      category: selectedCategory,
     };
 
     try {
-      const response = await fetch("/api/v1/owner/coupon", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(couponData),
-      });
+      const response = await api.post("/api/v1/owner/coupon", couponData);
 
-      if (response.ok) {
+      if (response.status === 201) {
         toast.success("쿠폰이 성공적으로 등록되었습니다!");
         navigate("/my-page/owner/coupons");
       } else {
-        const errorData = await response.json();
+        const errorData = response.data;
         toast.error(
-          `쿠폰 등록 실패: ${
-            errorData.message || response.statusText || "알 수 없는 오류"
-          }`
+          `쿠폰 등록 실패: ${errorData.message || response.statusText}`
         );
       }
-    } catch (error) {
-      console.error("API 호출 중 오류 발생:", error);
-      toast.error("쿠폰 등록 중 오류가 발생했습니다.");
+    } catch (error: any) {
+      console.error("쿠폰 등록 API 호출 중 오류 발생:", error);
+      toast.error(
+        error.response?.data?.message || "쿠폰 등록 중 오류가 발생했습니다."
+      );
     }
   };
 
