@@ -569,7 +569,7 @@ const MobileView = () => {
         )}
 
         {/* 메인 컨텐츠 */}
-        <main className="pb-[140px]">
+        <main className="pb-[80px]">
           {!loading && !errorMsg && detailData && (
             <>
               {activeTab === "basic" && (

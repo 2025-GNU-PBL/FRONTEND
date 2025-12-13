@@ -316,7 +316,7 @@ export default function ResultsWeb({ query }: ResultsProps) {
               const product: CardProduct = {
                 id: Number(it.id),
                 name: it.title,
-                ownerName: it.brand,
+                bzName: it.brand,
                 price: it.price,
                 thumbnail: it.img,
                 starCount: it.rating ?? 0,

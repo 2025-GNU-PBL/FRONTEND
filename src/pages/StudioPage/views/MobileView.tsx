@@ -143,6 +143,11 @@ const MobileView: React.FC = () => {
     Set<ShootableOption>
   >(new Set());
 
+  // ✅ 필터 미리보기 결과 개수 상태
+  const [previewCount, setPreviewCount] = useState<number | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const previewControllerRef = useRef<AbortController | null>(null);
+
   // 찜
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
   const toggleLike = useCallback((id: number) => {
@@ -381,12 +386,25 @@ const MobileView: React.FC = () => {
   const resetFilter = useCallback(() => {
     setSelectedStyle(null);
     setSelectedShootable(new Set());
+    // 미리보기도 초기화
+    previewControllerRef.current?.abort();
+    setPreviewCount(null);
+    setPreviewLoading(false);
   }, []);
 
   const applyFilter = useCallback(() => {
-    // 시트 내 선택을 실제 적용값으로 반영
-    setAppliedStyle(selectedStyle);
-    setAppliedShootable(new Set(selectedShootable));
+    const hasStyle = !!selectedStyle;
+    const hasShootable = selectedShootable.size > 0;
+
+    // 아무것도 선택 안 되어 있으면 전체 보기 상태로 적용
+    if (!hasStyle && !hasShootable) {
+      setAppliedStyle(null);
+      setAppliedShootable(new Set());
+    } else {
+      // 시트 내 선택을 실제 적용값으로 반영
+      setAppliedStyle(selectedStyle);
+      setAppliedShootable(new Set(selectedShootable));
+    }
 
     // 목록 리셋 및 1페이지부터 다시
     setItems([]);
@@ -416,7 +434,92 @@ const MobileView: React.FC = () => {
     setPageNumber(1);
   }, []);
 
+  /* ========================= 필터 미리보기 개수(fetch) ========================= */
+
+  useEffect(() => {
+    // 필터 시트가 닫히면 미리보기 상태 초기화 + 요청 취소
+    if (!isFilterOpen) {
+      previewControllerRef.current?.abort();
+      setPreviewLoading(false);
+      setPreviewCount(null);
+      return;
+    }
+
+    const hasStyle = !!selectedStyle;
+    const hasShootable = selectedShootable.size > 0;
+
+    // 아무 필터도 선택 안 했으면 미리보기 호출 X
+    if (!hasStyle && !hasShootable) {
+      previewControllerRef.current?.abort();
+      setPreviewLoading(false);
+      setPreviewCount(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    previewControllerRef.current = controller;
+
+    const fetchPreview = async () => {
+      try {
+        setPreviewLoading(true);
+
+        const regionValue = getRegionQueryValue(selectedRegion);
+
+        const tagsPreview: string[] = [];
+        if (selectedStyle) tagsPreview.push(STYLE_TO_TAG[selectedStyle]);
+        selectedShootable.forEach((s) => tagsPreview.push(SHOOTABLE_TO_TAG[s]));
+
+        const tagsPreviewParam =
+          tagsPreview.length > 0 ? tagsPreview.join(",") : undefined;
+
+        const { data }: { data: PagedResponse } = await api.get(
+          "/api/v1/studio/filter",
+          {
+            params: {
+              pageNumber: 1,
+              pageSize: 1, // 개수만 필요하니까 1
+              region: regionValue,
+              sortType: sortParam,
+              tags: tagsPreviewParam,
+            },
+            signal: controller.signal,
+          }
+        );
+
+        setPreviewCount(data.page.totalElements);
+      } catch (err: unknown) {
+        if (
+          (axios.isAxiosError(err) && err.code === "ERR_CANCELED") ||
+          (err instanceof Error && err.name === "CanceledError")
+        ) {
+          // 취소된 요청 무시
+        } else {
+          console.error("스튜디오 필터 미리보기 개수 조회 실패:", err);
+          setPreviewCount(null);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setPreviewLoading(false);
+        }
+      }
+    };
+
+    void fetchPreview();
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    isFilterOpen,
+    selectedRegion,
+    selectedStyle,
+    selectedShootable,
+    sortParam,
+  ]);
+
   /* ========================= 렌더 ========================= */
+
+  const hasSelectedFilters = !!selectedStyle || selectedShootable.size > 0;
 
   return (
     <motion.div
@@ -742,7 +845,13 @@ const MobileView: React.FC = () => {
                   onClick={applyFilter}
                 >
                   <span className="text-[16px] font-semibold text-white">
-                    결과 보기
+                    {hasSelectedFilters
+                      ? previewLoading
+                        ? "계산 중..."
+                        : previewCount !== null
+                        ? `${previewCount}개 결과 보기`
+                        : "결과 보기"
+                      : "결과 보기"}
                   </span>
                 </button>
               </div>

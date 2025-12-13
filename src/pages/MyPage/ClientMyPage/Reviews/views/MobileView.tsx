@@ -50,7 +50,8 @@ export default function MobileView() {
   // 삭제 확인 모달용 타겟 id
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  const hasReviews = !loading && reviews.length > 0;
+  const hasReviews = reviews.length > 0;
+  const isEmpty = !loading && !hasReviews;
 
   /** API 응답 → UI 모델 */
   const mapToReview = (item: ReviewApiResponseItem): Review => ({
@@ -132,34 +133,41 @@ export default function MobileView() {
       </div>
 
       {/* 내용 영역 */}
-      <div className="flex-1 w-full overflow-y-auto">
-        {loading ? (
-          <div className="mt-30 flex-1 flex items-center justify-center text-[14px] text-[#999999]">
-            리뷰 내역을 불러오는 중입니다...
-          </div>
-        ) : hasReviews ? (
-          <div className="mt-15">
-            <div className="px-5 pt-5">
-              <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
-                리뷰 내역 {reviews.length}
-              </span>
+      {/* ✅ 빈 상태일 때 헤더 아래 영역 전체를 flex로 중앙 정렬 */}
+      <div className={`flex-1 w-full overflow-y-auto ${isEmpty ? "flex" : ""}`}>
+        {/* ✅ 내부 컨테이너: 빈 상태면 가운데 정렬 */}
+        <div
+          className={`w-full ${
+            isEmpty ? "flex items-center justify-center" : ""
+          }`}
+        >
+          {loading ? (
+            <div className="w-full flex items-center justify-center py-10 text-[14px] text-[#999999]">
+              리뷰 내역을 불러오는 중입니다...
             </div>
+          ) : hasReviews ? (
+            <div className="mt-15 w-full">
+              <div className="px-5 pt-5">
+                <span className="text-[14px] leading-[21px] tracking-[-0.2px] text-black">
+                  리뷰 내역 {reviews.length}
+                </span>
+              </div>
 
-            <div className="mt-3 flex flex-col">
-              {reviews.map((r) => (
-                <ReviewRow
-                  key={r.id}
-                  review={r}
-                  onClickDelete={openDeleteModal}
-                />
-              ))}
+              <div className="mt-3 flex flex-col">
+                {reviews.map((r) => (
+                  <ReviewRow
+                    key={r.id}
+                    review={r}
+                    onClickDelete={openDeleteModal}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="mt-65">
+          ) : (
+            // ✅ 빈 상태: 헤더 아래 영역 기준 정중앙
             <EmptyState />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* 삭제 확인 모달 */}
@@ -248,10 +256,11 @@ function ReviewRow({
 
 function EmptyState() {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center py-10">
+    <div className="flex flex-col items-center justify-center py-10 mb-10">
       <img
         src="/images/document.png"
         className="w-[72px] h-[72px] text-[#D3D4D6] mb-4"
+        alt="empty"
       />
       <div className="flex flex-col items-center">
         <p className="text-[18px] leading-[24px] font-semibold tracking-[-0.2px] text-black mb-2">

@@ -274,7 +274,7 @@ export default function ResultsMobile({ query }: ResultsProps) {
   if (!keyword) return null;
 
   return (
-    <div className="relative w-full min-h-screen bg-white">
+    <div className="relative w-full min-h-screen bg-white mb-5">
       {/* 상단 결과 개수 & 정렬 버튼 */}
       <div className="pt-1 px-5 flex items-center justify-between">
         <div className="text-[14px] leading-[150%] tracking-[-0.2px] text-[#999999]">
@@ -305,7 +305,7 @@ export default function ResultsMobile({ query }: ResultsProps) {
               const product: CardProduct = {
                 id: Number(it.id),
                 name: it.title,
-                ownerName: it.brand,
+                bzName: it.brand,
                 price: it.price,
                 thumbnail: it.img,
                 starCount: it.rating ?? 0,

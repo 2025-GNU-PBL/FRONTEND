@@ -1,6 +1,6 @@
 // src/pages/MyPage/ClientMyPage/Coupons/MobileView.tsx
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../../../../lib/api/axios";
@@ -98,24 +98,8 @@ const MobileView: React.FC = () => {
     return 0;
   }, [currentProduct, purchaseAmount]);
 
-  // ⭐ 스크롤 여부 감지용 Ref & State
-  const categoryRef = useRef<HTMLDivElement>(null);
-  const [isScrollable, setIsScrollable] = useState(false);
-
   // 정렬 드롭다운 바깥 클릭 감지용 ref
-  const sortRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const checkScrollable = () => {
-      if (!categoryRef.current) return;
-      const { scrollWidth, clientWidth } = categoryRef.current;
-      setIsScrollable(scrollWidth > clientWidth);
-    };
-
-    checkScrollable();
-    window.addEventListener("resize", checkScrollable);
-    return () => window.removeEventListener("resize", checkScrollable);
-  }, []);
+  const sortRef = React.useRef<HTMLDivElement | null>(null);
 
   // 정렬 드롭다운 바깥 클릭 시 닫기
   useEffect(() => {
@@ -208,9 +192,16 @@ const MobileView: React.FC = () => {
     });
   }, [filteredCoupons, applicableCouponIds, sort]);
 
+  const hasAnyCoupon = coupons.length > 0;
+
+  // ✅ 빈 상태 여부 플래그
+  const isEmptyState = !loading && !error && sortedCoupons.length === 0;
+
   return (
     <div className="w-full min-h-screen bg-[#F5F5F5] flex flex-col">
-      <div className="w-full bg-white min-h-screen">
+      {/* ✅ 내부 컨테이너도 flex-col 로 변경 */}
+      <div className="w-full bg-white min-h-screen flex flex-col">
+        {/* 헤더 */}
         <div className="sticky top-0 z-20 bg-white">
           <header className="relative flex h-[60px] items-center justify-between px-5">
             <button
@@ -231,108 +222,124 @@ const MobileView: React.FC = () => {
             <div className="h-6 w-6" />
           </header>
 
-          <section className="px-5 pt-5 pb-3">
-            <div className="w-full mx-auto flex flex-col gap-4">
-              {/* ⭐ 변경된 카테고리 버튼 래퍼 */}
-              <div
-                ref={categoryRef}
-                className={`flex gap-2 overflow-x-auto scrollbar-hide w-full ${
-                  isScrollable
-                    ? "flex-nowrap justify-start"
-                    : "flex-nowrap justify-center"
-                }`}
-              >
-                {["전체", "웨딩홀", "스튜디오", "드레스", "메이크업"].map(
-                  (label) => {
-                    const key = label as CouponCategory;
-                    const active = activeCategory === key;
+          {/* ⚠️ 쿠폰 있을 때만 카테고리 + 정렬 영역 노출 */}
+          {hasAnyCoupon && (
+            <section className="pt-5 pb-3">
+              <div className="w-full mx-auto flex flex-col gap-4 px-5">
+                {/* 카테고리 버튼 래퍼: 가로 스크롤 제거, 한 줄 딱 맞게 */}
+                <div className="flex w-full gap-2 justify-center">
+                  {["전체", "웨딩홀", "스튜디오", "드레스", "메이크업"].map(
+                    (label) => {
+                      const key = label as CouponCategory;
+                      const active = activeCategory === key;
 
-                    return (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => setActiveCategory(key)}
-                        className={`px-3 py-2 rounded-[20px] text-[14px] border whitespace-nowrap ${
-                          active
-                            ? "bg-black text-white border-black"
-                            : "bg-white text-black border-[#D9D9D9]"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  }
-                )}
-              </div>
-
-              {/* 보유 쿠폰 + 정렬 드롭다운 */}
-              <div className="flex items-center justify-between">
-                <span className="text-[14px]">
-                  보유 쿠폰 {sortedCoupons.length}
-                </span>
-
-                <div className="relative" ref={sortRef}>
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 text-[13px]"
-                    onClick={() => setSortOpen((prev) => !prev)}
-                  >
-                    {sort}
-                    <Icon
-                      icon="solar:alt-arrow-down-linear"
-                      className="w-4 h-4 text-[#9CA3AF]"
-                    />
-                  </button>
-
-                  {sortOpen && (
-                    <div className="absolute right-0 mt-1 w-[120px] rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
-                      <button
-                        type="button"
-                        className={`w-full text-left px-4 py-2.5 text-[13px] ${
-                          sort === "최신순"
-                            ? "bg-gray-100 font-semibold"
-                            : "hover:bg-gray-50"
-                        }`}
-                        onClick={() => {
-                          setSort("최신순");
-                          setSortOpen(false);
-                        }}
-                      >
-                        최신순
-                      </button>
-                      <button
-                        type="button"
-                        className={`w-full text-left px-4 py-2.5 text-[13px] ${
-                          sort === "오래된순"
-                            ? "bg-gray-100 font-semibold"
-                            : "hover:bg-gray-50"
-                        }`}
-                        onClick={() => {
-                          setSort("오래된순");
-                          setSortOpen(false);
-                        }}
-                      >
-                        오래된순
-                      </button>
-                    </div>
+                      return (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() => setActiveCategory(key)}
+                          className={`px-3 py-2 rounded-[20px] text-[13px] border text-center ${
+                            active
+                              ? "bg-black text-white border-black"
+                              : "bg-white text-black border-[#D9D9D9]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    }
                   )}
                 </div>
+
+                {/* 보유 쿠폰 + 정렬 드롭다운 */}
+                <div className="flex items-center justify-between">
+                  <span className="text-[14px]">
+                    보유 쿠폰 {sortedCoupons.length}
+                  </span>
+
+                  <div className="relative" ref={sortRef}>
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-[13px]"
+                      onClick={() => setSortOpen((prev) => !prev)}
+                    >
+                      {sort}
+                      <Icon
+                        icon="solar:alt-arrow-down-linear"
+                        className="w-4 h-4 text-[#9CA3AF]"
+                      />
+                    </button>
+
+                    {sortOpen && (
+                      <div className="absolute right-0 mt-1 w-[120px] rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
+                        <button
+                          type="button"
+                          className={`w-full text-left px-4 py-2.5 text-[13px] ${
+                            sort === "최신순"
+                              ? "bg-gray-100 font-semibold"
+                              : "hover:bg-gray-50"
+                          }`}
+                          onClick={() => {
+                            setSort("최신순");
+                            setSortOpen(false);
+                          }}
+                        >
+                          최신순
+                        </button>
+                        <button
+                          type="button"
+                          className={`w-full text-left px-4 py-2.5 text-[13px] ${
+                            sort === "오래된순"
+                              ? "bg-gray-100 font-semibold"
+                              : "hover:bg-gray-50"
+                          }`}
+                          onClick={() => {
+                            setSort("오래된순");
+                            setSortOpen(false);
+                          }}
+                        >
+                          오래된순
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
         </div>
 
-        <main className="px-5 pb-[96px] pt-2">
-          <div className="w-full mx-auto">
+        {/* 메인 컨텐츠 */}
+        {/* ✅ 빈 상태일 때만 flex-1 flex 로 세로 중앙 정렬 */}
+        <main
+          className={`px-5 pb-[96px] pt-2 ${isEmptyState ? "flex-1 flex" : ""}`}
+        >
+          {/* ✅ 빈 상태일 때만 내부 div 도 가운데 정렬 */}
+          <div
+            className={`w-full mx-auto ${
+              isEmptyState ? "flex items-center justify-center" : ""
+            }`}
+          >
             {loading ? (
               <div className="text-[13px] text-[#999]">
                 쿠폰을 불러오는 중입니다...
               </div>
             ) : error ? (
               <div className="text-[13px] text-[#EF4444]">{error}</div>
-            ) : sortedCoupons.length === 0 ? (
-              <div className="text-[13px] text-[#999]">
-                보유중인 쿠폰이 없습니다.
+            ) : isEmptyState ? (
+              // ⭐ 쿠폰이 없을 때: 화면 정중앙
+              <div className="flex flex-col items-center justify-center mb-10">
+                {/* 80 x 80 이미지 영역 느낌 */}
+                <div className="w-20 h-20 rounded-full bg-[#F6F7FB] flex items-center justify-center opacity-50 mb-4">
+                  <img
+                    src="/images/coupon.png"
+                    alt="coupon"
+                    className="w-20 h-20"
+                  />
+                </div>
+                <p className="text-[18px] font-semibold text-[#333333] text-center">
+                  보유중인 쿠폰이 없어요
+                </p>
               </div>
             ) : (
               <div className="flex flex-col gap-4">
