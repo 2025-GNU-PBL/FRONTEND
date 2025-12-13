@@ -546,7 +546,6 @@ const WebView: React.FC = () => {
               onWheel={(e) => {
                 if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
                   e.currentTarget.scrollLeft += e.deltaY;
-                  e.preventDefault();
                 }
               }}
             >
