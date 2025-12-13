@@ -58,6 +58,11 @@ const MobileView: React.FC = () => {
     bankAccount: bankAccount ?? "",
   });
 
+  // 🔹 초기 값(원본) 저장해서 변경 여부 체크에 사용
+  const [initialFormData, setInitialFormData] = useState<OwnerFormState | null>(
+    null
+  );
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 프로필 이미지 미리보기 + 새 파일
@@ -70,14 +75,17 @@ const MobileView: React.FC = () => {
   useEffect(() => {
     if (!owner) return;
 
-    setFormData({
+    const nextData: OwnerFormState = {
       phoneNumber: owner.phoneNumber ?? "",
       bzName: owner.bzName ?? "",
       bzNumber: owner.bzNumber ?? "",
       detailAddress: owner.detailAddress ?? "",
       bankName: owner.bankName ?? "",
       bankAccount: owner.bankAccount ?? "",
-    });
+    };
+
+    setFormData(nextData);
+    setInitialFormData(nextData);
 
     // 서버에 저장된 프로필 이미지 기준으로 미리보기 초기화
     setProfilePreview(owner.profileImage || "");
@@ -132,6 +140,20 @@ const MobileView: React.FC = () => {
     return data.imageUrl;
   };
 
+  // 🔍 변경 여부 계산: 폼 값 변경 + 프로필 이미지 선택 여부
+  const isChanged = React.useMemo(() => {
+    if (!initialFormData) return false;
+
+    const formChanged = (
+      Object.keys(initialFormData) as (keyof OwnerFormState)[]
+    ).some((key) => initialFormData[key] !== formData[key]);
+
+    // 프로필 이미지는 파일을 새로 선택했는지만 보면 충분
+    const profileChanged = !!profileFile;
+
+    return formChanged || profileChanged;
+  }, [initialFormData, formData, profileFile]);
+
   // =============================
   //   회원 정보 수정 요청
   // =============================
@@ -141,6 +163,12 @@ const MobileView: React.FC = () => {
       return;
     }
     if (isSubmitting) return;
+
+    // 변경된 내용 없으면 요청 안 보내기
+    if (!isChanged) {
+      toast.error("변경된 내용이 없어요.");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -439,7 +467,7 @@ const MobileView: React.FC = () => {
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={!isChanged || isSubmitting}
           className="flex flex-col justify-center items-center w-full h-[56px] bg-[#FF2233] rounded-[12px] py-4 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <div className="flex flex-row justify-center items-center gap-2">

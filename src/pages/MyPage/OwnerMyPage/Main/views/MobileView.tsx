@@ -125,7 +125,7 @@ export default function MobileView({ isMenuOpen, openMenu, closeMenu }: Props) {
                 className="h-[61px] w-full rounded-[12px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.02)] flex items-center justify-center active:opacity-80"
               >
                 <span className="inline-flex items-center justify-center gap-2">
-                  <Icon icon="mdi:ticket-percent-outline" className="w-5 h-5" />
+                  <Icon icon="mdi:attach-money" className="w-5 h-5" />
                   <span className="text-[16px] tracking-[-0.5px]">
                     매출관리
                   </span>

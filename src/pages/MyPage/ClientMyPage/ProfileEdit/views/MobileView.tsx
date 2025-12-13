@@ -48,9 +48,13 @@ const MobileView: React.FC = () => {
     weddingPlaceInput: weddingPlace === "예식 장소" ? "" : weddingPlace,
   });
 
+  // 초기 값(원본) 따로 저장해서 변경 여부 체크용으로 사용
+  const [initialFormData, setInitialFormData] =
+    React.useState<CustomerFormState | null>(null);
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // customerData가 바뀌었을 때 formData 동기화
+  // customerData가 바뀌었을 때 formData + initialFormData 동기화
   React.useEffect(() => {
     if (!customerData) return;
 
@@ -59,7 +63,7 @@ const MobileView: React.FC = () => {
         ? `${customerData.weddingSido} ${customerData.weddingSigungu}`
         : "";
 
-    setFormData({
+    const nextData: CustomerFormState = {
       phoneNumber: customerData.phoneNumber ?? "",
       address: customerData.address ?? "",
       zipCode: customerData.zipCode ?? "",
@@ -68,7 +72,10 @@ const MobileView: React.FC = () => {
       buildingName: customerData.buildingName ?? "",
       weddingDate: customerData.weddingDate ?? "",
       weddingPlaceInput: _weddingPlace,
-    });
+    };
+
+    setFormData(nextData);
+    setInitialFormData(nextData);
   }, [customerData]);
 
   const handleChange =
@@ -81,10 +88,25 @@ const MobileView: React.FC = () => {
       }));
     };
 
+  // 🔍 변경 여부 체크: 초기 값(initialFormData)과 현재 값(formData)을 필드 단위로 비교
+  const isChanged = React.useMemo(() => {
+    if (!initialFormData) return false;
+
+    return (Object.keys(initialFormData) as (keyof CustomerFormState)[]).some(
+      (key) => initialFormData[key] !== formData[key]
+    );
+  }, [initialFormData, formData]);
+
   // ✨ 수정하기 버튼 클릭 시 PATCH 요청
   const handleSubmit = async () => {
     if (!customerData) {
       toast.error("회원 정보를 불러오지 못했어요.");
+      return;
+    }
+
+    // 변경된 내용 없으면 요청 안 보내기
+    if (!isChanged) {
+      toast.error("변경된 내용이 없어요.");
       return;
     }
 
@@ -120,6 +142,7 @@ const MobileView: React.FC = () => {
 
       toast.success("회원 정보가 수정되었어요.");
 
+      // 수정 후 다시 최신 정보로 동기화
       refreshAuth();
 
       navigate("/my-page/client/profile");
@@ -276,7 +299,7 @@ const MobileView: React.FC = () => {
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={!isChanged || isSubmitting}
           className="flex flex-col justify-center items-center w-full h-[56px] bg-[#FF2233] rounded-[12px] py-4 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <div className="flex flex-row justify-center items-center gap-2">

@@ -75,9 +75,10 @@ const ProductCard: React.FC<WeddingHallCardProps> = ({
           aria-pressed={liked}
           onClick={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             onToggleLike(product.id);
           }}
-          className="absolute right-2 top-2 grid place-items-center w-[8%] aspect-square"
+          className="absolute right-2 top-2 grid place-items-center w-[20px] h-[20px]"
           whileTap={{ scale: 0.9 }}
         >
           <motion.span
@@ -85,13 +86,14 @@ const ProductCard: React.FC<WeddingHallCardProps> = ({
             initial={{ scale: 0.8, rotate: -8, opacity: 0 }}
             animate={{ scale: 1, rotate: 0, opacity: 1 }}
             transition={{ duration: 0.18, ease: EASE_OUT }}
-            className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] w-full h-full"
+            className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
           >
             <Icon
               icon={liked ? "solar:heart-bold" : "solar:heart-linear"}
-              className={`w-full h-full ${
+              className={`w-[20px] h-[20px] ${
                 liked ? "text-red-500" : "text-white"
-              }`}
+              }
+      `}
             />
           </motion.span>
         </motion.button>

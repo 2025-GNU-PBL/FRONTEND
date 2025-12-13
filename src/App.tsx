@@ -143,7 +143,6 @@ function Layout() {
     "/fail",
     "/my-page/owner/coupons/register",
     "/my-page/owner/profile/edit",
-    "/my-page/owner/reservations",
     "/my-page/owner/payments",
     "/my-page/owner/payments/detail",
     "/my-page/owner/cancels/detail/request",

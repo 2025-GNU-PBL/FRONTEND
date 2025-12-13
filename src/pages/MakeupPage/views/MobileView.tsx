@@ -153,6 +153,11 @@ const MobileView: React.FC = () => {
   const [selectedTags, setSelectedTags] = useState<Set<MakeupTag>>(new Set()); // 시트 내 임시 선택
   const [appliedTags, setAppliedTags] = useState<Set<MakeupTag>>(new Set()); // 실제 API에 쓰는 태그
 
+  // ✅ 필터 미리보기 결과 개수 상태
+  const [previewCount, setPreviewCount] = useState<number | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const previewControllerRef = useRef<AbortController | null>(null);
+
   // 찜
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
   const toggleLike = useCallback((id: number) => {
@@ -273,11 +278,17 @@ const MobileView: React.FC = () => {
 
   const resetFilter = useCallback(() => {
     setSelectedTags(new Set());
+    setPreviewCount(null);
+    setPreviewLoading(false);
   }, []);
 
   const applyFilter = useCallback(() => {
-    // 시트에서 확정된 선택을 실제 적용값으로 반영
-    setAppliedTags(new Set(selectedTags));
+    // ✅ 선택된 태그가 없으면 "필터 없음" 상태로 적용 (전체 보기)
+    if (selectedTags.size === 0) {
+      setAppliedTags(new Set());
+    } else {
+      setAppliedTags(new Set(selectedTags));
+    }
 
     // 목록 리셋 및 1페이지부터 다시
     setItems([]);
@@ -343,7 +354,6 @@ const MobileView: React.FC = () => {
             signal: controller.signal,
           }
         );
-        console.log(data);
 
         // 파라미터가 바뀐 뒤 늦게 온 응답이면 폐기
         if (inFlightKeyRef.current !== myKey || myKey !== paramsKey) {
@@ -424,7 +434,80 @@ const MobileView: React.FC = () => {
     return () => observer.unobserve(target);
   }, [hasMore, loadingInitial, isLoadingMore]);
 
+  /* ========================= 필터 미리보기 개수(fetch) ========================= */
+
+  useEffect(() => {
+    // 필터 시트가 닫히면 미리보기 상태 초기화 + 요청 취소
+    if (!isFilterOpen) {
+      previewControllerRef.current?.abort();
+      setPreviewLoading(false);
+      setPreviewCount(null);
+      return;
+    }
+
+    // 아무 태그도 선택 안 했으면 미리보기 호출하지 않음
+    if (selectedTags.size === 0) {
+      previewControllerRef.current?.abort();
+      setPreviewLoading(false);
+      setPreviewCount(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    previewControllerRef.current = controller;
+
+    const fetchPreview = async () => {
+      try {
+        setPreviewLoading(true);
+
+        const regionValue = getRegionQueryValue(selectedRegion);
+        const tagsPreviewParam =
+          selectedTags.size > 0
+            ? Array.from(selectedTags).join(",")
+            : undefined;
+
+        const { data }: { data: PagedResponse } = await api.get(
+          "/api/v1/makeup/filter",
+          {
+            params: {
+              pageNumber: 1,
+              pageSize: 1, // ✅ 개수만 알면 됨
+              region: regionValue,
+              sortType: sortParam,
+              tags: tagsPreviewParam,
+            },
+            signal: controller.signal,
+          }
+        );
+
+        setPreviewCount(data.page.totalElements);
+      } catch (err: unknown) {
+        if (
+          (axios.isAxiosError(err) && err.code === "ERR_CANCELED") ||
+          (err instanceof Error && err.name === "CanceledError")
+        ) {
+          // 취소 요청은 무시
+        } else {
+          console.error("메이크업 필터 미리보기 개수 조회 실패:", err);
+          setPreviewCount(null);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setPreviewLoading(false);
+        }
+      }
+    };
+
+    void fetchPreview();
+
+    return () => {
+      controller.abort();
+    };
+  }, [isFilterOpen, selectedRegion, selectedTags, sortParam]);
+
   /* ========================= 렌더 ========================= */
+
+  const hasSelectedTags = selectedTags.size > 0;
 
   return (
     <motion.div
@@ -733,7 +816,13 @@ const MobileView: React.FC = () => {
                   onClick={applyFilter}
                 >
                   <span className="text-[16px] font-semibold text-white">
-                    결과 보기
+                    {hasSelectedTags
+                      ? previewLoading
+                        ? "계산 중..."
+                        : previewCount !== null
+                        ? `${previewCount}개 결과 보기`
+                        : "결과 보기"
+                      : "결과 보기"}
                   </span>
                 </button>
               </div>

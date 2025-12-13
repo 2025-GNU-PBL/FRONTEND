@@ -266,16 +266,18 @@ export default function MobileView() {
                 </h2>
                 <button
                   onClick={() => navigate("/quotation")}
-                  className="flex flex-col items-start px-3 py-2 gap-1 w-full bg-[#F3F4F5] rounded-[8px] active:scale-[0.99]"
+                  className="flex flex-col items-start px-4 py-3 gap-1 w-full bg-[#F3F4F5] rounded-[8px] active:scale-[0.99]"
                 >
                   <div className="flex flex-row items-center gap-1 w-full">
-                    <Icon
-                      icon="solar:star-bold"
-                      className="w-4 h-4 text-[#803BFF]"
+                    <img
+                      src="/images/star.png"
+                      alt="star"
+                      className="h-4.5 w-4.5"
                     />
+
                     <div className="flex flex-row items-center justify-between w-full">
                       <span className="text-[14px] leading-[150%] tracking-[-0.2px] text-[#333333]">
-                        나의검색 조건으로 견적을 보고싶다면?
+                        나의 검색 조건으로 견적을 보고 싶다면?
                       </span>
                       <Icon
                         icon="solar:alt-arrow-right-linear"

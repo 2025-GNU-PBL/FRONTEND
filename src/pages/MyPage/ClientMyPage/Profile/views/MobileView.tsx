@@ -69,20 +69,11 @@ const MobileView: React.FC = () => {
           />
         </button>
 
-        <h1 className="font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-[#1E2124]">
+        <h1 className="mr-7 font-[Pretendard] font-semibold text-[18px] leading-[29px] tracking-[-0.2px] text-[#1E2124]">
           내 정보 조회
         </h1>
 
-        <button
-          className="w-6 h-6 flex items-center justify-center z-[1]"
-          type="button"
-          onClick={handleGoToEdit}
-        >
-          <Icon
-            icon="majesticons:edit-pen-2-line"
-            className="w-6 h-6 text-[#1E2124]"
-          />
-        </button>
+        <div></div>
       </div>
 
       {/* 메인 컨텐츠 */}

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../../../../lib/api/axios";
-import { toast } from "react-toastify"; // ✅ 추가
-import "react-toastify/dist/ReactToastify.css"; // ✅ 추가
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 /** ====== 타입 ====== */
 type DiscountType = "AMOUNT" | "RATE";
@@ -106,7 +106,6 @@ export default function MobileView() {
       setCoupons((prev) => prev.filter((c) => c.id !== deleteTarget.id));
       setDeleteTarget(null);
 
-      // 🔥 alert → toast로 교체
       toast.success("쿠폰이 삭제되었습니다.");
     } catch (e) {
       console.error("[delete] error:", e);
@@ -117,6 +116,7 @@ export default function MobileView() {
   };
 
   const registeredCount = coupons.length;
+  const isEmpty = !loading && !errorMsg && coupons.length === 0;
 
   return (
     <div className="relative flex min-h-screen w-full flex-col bg-white">
@@ -134,19 +134,30 @@ export default function MobileView() {
       </div>
 
       {/* 내용 */}
-      <div className="relative flex flex-1 overflow-y-auto">
-        <div className="w-full px-5 pt-5 pb-6">
-          <div className="mb-4 flex items-center justify-between">
-            {registeredCount > 0 && (
-              <p className="text-[14px] text-[#000000]">
-                {loading
-                  ? "쿠폰 불러오는 중..."
-                  : `등록된 쿠폰 ${registeredCount}`}
-              </p>
-            )}
-          </div>
+      {/* ✅ 빈 상태일 때 헤더 아래 영역을 flex로 중앙 정렬 */}
+      <div
+        className={`relative flex-1 overflow-y-auto ${isEmpty ? "flex" : ""}`}
+      >
+        {/* ✅ 내부 컨테이너: 빈 상태면 중앙 정렬 */}
+        <div
+          className={`w-full px-5 pt-5 pb-6 ${
+            isEmpty ? "flex items-center justify-center" : ""
+          }`}
+        >
+          {/* 상단 카운트는 쿠폰 있을 때만 표시 */}
+          {!isEmpty && (
+            <div className="mb-4 flex items-center justify-between">
+              {registeredCount > 0 && (
+                <p className="text-[14px] text-[#000000]">
+                  {loading
+                    ? "쿠폰 불러오는 중..."
+                    : `등록된 쿠폰 ${registeredCount}`}
+                </p>
+              )}
+            </div>
+          )}
 
-          {loading && (
+          {loading && !isEmpty && (
             <div className="py-10 text-center text-[14px] text-[#999999]">
               쿠폰 정보를 불러오는 중입니다...
             </div>
@@ -161,6 +172,7 @@ export default function MobileView() {
           {!loading && !errorMsg && (
             <>
               {coupons.length === 0 ? (
+                // ✅ 빈 상태: 헤더 아래 영역 기준 정중앙
                 <EmptyState />
               ) : (
                 <div className="flex flex-col gap-4">
@@ -255,16 +267,13 @@ function CouponCard({ c: coupon, onRemove }: CouponCardProps) {
 
 function EmptyState() {
   return (
-    <div className="flex w-full items-center justify-center py-20">
-      <div className="flex flex-col items-center gap-4">
-        <Icon
-          icon="material-symbols:credit-card-outline"
-          className="h-[80px] w-[80px] opacity-50"
-        />
-        <p className="text-center text-[18px] font-semibold leading-[29px] tracking-[-0.2px] text-black">
-          보유중인 쿠폰이 없어요
-        </p>
+    <div className="flex flex-col items-center justify-center mb-20">
+      <div className="w-20 h-20 mb-4 rounded-full bg-[#F6F7FB] flex items-center justify-center opacity-50">
+        <img src="/images/coupon.png" alt="coupon" className="w-20 h-20" />
       </div>
+      <p className="text-center text-[18px] font-semibold leading-[29px] tracking-[-0.2px] text-black">
+        보유중인 쿠폰이 없어요
+      </p>
     </div>
   );
 }

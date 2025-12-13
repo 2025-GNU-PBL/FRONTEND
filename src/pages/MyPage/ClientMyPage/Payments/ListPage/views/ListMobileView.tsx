@@ -349,9 +349,15 @@ export default function ListMobileView() {
     { items: failed, label: "결제실패" as PaymentStatus },
   ];
 
+  // ✅ 실제 아이템이 있는 섹션만 따로 계산 (구분선 헤더 아래 안 나오게)
+  const visibleSections = sections.filter((s) => s.items.length > 0);
+
+  // ✅ 빈 상태 여부 플래그 (결제 내역 없음 + 에러/로딩 아님 + 고객)
+  const isEmptyState = !isNotCustomer && !loading && !error && !hasPayments;
+
   return (
     <div className="relative w-full min-h-screen bg-[#FFFFFF] flex flex-col">
-      <div className="sticky top-0 z-20 bg-[#FFFFFF] border-b border-gray-200">
+      <div className="sticky top-0 z-20 bg-[#FFFFFF]">
         <MyPageHeader
           title="결제 내역"
           onBack={() => nav(-1)}
@@ -359,55 +365,67 @@ export default function ListMobileView() {
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-8 pb-15">
-        <div className="w-full h-2 bg-[#F7F9FA] -mx-5 mb-5" />
+      {/* ✅ 빈 상태일 때 헤더 아래 영역 기준으로 중앙 정렬 */}
+      <div
+        className={`flex-1 overflow-y-auto px-5 pt-8 pb-15 ${
+          isEmptyState ? "flex" : ""
+        }`}
+      >
+        <div
+          className={`w-full ${
+            isEmptyState ? "flex items-center justify-center" : ""
+          }`}
+        >
+          {isNotCustomer && (
+            <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
+              고객 전용 페이지입니다.
+            </div>
+          )}
 
-        {isNotCustomer && (
-          <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
-            고객 전용 페이지입니다.
-          </div>
-        )}
+          {!isNotCustomer && loading && (
+            <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
+              결제 내역을 불러오는 중입니다...
+            </div>
+          )}
 
-        {!isNotCustomer && loading && (
-          <div className="w-full mt-10 flex justify-center text-[14px] text-[#777777]">
-            결제 내역을 불러오는 중입니다...
-          </div>
-        )}
+          {!isNotCustomer && !loading && error && (
+            <div className="w-full mt-10 flex justify-center text-[14px] text-red-500">
+              {error}
+            </div>
+          )}
 
-        {!isNotCustomer && !loading && error && (
-          <div className="w-full mt-10 flex justify-center text-[14px] text-red-500">
-            {error}
-          </div>
-        )}
-
-        {!isNotCustomer && !loading && !error && hasPayments && (
-          <>
-            {sections.map((s, idx) =>
-              s.items.length > 0 ? (
+          {!isNotCustomer && !loading && !error && hasPayments && (
+            <>
+              {visibleSections.map((s, index) => (
                 <React.Fragment key={s.label}>
-                  {idx > 0 && <div className="w-full h-2 bg-[#F7F9FA] my-5" />}
+                  {/* ✅ 실제로 보여지는 섹션들 사이에만 구분선 */}
+                  {index > 0 && (
+                    <div className="w-full h-2 bg-[#F7F9FA] my-5" />
+                  )}
                   <PaymentSection
                     status={s.label}
                     items={s.items}
                     onCancelRequest={handleGoRefundRequest}
                   />
                 </React.Fragment>
-              ) : null
-            )}
-          </>
-        )}
+              ))}
+            </>
+          )}
 
-        {!isNotCustomer && !loading && !error && !hasPayments && (
-          <div className="w-full flex flex-col items-center mt-70">
-            <img
-              src="/images/document.png"
-              className="w-20 h-20 mb-3 text-[#D9D9D9]"
-            />
-            <p className="text-[18px] font-semibold text-[#333333]">
-              결제 내역이 없어요
-            </p>
-          </div>
-        )}
+          {!isNotCustomer && !loading && !error && !hasPayments && (
+            // ✅ 빈 상태: 헤더 아래 영역 한가운데에 위치
+            <div className="flex flex-col items-center justify-center mb-10">
+              <img
+                src="/images/document.png"
+                className="w-20 h-20 mb-3 text-[#D9D9D9]"
+                alt="empty"
+              />
+              <p className="text-[18px] font-semibold text-[#333333]">
+                결제 내역이 없어요
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
