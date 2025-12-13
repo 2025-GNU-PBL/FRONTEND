@@ -207,7 +207,7 @@ const RegisterMobileView = () => {
     try {
       const response = await api.post("/api/v1/owner/coupon", couponData);
 
-      if (response.status === 201) {
+      if (response.status === 201 || response.status === 200) {
         toast.success("쿠폰이 성공적으로 등록되었습니다!");
         navigate("/my-page/owner/coupons");
       } else {
